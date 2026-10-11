@@ -1,0 +1,1118 @@
+// BizNexa — database schema v1 (PRD prompt Section 5)
+// Money is stored in integer paise. All timestamps are UTC.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  DEACTIVATED
+  PENDING_DELETION
+}
+
+enum OtpChannel {
+  MOBILE
+  EMAIL
+}
+
+enum OtpPurpose {
+  LOGIN
+  VERIFY_MOBILE
+  RESET_PASSWORD
+}
+
+enum OrderStatus {
+  CREATED
+  PAYMENT_PENDING
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum ApplicationStatus {
+  DRAFT
+  PAYMENT_PENDING
+  SUBMITTED
+  DOCUMENTS_UNDER_REVIEW
+  DOCUMENTS_PENDING
+  DOCUMENTS_APPROVED
+  ASSIGNED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  DELIVERED
+  CANCELLED
+}
+
+enum DocumentStatus {
+  REQUIRED
+  UPLOADED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  SUCCESS
+  FAILED
+  REFUND_INITIATED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum RefundStatus {
+  INITIATED
+  PROCESSED
+  FAILED
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+enum ConsultantCategory {
+  CA
+  CS
+  LAWYER
+  TAX_CONSULTANT
+  TRADEMARK_CONSULTANT
+  ISO_CONSULTANT
+  BUSINESS_CONSULTANT
+  TECHNOLOGY_CONSULTANT
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum ConsultationType {
+  AUDIO
+  VIDEO
+  CHAT
+  MEETING
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED
+}
+
+enum CertificateStatus {
+  ACTIVE
+  SUSPENDED
+  WITHDRAWN
+  EXPIRED
+}
+
+enum ReminderStatus {
+  SCHEDULED
+  SENT
+  DONE
+  CANCELLED
+}
+
+enum Recurrence {
+  MONTHLY
+  QUARTERLY
+  HALF_YEARLY
+  ANNUAL
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_CUSTOMER
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// ─────────────────────── Identity & access ───────────────────────
+
+model User {
+  id             String     @id @default(uuid())
+  name           String
+  email          String?    @unique
+  mobile         String?    @unique
+  passwordHash   String?
+  googleId       String?    @unique
+  avatarUrl      String?
+  status         UserStatus @default(ACTIVE)
+  emailVerified  Boolean    @default(false)
+  mobileVerified Boolean    @default(false)
+  consentAt      DateTime?
+  lastLoginAt    DateTime?
+  /// Staff 2FA (D27). AES-256-GCM encrypted base32 TOTP secret; active only once totpEnabledAt is set.
+  totpSecret      String?
+  totpEnabledAt   DateTime?
+  /// Last accepted 30-second time step; codes from this step or earlier are refused (replay).
+  totpLastStep    Int?
+  totpFailures    Int        @default(0)
+  totpLockedUntil DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  deletedAt      DateTime?
+
+  roles             UserRole[]
+  refreshTokens     RefreshToken[]
+  customerProfile   CustomerProfile?
+  businessEntities  BusinessEntity[]
+  orders            Order[]
+  assignedApps      Application[]     @relation("AssignedApplications")
+  consultant        Consultant?
+  notifications     Notification[]
+  tickets           Ticket[]          @relation("TicketCustomer")
+  assignedTickets   Ticket[]          @relation("TicketAssignee")
+  bookings          Booking[]
+  auditLogs         AuditLog[]
+  internalNotes     InternalNote[]
+  messages          Message[]
+  stageChanges      ApplicationStageHistory[]
+  files             StoredFile[]
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  key         String           @unique // CUSTOMER, ADMIN, OPERATIONS, CONSULTANT, SUPPORT
+  name        String
+  description String?
+  isSystem    Boolean          @default(false)
+  permissions RolePermission[]
+  users       UserRole[]
+  createdAt   DateTime         @default(now())
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String           @unique // e.g. services.manage, applications.view_all
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  family     String // rotation family; reuse of a revoked token revokes the family
+  userAgent  String?
+  ip         String?
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  /// When this session passed two-factor verification (carried across rotations); null = password-only.
+  mfaAt      DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([family])
+}
+
+model OtpCode {
+  id         String     @id @default(uuid())
+  channel    OtpChannel
+  target     String // mobile number or email
+  purpose    OtpPurpose
+  codeHash   String
+  attempts   Int        @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  ip         String?
+  createdAt  DateTime   @default(now())
+
+  @@index([target, purpose, createdAt])
+}
+
+model CustomerProfile {
+  userId     String   @id
+  panMasked  String? // last 4 visible only; full PAN encrypted
+  panEnc     String?
+  address    String?
+  city       String?
+  state      String? // two-letter code for GST place of supply
+  pincode    String?
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BusinessEntity {
+  id          String    @id @default(uuid())
+  ownerId     String
+  legalName   String
+  entityType  String // ENTITY_TYPES in packages/types (PRIVATE_LIMITED, LLP, PROPRIETORSHIP…)
+  gstin       String?
+  cin         String?
+  pan         String? // encrypted at rest (encryptField, D34) — never stored plain
+  address     Json? // { line1, line2?, city, state, pincode } — same shape as a form's address field
+  state       String? // from the address, else the GSTIN; used for place of supply
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  owner        User          @relation(fields: [ownerId], references: [id])
+  applications Application[]
+  certificates Certificate[]
+  reminders    Reminder[]
+
+  @@index([ownerId])
+}
+
+// ─────────────────────────── Catalogue ───────────────────────────
+
+model Category {
+  id              String        @id @default(uuid())
+  slug            String        @unique
+  name            String
+  tagline         String?
+  description     String?
+  icon            String?
+  journeyStage    String? // START | PROTECT | CERTIFY | COMPLY | CONSULT | GROW
+  sortOrder       Int           @default(0)
+  isActive        Boolean       @default(true)
+  seoTitle        String?
+  metaDescription String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  subcategories   Subcategory[]
+  services        Service[]
+}
+
+model Subcategory {
+  id         String    @id @default(uuid())
+  categoryId String
+  slug       String
+  name       String
+  sortOrder  Int       @default(0)
+  isActive   Boolean   @default(true)
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  services   Service[]
+
+  @@unique([categoryId, slug])
+}
+
+model Service {
+  id                String     @id @default(uuid())
+  slug              String     @unique
+  categoryId        String
+  subcategoryId     String?
+  name              String
+  shortDescription  String
+  overview          String? // long description (markdown)
+  icon              String?
+  imageUrl          String?
+  benefits          String[]
+  estimatedTime     String? // human text, e.g. "7–10 working days"
+  estimatedDaysMin  Int?
+  estimatedDaysMax  Int?
+  sacCode           String?
+  popularity        Int        @default(0)
+  isPopular         Boolean    @default(false)
+  isActive          Boolean    @default(true)
+  recurrence        Recurrence?
+  reminderOffsets   Int[]      @default([30, 15, 7, 1])
+  seoTitle          String?
+  metaDescription   String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  deletedAt         DateTime?
+
+  category     Category                     @relation(fields: [categoryId], references: [id])
+  subcategory  Subcategory?                 @relation(fields: [subcategoryId], references: [id])
+  packages     ServicePackage[]
+  documents    ServiceDocumentRequirement[]
+  stages       ServiceStage[]
+  faqs         ServiceFAQ[]
+  formSchemas  ServiceFormSchema[]
+  applications Application[]
+  related      ServiceRelation[]            @relation("RelationFrom")
+  relatedTo    ServiceRelation[]            @relation("RelationTo")
+  consultants  ConsultantService[]
+
+  @@index([categoryId, isActive])
+}
+
+model ServiceRelation {
+  fromId String
+  toId   String
+  from   Service @relation("RelationFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to     Service @relation("RelationTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@id([fromId, toId])
+}
+
+model ServicePackage {
+  id                String   @id @default(uuid())
+  serviceId         String
+  name              String // Basic | Standard | Premium
+  professionalFee   Int // paise
+  governmentFee     Int      @default(0) // paise, non-taxable
+  gstRate           Int      @default(18)
+  inclusions        String[]
+  estimatedTime     String?
+  isMostPopular     Boolean  @default(false)
+  allowPartial      Boolean  @default(false)
+  advancePercent    Int? // when allowPartial
+  sortOrder         Int      @default(0)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  service           Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  applications      Application[]
+  orderItems        OrderItem[]
+
+  @@index([serviceId])
+}
+
+model ServiceDocumentRequirement {
+  id           String   @id @default(uuid())
+  serviceId    String
+  name         String
+  description  String?
+  isMandatory  Boolean  @default(true)
+  acceptedTypes String[] @default(["application/pdf", "image/jpeg", "image/png"])
+  maxSizeMb    Int      @default(10)
+  packageIds   String[] // empty = all packages
+  sortOrder    Int      @default(0)
+  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  documents    ApplicationDocument[]
+  files        StoredFile[]
+}
+
+model ServiceStage {
+  id          String   @id @default(uuid())
+  serviceId   String
+  name        String
+  description String?
+  sortOrder   Int
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  history     ApplicationStageHistory[]
+  current     Application[]
+
+  @@unique([serviceId, sortOrder])
+}
+
+model ServiceFAQ {
+  id        String  @id @default(uuid())
+  serviceId String
+  question  String
+  answer    String
+  sortOrder Int     @default(0)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model ServiceFormSchema {
+  id        String   @id @default(uuid())
+  serviceId String
+  version   Int
+  schema    Json // dynamic form definition (steps → fields)
+  isCurrent Boolean  @default(true)
+  createdAt DateTime @default(now())
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, version])
+}
+
+// ─────────────────────── Orders & fulfilment ───────────────────────
+
+model Order {
+  id          String      @id @default(uuid())
+  code        String      @unique // ORD-2026-000123
+  customerId  String
+  subtotal    Int // professional fees before discount, paise
+  discount    Int         @default(0)
+  taxTotal    Int         @default(0)
+  govtFees    Int         @default(0)
+  total       Int
+  amountPaid  Int         @default(0)
+  couponId    String?
+  buyerState  String?
+  status      OrderStatus @default(CREATED)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  customer     User          @relation(fields: [customerId], references: [id])
+  coupon       Coupon?       @relation(fields: [couponId], references: [id])
+  items        OrderItem[]
+  applications Application[]
+  payments     Payment[]
+  invoices     Invoice[]
+
+  @@index([customerId])
+}
+
+model OrderItem {
+  id              String         @id @default(uuid())
+  orderId         String
+  packageId       String
+  description     String
+  sacCode         String?
+  professionalFee Int
+  governmentFee   Int
+  discount        Int            @default(0)
+  gstRate         Int
+  order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  package         ServicePackage @relation(fields: [packageId], references: [id])
+}
+
+model Application {
+  id                String            @id @default(uuid())
+  code              String            @unique // BN10025
+  orderId           String?
+  customerId        String
+  serviceId         String
+  packageId         String
+  businessEntityId  String?
+  formData          Json              @default("{}")
+  formSchemaVersion Int?
+  currentStageId    String?
+  status            ApplicationStatus @default(DRAFT)
+  assignedToId      String?
+  priority          Priority          @default(MEDIUM)
+  slaDueAt          DateTime?
+  submittedAt       DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  order          Order?                    @relation(fields: [orderId], references: [id])
+  service        Service                   @relation(fields: [serviceId], references: [id])
+  package        ServicePackage            @relation(fields: [packageId], references: [id])
+  businessEntity BusinessEntity?           @relation(fields: [businessEntityId], references: [id])
+  currentStage   ServiceStage?             @relation(fields: [currentStageId], references: [id])
+  assignedTo     User?                     @relation("AssignedApplications", fields: [assignedToId], references: [id])
+  history        ApplicationStageHistory[]
+  documents      ApplicationDocument[]
+  deliverables   FinalDeliverable[]
+  notes          InternalNote[]
+  certificates   Certificate[]
+  conversations  Conversation[]
+  tickets        Ticket[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([assignedToId])
+}
+
+model ApplicationStageHistory {
+  id                String            @id @default(uuid())
+  applicationId     String
+  stageId           String?
+  status            ApplicationStatus
+  note              String?
+  visibleToCustomer Boolean           @default(true)
+  changedById       String?
+  changedAt         DateTime          @default(now())
+  application       Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  stage             ServiceStage?     @relation(fields: [stageId], references: [id])
+  changedBy         User?             @relation(fields: [changedById], references: [id])
+
+  @@index([applicationId])
+}
+
+model ApplicationDocument {
+  id              String                      @id @default(uuid())
+  applicationId   String
+  requirementId   String?
+  name            String
+  fileKey         String?                     @unique // the StoredFile behind this version; one file backs one document
+  fileName        String?
+  mimeType        String?
+  sizeBytes       Int?
+  version         Int                         @default(1)
+  isLatest        Boolean                     @default(true)
+  status          DocumentStatus              @default(REQUIRED)
+  rejectionReason String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  uploadedAt      DateTime?
+  createdAt       DateTime                    @default(now())
+  application     Application                 @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  requirement     ServiceDocumentRequirement? @relation(fields: [requirementId], references: [id])
+  file            StoredFile?                 @relation(fields: [fileKey], references: [fileKey], onDelete: Restrict) // keep every version's file
+
+  @@unique([applicationId, requirementId, version]) // a replacement is version N+1, never a second N (M3.10)
+  @@index([applicationId])
+  @@index([status])
+}
+
+model FinalDeliverable {
+  id            String      @id @default(uuid())
+  applicationId String
+  title         String
+  fileKey       String
+  fileName      String
+  uploadedById  String
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+model InternalNote {
+  id            String      @id @default(uuid())
+  applicationId String
+  authorId      String
+  body          String
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  author        User        @relation(fields: [authorId], references: [id])
+}
+
+// ─────────────────────────── Payments ───────────────────────────
+
+model Payment {
+  id               String        @id @default(uuid())
+  orderId          String?
+  bookingId        String?
+  gateway          String        @default("RAZORPAY")
+  gatewayOrderId   String?       @unique
+  gatewayPaymentId String?       @unique
+  amount           Int
+  method           String? // upi, card, netbanking
+  status           PaymentStatus @default(CREATED)
+  failureReason    String?
+  rawWebhook       Json?
+  paidAt           DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  order            Order?        @relation(fields: [orderId], references: [id])
+  booking          Booking?      @relation(fields: [bookingId], references: [id])
+  refunds          Refund[]
+  invoice          Invoice?
+  webhookEvents    PaymentWebhookEvent[]
+
+  @@index([status])
+}
+
+/// Every gateway webhook whose signature passed (M3.17), stored as received. The unique
+/// (gateway, eventId) row is claimed in the same transaction that applies the event, so a
+/// redelivered event finds it and changes nothing.
+model PaymentWebhookEvent {
+  id               String   @id @default(uuid())
+  gateway          String
+  eventId          String
+  event            String // payment.captured, payment.failed…
+  gatewayPaymentId String?
+  paymentId        String?
+  payload          Json
+  /// What the handler did: applied, duplicate, ignored, unknown_order, amount_mismatch…
+  outcome          String?
+  receivedAt       DateTime @default(now())
+  payment          Payment? @relation(fields: [paymentId], references: [id])
+
+  @@unique([gateway, eventId])
+  @@index([paymentId])
+}
+
+model Refund {
+  id              String       @id @default(uuid())
+  paymentId       String
+  amount          Int
+  reason          String
+  status          RefundStatus @default(INITIATED)
+  gatewayRefundId String?
+  initiatedById   String
+  creditNoteNo    String?      @unique
+  createdAt       DateTime     @default(now())
+  payment         Payment      @relation(fields: [paymentId], references: [id])
+}
+
+model Invoice {
+  id             String   @id @default(uuid())
+  number         String   @unique // BN/2026-27/000123
+  financialYear  String
+  sequence       Int
+  orderId        String
+  paymentId      String   @unique
+  sellerGstin    String
+  buyerName      String
+  buyerGstin     String?
+  placeOfSupply  String?
+  taxableValue   Int
+  cgst           Int      @default(0)
+  sgst           Int      @default(0)
+  igst           Int      @default(0)
+  govtFees       Int      @default(0)
+  discount       Int      @default(0)
+  total          Int
+  pdfKey         String?
+  createdAt      DateTime @default(now())
+  order          Order    @relation(fields: [orderId], references: [id])
+  payment        Payment  @relation(fields: [paymentId], references: [id])
+
+  @@unique([financialYear, sequence])
+}
+
+model Coupon {
+  id            String     @id @default(uuid())
+  code          String     @unique
+  type          CouponType
+  value         Int
+  maxDiscount   Int?
+  minOrderValue Int?
+  serviceIds    String[] // empty = all services
+  startsAt      DateTime?
+  expiresAt     DateTime?
+  usageLimit    Int?
+  perUserLimit  Int?       @default(1)
+  usedCount     Int        @default(0)
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  orders        Order[]
+  redemptions   CouponRedemption[]
+}
+
+model CouponRedemption {
+  id        String   @id @default(uuid())
+  couponId  String
+  userId    String
+  orderId   String
+  amount    Int
+  createdAt DateTime @default(now())
+  coupon    Coupon   @relation(fields: [couponId], references: [id])
+
+  @@unique([orderId])
+  @@index([couponId, userId])
+}
+
+// ─────────────────────────── Consultants ───────────────────────────
+
+model Consultant {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  slug               String             @unique
+  category           ConsultantCategory
+  qualification      String
+  membershipNo       String?
+  experienceYears    Int
+  expertise          String[]
+  languages          String[]
+  city               String
+  state              String
+  area               String?
+  bio                String?
+  photoUrl           String?
+  feePerSession      Int // paise
+  sessionMinutes     Int                @default(30)
+  consultationTypes  ConsultationType[]
+  commissionPercent  Int                @default(20)
+  verificationStatus VerificationStatus @default(PENDING)
+  rating             Float              @default(0)
+  reviewCount        Int                @default(0)
+  isOnline           Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  user               User               @relation(fields: [userId], references: [id])
+  services           ConsultantService[]
+  availability       AvailabilitySlot[]
+  bookings           Booking[]
+  reviews            Review[]
+
+  @@index([category, city, rating])
+}
+
+model ConsultantService {
+  consultantId String
+  serviceId    String
+  consultant   Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  service      Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([consultantId, serviceId])
+}
+
+model AvailabilitySlot {
+  id           String     @id @default(uuid())
+  consultantId String
+  weekday      Int? // 0=Sun..6=Sat for recurring slots
+  date         DateTime? // for one-off exceptions
+  startTime    String // "10:00" IST
+  endTime      String // "13:00" IST
+  isBlocked    Boolean    @default(false)
+  consultant   Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+}
+
+model Booking {
+  id           String           @id @default(uuid())
+  code         String           @unique
+  customerId   String
+  consultantId String
+  type         ConsultationType
+  startAt      DateTime
+  endAt        DateTime
+  fee          Int
+  status       BookingStatus    @default(PENDING_PAYMENT)
+  meetingLink  String?
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  customer     User             @relation(fields: [customerId], references: [id])
+  consultant   Consultant       @relation(fields: [consultantId], references: [id])
+  payments     Payment[]
+  review       Review?
+  conversations Conversation[]
+
+  @@index([consultantId, startAt])
+}
+
+model Review {
+  id           String     @id @default(uuid())
+  bookingId    String     @unique
+  consultantId String
+  rating       Int
+  text         String?
+  isPublished  Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  booking      Booking    @relation(fields: [bookingId], references: [id])
+  consultant   Consultant @relation(fields: [consultantId], references: [id])
+}
+
+// ─────────────────────────── Certificates ───────────────────────────
+
+model CertificationBody {
+  id            String        @id @default(uuid())
+  name          String        @unique
+  accreditation String?
+  logoUrl       String?
+  website       String?
+  certificates  Certificate[]
+}
+
+model Certificate {
+  id                  String            @id @default(uuid())
+  certificateNumber   String            @unique
+  verificationId      String            @unique // random, non-guessable
+  type                String // e.g. ISO 9001:2015
+  organizationName    String
+  scope               String?
+  address             String?
+  issueDate           DateTime
+  validFrom           DateTime
+  validUntil          DateTime
+  certificationBodyId String
+  status              CertificateStatus @default(ACTIVE)
+  statusReason        String?
+  pdfKey              String?
+  showPdfPublicly     Boolean           @default(false)
+  applicationId       String?
+  businessEntityId    String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  certificationBody   CertificationBody @relation(fields: [certificationBodyId], references: [id])
+  application         Application?      @relation(fields: [applicationId], references: [id])
+  businessEntity      BusinessEntity?   @relation(fields: [businessEntityId], references: [id])
+  lookups             CertificateLookup[]
+
+  @@index([organizationName])
+}
+
+model CertificateLookup {
+  id            String       @id @default(uuid())
+  certificateId String?
+  query         String
+  method        String // NUMBER | VERIFICATION_ID | QR | ORGANIZATION
+  found         Boolean
+  ip            String?
+  userAgent     String?
+  createdAt     DateTime     @default(now())
+  certificate   Certificate? @relation(fields: [certificateId], references: [id])
+
+  @@index([createdAt])
+}
+
+model Reminder {
+  id                  String         @id @default(uuid())
+  businessEntityId    String?
+  userId              String
+  type                String // GST_RETURN, ROC_ANNUAL, CERTIFICATE_EXPIRY...
+  title               String
+  dueDate             DateTime
+  offsets             Int[]          @default([30, 15, 7, 1])
+  sentOffsets         Int[]          @default([])
+  renewServiceSlug    String?
+  sourceApplicationId String?
+  status              ReminderStatus @default(SCHEDULED)
+  createdAt           DateTime       @default(now())
+  businessEntity      BusinessEntity? @relation(fields: [businessEntityId], references: [id])
+
+  @@index([dueDate, status])
+}
+
+// ─────────────────────── Notifications & support ───────────────────────
+
+model NotificationTemplate {
+  id        String              @id @default(uuid())
+  event     String // payment.success, document.rejected...
+  channel   NotificationChannel
+  subject   String?
+  body      String // supports {{variables}}
+  dltTemplateId String?
+  isActive  Boolean             @default(true)
+  updatedAt DateTime            @updatedAt
+
+  @@unique([event, channel])
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  channel   NotificationChannel
+  event     String
+  title     String
+  body      String
+  link      String?
+  payload   Json?
+  status    NotificationStatus  @default(QUEUED)
+  error     String?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+  user      User                @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+}
+
+model Ticket {
+  id            String       @id @default(uuid())
+  code          String       @unique
+  customerId    String
+  applicationId String?
+  subject       String
+  description   String
+  priority      Priority     @default(MEDIUM)
+  status        TicketStatus @default(OPEN)
+  assignedToId  String?
+  firstResponseAt DateTime?
+  resolvedAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  customer      User         @relation("TicketCustomer", fields: [customerId], references: [id])
+  assignedTo    User?        @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  application   Application? @relation(fields: [applicationId], references: [id])
+  conversations Conversation[]
+}
+
+model Conversation {
+  id            String       @id @default(uuid())
+  applicationId String?
+  bookingId     String?
+  ticketId      String?
+  createdAt     DateTime     @default(now())
+  application   Application? @relation(fields: [applicationId], references: [id])
+  booking       Booking?     @relation(fields: [bookingId], references: [id])
+  ticket        Ticket?      @relation(fields: [ticketId], references: [id])
+  messages      Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  senderId       String
+  body           String?
+  attachments    Json? // [{fileKey, fileName, mimeType}]
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+}
+
+// ─────────────────────────── CMS & blog ───────────────────────────
+
+model CmsPage {
+  id              String        @id @default(uuid())
+  slug            String        @unique // about, terms, privacy, refund-policy, home
+  title           String
+  content         Json // rich content blocks
+  seoTitle        String?
+  metaDescription String?
+  status          PublishStatus @default(DRAFT)
+  updatedAt       DateTime      @updatedAt
+}
+
+model Banner {
+  id        String   @id @default(uuid())
+  title     String
+  subtitle  String?
+  imageUrl  String?
+  linkUrl   String?
+  placement String   @default("home")
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+}
+
+model Testimonial {
+  id        String  @id @default(uuid())
+  name      String
+  company   String?
+  quote     String
+  rating    Int     @default(5)
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+}
+
+model BlogCategory {
+  id    String     @id @default(uuid())
+  slug  String     @unique
+  name  String
+  posts BlogPost[]
+}
+
+model Tag {
+  id    String     @id @default(uuid())
+  slug  String     @unique
+  name  String
+  posts BlogPost[]
+}
+
+model BlogPost {
+  id              String        @id @default(uuid())
+  slug            String        @unique
+  title           String
+  excerpt         String?
+  content         String // markdown
+  featuredImage   String?
+  categoryId      String?
+  authorName      String?
+  seoTitle        String?
+  metaDescription String?
+  status          PublishStatus @default(DRAFT)
+  publishedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  category        BlogCategory? @relation(fields: [categoryId], references: [id])
+  tags            Tag[]
+}
+
+model Lead {
+  id        String   @id @default(uuid())
+  name      String
+  mobile    String
+  email     String?
+  city      String?
+  serviceId String?
+  message   String?
+  source    String // service_page, contact, home
+  createdAt DateTime @default(now())
+}
+
+model SearchQuery {
+  id          String   @id @default(uuid())
+  query       String
+  resultCount Int
+  createdAt   DateTime @default(now())
+
+  @@index([resultCount])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  action     String // e.g. service.update, document.reject
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+}
+
+/// A file uploaded through the API to private storage (D17). Documents, deliverables and
+/// certificate PDFs point at it by fileKey. Never served directly — only via signed download links.
+model StoredFile {
+  id            String                      @id @default(uuid())
+  fileKey       String                      @unique // random storage key, never derived from the file name
+  ownerId       String // uploader
+  originalName  String // cleaned, used only for Content-Disposition
+  mimeType      String // detected from the content (magic bytes), not the browser's claim
+  sizeBytes     Int
+  sha256        String
+  requirementId String? // document requirement whose type/size rules were applied
+  scanStatus    FileScanStatus              @default(PENDING) // only CLEAN files can be downloaded
+  scanSignature String? // what the scanner found, when INFECTED
+  scannedAt     DateTime?
+  createdAt     DateTime                    @default(now())
+  owner         User                        @relation(fields: [ownerId], references: [id])
+  requirement   ServiceDocumentRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  document      ApplicationDocument?
+
+  @@index([ownerId])
+  @@index([scanStatus])
+}
+
+enum FileScanStatus {
+  PENDING // uploaded, scan job queued or retrying
+  CLEAN
+  INFECTED // stored bytes deleted, row kept for the record
+}

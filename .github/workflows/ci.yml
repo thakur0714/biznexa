@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: biznexa
+          POSTGRES_PASSWORD: biznexa
+          POSTGRES_DB: biznexa
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U biznexa" --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://biznexa:biznexa@localhost:5432/biznexa?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-0123456789abcdef0123456789
+      OTP_PEPPER: ci-otp-pepper-0123456789
+      CERT_QR_SECRET: ci-qr-secret-0123456789abcdef0123456789
+      FILE_LINK_SECRET: ci-file-link-secret-0123456789abcdef0123
+      DATA_ENCRYPTION_KEY: ci-data-encryption-key-0123456789abcdef0123
+      API_URL: http://localhost:4000
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @biznexa/types build
+      - run: pnpm --filter @biznexa/types test
+      - run: pnpm --filter @biznexa/ui typecheck && pnpm --filter @biznexa/ui test
+      - run: pnpm --filter @biznexa/admin test
+      - name: Database
+        working-directory: apps/api
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+          npx tsx prisma/seed.ts
+      - name: API client is generated from the current API
+        run: |
+          pnpm --filter @biznexa/api-client generate
+          git diff --exit-code -- packages/api-client || (echo "::error::packages/api-client is stale. Run: pnpm --filter @biznexa/api-client generate" && exit 1)
+          pnpm --filter @biznexa/api-client typecheck && pnpm --filter @biznexa/api-client test
+      - name: API type-check and tests
+        working-directory: apps/api
+        run: |
+          npx tsc -p tsconfig.json --noEmit
+          npx jest
+      - name: Build API, web and admin
+        run: |
+          pnpm --filter @biznexa/api build
+          (cd apps/api && NODE_ENV=development node dist/main.js &) && sleep 6
+          pnpm --filter @biznexa/web build
+          pnpm --filter @biznexa/admin build
+      - name: Browser tests
+        run: |
+          (cd apps/web && pnpm start &) && sleep 5
+          cd apps/web && npx playwright install --with-deps chromium && NODE_ENV=development pnpm e2e

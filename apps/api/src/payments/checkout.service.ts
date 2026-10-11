@@ -1,0 +1,228 @@
+import { BadGatewayException, BadRequestException, ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { assertTransition, paymentOutcome, type PaymentCallbackInput, type PaymentCheckout, type PaymentStatusView } from '@biznexa/types';
+import { ApplicationsService } from '../applications/applications.service';
+import { OrderSummaryService } from '../applications/order-summary.service';
+import { AuditService } from '../audit/audit.service';
+import { EventBus } from '../events/event-bus';
+import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '../generated/prisma/client';
+import { PaymentGateway, PaymentGatewayError } from './payment-gateway';
+
+/** The gateways' minimum charge: ₹1. */
+const MIN_AMOUNT = 100;
+
+const paymentSelect = { id: true, amount: true, gatewayOrderId: true } satisfies Prisma.PaymentSelect;
+type OpenPayment = Prisma.PaymentGetPayload<{ select: typeof paymentSelect }>;
+
+interface Opened {
+  payment: OpenPayment;
+  /** True when this call moved the application DRAFT → PAYMENT_PENDING. */
+  started: boolean;
+  application: { id: string; code: string };
+  orderCode: string;
+  description: string;
+  customer: { name: string | null; email: string | null; mobile: string | null };
+}
+
+/**
+ * Start payment (M3.16). One transaction, under a lock on the order row (then the coupon row — M3.17 must
+ * lock in the same order): checks the form is complete, re-prices the order with `OrderSummaryService.price`
+ * (coupon re-validated), creates a `Payment` (CREATED) for **that** total and moves the order and the
+ * application to PAYMENT_PENDING. The gateway order is created after the commit, so no row lock is held
+ * across a network call; it carries our `Payment` id as `receipt` and is attached with a compare-and-set,
+ * so concurrent clicks share one payment and one gateway order. Calling again while PAYMENT_PENDING (retry,
+ * reload, gateway outage) reuses the open payment at the frozen order total.
+ */
+@Injectable()
+export class CheckoutService {
+  private readonly log = new Logger(CheckoutService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gateway: PaymentGateway,
+    private readonly orders: OrderSummaryService,
+    private readonly applications: ApplicationsService,
+    private readonly audit: AuditService,
+    private readonly events: EventBus,
+  ) {}
+
+  async start(customerId: string, applicationId: string): Promise<PaymentCheckout> {
+    const opened = await this.prisma.$transaction((tx) => this.open(tx, customerId, applicationId));
+    if (opened.started) {
+      await this.events.emit('application.status_changed', { applicationId: opened.application.id, from: 'DRAFT', to: 'PAYMENT_PENDING', actorId: customerId });
+    }
+    const gatewayOrderId = opened.payment.gatewayOrderId ?? (await this.attachGatewayOrder(opened));
+    return {
+      paymentId: opened.payment.id,
+      gateway: this.gateway.name,
+      key: this.gateway.checkoutKey,
+      gatewayOrderId,
+      amount: opened.payment.amount,
+      currency: 'INR',
+      applicationId: opened.application.id,
+      applicationCode: opened.application.code,
+      orderCode: opened.orderCode,
+      description: opened.description,
+      prefill: { name: opened.customer.name, email: opened.customer.email, contact: opened.customer.mobile },
+    };
+  }
+
+  private async open(tx: Prisma.TransactionClient, customerId: string, applicationId: string): Promise<Opened> {
+    const owned = await tx.application.findFirst({ where: { id: applicationId, customerId }, select: { orderId: true } });
+    if (!owned?.orderId) throw new NotFoundException('Application not found');
+
+    // Serialises payment start with the order summary and coupon changes (they take the same lock).
+    // The application is read after the lock, so a concurrent start that just committed is seen.
+    await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${owned.orderId} FOR UPDATE`;
+    const app = await tx.application.findUniqueOrThrow({
+      where: { id: applicationId },
+      select: { id: true, code: true, status: true, serviceId: true, formSchemaVersion: true, formData: true },
+    });
+    const order = await tx.order.findUniqueOrThrow({
+      where: { id: owned.orderId },
+      select: { id: true, code: true, status: true, total: true, couponId: true, items: { orderBy: { id: 'asc' }, select: { description: true } } },
+    });
+    const customer = await tx.user.findUniqueOrThrow({ where: { id: customerId }, select: { name: true, email: true, mobile: true } });
+    const context = { application: { id: app.id, code: app.code }, orderCode: order.code, customer };
+
+    if (order.status === 'CREATED' && app.status === 'DRAFT') {
+      await this.applications.assertFormComplete(tx, app);
+
+      // Held until commit, so the coupon's rules and limits cannot change between this check and the charge.
+      if (order.couponId) await tx.$queryRaw`SELECT id FROM "Coupon" WHERE id = ${order.couponId} FOR UPDATE`;
+      const summary = await this.orders.price(tx, customerId, app.id);
+      // The customer agreed to a total with the coupon; don't charge a different one without showing it.
+      if (summary.couponNotice) throw new ConflictException(`${summary.couponNotice} Check the new total before paying.`);
+      if (summary.total < MIN_AMOUNT) throw new ConflictException('This order has nothing to pay online. Contact us and we will start it for you.');
+
+      const payment = await tx.payment.create({
+        data: { orderId: order.id, gateway: this.gateway.name, amount: summary.total, status: 'CREATED' },
+        select: paymentSelect,
+      });
+      await tx.order.update({ where: { id: order.id }, data: { status: 'PAYMENT_PENDING' } });
+      assertTransition('application', app.status, 'PAYMENT_PENDING');
+      await tx.application.update({
+        where: { id: app.id },
+        data: { status: 'PAYMENT_PENDING', history: { create: { status: 'PAYMENT_PENDING', changedById: customerId, note: 'Payment started' } } },
+      });
+      await this.audit.log(
+        {
+          actorId: customerId,
+          action: 'application.payment_start',
+          entityType: 'Application',
+          entityId: app.id,
+          before: { status: app.status, orderStatus: order.status },
+          after: { status: 'PAYMENT_PENDING', orderStatus: 'PAYMENT_PENDING', paymentId: payment.id, amount: payment.amount },
+        },
+        tx,
+      );
+      return { ...context, payment, started: true, description: describe(summary.lines) };
+    }
+
+    if (order.status === 'PAYMENT_PENDING' && app.status === 'PAYMENT_PENDING') {
+      // Totals are frozen once payment has started (D40), so the stored total is the amount to charge.
+      const open = await tx.payment.findFirst({
+        where: { orderId: order.id, status: { in: ['CREATED', 'PENDING'] }, gateway: this.gateway.name, amount: order.total },
+        orderBy: { createdAt: 'desc' },
+        select: paymentSelect,
+      });
+      const payment =
+        open ?? (await tx.payment.create({ data: { orderId: order.id, gateway: this.gateway.name, amount: order.total, status: 'CREATED' }, select: paymentSelect }));
+      return { ...context, payment, started: false, description: describe(order.items) };
+    }
+
+    throw new ConflictException(
+      order.status === 'PAID' ? 'This order is already paid.' : 'This application can’t be paid for online. Contact us if you need help.',
+    );
+  }
+
+  /** Where the application's payment stands (M3.18): what the payment page polls until the webhook has paid the order. */
+  async status(customerId: string, applicationId: string): Promise<PaymentStatusView> {
+    const app = await this.prisma.application.findFirst({
+      where: { id: applicationId, customerId },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        order: {
+          select: {
+            code: true,
+            status: true,
+            total: true,
+            amountPaid: true,
+            payments: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+              select: { id: true, status: true, amount: true, method: true, failureReason: true, paidAt: true },
+            },
+          },
+        },
+      },
+    });
+    if (!app?.order) throw new NotFoundException('Application not found');
+    const payment = app.order.payments[0] ?? null;
+    return {
+      outcome: paymentOutcome(app.order.status, payment?.status ?? null),
+      applicationId: app.id,
+      applicationCode: app.code,
+      applicationStatus: app.status,
+      orderCode: app.order.code,
+      orderStatus: app.order.status,
+      total: app.order.total,
+      amountPaid: app.order.amountPaid,
+      payment: payment && { ...payment, paidAt: payment.paidAt?.toISOString() ?? null },
+    };
+  }
+
+  /**
+   * Checkout's success handler (M3.18). The signature only proves the customer finished checkout, so a
+   * valid one moves the payment CREATED → PENDING ("confirming") and nothing else: the order is paid and the
+   * application submitted only by the signed webhook (D44), which also works if the browser never gets here.
+   */
+  async callback(customerId: string, applicationId: string, input: PaymentCallbackInput): Promise<PaymentStatusView> {
+    const app = await this.prisma.application.findFirst({ where: { id: applicationId, customerId }, select: { orderId: true } });
+    if (!app?.orderId) throw new NotFoundException('Application not found');
+    const payment = await this.prisma.payment.findFirst({
+      where: { id: input.paymentId, orderId: app.orderId, gatewayOrderId: input.gatewayOrderId },
+      select: { id: true },
+    });
+    const valid =
+      payment &&
+      this.gateway.verifyPaymentSignature({ orderId: input.gatewayOrderId, paymentId: input.gatewayPaymentId, signature: input.signature });
+    if (!valid) throw new BadRequestException('This payment confirmation could not be verified.');
+
+    // Only from CREATED: the webhook may already have set SUCCESS or FAILED, and those stand.
+    await this.prisma.payment.updateMany({ where: { id: payment.id, status: 'CREATED' }, data: { status: 'PENDING' } });
+    return this.status(customerId, applicationId);
+  }
+
+  /** Creates the gateway order for a payment that has none yet; the first one attached wins. */
+  private async attachGatewayOrder({ payment, application, orderCode }: Opened): Promise<string> {
+    let gatewayOrder;
+    try {
+      gatewayOrder = await this.gateway.createOrder({
+        amount: payment.amount,
+        receipt: payment.id,
+        notes: { paymentId: payment.id, orderCode, applicationCode: application.code },
+      });
+    } catch (e) {
+      if (!(e instanceof PaymentGatewayError)) throw e;
+      // The payment stays CREATED and the application PAYMENT_PENDING: calling again retries with the same payment.
+      this.log.warn(`Gateway order for payment ${payment.id} failed (${e.retryable ? 'retryable' : 'refused'}): ${e.message}`);
+      if (e.retryable) throw new ServiceUnavailableException('We couldn’t reach the payment service. Please try again in a moment.');
+      throw new BadGatewayException('The payment service didn’t accept this payment. Please try again, or contact us if it keeps happening.');
+    }
+    if (gatewayOrder.amount !== payment.amount) {
+      this.log.error(`Gateway order ${gatewayOrder.id} is for ${gatewayOrder.amount} paise, payment ${payment.id} for ${payment.amount}`);
+      throw new BadGatewayException('The payment service didn’t accept this payment. Please try again, or contact us if it keeps happening.');
+    }
+
+    const { count } = await this.prisma.payment.updateMany({ where: { id: payment.id, gatewayOrderId: null }, data: { gatewayOrderId: gatewayOrder.id } });
+    if (count === 1) return gatewayOrder.id;
+    // A concurrent call attached its gateway order first; ours is never shown to anyone and expires unpaid.
+    const winner = await this.prisma.payment.findUniqueOrThrow({ where: { id: payment.id }, select: { gatewayOrderId: true } });
+    return winner.gatewayOrderId!;
+  }
+}
+
+const describe = (lines: { description: string }[]) => lines.map((l) => l.description).join(', ');
