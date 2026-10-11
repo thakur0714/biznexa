@@ -1,0 +1,24 @@
+/* BizNexa design tokens shared by every web app (Tailwind 4 @theme). */
+@theme {
+  --font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #1f2b7a;
+  --color-ink-600: #2c3a96;
+  --color-ink-050: #eef0fa;
+  --color-night: #121a45;
+  --color-muted: #545c80;
+  --color-paper: #f6f7fb;
+  --color-rule: #dce0ee;
+  --color-marigold: #f4b000;
+  --color-marigold-600: #d99c00;
+  --color-seal: #0e8a5f;
+  --color-seal-050: #e6f5ee;
+  --color-amber: #b26a00;
+  --color-amber-050: #fff4dc;
+  --color-danger: #b42318;
+  --color-danger-050: #fdecea;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}

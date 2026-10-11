@@ -1,0 +1,36 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/instrument-sans';
+@import '@biznexa/config/tokens.css';
+/* Shared components live outside this app, so Tailwind must be told to scan them. */
+@source '../../../../packages/ui/src';
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-night);
+  font-family: var(--font-sans);
+  font-feature-settings: 'ss01';
+  line-height: 1.55;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-marigold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

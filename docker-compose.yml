@@ -1,0 +1,16 @@
+# Local infrastructure for development.
+# Usage: docker compose up -d
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: biznexa
+      POSTGRES_PASSWORD: biznexa
+      POSTGRES_DB: biznexa
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+volumes:
+  pgdata:
