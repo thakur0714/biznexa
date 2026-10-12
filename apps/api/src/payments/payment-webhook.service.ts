@@ -14,12 +14,13 @@ import { type GatewayPayment, type GatewayWebhookEvent, PaymentGateway, PaymentG
  * `ignored` — an event we don't act on; `stale` — a failure reported after the payment succeeded;
  * `unknown_order` — no payment of ours has that gateway order; `amount_mismatch` — the gateway's amount
  * or currency differs from ours (not marked paid); `extra_capture` / `order_not_pending` — money was taken
- * a second time or for an order that can't take it (needs a refund).
+ * a second time or for an order that can't take it; `overpaid` — it would take the order past its total
+ * (e.g. the full amount after the advance was paid in another window). These three need a refund.
  */
-type Outcome = 'applied' | 'duplicate' | 'ignored' | 'stale' | 'unknown_order' | 'amount_mismatch' | 'extra_capture' | 'order_not_pending';
+type Outcome = 'applied' | 'duplicate' | 'ignored' | 'stale' | 'unknown_order' | 'amount_mismatch' | 'extra_capture' | 'order_not_pending' | 'overpaid';
 
 /** Logged as errors: someone has to look at these (refund, reconcile). */
-const NEEDS_ATTENTION = new Set<Outcome>(['unknown_order', 'amount_mismatch', 'extra_capture', 'order_not_pending']);
+const NEEDS_ATTENTION = new Set<Outcome>(['unknown_order', 'amount_mismatch', 'extra_capture', 'order_not_pending', 'overpaid']);
 const SUCCEEDED = new Set<string>(['SUCCESS', 'REFUND_INITIATED', 'REFUNDED', 'PARTIALLY_REFUNDED']);
 
 type Emit = { [K in DomainEventName]: [K, DomainEventPayloads[K]] }[DomainEventName];
@@ -46,6 +47,8 @@ interface Receipt {
   amount: number;
   gatewayPaymentId: string;
   at: Date;
+  /** PAID, or PARTIALLY_PAID for an advance. */
+  orderStatus: 'PAID' | 'PARTIALLY_PAID';
 }
 
 /**
@@ -57,6 +60,8 @@ interface Receipt {
  *
  * `payment.captured` → Payment SUCCESS, order PAID, each application SUBMITTED (then DOCUMENTS_PENDING when
  * mandatory documents are missing), coupon redemption + `usedCount`, history and audit; `payment.succeeded`.
+ * Part payments (M3.19): an advance makes the order PARTIALLY_PAID and does everything else above; the
+ * balance then makes it PAID and only adds to `amountPaid` (audit `order.balance_received`).
  * `payment.failed` → Payment FAILED (order stays PAYMENT_PENDING for another try); `payment.failed`.
  * Any signed event answers 200 so the gateway stops retrying; problems are kept on the event row and logged.
  */
@@ -145,6 +150,7 @@ export class PaymentWebhookService {
       select: {
         id: true,
         status: true,
+        total: true,
         amountPaid: true,
         discount: true,
         couponId: true,
@@ -154,9 +160,37 @@ export class PaymentWebhookService {
     });
     // The money was taken (another payment already paid this order, or it was cancelled): the payment is
     // recorded as SUCCESS so it can be refunded, but the order and applications are left alone.
-    if (order.status !== 'PAYMENT_PENDING') return { outcome: 'order_not_pending', paymentId, events: [] };
+    if (order.status !== 'PAYMENT_PENDING' && order.status !== 'PARTIALLY_PAID') return { outcome: 'order_not_pending', paymentId, events: [] };
+    const amountPaid = order.amountPaid + payment.amount;
+    // Same for money beyond the total: the full amount paid in an old window after the advance, say.
+    if (amountPaid > order.total) return { outcome: 'overpaid', paymentId, events: [] };
+    const orderStatus = amountPaid === order.total ? 'PAID' : 'PARTIALLY_PAID';
+    await tx.order.update({ where: { id: order.id }, data: { status: orderStatus, amountPaid } });
 
-    await tx.order.update({ where: { id: order.id }, data: { status: 'PAID', amountPaid: order.amountPaid + payment.amount } });
+    if (order.status === 'PARTIALLY_PAID') {
+      // The balance: the applications were submitted and the coupon redeemed with the advance.
+      await this.audit.log(
+        {
+          actorId: null,
+          action: 'order.balance_received',
+          entityType: 'Order',
+          entityId: order.id,
+          before: { status: order.status, amountPaid: order.amountPaid },
+          after: { status: orderStatus, amountPaid, paymentId, amount: payment.amount, gatewayPaymentId: gp.id },
+        },
+        tx,
+      );
+      return {
+        outcome: 'applied',
+        paymentId,
+        events: [
+          [
+            'payment.succeeded',
+            { paymentId, orderId: order.id, customerId: order.customerId, applicationIds: [], amount: payment.amount, gateway: payment.gateway, gatewayPaymentId: gp.id },
+          ],
+        ],
+      };
+    }
 
     // Redemptions are what coupon limits count (D38). The discount the customer was charged is honoured
     // even if the limit filled up between starting and completing the payment (D44).
@@ -168,7 +202,7 @@ export class PaymentWebhookService {
 
     const events: Emit[] = [];
     const submitted: string[] = [];
-    const receipt: Receipt = { paymentId, amount: payment.amount, gatewayPaymentId: gp.id, at: now };
+    const receipt: Receipt = { paymentId, amount: payment.amount, gatewayPaymentId: gp.id, at: now, orderStatus };
     // One application per order today; sequential because they share the transaction.
     for (const app of order.applications) {
       if (app.status === 'PAYMENT_PENDING') {
@@ -188,7 +222,7 @@ export class PaymentWebhookService {
 
   /** PAYMENT_PENDING → SUBMITTED, then → DOCUMENTS_PENDING when mandatory documents are still missing (M3.10 note). */
   private async submit(tx: Prisma.TransactionClient, app: PaidApplication, receipt: Receipt): Promise<Emit[]> {
-    const steps: { status: ApplicationStatus; note: string }[] = [{ status: 'SUBMITTED', note: 'Payment received' }];
+    const steps: { status: ApplicationStatus; note: string }[] = [{ status: 'SUBMITTED', note: receipt.orderStatus === 'PAID' ? 'Payment received' : 'Advance received' }];
     const pending = await this.documents.pendingMandatory(app, tx);
     if (pending > 0) steps.push({ status: 'DOCUMENTS_PENDING', note: `Waiting for ${pending} required document${pending === 1 ? '' : 's'}` });
 
@@ -216,7 +250,7 @@ export class PaymentWebhookService {
         entityType: 'Application',
         entityId: app.id,
         before: { status: app.status, orderStatus: 'PAYMENT_PENDING' },
-        after: { status: from, orderStatus: 'PAID', paymentId: receipt.paymentId, amount: receipt.amount, gatewayPaymentId: receipt.gatewayPaymentId },
+        after: { status: from, orderStatus: receipt.orderStatus, paymentId: receipt.paymentId, amount: receipt.amount, gatewayPaymentId: receipt.gatewayPaymentId },
       },
       tx,
     );

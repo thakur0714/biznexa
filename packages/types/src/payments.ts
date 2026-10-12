@@ -4,9 +4,19 @@
  */
 import { z } from 'zod';
 
-/** `POST /api/applications/:id/payment` body: none, or `{}`. Any field (an amount, a coupon…) is refused with a 400. */
-export const startPaymentInput = z.preprocess((body) => body ?? {}, z.object({}).strict());
-export type StartPaymentInput = z.input<typeof startPaymentInput>;
+/**
+ * What a payment is for (M3.19): the whole order, the advance of a package that allows part payment, or
+ * the balance after the advance. The server works out the amount for each; the client never sends one.
+ */
+export const PAYMENT_PLANS = ['FULL', 'ADVANCE', 'BALANCE'] as const;
+export type PaymentPlan = (typeof PAYMENT_PLANS)[number];
+
+/**
+ * `POST /api/applications/:id/payment` body: none, `{}`, or `{ plan }`. Without a plan the balance is paid
+ * when an advance has been, else the full amount. Any other field (an amount, a coupon…) is refused with a 400.
+ */
+export const startPaymentInput = z.preprocess((body) => body ?? {}, z.object({ plan: z.enum(PAYMENT_PLANS).optional() }).strict());
+export type StartPaymentInput = z.output<typeof startPaymentInput>;
 
 export const PAYMENT_GATEWAYS = ['RAZORPAY', 'MOCK'] as const;
 
@@ -19,8 +29,9 @@ export const paymentCheckoutSchema = z.object({
   /** Public key for the checkout (never the secret). */
   key: z.string(),
   gatewayOrderId: z.string(),
-  /** Integer paise: the order total computed by the server. */
+  /** Integer paise, computed by the server: the order total, the advance or the balance (`plan`). */
   amount: z.number().int().positive(),
+  plan: z.enum(PAYMENT_PLANS),
   currency: z.literal('INR'),
   applicationId: z.string().uuid(),
   applicationCode: z.string(),
@@ -56,21 +67,56 @@ export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
  * - `AWAITING` — a payment is open but checkout hasn't reported back (or the customer closed it);
  * - `CONFIRMING` — checkout reported success; waiting for the gateway's webhook;
  * - `FAILED` — the last attempt failed; the customer can try again;
- * - `PAID` — the webhook confirmed the money (order PAID / PARTIALLY_PAID);
+ * - `PAID` — the webhook confirmed the money (order PAID, or PARTIALLY_PAID with no balance payment under way);
  * - `CLOSED` — cancelled or refunded: nothing to pay online.
  */
 export const PAYMENT_OUTCOMES = ['UNPAID', 'AWAITING', 'CONFIRMING', 'FAILED', 'PAID', 'CLOSED'] as const;
 export type PaymentOutcome = (typeof PAYMENT_OUTCOMES)[number];
 
-/** The outcome from the order's status and its latest payment's status. The order wins: it only becomes PAID through the webhook. */
-export function paymentOutcome(orderStatus: string, latestPayment: PaymentStatus | null): PaymentOutcome {
-  if (orderStatus === 'PAID' || orderStatus === 'PARTIALLY_PAID') return 'PAID';
+/** Payment statuses that mean the money was taken (refunds come later). */
+export const SUCCEEDED_PAYMENT_STATUSES: readonly PaymentStatus[] = ['SUCCESS', 'REFUND_INITIATED', 'REFUNDED', 'PARTIALLY_REFUNDED'];
+const succeeded = (s: PaymentStatus) => SUCCEEDED_PAYMENT_STATUSES.includes(s);
+
+/**
+ * The outcome from the order's status and the status of its current attempt (`currentAttempt`). The order
+ * wins: it only becomes PAID / PARTIALLY_PAID through the webhook. After an advance, a balance attempt
+ * under way is reported like any other attempt; with none, the outcome is `PAID` (the advance).
+ */
+export function paymentOutcome(orderStatus: string, attempt: PaymentStatus | null): PaymentOutcome {
+  if (orderStatus === 'PAID') return 'PAID';
   if (orderStatus === 'CREATED') return 'UNPAID';
-  if (orderStatus !== 'PAYMENT_PENDING') return 'CLOSED';
-  if (latestPayment === 'FAILED') return 'FAILED';
+  if (orderStatus === 'PARTIALLY_PAID' && (attempt === null || succeeded(attempt))) return 'PAID';
+  if (orderStatus !== 'PAYMENT_PENDING' && orderStatus !== 'PARTIALLY_PAID') return 'CLOSED';
+  if (attempt === 'FAILED') return 'FAILED';
   // SUCCESS while the order is still pending can't last: the webhook pays both in one transaction.
-  if (latestPayment === 'PENDING' || latestPayment === 'SUCCESS') return 'CONFIRMING';
+  if (attempt === 'PENDING' || (attempt !== null && succeeded(attempt))) return 'CONFIRMING';
   return 'AWAITING';
+}
+
+/**
+ * The payment the page should talk about, from the order's payments **newest first**: the latest one,
+ * except after an advance, where it is the latest unpaid attempt **for the balance** made after the last
+ * successful payment (an old window for another amount is dead), else that successful payment.
+ */
+export function currentAttempt<P extends { status: PaymentStatus; amount: number; createdAt: Date | string }>(
+  order: { status: string; total: number; amountPaid: number },
+  payments: readonly P[],
+): P | null {
+  if (order.status !== 'PARTIALLY_PAID') return payments[0] ?? null;
+  const balance = order.total - order.amountPaid;
+  const lastPaid = payments.find((p) => succeeded(p.status));
+  const after = (p: P) => !lastPaid || new Date(p.createdAt).getTime() > new Date(lastPaid.createdAt).getTime();
+  return payments.find((p) => !succeeded(p.status) && p.amount === balance && after(p)) ?? lastPaid ?? payments[0] ?? null;
+}
+
+/**
+ * What an unpaid attempt was for, so "Try again" repeats it: the balance once something is paid, else the
+ * full amount when it charges the total, else the advance. Null for a payment that went through.
+ */
+export function attemptPlan(payment: { status: PaymentStatus; amount: number }, order: { total: number; amountPaid: number }): PaymentPlan | null {
+  if (succeeded(payment.status)) return null;
+  if (order.amountPaid > 0) return 'BALANCE';
+  return payment.amount === order.total ? 'FULL' : 'ADVANCE';
 }
 
 /** `GET /api/applications/:id/payment` and the callback's response: what the payment page polls. */
@@ -84,7 +130,9 @@ export const paymentStatusSchema = z.object({
   /** Integer paise. */
   total: z.number().int(),
   amountPaid: z.number().int(),
-  /** The order's latest payment (none before "Pay"). */
+  /** `total − amountPaid`: after an advance, what is left to pay. */
+  balance: z.number().int(),
+  /** The current attempt (`currentAttempt`; none before "Pay"). */
   payment: z
     .object({
       id: z.string().uuid(),
@@ -94,6 +142,8 @@ export const paymentStatusSchema = z.object({
       /** The gateway's reason, for a failed attempt. */
       failureReason: z.string().nullable(),
       paidAt: z.string().datetime().nullable(),
+      /** What an unpaid attempt was for, so "Try again" repeats it; null once it went through. */
+      plan: z.enum(PAYMENT_PLANS).nullable(),
     })
     .nullable(),
 });

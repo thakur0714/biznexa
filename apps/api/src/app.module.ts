@@ -15,11 +15,13 @@ import { CmsModule } from './cms/cms.module';
 import { QueueModule, QueueService } from './queue/queue.service';
 import { EventsModule } from './events/event-bus';
 import { FilesModule } from './files/files.module';
+import { PdfModule } from './pdf/pdf.module';
 import { BusinessEntitiesModule } from './business-entities/business-entities.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { SettingsModule } from './settings/settings.module';
 import { PaymentsModule } from './payments/payments.module';
+import { InvoicesModule } from './invoices/invoices.module';
 import { AuthGuard } from './common/auth.guard';
 import { Public } from './common/auth.decorators';
 import { PrismaExceptionFilter } from './common/prisma-exception.filter';
@@ -57,6 +59,7 @@ class HealthController {
     EventsModule,
     AuditModule,
     FilesModule,
+    PdfModule,
     AuthModule,
     CatalogueModule,
     CertificatesModule,
@@ -65,6 +68,7 @@ class HealthController {
     CouponsModule,
     SettingsModule,
     PaymentsModule,
+    InvoicesModule,
     LeadsModule,
     CmsModule,
   ],

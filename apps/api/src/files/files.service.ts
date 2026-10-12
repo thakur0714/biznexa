@@ -120,19 +120,12 @@ export class FilesService {
   async createLink(id: string, user: AuthUser, disposition: Disposition, now = Date.now()): Promise<FileLinkResult> {
     const file = await this.findReadable(id, user);
     assertClean(file);
-    const expires = Math.floor(now / 1000) + LINK_TTL_SECONDS;
-    return { url: signedPath(id, expires, disposition), expiresAt: new Date(expires * 1000).toISOString() };
+    return signedLink('files', id, disposition, now);
   }
 
   /** Check a signed link and open the file. */
   async openLinked(id: string, q: { e?: string; d?: string; s?: string }, now = Date.now()) {
-    const expires = Number(q.e);
-    const disposition = q.d === 'inline' ? 'inline' : 'attachment';
-    if (!q.s || !Number.isInteger(expires) || !safeEqual(sign(id, expires, disposition), q.s)) {
-      throw new ForbiddenException('This download link is not valid');
-    }
-    if (expires * 1000 < now) throw new ForbiddenException('This download link has expired. Please try again.');
-
+    const disposition = checkSignedLink('files', id, q, now);
     const file = await this.prisma.storedFile.findUnique({ where: { id } });
     if (!file) throw new NotFoundException('File not found');
     assertClean(file);
@@ -147,13 +140,38 @@ function assertClean(file: StoredFile) {
   if (file.scanStatus !== 'CLEAN') throw new ConflictException('This file is still being checked for viruses. Please try again in a minute.');
 }
 
-function sign(id: string, expires: number, disposition: Disposition) {
-  return createHmac('sha256', env().FILE_LINK_SECRET).update(`${id}.${expires}.${disposition}`).digest('base64url');
+/**
+ * What a signed link opens: `/api/<scope>/<id>/download`. Stored files (D17) and invoice PDFs (M3.23) share
+ * the secret; the scope is part of what is signed, so a link for one can never open the other.
+ */
+export type LinkScope = 'files' | 'invoices';
+
+function sign(scope: LinkScope, id: string, expires: number, disposition: Disposition) {
+  // Files sign the bare id, as they did before invoices had links.
+  const subject = scope === 'files' ? id : `${scope}:${id}`;
+  return createHmac('sha256', env().FILE_LINK_SECRET).update(`${subject}.${expires}.${disposition}`).digest('base64url');
 }
 
-export function signedPath(id: string, expires: number, disposition: Disposition) {
-  const q = new URLSearchParams({ e: String(expires), d: disposition, s: sign(id, expires, disposition) });
-  return `/api/files/${id}/download?${q}`;
+export function signedPath(id: string, expires: number, disposition: Disposition, scope: LinkScope = 'files') {
+  const q = new URLSearchParams({ e: String(expires), d: disposition, s: sign(scope, id, expires, disposition) });
+  return `/api/${scope}/${id}/download?${q}`;
+}
+
+/** A signed download link valid for 5 minutes. Check permission first: the link itself is the permission. */
+export function signedLink(scope: LinkScope, id: string, disposition: Disposition, now = Date.now()): FileLinkResult {
+  const expires = Math.floor(now / 1000) + LINK_TTL_SECONDS;
+  return { url: signedPath(id, expires, disposition, scope), expiresAt: new Date(expires * 1000).toISOString() };
+}
+
+/** Checks a signed link's signature and expiry; returns its disposition. */
+export function checkSignedLink(scope: LinkScope, id: string, q: { e?: string; d?: string; s?: string }, now = Date.now()): Disposition {
+  const expires = Number(q.e);
+  const disposition = q.d === 'inline' ? 'inline' : 'attachment';
+  if (!q.s || !Number.isInteger(expires) || !safeEqual(sign(scope, id, expires, disposition), q.s)) {
+    throw new ForbiddenException('This download link is not valid');
+  }
+  if (expires * 1000 < now) throw new ForbiddenException('This download link has expired. Please try again.');
+  return disposition;
 }
 
 function safeEqual(a: string, b: string) {

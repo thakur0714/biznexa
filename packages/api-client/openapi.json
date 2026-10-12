@@ -6968,7 +6968,7 @@
                   "invoicePrefix": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 6,
+                    "maxLength": 4,
                     "pattern": "^[A-Z0-9]+$"
                   }
                 },
@@ -7024,7 +7024,16 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                  "plan": {
+                    "type": "string",
+                    "enum": [
+                      "FULL",
+                      "ADVANCE",
+                      "BALANCE"
+                    ]
+                  }
+                },
                 "additionalProperties": false
               }
             }
@@ -7042,13 +7051,13 @@
             }
           },
           "400": {
-            "description": "The body has any field (it must be empty), or the form answers are incomplete (`errors[].field` is a path inside `formData`)"
+            "description": "The body has a field other than `plan`, or the form answers are incomplete (`errors[].field` is a path inside `formData`)"
           },
           "404": {
             "description": "No such application among yours (another customer’s application looks the same)"
           },
           "409": {
-            "description": "Already paid or cannot be paid online, a package is no longer offered, the coupon stopped applying (check the new total), or nothing to pay"
+            "description": "Already paid or cannot be paid online, the plan does not apply (no part payment for these packages; balance before an advance; full/advance after one), a package is no longer offered, the coupon stopped applying (check the new total), or nothing to pay"
           },
           "502": {
             "description": "The payment gateway refused the order; the payment stays open, try again"
@@ -7215,6 +7224,147 @@
         },
         "tags": [
           "payments"
+        ]
+      }
+    },
+    "/api/invoices": {
+      "get": {
+        "operationId": "InvoicesController_list",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Only the invoices of this application’s order"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "invoices"
+        ]
+      }
+    },
+    "/api/invoices/{id}/link": {
+      "post": {
+        "operationId": "InvoicesController_link",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "disposition",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "attachment",
+                "inline"
+              ],
+              "default": "attachment"
+            },
+            "description": "inline = open in the browser"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileLink"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such invoice among yours (another customer’s invoice looks the same)"
+          },
+          "409": {
+            "description": "The PDF is still being generated — try again shortly"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "invoices"
+        ]
+      }
+    },
+    "/api/invoices/{id}/download": {
+      "get": {
+        "operationId": "InvoicesController_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s",
+            "required": true,
+            "in": "query",
+            "description": "Signature",
+            "schema": {}
+          },
+          {
+            "name": "d",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "attachment",
+                "inline"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "e",
+            "required": true,
+            "in": "query",
+            "description": "Expiry (unix seconds)",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "invoices"
         ]
       }
     },
@@ -15193,6 +15343,38 @@
           },
           "total": {
             "type": "integer"
+          },
+          "amountPaid": {
+            "type": "integer"
+          },
+          "balance": {
+            "type": "integer"
+          },
+          "advance": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "integer"
+              },
+              "balance": {
+                "type": "integer"
+              },
+              "percent": {
+                "type": "integer",
+                "nullable": true
+              },
+              "governmentFee": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "amount",
+              "balance",
+              "percent",
+              "governmentFee"
+            ],
+            "additionalProperties": false,
+            "nullable": true
           }
         },
         "required": [
@@ -15215,7 +15397,10 @@
           "igst",
           "taxTotal",
           "governmentFee",
-          "total"
+          "total",
+          "amountPaid",
+          "balance",
+          "advance"
         ],
         "additionalProperties": false
       },
@@ -15329,6 +15514,14 @@
             "exclusiveMinimum": true,
             "minimum": 0
           },
+          "plan": {
+            "type": "string",
+            "enum": [
+              "FULL",
+              "ADVANCE",
+              "BALANCE"
+            ]
+          },
           "currency": {
             "type": "string",
             "enum": [
@@ -15378,6 +15571,7 @@
           "key",
           "gatewayOrderId",
           "amount",
+          "plan",
           "currency",
           "applicationId",
           "applicationCode",
@@ -15423,6 +15617,9 @@
           "amountPaid": {
             "type": "integer"
           },
+          "balance": {
+            "type": "integer"
+          },
           "payment": {
             "type": "object",
             "properties": {
@@ -15457,6 +15654,15 @@
                 "type": "string",
                 "format": "date-time",
                 "nullable": true
+              },
+              "plan": {
+                "type": "string",
+                "enum": [
+                  "FULL",
+                  "ADVANCE",
+                  "BALANCE"
+                ],
+                "nullable": true
               }
             },
             "required": [
@@ -15465,7 +15671,8 @@
               "amount",
               "method",
               "failureReason",
-              "paidAt"
+              "paidAt",
+              "plan"
             ],
             "additionalProperties": false,
             "nullable": true
@@ -15480,9 +15687,47 @@
           "orderStatus",
           "total",
           "amountPaid",
+          "balance",
           "payment"
         ],
         "additionalProperties": false
+      },
+      "InvoiceList": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "number": {
+              "type": "string"
+            },
+            "issuedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "orderCode": {
+              "type": "string"
+            },
+            "total": {
+              "type": "integer"
+            },
+            "pdfReady": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "number",
+            "issuedAt",
+            "orderCode",
+            "total",
+            "pdfReady"
+          ],
+          "additionalProperties": false
+        }
       }
     }
   }

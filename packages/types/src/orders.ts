@@ -73,6 +73,38 @@ export function orderTotals(lines: OrderLineInput[], states: { sellerState: stri
 }
 export type OrderTotals = ReturnType<typeof orderTotals>;
 
+/** The gateways' minimum charge, ₹1: neither part of a split payment may be smaller. */
+export const MIN_ONLINE_PAYMENT = 100;
+
+/** A priced order line and the advance % copied from its package (null = no part payment). */
+export interface AdvanceLine {
+  total: number;
+  governmentFee: number;
+  advancePercent: number | null;
+}
+
+/**
+ * Paying in part (M3.19, D46): what to collect up front. Each line's **government fee is collected in full
+ * with the advance** (we pay it out early, at filing); the line's advance % applies to the rest — the fee
+ * after discount plus GST — rounded **up** to whole rupees. The balance is the rest of the total.
+ * Null when any line can't be paid in part (no %, or not 1–99), or either part would be under ₹1.
+ */
+export function advancePayment(lines: AdvanceLine[]): { amount: number; balance: number; percent: number | null; governmentFee: number } | null {
+  if (!lines.length || lines.some((l) => l.advancePercent == null || !Number.isInteger(l.advancePercent) || l.advancePercent < 1 || l.advancePercent > 99)) {
+    return null;
+  }
+  const total = lines.reduce((a, l) => a + l.total, 0);
+  const governmentFee = lines.reduce((a, l) => a + l.governmentFee, 0);
+  const amount = Math.min(
+    total,
+    lines.reduce((a, l) => a + l.governmentFee + Math.ceil(((l.total - l.governmentFee) * l.advancePercent!) / 10_000) * 100, 0),
+  );
+  const balance = total - amount;
+  if (amount < MIN_ONLINE_PAYMENT || balance < MIN_ONLINE_PAYMENT) return null;
+  const percents = new Set(lines.map((l) => l.advancePercent));
+  return { amount, balance, percent: percents.size === 1 ? lines[0].advancePercent : null, governmentFee };
+}
+
 /** Body of `PUT /api/applications/:id/coupon`. Strict: amounts or any other field are refused. */
 export const applyCouponInput = z.object({ code: couponCodeSchema }).strict();
 export type ApplyCouponInput = z.input<typeof applyCouponInput>;
@@ -120,5 +152,15 @@ export const orderSummarySchema = z.object({
   /** Government fees: passed through, never taxed or discounted. */
   governmentFee: paise,
   total: paise,
+  /** Paid so far (confirmed by the gateway's webhook). */
+  amountPaid: paise,
+  /** Still to pay: `total − amountPaid`. */
+  balance: paise,
+  /**
+   * Paying in part (M3.19): offered when every package on the order allows it and nothing is paid yet.
+   * `amount` is collected now (it includes the whole `governmentFee`), `balance` later; `percent` is the
+   * advance % on the fee + GST when every line has the same one.
+   */
+  advance: z.object({ amount: paise, balance: paise, percent: z.number().int().nullable(), governmentFee: paise }).nullable(),
 });
 export type OrderSummary = z.infer<typeof orderSummarySchema>;

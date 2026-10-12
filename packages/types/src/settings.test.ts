@@ -27,7 +27,7 @@ describe('sellerSettingsInput (M3.14)', () => {
   it('requires names, a full address and a prefix of letters and digits', () => {
     const found = issues({ ...valid, name: ' ', legalName: '', address: { ...address, state: 'PB', pincode: '12' }, invoicePrefix: 'BN/' });
     expect(found?.map(([path]) => path)).toEqual(['name', 'legalName', 'address.state', 'address.pincode', 'invoicePrefix']);
-    expect(issues({ ...valid, invoicePrefix: 'TOOLONG' })).toEqual([['invoicePrefix', 'Use at most 6 characters']]);
+    expect(issues({ ...valid, invoicePrefix: 'BIZNX' })).toEqual([['invoicePrefix', 'Use at most 4 characters']]);
     expect(issues({ ...valid, address: undefined })?.[0][0]).toBe('address');
   });
 

@@ -36,15 +36,15 @@ const optional = (valid: (v: string) => boolean, message: string, upper = false)
     .refine((v) => v === null || valid(v), message);
 
 /**
- * Invoice numbers look like `BN/2026-27/000123` (PROMPT §8). The prefix is short so the whole number stays
- * readable; letters and digits only, as `/` already separates the parts.
+ * Invoice numbers look like `BN/2627/000123` (`formatInvoiceNumber`). At most 4 characters so the whole number
+ * fits GST rule 46's 16; letters and digits only, as `/` already separates the parts.
  */
 export const invoicePrefixSchema = z
   .string({ required_error: 'Enter the invoice prefix' })
   .trim()
   .toUpperCase()
   .min(1, 'Enter the invoice prefix')
-  .max(6, 'Use at most 6 characters')
+  .max(4, 'Use at most 4 characters')
   .regex(/^[A-Z0-9]+$/, 'Use letters and digits only');
 
 /** Body of `PUT /api/admin/settings/seller` (every field is sent each time). */

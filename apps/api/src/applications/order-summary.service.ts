@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { SELLER_SETTING_KEYS, orderTotals, placeOfSupply, stateName, type OrderLineInput, type OrderSummary } from '@biznexa/types';
+import { SELLER_SETTING_KEYS, advancePayment, orderTotals, placeOfSupply, stateName, type OrderLineInput, type OrderSummary } from '@biznexa/types';
 import { CouponsService } from '../coupons/coupons.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
@@ -14,6 +14,8 @@ const orderSelect = {
   customerId: true,
   buyerState: true,
   discount: true,
+  total: true,
+  amountPaid: true,
   coupon: { select: { code: true } },
   items: {
     orderBy: { id: 'asc' },
@@ -25,12 +27,15 @@ const orderSelect = {
       governmentFee: true,
       gstRate: true,
       discount: true,
+      advancePercent: true,
       package: {
         select: {
           name: true,
           professionalFee: true,
           governmentFee: true,
           gstRate: true,
+          allowPartial: true,
+          advancePercent: true,
           isActive: true,
           service: { select: { id: true, name: true, sacCode: true, isActive: true, deletedAt: true } },
         },
@@ -108,6 +113,8 @@ export class OrderSummaryService {
       professionalFee: i.package.professionalFee,
       governmentFee: i.package.governmentFee,
       gstRate: i.package.gstRate,
+      // Snapshotted with the prices (D40), so the advance can't change once payment has started (M3.19).
+      advancePercent: i.package.allowPartial ? i.package.advancePercent : null,
     }));
 
     const supply = placeOfSupply({ ...(await this.buyerStates(tx, customerId, app.businessEntityId)), seller: sellerState });
@@ -150,11 +157,19 @@ export class OrderSummaryService {
     for (const [i, l] of base.entries()) {
       await tx.orderItem.update({
         where: { id: l.id },
-        data: { description: l.description, sacCode: l.sacCode, professionalFee: l.professionalFee, governmentFee: l.governmentFee, gstRate: l.gstRate, discount: lineDiscounts[i] },
+        data: {
+          description: l.description,
+          sacCode: l.sacCode,
+          professionalFee: l.professionalFee,
+          governmentFee: l.governmentFee,
+          gstRate: l.gstRate,
+          discount: lineDiscounts[i],
+          advancePercent: l.advancePercent,
+        },
       });
     }
 
-    return toSummary(head, true, base, totals, coupon && { code: coupon.code, discount: coupon.discount }, couponNotice, supply);
+    return toSummary(head, true, base, totals, coupon && { code: coupon.code, discount: coupon.discount }, couponNotice, supply, 0);
   }
 
   private async sellerState(tx: Prisma.TransactionClient): Promise<string | null> {
@@ -177,7 +192,7 @@ export class OrderSummaryService {
 }
 
 type Head = Pick<OrderSummary, 'applicationId' | 'applicationCode' | 'orderId' | 'orderCode' | 'orderStatus'>;
-type Line = Pick<OrderSummary['lines'][number], 'description' | 'sacCode'>;
+type Line = Pick<OrderSummary['lines'][number], 'description' | 'sacCode'> & { advancePercent: number | null };
 
 function toSummary(
   head: Head,
@@ -187,7 +202,10 @@ function toSummary(
   coupon: OrderSummary['coupon'],
   couponNotice: string | null,
   supply: OrderSummary['placeOfSupply'],
+  amountPaid: number,
 ): OrderSummary {
+  // Part payment is a choice made before anything is paid; afterwards only the balance is left.
+  const advance = amountPaid > 0 ? null : advancePayment(lines.map((l, i) => ({ total: totals.lines[i].total, governmentFee: totals.lines[i].governmentFee, advancePercent: l.advancePercent })));
   return {
     ...head,
     editable,
@@ -220,6 +238,9 @@ function toSummary(
     taxTotal: totals.taxTotal,
     governmentFee: totals.governmentFee,
     total: totals.total,
+    amountPaid,
+    balance: totals.total - amountPaid,
+    advance,
   };
 }
 
@@ -236,5 +257,5 @@ function frozenSummary(head: Head, order: OrderRow, sellerState: string | null, 
       ? { state: seller, source: 'SELLER' }
       : null;
   const totals = orderTotals(order.items, { sellerState, placeOfSupply: supply?.state ?? null });
-  return toSummary(head, false, order.items, totals, order.coupon && { code: order.coupon.code, discount: order.discount }, null, supply);
+  return toSummary(head, false, order.items, totals, order.coupon && { code: order.coupon.code, discount: order.discount }, null, supply, order.amountPaid);
 }

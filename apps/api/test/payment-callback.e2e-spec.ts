@@ -45,7 +45,7 @@ const TOTAL = FEE + 18000 + GOVT;
 async function register(n: number) {
   const res = await http
     .post('/api/auth/register')
-    .send({ name: `Callback Test ${n}`, mobile: `7${run}${String(n).padStart(2, '0')}`, email: `e2e-paycb-${run}-${n}@example.com`, password: 'secret123', consent: true })
+    .send({ name: `Callback Test ${n}`, mobile: `9${run}${String(n).padStart(2, '0')}`, email: `e2e-paycb-${run}-${n}@example.com`, password: 'secret123', consent: true })
     .expect(201);
   return { token: res.body.accessToken as string, id: res.body.user.id as string };
 }
@@ -97,7 +97,8 @@ beforeAll(async () => {
   http = request(app.getHttpServer()) as unknown as ReturnType<typeof request>;
   prisma = app.get(PrismaService);
   gateway = app.get(PaymentGateway) as MockPaymentGateway;
-  app.get(EventBus).onAny((e) => void events.push(e));
+  // Invoice PDFs (M3.23) are generated in the background and can land during a later test: not counted here.
+  app.get(EventBus).onAny((e) => void (e.name !== 'pdf.generated' && events.push(e)));
   ({ token: alice, id: aliceId } = await register(1));
 
   sellerSetting = await prisma.setting.findUnique({ where: { key: SELLER_STATE_KEY }, select: { value: true } });
@@ -134,6 +135,8 @@ afterAll(async () => {
   await prisma.auditLog.deleteMany({ where: { OR: [{ actor: users }, { entityType: 'Application', entityId: { in: (await prisma.application.findMany({ where: { order: orders }, select: { id: true } })).map((a) => a.id) } }] } });
   await prisma.paymentWebhookEvent.deleteMany({ where: { OR: [{ payment: { order: orders } }, { eventId: { in: eventIds } }] } });
   await prisma.couponRedemption.deleteMany({ where: { userId: aliceId } });
+  // Invoices issued on payment.succeeded (M3.21); the counter keeps the numbers they took.
+  await prisma.invoice.deleteMany({ where: { order: orders } });
   await prisma.payment.deleteMany({ where: { order: orders } });
   await prisma.application.deleteMany({ where: { order: orders } });
   await prisma.order.deleteMany({ where: orders });

@@ -948,6 +948,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InvoicesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invoices/{id}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["InvoicesController_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invoices/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InvoicesController_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leads": {
         parameters: {
             query?: never;
@@ -2479,6 +2527,14 @@ export interface components {
             taxTotal: number;
             governmentFee: number;
             total: number;
+            amountPaid: number;
+            balance: number;
+            advance: {
+                amount: number;
+                balance: number;
+                percent: number | null;
+                governmentFee: number;
+            } | null;
         };
         SellerSettings: {
             name: string | null;
@@ -2507,6 +2563,8 @@ export interface components {
             gatewayOrderId: string;
             amount: number;
             /** @enum {string} */
+            plan: "FULL" | "ADVANCE" | "BALANCE";
+            /** @enum {string} */
             currency: "INR";
             /** Format: uuid */
             applicationId: string;
@@ -2530,6 +2588,7 @@ export interface components {
             orderStatus: string;
             total: number;
             amountPaid: number;
+            balance: number;
             payment: {
                 /** Format: uuid */
                 id: string;
@@ -2540,8 +2599,20 @@ export interface components {
                 failureReason: string | null;
                 /** Format: date-time */
                 paidAt: string | null;
+                /** @enum {string|null} */
+                plan: "FULL" | "ADVANCE" | "BALANCE" | null;
             } | null;
         };
+        InvoiceList: {
+            /** Format: uuid */
+            id: string;
+            number: string;
+            /** Format: date-time */
+            issuedAt: string;
+            orderCode: string;
+            total: number;
+            pdfReady: boolean;
+        }[];
     };
     responses: never;
     parameters: never;
@@ -5197,7 +5268,10 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": Record<string, never>;
+                "application/json": {
+                    /** @enum {string} */
+                    plan?: "FULL" | "ADVANCE" | "BALANCE";
+                };
             };
         };
         responses: {
@@ -5209,7 +5283,7 @@ export interface operations {
                     "application/json": components["schemas"]["PaymentCheckout"];
                 };
             };
-            /** @description The body has any field (it must be empty), or the form answers are incomplete (`errors[].field` is a path inside `formData`) */
+            /** @description The body has a field other than `plan`, or the form answers are incomplete (`errors[].field` is a path inside `formData`) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -5223,7 +5297,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Already paid or cannot be paid online, a package is no longer offered, the coupon stopped applying (check the new total), or nothing to pay */
+            /** @description Already paid or cannot be paid online, the plan does not apply (no part payment for these packages; balance before an advance; full/advance after one), a package is no longer offered, the coupon stopped applying (check the new total), or nothing to pay */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5314,6 +5388,91 @@ export interface operations {
             };
             /** @description Missing or wrong signature, or a body that cannot be read; nothing is stored */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InvoicesController_list: {
+        parameters: {
+            query?: {
+                /** @description Only the invoices of this application’s order */
+                applicationId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceList"];
+                };
+            };
+        };
+    };
+    InvoicesController_link: {
+        parameters: {
+            query?: {
+                /** @description inline = open in the browser */
+                disposition?: "attachment" | "inline";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileLink"];
+                };
+            };
+            /** @description No such invoice among yours (another customer’s invoice looks the same) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The PDF is still being generated — try again shortly */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InvoicesController_download: {
+        parameters: {
+            query: {
+                /** @description Signature */
+                s: unknown;
+                d?: "attachment" | "inline";
+                /** @description Expiry (unix seconds) */
+                e: unknown;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -144,7 +144,7 @@ function SellerSettingsPage() {
             <fieldset className="grid gap-4 rounded-md border border-rule bg-white p-4 sm:grid-cols-2">
               <legend className="px-1 text-sm font-semibold text-night">Invoices</legend>
               {field('invoicePrefix', 'Invoice number prefix', {
-                hint: `Up to 6 letters or digits, e.g. ${values.invoicePrefix || 'BN'}/2026-27/000123. Change it only at the start of a financial year.`,
+                hint: `Up to 4 letters or digits, e.g. ${values.invoicePrefix || 'BN'}/2627/000123 (GST allows 16 characters). Change it only at the start of a financial year.`,
                 autoComplete: 'off',
                 onChange: (e) => set('invoicePrefix', e.target.value.toUpperCase()),
               })}

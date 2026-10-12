@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { applyCouponInput, formatINR, type ApplicationDetail, type DocumentChecklist, type OrderSummary, type PaymentStatusView } from '@biznexa/types';
@@ -36,6 +37,8 @@ export function SummaryStep({ service, applicationId }: { service: ServiceDetail
   const [formIncomplete, setFormIncomplete] = useState(false);
   /** The last payment attempt, to say so when it failed. */
   const [lastPayment, setLastPayment] = useState<PaymentStatusView | null>(null);
+  /** Pay in full or just the advance, when the package allows part payment (M3.19). */
+  const [plan, setPlan] = useState<'FULL' | 'ADVANCE'>('FULL');
 
   useEffect(() => {
     let live = true;
@@ -53,6 +56,8 @@ export function SummaryStep({ service, applicationId }: { service: ServiceDetail
           setSummary(s);
           setPendingDocs(checklist.pendingMandatory);
           setLastPayment(payment);
+          // Picking up an attempt for the advance: keep that choice.
+          if (payment.payment?.plan === 'ADVANCE') setPlan('ADVANCE');
         }
       } catch (e) {
         if (live) setLoadError((e as ClientApiError).message);
@@ -202,6 +207,15 @@ export function SummaryStep({ service, applicationId }: { service: ServiceDetail
                 <dt>Total</dt>
                 <dd>{money(summary.total)}</dd>
               </div>
+              {summary.amountPaid > 0 && (
+                <>
+                  <Row label="Paid so far" value={`− ${money(summary.amountPaid)}`} tone="text-seal" />
+                  <div className="flex justify-between gap-4 font-semibold">
+                    <dt>Balance due</dt>
+                    <dd>{money(summary.balance)}</dd>
+                  </div>
+                </>
+              )}
             </dl>
             {summary.placeOfSupply && (
               <p className="mt-3 text-xs text-muted">
@@ -255,8 +269,20 @@ export function SummaryStep({ service, applicationId }: { service: ServiceDetail
 
           {pendingDocs > 0 && (
             <p className="mt-6 text-sm text-muted">
-              {pendingDocs === 1 ? 'One required document is' : `${pendingDocs} required documents are`} still to upload. You can pay now and upload{' '}
-              {pendingDocs === 1 ? 'it' : 'them'} later from your dashboard; until then your application will show “Documents Pending”.
+              {pendingDocs === 1 ? 'One required document is' : `${pendingDocs} required documents are`} still to upload.{' '}
+              {summary.amountPaid > 0 || summary.orderStatus === 'PAID' ? (
+                <>
+                  We can start once {pendingDocs === 1 ? 'it’s' : 'they’re'} in.{' '}
+                  <Link href={`${stepHref}/documents`} className="font-semibold text-ink underline">
+                    Upload documents
+                  </Link>
+                </>
+              ) : (
+                <>
+                  You can pay now and upload {pendingDocs === 1 ? 'it' : 'them'} later from your dashboard; until then your application will show “Documents
+                  Pending”.
+                </>
+              )}
             </p>
           )}
 
@@ -292,6 +318,28 @@ export function SummaryStep({ service, applicationId }: { service: ServiceDetail
             </div>
           )}
 
+          {summary.advance && (summary.orderStatus === 'CREATED' || summary.orderStatus === 'PAYMENT_PENDING') && payState !== 'confirming' && (
+            <fieldset className="mt-6">
+              <legend className="font-semibold">How would you like to pay?</legend>
+              <div className="mt-3 space-y-2">
+                <PlanOption
+                  checked={plan === 'FULL'}
+                  onChange={() => setPlan('FULL')}
+                  title={`Pay in full · ${money(summary.total)}`}
+                  detail="Nothing more to pay later."
+                />
+                <PlanOption
+                  checked={plan === 'ADVANCE'}
+                  onChange={() => setPlan('ADVANCE')}
+                  title={`Pay an advance · ${money(summary.advance.amount)} now`}
+                  detail={`${
+                    summary.advance.governmentFee > 0 ? `The government fee of ${money(summary.advance.governmentFee)} plus ` : ''
+                  }${summary.advance.percent != null ? `${summary.advance.percent}%` : 'part'} of our fee with GST. The balance of ${money(summary.advance.balance)} is paid later, before we deliver.`}
+                />
+              </div>
+            </fieldset>
+          )}
+
           {summary.orderStatus === 'PAID' ? (
             <div className="mt-8 space-y-3 border-t border-rule pt-6">
               <Notice tone="success">This order is paid.</Notice>
@@ -313,16 +361,43 @@ export function SummaryStep({ service, applicationId }: { service: ServiceDetail
                   <Button
                     type="button"
                     variant="primary"
-                    onClick={() => void pay()}
+                    onClick={() => void pay(summary.advance ? plan : 'FULL')}
                     disabled={busy || payState === 'starting' || payState === 'open'}
                     aria-busy={payState === 'starting'}
                     aria-describedby="pay-note"
                   >
-                    {payState === 'starting' ? 'Opening payment…' : `Pay ${money(summary.total)}`}
+                    {payState === 'starting'
+                      ? 'Opening payment…'
+                      : summary.advance && plan === 'ADVANCE'
+                        ? `Pay advance ${money(summary.advance.amount)}`
+                        : `Pay ${money(summary.total)}`}
                   </Button>
                   <p id="pay-note" className="text-sm text-muted">
                     UPI, cards or net banking, through Razorpay.
                   </p>
+                </div>
+              </div>
+            )
+          ) : summary.orderStatus === 'PARTIALLY_PAID' ? (
+            payState !== 'confirming' && (
+              <div className="mt-8 space-y-4 border-t border-rule pt-6">
+                <Notice tone="success">
+                  Advance of <span className="num">{money(summary.amountPaid)}</span> received. The balance of{' '}
+                  <span className="num">{money(summary.balance)}</span> is due before we deliver.
+                </Notice>
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <LinkButton href={paymentHref} variant="ghost">
+                    View payment
+                  </LinkButton>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => void pay('BALANCE')}
+                    disabled={payState === 'starting' || payState === 'open'}
+                    aria-busy={payState === 'starting'}
+                  >
+                    {payState === 'starting' ? 'Opening payment…' : `Pay balance ${money(summary.balance)}`}
+                  </Button>
                 </div>
               </div>
             )
@@ -343,5 +418,17 @@ function Row({ label, value, tone = '' }: { label: string; value: string; tone?:
       <dt className="text-muted">{label}</dt>
       <dd>{value}</dd>
     </div>
+  );
+}
+
+function PlanOption({ checked, onChange, title, detail }: { checked: boolean; onChange: () => void; title: string; detail: string }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-md border border-rule px-4 py-3 text-sm has-[:checked]:border-ink has-[:checked]:bg-ink-050">
+      <input type="radio" name="pay-plan" className="mt-0.5 h-4 w-4 shrink-0 accent-ink" checked={checked} onChange={onChange} />
+      <span className="min-w-0">
+        <span className="num block font-medium text-night">{title}</span>
+        <span className="block text-muted">{detail}</span>
+      </span>
+    </label>
   );
 }

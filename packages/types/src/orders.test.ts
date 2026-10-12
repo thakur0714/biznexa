@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCouponInput, calculatePrice, orderTotals, placeOfSupply, sameState, splitAmount, stateName } from './index';
+import { advancePayment, applyCouponInput, calculatePrice, orderTotals, placeOfSupply, sameState, splitAmount, stateName } from './index';
 
 describe('stateName (M3.13)', () => {
   it('reads names, two-letter codes and GST codes as the same state', () => {
@@ -93,5 +93,57 @@ describe('applyCouponInput', () => {
   it('refuses amounts sent with the code', () => {
     expect(applyCouponInput.safeParse({ code: 'SAVE10', total: 1 }).success).toBe(false);
     expect(applyCouponInput.safeParse({ code: 'SAVE10', discount: 999999 }).success).toBe(false);
+  });
+});
+
+describe('advancePayment (M3.19)', () => {
+  const line = (total: number, advancePercent: number | null, governmentFee = 0) => ({ total, governmentFee, advancePercent });
+
+  it('takes the advance % of the fee + GST, rounded up to whole rupees, and leaves the rest as the balance', () => {
+    // ₹10,000 + 18 % GST at 50 %.
+    expect(advancePayment([line(1180000, 50)])).toEqual({ amount: 590000, balance: 590000, percent: 50, governmentFee: 0 });
+    // ₹1,000.01 at 50 % = ₹500.005 → ₹501.
+    expect(advancePayment([line(100001, 50)])).toEqual({ amount: 50100, balance: 49901, percent: 50, governmentFee: 0 });
+    // Already whole rupees: not rounded further.
+    expect(advancePayment([line(100000, 10)])).toMatchObject({ amount: 10000, balance: 90000 });
+  });
+
+  it('collects the government fee in full with the advance', () => {
+    // ₹1,000 + ₹180 GST + ₹4,500 government fee at 30 %: ₹4,500 + ₹354.
+    expect(advancePayment([line(568000, 30, 450000)])).toEqual({ amount: 485400, balance: 82600, percent: 30, governmentFee: 450000 });
+  });
+
+  it('adds up per line; a mixed % is reported as null', () => {
+    expect(advancePayment([line(118000, 50, 0), line(250000, 30, 50000)])).toEqual({ amount: 59000 + 50000 + 60000, balance: 199000, percent: null, governmentFee: 50000 });
+    expect(advancePayment([line(118000, 40), line(118000, 40)])?.percent).toBe(40);
+  });
+
+  it('is offered only when every line allows it with a whole 1–99 %', () => {
+    expect(advancePayment([])).toBeNull();
+    expect(advancePayment([line(118000, 50), line(118000, null)])).toBeNull();
+    for (const p of [0, 100, 120, -5, 12.5]) expect(advancePayment([line(118000, p)])).toBeNull();
+  });
+
+  it('is not offered when either part would be under ₹1', () => {
+    // ₹1.50 at 50 %: the advance rounds up to ₹1, leaving 50 paise.
+    expect(advancePayment([line(150, 50)])).toBeNull();
+    // The government fee covers almost everything: nothing meaningful left as a balance.
+    expect(advancePayment([line(100100, 50, 100000)])).toBeNull();
+    expect(advancePayment([line(200, 50)])).toEqual({ amount: 100, balance: 100, percent: 50, governmentFee: 0 });
+  });
+
+  it('always splits the total exactly', () => {
+    for (let total = 100; total < 400000; total += 7919) {
+      for (const pct of [1, 10, 33, 50, 67, 90, 99]) {
+        for (const govt of [0, Math.floor(total / 3)]) {
+          const r = advancePayment([line(total, pct, govt)]);
+          if (!r) continue;
+          expect(r.amount + r.balance).toBe(total);
+          expect(r.amount).toBeGreaterThanOrEqual(govt);
+          expect((r.amount - govt) % 100).toBe(0);
+          expect(r.amount - govt).toBeGreaterThanOrEqual(((total - govt) * pct) / 100);
+        }
+      }
+    }
   });
 });

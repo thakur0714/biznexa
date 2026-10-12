@@ -3,19 +3,21 @@ import { Injectable } from '@nestjs/common';
 import { SELLER_SETTING_KEYS, readSellerSettings, sellerSettingValues, type SellerSettings, type SellerSettingsData } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { Prisma } from '../generated/prisma/client';
 
 const KEYS: string[] = Object.values(SELLER_SETTING_KEYS);
 
 /**
  * Seller details (M3.14, D41): one `Setting` row per field, written together. The order summary reads
- * `company.state` (M3.13) and invoices will read the rest (M3.21).
+ * `company.state` (M3.13) and invoices copy the rest (M3.21).
  */
 @Injectable()
 export class SettingsService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
 
-  async seller(): Promise<SellerSettings> {
-    const rows = await this.prisma.setting.findMany({ where: { key: { in: KEYS } }, select: { key: true, value: true, updatedAt: true } });
+  /** @param db a transaction, so an invoice copies the details it is issued with (M3.21). */
+  async seller(db: Prisma.TransactionClient = this.prisma): Promise<SellerSettings> {
+    const rows = await db.setting.findMany({ where: { key: { in: KEYS } }, select: { key: true, value: true, updatedAt: true } });
     const updatedAt = rows.reduce<Date | null>((at, r) => (!at || r.updatedAt > at ? r.updatedAt : at), null);
     return readSellerSettings(Object.fromEntries(rows.map((r) => [r.key, r.value])), updatedAt);
   }

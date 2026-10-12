@@ -42,7 +42,9 @@ export interface DomainEventPayloads {
   };
   /**
    * A verified gateway webhook confirmed an order's payment (M3.17). Emitted once per payment, after the
-   * order is PAID and its applications are submitted. Invoices (M3.21) and notifications listen to this.
+   * order is PAID (or PARTIALLY_PAID for an advance, M3.19) and its applications are submitted.
+   * `applicationIds` are the applications this payment submitted — empty for a balance payment.
+   * Invoices (M3.21) and notifications listen to this.
    */
   'payment.succeeded': {
     paymentId: string;
@@ -62,6 +64,29 @@ export interface DomainEventPayloads {
     amount: number;
     /** The gateway's reason, safe to show the customer. */
     reason: string | null;
+  };
+  /**
+   * An invoice was issued for a successful payment (M3.21): one per payment, so an advance and its balance
+   * each get one. The PDF (M3.22–M3.23) and the "invoice issued" notification (M6) listen to this.
+   */
+  'invoice.issued': {
+    invoiceId: string;
+    number: string;
+    paymentId: string;
+    orderId: string;
+    customerId: string;
+    /** Integer paise; equals the payment. */
+    total: number;
+  };
+  /**
+   * A PDF was rendered and stored (M3.22): `kind` is the registered document kind (`invoice`, `certificate`…),
+   * `id` its record, `fileKey` the `StorageService` key now saved on that record.
+   */
+  'pdf.generated': {
+    kind: string;
+    id: string;
+    fileKey: string;
+    sizeBytes: number;
   };
   'file.scanned': {
     fileId: string;
