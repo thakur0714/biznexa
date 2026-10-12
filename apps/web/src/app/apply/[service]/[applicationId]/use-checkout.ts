@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import type { PaymentCheckout } from '@biznexa/types';
+import type { PaymentCheckout, PaymentPlan } from '@biznexa/types';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { openRazorpayCheckout, type RazorpaySuccess } from '@/lib/razorpay';
@@ -10,10 +10,11 @@ import { openRazorpayCheckout, type RazorpaySuccess } from '@/lib/razorpay';
 export type PayState = 'idle' | 'starting' | 'open' | 'confirming' | 'mock';
 
 /**
- * "Pay" and "Try again" (M3.16, M3.18): asks the API to start (or reuse) the payment and opens Razorpay
- * Checkout for it. When Checkout reports success, the signed result is sent to the callback endpoint — only
- * so the payment shows as "confirming"; the order is paid by the webhook — and `onConfirming` runs even if
- * that call fails. API errors are passed to `onError` for the page to explain.
+ * "Pay", "Pay advance", "Pay balance" and "Try again" (M3.16, M3.18, M3.19): asks the API to start (or reuse)
+ * the payment for a plan — the API works out the amount — and opens Razorpay Checkout for it. When Checkout
+ * reports success, the signed result is sent to the callback endpoint — only so the payment shows as
+ * "confirming"; the order is paid by the webhook — and `onConfirming` runs even if that call fails. API
+ * errors are passed to `onError` for the page to explain.
  */
 export function useCheckout(
   applicationId: string,
@@ -43,11 +44,13 @@ export function useCheckout(
     [api, applicationId, onConfirming],
   );
 
-  const pay = useCallback(async () => {
+  const pay = useCallback(async (plan?: PaymentPlan) => {
     setError('');
     setState('starting');
     try {
-      const c = await api.call<PaymentCheckout>((cl) => cl.POST('/api/applications/{id}/payment', { params: { path: { id: applicationId } }, body: {} }));
+      const c = await api.call<PaymentCheckout>((cl) =>
+        cl.POST('/api/applications/{id}/payment', { params: { path: { id: applicationId } }, body: plan ? { plan } : {} }),
+      );
       setCheckout(c);
       await onStarted?.(c);
       if (c.gateway === 'MOCK') return setState('mock');

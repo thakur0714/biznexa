@@ -37,6 +37,8 @@ const schema = z
     RAZORPAY_WEBHOOK_SECRET: z.string().optional().default(''),
     COMPANY_STATE_CODE: z.string().length(2).default('PB'),
     REDIS_URL: z.string().url().default('redis://localhost:6379'),
+    /** HTML → PDF (M3.22): headless Chromium through Playwright, or a plain-text stub where Chromium isn't installed. */
+    PDF_RENDERER: z.enum(['playwright', 'stub']).default('playwright'),
     /** Redis key prefix for queues; tests use their own so a running dev API never picks up test jobs. */
     QUEUE_PREFIX: z.string().min(1).default('bn'),
   })
@@ -55,6 +57,8 @@ const schema = z
         ctx.addIssue({ code: 'custom', path: ['SMS_PROVIDER'], message: 'Console SMS provider is not allowed in production' });
       if (v.VIRUS_SCANNER === 'stub')
         ctx.addIssue({ code: 'custom', path: ['VIRUS_SCANNER'], message: 'Stub virus scanner is not allowed in production' });
+      if (v.PDF_RENDERER === 'stub')
+        ctx.addIssue({ code: 'custom', path: ['PDF_RENDERER'], message: 'Stub PDF renderer is not allowed in production' });
       if (v.PAYMENT_GATEWAY === 'mock')
         ctx.addIssue({ code: 'custom', path: ['PAYMENT_GATEWAY'], message: 'Mock payment gateway is not allowed in production' });
     }

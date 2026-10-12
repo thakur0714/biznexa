@@ -57,7 +57,13 @@ export function PricingCard({ serviceSlug, packages }: { serviceSlug: string; pa
             <dd>{formatINR(pkg.price.total)}</dd>
           </div>
         </dl>
-        {pkg.allowPartial && pkg.advancePercent && <p className="mt-2 text-xs text-muted">Pay {pkg.advancePercent}% now and the rest on delivery.</p>}
+        {pkg.allowPartial && pkg.advancePercent && (
+          <p className="mt-2 text-xs text-muted">
+            {pkg.governmentFee > 0
+              ? `Pay the government fee and ${pkg.advancePercent}% of our fee now, the rest on delivery.`
+              : `Pay ${pkg.advancePercent}% now and the rest on delivery.`}
+          </p>
+        )}
 
         <Link href={startHref} className={buttonClass('primary', 'lg', 'mt-5 w-full')}>
           Get started

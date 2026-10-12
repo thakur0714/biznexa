@@ -218,6 +218,7 @@ model User {
   messages          Message[]
   stageChanges      ApplicationStageHistory[]
   files             StoredFile[]
+  invoices          Invoice[]
 }
 
 model Role {
@@ -514,6 +515,7 @@ model OrderItem {
   governmentFee   Int
   discount        Int            @default(0)
   gstRate         Int
+  advancePercent  Int? // copied from the package while the order is a draft; null = no part payment (M3.19)
   order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   package         ServicePackage @relation(fields: [packageId], references: [id])
 }
@@ -679,30 +681,51 @@ model Refund {
   payment         Payment      @relation(fields: [paymentId], references: [id])
 }
 
+/// One per successful payment (M3.21): an advance and its balance each get their own. Everything printed is
+/// copied here when it is issued — seller, buyer, lines — so later changes to Settings, the business or the
+/// prices never alter an issued invoice. Never deleted; a wrong one is cancelled with a credit note.
 model Invoice {
   id             String   @id @default(uuid())
-  number         String   @unique // BN/2026-27/000123
-  financialYear  String
-  sequence       Int
+  number         String   @unique // BN/2627/000123 (formatInvoiceNumber, D47)
+  financialYear  String   // 2026-27
+  sequence       Int      // from InvoiceSequence, in the same transaction
+  issuedAt       DateTime // invoice date; decides the financial year (IST)
   orderId        String
   paymentId      String   @unique
-  sellerGstin    String
+  customerId     String
+  sellerGstin    String? // null while Settings has no GSTIN (logged as an error)
+  seller         Json // InvoiceSeller
   buyerName      String
   buyerGstin     String?
-  placeOfSupply  String?
+  buyer          Json // InvoiceBuyer
+  placeOfSupply  String? // state name
+  taxType        String // CGST_SGST | IGST
+  lines          Json // InvoiceLine[]: SERVICE lines (SAC, GST) and GOVERNMENT_FEE lines (no GST)
   taxableValue   Int
   cgst           Int      @default(0)
   sgst           Int      @default(0)
   igst           Int      @default(0)
   govtFees       Int      @default(0)
   discount       Int      @default(0)
-  total          Int
+  total          Int // = the payment
+  amountInWords  String
   pdfKey         String?
   createdAt      DateTime @default(now())
   order          Order    @relation(fields: [orderId], references: [id])
   payment        Payment  @relation(fields: [paymentId], references: [id])
+  customer       User     @relation(fields: [customerId], references: [id])
 
   @@unique([financialYear, sequence])
+  @@index([orderId])
+  @@index([customerId, issuedAt])
+}
+
+/// Gap-free invoice counter, one row per financial year (M3.20, D47). Bumped inside the transaction that
+/// creates the invoice, so the row stays locked until commit and a rollback hands the number back.
+model InvoiceSequence {
+  financialYear String   @id // 2026-27
+  lastNumber    Int
+  updatedAt     DateTime @updatedAt
 }
 
 model Coupon {

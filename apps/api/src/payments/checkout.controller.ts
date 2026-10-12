@@ -20,19 +20,20 @@ export class CheckoutController {
   constructor(private readonly checkout: CheckoutService) {}
 
   /**
-   * "Pay": creates the payment and the gateway order for the order total computed now, and moves the order
-   * and application to PAYMENT_PENDING. Calling again while payment is pending returns the same payment.
+   * "Pay": creates the payment and the gateway order for the amount computed now — the order total, the
+   * advance (`plan: ADVANCE`, when the packages allow part payment) or, after an advance, the balance — and
+   * moves the order and application to PAYMENT_PENDING. Calling again for the same amount returns the same payment.
    */
   @ApiZodResponse('PaymentCheckout', paymentCheckoutSchema)
-  @ApiResponse({ status: 400, description: 'The body has any field (it must be empty), or the form answers are incomplete (`errors[].field` is a path inside `formData`)' })
+  @ApiResponse({ status: 400, description: 'The body has a field other than `plan`, or the form answers are incomplete (`errors[].field` is a path inside `formData`)' })
   @ApiResponse({ status: 404, description: 'No such application among yours (another customer’s application looks the same)' })
-  @ApiResponse({ status: 409, description: 'Already paid or cannot be paid online, a package is no longer offered, the coupon stopped applying (check the new total), or nothing to pay' })
+  @ApiResponse({ status: 409, description: 'Already paid or cannot be paid online, the plan does not apply (no part payment for these packages; balance before an advance; full/advance after one), a package is no longer offered, the coupon stopped applying (check the new total), or nothing to pay' })
   @ApiResponse({ status: 502, description: 'The payment gateway refused the order; the payment stays open, try again' })
   @ApiResponse({ status: 503, description: 'The payment gateway could not be reached; the payment stays open, try again' })
   @Post()
   @HttpCode(200)
-  start(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(startPaymentInput) _body: StartPaymentInput, @CurrentUser() u: AuthUser) {
-    return this.checkout.start(u.id, id);
+  start(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(startPaymentInput) body: StartPaymentInput, @CurrentUser() u: AuthUser) {
+    return this.checkout.start(u.id, id, body?.plan);
   }
 
   /** The payment page (M3.18) polls this: `outcome` turns `PAID` only once the gateway's signed webhook has paid the order. */

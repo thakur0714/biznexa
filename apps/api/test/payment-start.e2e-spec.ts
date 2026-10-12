@@ -117,6 +117,7 @@ afterAll(async () => {
   if (sellerSetting) await prisma.setting.update({ where: { key: SELLER_STATE_KEY }, data: { value: sellerSetting.value as object } });
   else await prisma.setting.deleteMany({ where: { key: SELLER_STATE_KEY } });
   await prisma.auditLog.deleteMany({ where: { actor: users } });
+  await prisma.invoice.deleteMany({ where: { order: { customer: users } } });
   await prisma.payment.deleteMany({ where: { order: { customer: users } } });
   await prisma.application.deleteMany({ where: { order: { customer: users } } });
   await prisma.order.deleteMany({ where: { customer: users } });
@@ -160,7 +161,7 @@ describe('start payment (M3.16)', () => {
         actorId: aliceId,
         action: 'application.payment_start',
         before: { status: 'DRAFT', orderStatus: 'CREATED' },
-        after: { status: 'PAYMENT_PENDING', orderStatus: 'PAYMENT_PENDING', paymentId: res.paymentId, amount: charged },
+        after: { status: 'PAYMENT_PENDING', orderStatus: 'PAYMENT_PENDING', paymentId: res.paymentId, amount: charged, plan: 'FULL' },
       },
     ]);
     expect(events.map((e) => e.payload)).toEqual([{ applicationId: id, from: 'DRAFT', to: 'PAYMENT_PENDING', actorId: aliceId }]);

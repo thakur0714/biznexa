@@ -10,6 +10,7 @@ import { Breadcrumbs, Button, LinkButton, Notice } from '@biznexa/ui';
 import { Icon } from '@/components/icons';
 import type { ServiceDetail } from '@/lib/api';
 import { useCheckout } from '../use-checkout';
+import { InvoiceDownloads } from './invoice-downloads';
 
 const money = (paise: number) => formatINR(paise, true);
 
@@ -101,6 +102,14 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
   const summaryHref = `${stepHref}/summary`;
   const view = status && viewFor(status.outcome, confirming, timedOut);
   const busy = payState === 'starting' || payState === 'open' || payState === 'confirming';
+  /** The advance is paid and the balance isn't (M3.19): the application is already submitted. */
+  const partlyPaid = status?.orderStatus === 'PARTIALLY_PAID';
+  const testMode = payState === 'mock' && checkout && (
+    <Notice tone="info">
+      Test mode: the mock payment gateway is in use, so no payment window opens. Order <span className="num">{checkout.orderCode}</span> is waiting for
+      payment of <span className="num">{money(checkout.amount)}</span>.
+    </Notice>
+  );
 
   return (
     <div className="mx-auto max-w-[760px] px-4 py-10 sm:px-6">
@@ -138,7 +147,7 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
               <Icon name="check" size={22} />
             </span>
             <h1 id="pay-title" className="text-3xl font-bold tracking-[-0.025em]">
-              Payment successful
+              {partlyPaid ? 'Advance received' : 'Payment successful'}
             </h1>
           </div>
           <p className="mt-3 text-muted">
@@ -152,12 +161,35 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
             <p className="num mt-1 text-3xl font-bold tracking-[-0.01em]">{status.applicationCode}</p>
             <p className="mt-1 text-sm text-muted">Quote this whenever you contact us about this application.</p>
             <dl className="num mt-5 space-y-2 border-t border-rule pt-4 text-sm">
-              <Row label="Amount paid" value={money(status.amountPaid)} />
+              {partlyPaid ? (
+                <>
+                  <Row label="Advance paid" value={money(status.amountPaid)} />
+                  <Row label="Balance due" value={money(status.balance)} />
+                </>
+              ) : (
+                <Row label="Amount paid" value={money(status.amountPaid)} />
+              )}
               <Row label="Order" value={status.orderCode} />
               {status.payment?.paidAt && <Row label="Paid on" value={formatDate(status.payment.paidAt)} />}
               {status.payment?.method && <Row label="Paid by" value={METHOD[status.payment.method] ?? status.payment.method} />}
             </dl>
           </div>
+
+          <InvoiceDownloads applicationId={applicationId} paidKey={status.amountPaid} />
+
+          {partlyPaid && (
+            <div className="mt-6 space-y-3">
+              <Notice tone="info">
+                The balance of <span className="num">{money(status.balance)}</span> is due before we deliver. You can pay it now, or later from your order
+                summary.
+              </Notice>
+              {testMode}
+              {payError && <Notice tone="error">{payError}</Notice>}
+              <Button type="button" variant="outline" onClick={() => void pay('BALANCE')} disabled={busy} aria-busy={payState === 'starting'}>
+                {payState === 'starting' ? 'Opening payment…' : `Pay balance ${money(status.balance)}`}
+              </Button>
+            </div>
+          )}
 
           {status.applicationStatus === 'DOCUMENTS_PENDING' && (
             <div className="mt-6">
@@ -191,8 +223,14 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
             <div className="text-sm">
               <p className="font-semibold">We’re waiting for the bank’s confirmation. This usually takes a few seconds.</p>
               <p className="mt-1 text-muted">
-                Please don’t pay again. You can close this page: application <span className="num">{status.applicationCode}</span> is submitted as soon as the
-                payment is confirmed, and your dashboard will show it.
+                {partlyPaid ? (
+                  <>Please don’t pay again. You can close this page: your order summary shows the balance as paid once it is confirmed.</>
+                ) : (
+                  <>
+                    Please don’t pay again. You can close this page: application <span className="num">{status.applicationCode}</span> is submitted as soon as
+                    the payment is confirmed, and your dashboard will show it.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -206,9 +244,16 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
           </h1>
           <div className="mt-6 space-y-4">
             <Notice tone="info">
-              This is taking longer than usual. Please don’t pay again — if money left your account, the payment is confirmed automatically and application{' '}
-              <span className="num">{status.applicationCode}</span> will show as submitted in your dashboard. Contact us with order{' '}
-              <span className="num">{status.orderCode}</span> if it doesn’t within an hour.
+              This is taking longer than usual. Please don’t pay again — if money left your account, the payment is confirmed automatically
+              {partlyPaid ? (
+                <> and your order summary will show the balance as paid. </>
+              ) : (
+                <>
+                  {' '}
+                  and application <span className="num">{status.applicationCode}</span> will show as submitted in your dashboard.{' '}
+                </>
+              )}
+              Contact us with order <span className="num">{status.orderCode}</span> if it doesn’t within an hour.
             </Notice>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button type="button" variant="primary" onClick={pollAgain}>
@@ -231,34 +276,46 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
               </span>
             )}
             <h1 id="pay-title" className="text-3xl font-bold tracking-[-0.025em]">
-              {view === 'failed' ? 'Payment didn’t go through' : 'Payment not completed'}
+              {view === 'failed' ? (partlyPaid ? 'Balance payment didn’t go through' : 'Payment didn’t go through') : 'Payment not completed'}
             </h1>
           </div>
           <div className="mt-6 space-y-4">
             {view === 'failed' ? (
               <Notice tone="error">
-                {status.payment?.failureReason ? `${status.payment.failureReason.replace(/\.$/, '')}. ` : ''}Your application <span className="num">{status.applicationCode}</span> is
-                saved and waiting for payment. You can try again, with the same or another method.
+                {status.payment?.failureReason ? `${status.payment.failureReason.replace(/\.$/, '')}. ` : ''}
+                {partlyPaid ? (
+                  <>
+                    Your advance is safe and application <span className="num">{status.applicationCode}</span> carries on. You can try paying the balance again,
+                    with the same or another method.
+                  </>
+                ) : (
+                  <>
+                    Your application <span className="num">{status.applicationCode}</span> is saved and waiting for payment. You can try again, with the same or
+                    another method.
+                  </>
+                )}
               </Notice>
             ) : (
               <Notice tone="info">
-                We haven’t received a payment for application <span className="num">{status.applicationCode}</span> yet. If you’ve just paid, this page updates by
-                itself; otherwise you can pay now.
+                We haven’t received {partlyPaid ? 'the balance' : 'a payment'} for application <span className="num">{status.applicationCode}</span> yet. If
+                you’ve just paid, this page updates by itself; otherwise you can pay now.
               </Notice>
             )}
-            {payState === 'mock' && checkout && (
-              <Notice tone="info">
-                Test mode: the mock payment gateway is in use, so no payment window opens. Order <span className="num">{checkout.orderCode}</span> is waiting for
-                payment of <span className="num">{money(checkout.amount)}</span>.
-              </Notice>
-            )}
+            {testMode}
             {payError && <Notice tone="error">{payError}</Notice>}
             <div className="flex flex-col-reverse gap-3 border-t border-rule pt-6 sm:flex-row sm:items-center sm:justify-between">
               <LinkButton href={summaryHref} variant="ghost">
                 Back to order summary
               </LinkButton>
-              <Button type="button" variant="primary" onClick={() => void pay()} disabled={busy} aria-busy={payState === 'starting'}>
-                {payState === 'starting' ? 'Opening payment…' : view === 'failed' ? `Try again · ${money(status.total)}` : `Pay ${money(status.total)}`}
+              <Button
+                type="button"
+                variant="primary"
+                // Repeats what the attempt was for: the full amount, the advance or the balance.
+                onClick={() => void pay(status.payment?.plan ?? undefined)}
+                disabled={busy}
+                aria-busy={payState === 'starting'}
+              >
+                {payState === 'starting' ? 'Opening payment…' : retryLabel(view, status)}
               </Button>
             </div>
           </div>
@@ -304,6 +361,14 @@ function viewFor(outcome: PaymentStatusView['outcome'], confirming: boolean, tim
       if (!confirming) return 'awaiting';
       return timedOut ? 'slow' : 'confirming';
   }
+}
+
+/** "Try again · ₹…" / "Pay advance ₹…" / "Pay balance ₹…", for the amount of the attempt being repeated. */
+function retryLabel(view: View, status: PaymentStatusView): string {
+  const amount = money(status.payment?.amount ?? status.balance);
+  if (view === 'failed') return `Try again · ${amount}`;
+  const plan = status.payment?.plan;
+  return plan === 'BALANCE' ? `Pay balance ${amount}` : plan === 'ADVANCE' ? `Pay advance ${amount}` : `Pay ${amount}`;
 }
 
 function Row({ label, value }: { label: string; value: string }) {

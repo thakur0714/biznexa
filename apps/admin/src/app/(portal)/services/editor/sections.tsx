@@ -363,8 +363,9 @@ export function PackagesPanel() {
                 <Field
                   id={`pkg-${i}-advance`}
                   label="Advance (%)"
+                  hint="Of the fee + GST, rounded up to whole rupees. Any government fee is collected in full with the advance."
                   inputMode="numeric"
-                  className="max-w-[200px]"
+                  className="max-w-[360px]"
                   error={err(`packages.${i}.advancePercent`)}
                   {...register(`packages.${i}.advancePercent`)}
                 />

@@ -1,5 +1,16 @@
 import { BadGatewayException, BadRequestException, ConflictException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import { assertTransition, paymentOutcome, type PaymentCallbackInput, type PaymentCheckout, type PaymentStatusView } from '@biznexa/types';
+import {
+  MIN_ONLINE_PAYMENT,
+  assertTransition,
+  attemptPlan,
+  currentAttempt,
+  paymentOutcome,
+  type OrderSummary,
+  type PaymentCallbackInput,
+  type PaymentCheckout,
+  type PaymentPlan,
+  type PaymentStatusView,
+} from '@biznexa/types';
 import { ApplicationsService } from '../applications/applications.service';
 import { OrderSummaryService } from '../applications/order-summary.service';
 import { AuditService } from '../audit/audit.service';
@@ -8,14 +19,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
 import { PaymentGateway, PaymentGatewayError } from './payment-gateway';
 
-/** The gateways' minimum charge: ₹1. */
-const MIN_AMOUNT = 100;
-
 const paymentSelect = { id: true, amount: true, gatewayOrderId: true } satisfies Prisma.PaymentSelect;
 type OpenPayment = Prisma.PaymentGetPayload<{ select: typeof paymentSelect }>;
 
 interface Opened {
   payment: OpenPayment;
+  plan: PaymentPlan;
   /** True when this call moved the application DRAFT → PAYMENT_PENDING. */
   started: boolean;
   application: { id: string; code: string };
@@ -32,6 +41,10 @@ interface Opened {
  * across a network call; it carries our `Payment` id as `receipt` and is attached with a compare-and-set,
  * so concurrent clicks share one payment and one gateway order. Calling again while PAYMENT_PENDING (retry,
  * reload, gateway outage) reuses the open payment at the frozen order total.
+ *
+ * Part payment (M3.19, D46): `plan` ADVANCE charges `OrderSummary.advance.amount` instead of the total, when
+ * every package allows it; once the advance is paid (order PARTIALLY_PAID) the only plan is BALANCE,
+ * `total − amountPaid`, as a new payment. An open payment is reused only when it is for the same amount.
  */
 @Injectable()
 export class CheckoutService {
@@ -46,8 +59,8 @@ export class CheckoutService {
     private readonly events: EventBus,
   ) {}
 
-  async start(customerId: string, applicationId: string): Promise<PaymentCheckout> {
-    const opened = await this.prisma.$transaction((tx) => this.open(tx, customerId, applicationId));
+  async start(customerId: string, applicationId: string, plan?: PaymentPlan): Promise<PaymentCheckout> {
+    const opened = await this.prisma.$transaction((tx) => this.open(tx, customerId, applicationId, plan));
     if (opened.started) {
       await this.events.emit('application.status_changed', { applicationId: opened.application.id, from: 'DRAFT', to: 'PAYMENT_PENDING', actorId: customerId });
     }
@@ -58,6 +71,7 @@ export class CheckoutService {
       key: this.gateway.checkoutKey,
       gatewayOrderId,
       amount: opened.payment.amount,
+      plan: opened.plan,
       currency: 'INR',
       applicationId: opened.application.id,
       applicationCode: opened.application.code,
@@ -67,7 +81,7 @@ export class CheckoutService {
     };
   }
 
-  private async open(tx: Prisma.TransactionClient, customerId: string, applicationId: string): Promise<Opened> {
+  private async open(tx: Prisma.TransactionClient, customerId: string, applicationId: string, requested?: PaymentPlan): Promise<Opened> {
     const owned = await tx.application.findFirst({ where: { id: applicationId, customerId }, select: { orderId: true } });
     if (!owned?.orderId) throw new NotFoundException('Application not found');
 
@@ -80,12 +94,14 @@ export class CheckoutService {
     });
     const order = await tx.order.findUniqueOrThrow({
       where: { id: owned.orderId },
-      select: { id: true, code: true, status: true, total: true, couponId: true, items: { orderBy: { id: 'asc' }, select: { description: true } } },
+      select: { id: true, code: true, status: true, total: true, amountPaid: true, couponId: true, items: { orderBy: { id: 'asc' }, select: { description: true } } },
     });
     const customer = await tx.user.findUniqueOrThrow({ where: { id: customerId }, select: { name: true, email: true, mobile: true } });
     const context = { application: { id: app.id, code: app.code }, orderCode: order.code, customer };
 
     if (order.status === 'CREATED' && app.status === 'DRAFT') {
+      const plan = requested ?? 'FULL';
+      if (plan === 'BALANCE') throw new ConflictException('Nothing has been paid for this order yet, so there is no balance to pay.');
       await this.applications.assertFormComplete(tx, app);
 
       // Held until commit, so the coupon's rules and limits cannot change between this check and the charge.
@@ -93,10 +109,11 @@ export class CheckoutService {
       const summary = await this.orders.price(tx, customerId, app.id);
       // The customer agreed to a total with the coupon; don't charge a different one without showing it.
       if (summary.couponNotice) throw new ConflictException(`${summary.couponNotice} Check the new total before paying.`);
-      if (summary.total < MIN_AMOUNT) throw new ConflictException('This order has nothing to pay online. Contact us and we will start it for you.');
+      if (summary.total < MIN_ONLINE_PAYMENT) throw new ConflictException('This order has nothing to pay online. Contact us and we will start it for you.');
+      const amount = amountFor(plan, summary);
 
       const payment = await tx.payment.create({
-        data: { orderId: order.id, gateway: this.gateway.name, amount: summary.total, status: 'CREATED' },
+        data: { orderId: order.id, gateway: this.gateway.name, amount, status: 'CREATED' },
         select: paymentSelect,
       });
       await tx.order.update({ where: { id: order.id }, data: { status: 'PAYMENT_PENDING' } });
@@ -112,28 +129,42 @@ export class CheckoutService {
           entityType: 'Application',
           entityId: app.id,
           before: { status: app.status, orderStatus: order.status },
-          after: { status: 'PAYMENT_PENDING', orderStatus: 'PAYMENT_PENDING', paymentId: payment.id, amount: payment.amount },
+          after: { status: 'PAYMENT_PENDING', orderStatus: 'PAYMENT_PENDING', paymentId: payment.id, amount: payment.amount, plan },
         },
         tx,
       );
-      return { ...context, payment, started: true, description: describe(summary.lines) };
+      return { ...context, payment, plan, started: true, description: describe(summary.lines, plan) };
     }
 
     if (order.status === 'PAYMENT_PENDING' && app.status === 'PAYMENT_PENDING') {
-      // Totals are frozen once payment has started (D40), so the stored total is the amount to charge.
-      const open = await tx.payment.findFirst({
-        where: { orderId: order.id, status: { in: ['CREATED', 'PENDING'] }, gateway: this.gateway.name, amount: order.total },
-        orderBy: { createdAt: 'desc' },
-        select: paymentSelect,
-      });
-      const payment =
-        open ?? (await tx.payment.create({ data: { orderId: order.id, gateway: this.gateway.name, amount: order.total, status: 'CREATED' }, select: paymentSelect }));
-      return { ...context, payment, started: false, description: describe(order.items) };
+      const plan = requested ?? 'FULL';
+      if (plan === 'BALANCE') throw new ConflictException('Nothing has been paid for this order yet, so there is no balance to pay.');
+      // Totals and the advance are frozen once payment has started (D40); the summary reads them as stored.
+      const summary = await this.orders.price(tx, customerId, app.id);
+      const payment = await this.openPayment(tx, order.id, amountFor(plan, summary));
+      return { ...context, payment, plan, started: false, description: describe(order.items, plan) };
+    }
+
+    if (order.status === 'PARTIALLY_PAID' && app.status !== 'CANCELLED') {
+      const plan = requested ?? 'BALANCE';
+      if (plan !== 'BALANCE') throw new ConflictException('The advance for this order is paid; only the balance is left to pay.');
+      const payment = await this.openPayment(tx, order.id, order.total - order.amountPaid);
+      return { ...context, payment, plan, started: false, description: describe(order.items, plan) };
     }
 
     throw new ConflictException(
       order.status === 'PAID' ? 'This order is already paid.' : 'This application can’t be paid for online. Contact us if you need help.',
     );
+  }
+
+  /** The open payment for exactly this amount on this gateway (retry, reload, outage), or a new one. */
+  private async openPayment(tx: Prisma.TransactionClient, orderId: string, amount: number): Promise<OpenPayment> {
+    const open = await tx.payment.findFirst({
+      where: { orderId, status: { in: ['CREATED', 'PENDING'] }, gateway: this.gateway.name, amount },
+      orderBy: { createdAt: 'desc' },
+      select: paymentSelect,
+    });
+    return open ?? tx.payment.create({ data: { orderId, gateway: this.gateway.name, amount, status: 'CREATED' }, select: paymentSelect });
   }
 
   /** Where the application's payment stands (M3.18): what the payment page polls until the webhook has paid the order. */
@@ -152,25 +183,34 @@ export class CheckoutService {
             amountPaid: true,
             payments: {
               orderBy: { createdAt: 'desc' },
-              take: 1,
-              select: { id: true, status: true, amount: true, method: true, failureReason: true, paidAt: true },
+              select: { id: true, status: true, amount: true, method: true, failureReason: true, paidAt: true, createdAt: true },
             },
           },
         },
       },
     });
     if (!app?.order) throw new NotFoundException('Application not found');
-    const payment = app.order.payments[0] ?? null;
+    const { order } = app;
+    const attempt = currentAttempt(order, order.payments);
     return {
-      outcome: paymentOutcome(app.order.status, payment?.status ?? null),
+      outcome: paymentOutcome(order.status, attempt?.status ?? null),
       applicationId: app.id,
       applicationCode: app.code,
       applicationStatus: app.status,
-      orderCode: app.order.code,
-      orderStatus: app.order.status,
-      total: app.order.total,
-      amountPaid: app.order.amountPaid,
-      payment: payment && { ...payment, paidAt: payment.paidAt?.toISOString() ?? null },
+      orderCode: order.code,
+      orderStatus: order.status,
+      total: order.total,
+      amountPaid: order.amountPaid,
+      balance: order.total - order.amountPaid,
+      payment: attempt && {
+        id: attempt.id,
+        status: attempt.status,
+        amount: attempt.amount,
+        method: attempt.method,
+        failureReason: attempt.failureReason,
+        paidAt: attempt.paidAt?.toISOString() ?? null,
+        plan: attemptPlan(attempt, order),
+      },
     };
   }
 
@@ -197,13 +237,13 @@ export class CheckoutService {
   }
 
   /** Creates the gateway order for a payment that has none yet; the first one attached wins. */
-  private async attachGatewayOrder({ payment, application, orderCode }: Opened): Promise<string> {
+  private async attachGatewayOrder({ payment, plan, application, orderCode }: Opened): Promise<string> {
     let gatewayOrder;
     try {
       gatewayOrder = await this.gateway.createOrder({
         amount: payment.amount,
         receipt: payment.id,
-        notes: { paymentId: payment.id, orderCode, applicationCode: application.code },
+        notes: { paymentId: payment.id, orderCode, applicationCode: application.code, plan },
       });
     } catch (e) {
       if (!(e instanceof PaymentGatewayError)) throw e;
@@ -225,4 +265,14 @@ export class CheckoutService {
   }
 }
 
-const describe = (lines: { description: string }[]) => lines.map((l) => l.description).join(', ');
+const describe = (lines: { description: string }[], plan: PaymentPlan) => {
+  const what = lines.map((l) => l.description).join(', ');
+  return plan === 'FULL' ? what : `${plan === 'ADVANCE' ? 'Advance' : 'Balance'} · ${what}`;
+};
+
+/** The amount for a plan before anything is paid: the total, or the advance when every package allows one. */
+function amountFor(plan: 'FULL' | 'ADVANCE', summary: OrderSummary): number {
+  if (plan === 'FULL') return summary.total;
+  if (!summary.advance) throw new ConflictException('This order can’t be paid in part. Pay the full amount instead.');
+  return summary.advance.amount;
+}

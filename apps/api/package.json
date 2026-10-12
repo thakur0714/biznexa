@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@biznexa/types": "workspace:*",
+    "@fontsource/noto-sans": "5.2.10",
     "@nestjs/common": "^11.1.0",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.1.0",
@@ -42,6 +43,7 @@
     "ioredis": "^6.0.0",
     "multer": "^2.4.0",
     "pg": "^8.16.0",
+    "playwright-core": "1.56.1",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",

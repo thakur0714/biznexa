@@ -21,6 +21,10 @@ COPY --from=build /out .
 ENV UPLOAD_DIR=/data/uploads
 RUN mkdir -p /data/uploads && chown node:node /data/uploads
 VOLUME /data/uploads
+# Headless Chromium for PDFs (M3.22, PDF_RENDERER=playwright): the version playwright-core expects, with its
+# system libraries; shared so the node user can start it.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN node node_modules/playwright-core/cli.js install --with-deps --only-shell chromium && rm -rf /var/lib/apt/lists/*
 USER node
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://localhost:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

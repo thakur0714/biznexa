@@ -31,6 +31,15 @@ Uploaded documents, deliverables and generated PDFs live under the API's `UPLOAD
 - Responses: 413 too large, 415 wrong extension or content that does not match it, 404 when a user asks for a link to a file they may not read.
 - Find who uploaded a file: `SELECT "ownerId", "originalName", "createdAt" FROM "StoredFile" WHERE "fileKey" = '<key>';`
 
+## PDF generation (M3.22, D49)
+Invoices and certificates are rendered from HTML by a `pdf` queue job with headless Chromium (`playwright-core`) and stored under `UPLOAD_DIR` like uploads; the record keeps the storage key (`Invoice.pdfKey`).
+- Production: `PDF_RENDERER=playwright` (the default; `stub` is refused). The API image installs Chromium's headless shell and its system libraries (`PLAYWRIGHT_BROWSERS_PATH=/ms-playwright`). Allow ≈300 MB of memory per API instance for it; one browser is shared, two renders at a time.
+- Development: install Chromium once with `pnpm --filter @biznexa/api exec playwright-core install chromium --only-shell` (the web E2E install covers it on the same Playwright version), or set `PDF_RENDERER=stub` for plain-text PDFs.
+- Templates run with **no JavaScript and no network**: anything a template needs (logo, fonts, QR codes) must be inline (`data:` URLs, `<style>`). A broken image is a template bug, not an outage.
+- Failures retry with backoff (≈1 min in all), then go to the `dead-letter` queue. Restarting the API queues every record still without a PDF, so after fixing Chromium a restart is enough.
+- After upgrading `playwright-core`, rebuild the image (the Chromium build is tied to the version).
+- **Invoice PDFs** (M3.23, D50) are made seconds after `invoice.issued`. To reprint one after a template or font change, clear its key (`UPDATE "Invoice" SET "pdfKey" = NULL WHERE number = 'BN/2627/000123'`) and either restart the API or have the customer click "Download invoice" again (a 409 queues it). The old file stays under `UPLOAD_DIR`; delete it by its old key if needed. Invoices are printed from the row as issued, so a Settings change never alters an existing invoice.
+
 ## Virus scanning (D23)
 Every upload is scanned by a `file-scan` queue job; `StoredFile.scanStatus` goes `PENDING` → `CLEAN` or `INFECTED`. Only `CLEAN` files get download links (409 while pending, 410 when infected). Infected files' bytes are deleted at once; the row stays with `scanSignature`.
 - Production: `VIRUS_SCANNER=clamav`, `CLAMAV_HOST`/`CLAMAV_PORT` pointing at clamd (TCP, INSTREAM). The API refuses to start with the `stub` scanner in production. clamd's `StreamMaxLength` must be at least `UPLOAD_MAX_MB`, or large files fail to scan and stay PENDING.
