@@ -77,3 +77,65 @@ export const adminCategoryRowSchema = z.object({
 });
 export type AdminCategoryRow = z.infer<typeof adminCategoryRowSchema>;
 export const adminCategoryListSchema = z.array(adminCategoryRowSchema);
+
+const httpsUrl = z
+  .string()
+  .trim()
+  .url('Must be a valid URL')
+  .refine((u) => u.startsWith('https://'), 'Must be an https:// URL')
+  .or(z.literal(''))
+  .nullable()
+  .optional()
+  .transform((v) => (v === '' ? null : v));
+
+export const createCertificationBodyInput = z.object({
+  name: z.string({ required_error: 'Enter body name' }).trim().min(2, 'Name must be at least 2 characters').max(200, 'Name is too long'),
+  accreditation: z.string().trim().max(500).nullable().optional().transform((v) => (v === '' ? null : v)),
+  website: httpsUrl,
+  logoUrl: httpsUrl,
+});
+export type CreateCertificationBodyInput = z.infer<typeof createCertificationBodyInput>;
+
+export const updateCertificationBodyInput = createCertificationBodyInput.partial();
+export type UpdateCertificationBodyInput = z.infer<typeof updateCertificationBodyInput>;
+
+export const certificationBodySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  accreditation: z.string().nullable(),
+  logoUrl: z.string().nullable(),
+  website: z.string().nullable(),
+});
+export type CertificationBodyRow = z.infer<typeof certificationBodySchema>;
+export const certificationBodyListSchema = z.array(certificationBodySchema);
+
+export const adminCertificateRowSchema = z.object({
+  id: z.string().uuid(),
+  certificateNumber: z.string(),
+  verificationId: z.string(),
+  type: z.string(),
+  organizationName: z.string(),
+  scope: z.string().nullable(),
+  address: z.string().nullable(),
+  issueDate: isoDate,
+  validFrom: isoDate,
+  validUntil: isoDate,
+  certificationBodyId: z.string().uuid(),
+  certificationBody: z.object({ id: z.string().uuid().optional(), name: z.string() }),
+  status: z.enum(CERTIFICATE_STATUSES),
+  statusReason: z.string().nullable(),
+  pdfKey: z.string().nullable(),
+  showPdfPublicly: z.boolean(),
+  applicationId: z.string().uuid().nullable(),
+  businessEntityId: z.string().uuid().nullable(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+  _count: z.object({ lookups: z.number().int() }),
+});
+export type AdminCertificateRow = z.infer<typeof adminCertificateRowSchema>;
+export const adminCertificateListSchema = z.object({
+  items: z.array(adminCertificateRowSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+});

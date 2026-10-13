@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import * as QRCode from 'qrcode';
 import { z } from 'zod';
-import { assertTransition, effectiveCertificateStatus } from '@biznexa/types';
+import { assertTransition, createCertificationBodyInput, effectiveCertificateStatus, updateCertificationBodyInput } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { EventBus } from '../events/event-bus';
@@ -238,8 +238,72 @@ export class CertificatesService {
     return this.prisma.certificateLookup.findMany({ where: { certificateId: id }, orderBy: { createdAt: 'desc' }, take: 100 });
   }
 
+  async get(id: string) {
+    const cert = await this.prisma.certificate.findUnique({
+      where: { id },
+      include: {
+        certificationBody: { select: { id: true, name: true, accreditation: true, website: true } },
+        _count: { select: { lookups: true } },
+      },
+    });
+    if (!cert) throw new NotFoundException('Certificate not found');
+    return {
+      ...cert,
+      status: effectiveCertificateStatus(cert.status, cert.validUntil),
+      qrUrl: this.qrUrl(cert.verificationId),
+    };
+  }
+
   bodies() {
     return this.prisma.certificationBody.findMany({ orderBy: { name: 'asc' } });
+  }
+
+  async createBody(input: z.infer<typeof createCertificationBodyInput>, actorId: string) {
+    const existing = await this.prisma.certificationBody.findUnique({ where: { name: input.name } });
+    if (existing) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'A certification body with this name already exists',
+        errors: [{ field: 'name', message: 'A certification body with this name already exists' }],
+      });
+    }
+    const body = await this.prisma.certificationBody.create({ data: input });
+    await this.audit.log({ actorId, action: 'certification_body.create', entityType: 'CertificationBody', entityId: body.id, after: body });
+    return body;
+  }
+
+  async updateBody(id: string, input: z.infer<typeof updateCertificationBodyInput>, actorId: string) {
+    const existing = await this.prisma.certificationBody.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Certification body not found');
+
+    if (input.name && input.name !== existing.name) {
+      const dup = await this.prisma.certificationBody.findUnique({ where: { name: input.name } });
+      if (dup) {
+        throw new ConflictException({
+          statusCode: 409,
+          message: 'A certification body with this name already exists',
+          errors: [{ field: 'name', message: 'A certification body with this name already exists' }],
+        });
+      }
+    }
+
+    const updated = await this.prisma.certificationBody.update({ where: { id }, data: input });
+    await this.audit.log({ actorId, action: 'certification_body.update', entityType: 'CertificationBody', entityId: id, before: existing, after: updated });
+    return updated;
+  }
+
+  async deleteBody(id: string, actorId: string) {
+    const existing = await this.prisma.certificationBody.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Certification body not found');
+
+    const count = await this.prisma.certificate.count({ where: { certificationBodyId: id } });
+    if (count > 0) {
+      throw new ConflictException('Cannot delete certification body in use by certificates');
+    }
+
+    await this.prisma.certificationBody.delete({ where: { id } });
+    await this.audit.log({ actorId, action: 'certification_body.delete', entityType: 'CertificationBody', entityId: id, before: existing });
+    return { message: 'Certification body deleted' };
   }
 
   /** Nightly: mark certificates past their validity as EXPIRED. */

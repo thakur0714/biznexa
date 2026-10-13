@@ -148,3 +148,84 @@ export const paymentStatusSchema = z.object({
     .nullable(),
 });
 export type PaymentStatusView = z.infer<typeof paymentStatusSchema>;
+
+const isoDate = z.string().datetime();
+
+const calendarDay = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-10-13')
+  .refine((d) => {
+    const t = Date.parse(`${d}T00:00:00Z`);
+    return !Number.isNaN(t) && new Date(t).toISOString().startsWith(d); // rejects 2026-02-30 too
+  }, 'Not a real date');
+
+export const adminPaymentListQuerySchema = z.object({
+  status: z.enum(['all', 'success', 'failed', 'pending']).default('all'),
+  /** Calendar days in India (YYYY-MM-DD), both inclusive. */
+  from: calendarDay.optional(),
+  to: calendarDay.optional(),
+  q: z.string().trim().max(100).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type AdminPaymentListQuery = z.infer<typeof adminPaymentListQuerySchema>;
+
+export const adminPaymentRowSchema = z.object({
+  id: z.string().uuid(),
+  gateway: z.string(),
+  gatewayOrderId: z.string().nullable(),
+  gatewayPaymentId: z.string().nullable(),
+  amount: z.number().int(),
+  method: z.string().nullable(),
+  status: z.enum(PAYMENT_STATUSES),
+  failureReason: z.string().nullable(),
+  paidAt: isoDate.nullable(),
+  createdAt: isoDate,
+  orderCode: z.string().nullable(),
+  applicationCode: z.string().nullable(),
+  customerName: z.string().nullable(),
+  customerEmail: z.string().nullable(),
+});
+export type AdminPaymentRow = z.infer<typeof adminPaymentRowSchema>;
+
+export const adminPaymentListResponseSchema = z.object({
+  items: z.array(adminPaymentRowSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+});
+
+export const adminPaymentDetailSchema = z.object({
+  id: z.string().uuid(),
+  gateway: z.string(),
+  gatewayOrderId: z.string().nullable(),
+  gatewayPaymentId: z.string().nullable(),
+  amount: z.number().int(),
+  method: z.string().nullable(),
+  status: z.enum(PAYMENT_STATUSES),
+  failureReason: z.string().nullable(),
+  paidAt: isoDate.nullable(),
+  createdAt: isoDate,
+  orderCode: z.string().nullable(),
+  applicationCode: z.string().nullable(),
+  customerName: z.string().nullable(),
+  customerEmail: z.string().nullable(),
+  customerMobile: z.string().nullable(),
+  refunds: z.array(
+    z.object({
+      id: z.string().uuid(),
+      amount: z.number().int(),
+      reason: z.string(),
+      status: z.string(),
+      createdAt: isoDate,
+    }),
+  ),
+  invoice: z
+    .object({
+      id: z.string().uuid(),
+      number: z.string(),
+      issuedAt: isoDate,
+    })
+    .nullable(),
+});
+export type AdminPaymentDetail = z.infer<typeof adminPaymentDetailSchema>;

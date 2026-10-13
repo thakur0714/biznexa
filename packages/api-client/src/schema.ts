@@ -669,6 +669,38 @@ export interface paths {
         };
         get: operations["AdminCertificatesController_bodies"];
         put?: never;
+        post: operations["AdminCertificatesController_createBody"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/certificates/bodies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminCertificatesController_deleteBody"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminCertificatesController_updateBody"];
+        trace?: never;
+    };
+    "/api/admin/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCertificatesController_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1006,6 +1038,54 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["PaymentWebhookController_receive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPaymentsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payments/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPaymentsController_exportCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPaymentsController_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1832,6 +1912,105 @@ export interface components {
             status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
             certificationBody: string;
         }[];
+        AdminCertificateList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                certificateNumber: string;
+                verificationId: string;
+                type: string;
+                organizationName: string;
+                scope: string | null;
+                address: string | null;
+                /** Format: date-time */
+                issueDate: string;
+                /** Format: date-time */
+                validFrom: string;
+                /** Format: date-time */
+                validUntil: string;
+                /** Format: uuid */
+                certificationBodyId: string;
+                certificationBody: {
+                    /** Format: uuid */
+                    id?: string;
+                    name: string;
+                };
+                /** @enum {string} */
+                status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
+                statusReason: string | null;
+                pdfKey: string | null;
+                showPdfPublicly: boolean;
+                /** Format: uuid */
+                applicationId: string | null;
+                /** Format: uuid */
+                businessEntityId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                _count: {
+                    lookups: number;
+                };
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        CertificationBodyList: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            accreditation: string | null;
+            logoUrl: string | null;
+            website: string | null;
+        }[];
+        CertificationBodyRow: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            accreditation: string | null;
+            logoUrl: string | null;
+            website: string | null;
+        };
+        AdminCertificateRow: {
+            /** Format: uuid */
+            id: string;
+            certificateNumber: string;
+            verificationId: string;
+            type: string;
+            organizationName: string;
+            scope: string | null;
+            address: string | null;
+            /** Format: date-time */
+            issueDate: string;
+            /** Format: date-time */
+            validFrom: string;
+            /** Format: date-time */
+            validUntil: string;
+            /** Format: uuid */
+            certificationBodyId: string;
+            certificationBody: {
+                /** Format: uuid */
+                id?: string;
+                name: string;
+            };
+            /** @enum {string} */
+            status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
+            statusReason: string | null;
+            pdfKey: string | null;
+            showPdfPublicly: boolean;
+            /** Format: uuid */
+            applicationId: string | null;
+            /** Format: uuid */
+            businessEntityId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            _count: {
+                lookups: number;
+            };
+        };
         StoredFile: {
             /** Format: uuid */
             id: string;
@@ -2677,6 +2856,68 @@ export interface components {
             presets: string[];
             /** Format: date-time */
             updatedAt: string | null;
+        };
+        AdminPaymentList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                gateway: string;
+                gatewayOrderId: string | null;
+                gatewayPaymentId: string | null;
+                amount: number;
+                method: string | null;
+                /** @enum {string} */
+                status: "CREATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUND_INITIATED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+                failureReason: string | null;
+                /** Format: date-time */
+                paidAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                orderCode: string | null;
+                applicationCode: string | null;
+                customerName: string | null;
+                customerEmail: string | null;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        AdminPaymentDetail: {
+            /** Format: uuid */
+            id: string;
+            gateway: string;
+            gatewayOrderId: string | null;
+            gatewayPaymentId: string | null;
+            amount: number;
+            method: string | null;
+            /** @enum {string} */
+            status: "CREATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUND_INITIATED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+            failureReason: string | null;
+            /** Format: date-time */
+            paidAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            orderCode: string | null;
+            applicationCode: string | null;
+            customerName: string | null;
+            customerEmail: string | null;
+            customerMobile: string | null;
+            refunds: {
+                /** Format: uuid */
+                id: string;
+                amount: number;
+                reason: string;
+                status: string;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            invoice: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                /** Format: date-time */
+                issuedAt: string;
+            } | null;
         };
         PaymentCheckout: {
             /** Format: uuid */
@@ -4528,7 +4769,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminCertificateList"];
+                };
             };
         };
     };
@@ -4586,7 +4829,107 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["CertificationBodyList"];
+                };
+            };
+        };
+    };
+    AdminCertificatesController_createBody: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    accreditation?: string | null;
+                    website?: (string | "") | null;
+                    logoUrl?: (string | "") | null;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificationBodyRow"];
+                };
+            };
+        };
+    };
+    AdminCertificatesController_deleteBody: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
+            };
+        };
+    };
+    AdminCertificatesController_updateBody: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    accreditation?: string | null;
+                    website?: (string | "") | null;
+                    logoUrl?: (string | "") | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificationBodyRow"];
+                };
+            };
+        };
+    };
+    AdminCertificatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCertificateRow"];
+                };
             };
         };
     };
@@ -5682,6 +6025,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminPaymentsController_list: {
+        parameters: {
+            query?: {
+                status?: "all" | "success" | "failed" | "pending";
+                from?: string;
+                to?: string;
+                q?: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPaymentList"];
+                };
+            };
+        };
+    };
+    AdminPaymentsController_exportCsv: {
+        parameters: {
+            query?: {
+                status?: "all" | "success" | "failed" | "pending";
+                from?: string;
+                to?: string;
+                q?: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPaymentsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPaymentDetail"];
+                };
             };
         };
     };

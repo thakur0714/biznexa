@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attemptPlan, currentAttempt, paymentCallbackInput, paymentCheckoutSchema, paymentOutcome, startPaymentInput } from './payments';
+import { adminPaymentListQuerySchema, attemptPlan, currentAttempt, paymentCallbackInput, paymentCheckoutSchema, paymentOutcome, startPaymentInput } from './payments';
 
 describe('startPaymentInput', () => {
   it('accepts no body or an empty one', () => {
@@ -119,5 +119,14 @@ describe('part payments: outcome and current attempt (M3.19)', () => {
     expect(attemptPlan({ status: 'CREATED', amount: 60000 }, { total: 100000, amountPaid: 0 })).toBe('ADVANCE');
     expect(attemptPlan({ status: 'FAILED', amount: 40000 }, { total: 100000, amountPaid: 60000 })).toBe('BALANCE');
     expect(attemptPlan({ status: 'SUCCESS', amount: 60000 }, { total: 100000, amountPaid: 60000 })).toBeNull();
+  });
+});
+
+describe('adminPaymentListQuerySchema dates (M4.15)', () => {
+  it('takes calendar days and refuses anything else', () => {
+    expect(adminPaymentListQuerySchema.parse({ from: '2026-10-01', to: '2026-10-13' })).toMatchObject({ from: '2026-10-01', to: '2026-10-13' });
+    for (const bad of ['2026-02-30', '2026-13-01', '13-10-2026', '2026-10-13T00:00:00.000Z', 'yesterday']) {
+      expect(adminPaymentListQuerySchema.safeParse({ from: bad }).success).toBe(false);
+    }
   });
 });
