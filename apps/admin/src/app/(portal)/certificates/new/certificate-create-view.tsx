@@ -97,7 +97,7 @@ function CertificateForm() {
 
     setSubmitting(true);
     try {
-      const created = await api.call((c) =>
+      const created = await api.call<{ id: string }>((c) =>
         c.POST('/api/admin/certificates', {
           body: {
             certificateNumber: draft.certificateNumber.trim() || undefined,
@@ -113,7 +113,9 @@ function CertificateForm() {
           },
         }),
       );
-      router.push(`/certificates/${created.id}`);
+      if (created) {
+        router.push(`/certificates/${created.id}`);
+      }
     } catch (err: unknown) {
       const error = err as { message?: string; errors?: { field: string; message: string }[] };
       if (error.errors && error.errors.length > 0) {

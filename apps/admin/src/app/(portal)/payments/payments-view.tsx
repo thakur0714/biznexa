@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { formatDate, formatINR, type AdminPaymentDetail, type AdminPaymentRow, type PaymentStatus } from '@biznexa/types';
-import { Badge, Button, Dialog, EmptyState, Field, Notice, Select, useToast, type Tone } from '@biznexa/ui';
+import { Badge, Button, Dialog, EmptyState, Field, Notice, useToast, type Tone } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
 import { DataTable } from '@/components/data-table';
 import { NotAllowed } from '@/components/portal-shell';
@@ -314,7 +314,34 @@ function PaymentsList() {
           />
         ) : (
           <div>
-            <DataTable caption="Payments" data={data.items} columns={columns} getRowId={(p) => p.id} minWidth={900} />
+            <DataTable
+              caption="Payments"
+              data={data.items}
+              columns={columns}
+              getRowId={(p) => p.id}
+              minWidth={900}
+              empty={
+                <EmptyState
+                  title="No payments match"
+                  description="Try adjusting your filters or date range."
+                  action={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setQuery('');
+                        setFromDate('');
+                        setToDate('');
+                        setStatusGroup('all');
+                        setPage(1);
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  }
+                />
+              }
+            />
             {data.total > 25 && (
               <div className="mt-4 flex items-center justify-between border-t border-rule pt-4 text-sm">
                 <p className="text-muted">

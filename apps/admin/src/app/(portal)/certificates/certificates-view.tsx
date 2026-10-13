@@ -220,6 +220,25 @@ function CertificatesList() {
               columns={columns}
               getRowId={(c) => c.id}
               minWidth={900}
+              empty={
+                <EmptyState
+                  title="Nothing matches this search"
+                  description="Try a different query or clear search."
+                  action={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setQuery('');
+                        setStatus('');
+                        setPage(1);
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  }
+                />
+              }
             />
             {data.total > 25 && (
               <div className="mt-4 flex items-center justify-between border-t border-rule pt-4 text-sm">

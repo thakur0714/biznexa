@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useCallback, useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { formatDate, type AdminCertificateRow, type CertificateStatus } from '@biznexa/types';
 import { Badge, Button, Field, Notice, Select, useToast, type Tone } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
@@ -58,27 +58,30 @@ function CertificateDetail({ id }: { id: string }) {
   const [statusError, setStatusError] = useState<string | null>(null);
   const [changingStatus, setChangingStatus] = useState(false);
 
-  const loadData = useCallback(async () => {
-    try {
-      const path = { params: { path: { id } } };
-      const [c, q, l] = await Promise.all([
-        api.call<AdminCertificateRow>((client) => client.GET('/api/admin/certificates/{id}', path)),
-        api.call<{ url: string; dataUrl: string }>((client) => client.GET('/api/admin/certificates/{id}/qr', path)),
-        api.call<LookupRow[]>((client) => client.GET('/api/admin/certificates/{id}/lookups', path)),
-      ]);
-      setCert(c);
-      setQr(q);
-      setLookups(l);
-      setNewStatus(c.status);
-      setLoadError(null);
-    } catch (err: unknown) {
-      setLoadError((err as Error).message);
-    }
-  }, [api, id]);
-
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const path = { params: { path: { id } } };
+        const [c, q, l] = await Promise.all([
+          api.call<AdminCertificateRow>((client) => client.GET('/api/admin/certificates/{id}', path)),
+          api.call<{ url: string; dataUrl: string }>((client) => client.GET('/api/admin/certificates/{id}/qr', path)),
+          api.call<LookupRow[]>((client) => client.GET('/api/admin/certificates/{id}/lookups', path)),
+        ]);
+        if (cancelled) return;
+        setCert(c);
+        setQr(q);
+        setLookups(l);
+        setNewStatus(c.status);
+        setLoadError(null);
+      } catch (err: unknown) {
+        if (!cancelled) setLoadError((err as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [api, id]);
 
   const handleStatusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,15 +96,17 @@ function CertificateDetail({ id }: { id: string }) {
 
     setChangingStatus(true);
     try {
-      const updated = await api.call((client) =>
+      const updated = await api.call<{ id: string; status: CertificateStatus; statusReason: string | null }>((client) =>
         client.PATCH('/api/admin/certificates/{id}/status', {
           params: { path: { id } },
           body: { status: newStatus, reason: reason.trim() },
         }),
       );
-      setCert((c) => (c ? { ...c, status: updated.status as CertificateStatus, statusReason: updated.statusReason } : c));
-      setReason('');
-      toast(`Certificate status updated to ${updated.status}.`, 'success');
+      if (updated) {
+        setCert((c) => (c ? { ...c, status: updated.status, statusReason: updated.statusReason } : c));
+        setReason('');
+        toast(`Certificate status updated to ${updated.status}.`, 'success');
+      }
     } catch (err: unknown) {
       setStatusError((err as Error).message);
     } finally {
