@@ -4,6 +4,8 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { z } from 'zod';
 import {
+  adminCertificateListSchema,
+  adminCertificateRowSchema,
   certificateOrgResultSchema,
   certificateVerifyResultSchema,
   certificationBodyListSchema,
@@ -57,9 +59,16 @@ const listQuery = z.object({
 export class AdminCertificatesController {
   constructor(private readonly certs: CertificatesService) {}
 
+  @ApiZodResponse('AdminCertificateList', adminCertificateListSchema)
   @Get()
   list(@ZodQuery(listQuery) q: z.infer<typeof listQuery>) {
     return this.certs.list(q);
+  }
+
+  @ApiZodResponse('AdminCertificateRow', adminCertificateRowSchema)
+  @Get(':id')
+  get(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.certs.get(id);
   }
 
   @ApiZodResponse('CertificationBodyList', certificationBodyListSchema)

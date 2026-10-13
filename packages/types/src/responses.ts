@@ -108,3 +108,34 @@ export const certificationBodySchema = z.object({
 });
 export type CertificationBodyRow = z.infer<typeof certificationBodySchema>;
 export const certificationBodyListSchema = z.array(certificationBodySchema);
+
+export const adminCertificateRowSchema = z.object({
+  id: z.string().uuid(),
+  certificateNumber: z.string(),
+  verificationId: z.string(),
+  type: z.string(),
+  organizationName: z.string(),
+  scope: z.string().nullable(),
+  address: z.string().nullable(),
+  issueDate: isoDate,
+  validFrom: isoDate,
+  validUntil: isoDate,
+  certificationBodyId: z.string().uuid(),
+  certificationBody: z.object({ id: z.string().uuid().optional(), name: z.string() }),
+  status: z.enum(CERTIFICATE_STATUSES),
+  statusReason: z.string().nullable(),
+  pdfKey: z.string().nullable(),
+  showPdfPublicly: z.boolean(),
+  applicationId: z.string().uuid().nullable(),
+  businessEntityId: z.string().uuid().nullable(),
+  createdAt: isoDate,
+  updatedAt: isoDate,
+  _count: z.object({ lookups: z.number().int() }),
+});
+export type AdminCertificateRow = z.infer<typeof adminCertificateRowSchema>;
+export const adminCertificateListSchema = z.object({
+  items: z.array(adminCertificateRowSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+});

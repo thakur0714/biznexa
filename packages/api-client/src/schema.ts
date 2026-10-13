@@ -660,6 +660,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCertificatesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/certificates/bodies": {
         parameters: {
             query?: never;
@@ -1848,6 +1864,89 @@ export interface components {
             status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
             certificationBody: string;
         }[];
+        AdminCertificateList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                certificateNumber: string;
+                verificationId: string;
+                type: string;
+                organizationName: string;
+                scope: string | null;
+                address: string | null;
+                /** Format: date-time */
+                issueDate: string;
+                /** Format: date-time */
+                validFrom: string;
+                /** Format: date-time */
+                validUntil: string;
+                /** Format: uuid */
+                certificationBodyId: string;
+                certificationBody: {
+                    /** Format: uuid */
+                    id?: string;
+                    name: string;
+                };
+                /** @enum {string} */
+                status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
+                statusReason: string | null;
+                pdfKey: string | null;
+                showPdfPublicly: boolean;
+                /** Format: uuid */
+                applicationId: string | null;
+                /** Format: uuid */
+                businessEntityId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                _count: {
+                    lookups: number;
+                };
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        AdminCertificateRow: {
+            /** Format: uuid */
+            id: string;
+            certificateNumber: string;
+            verificationId: string;
+            type: string;
+            organizationName: string;
+            scope: string | null;
+            address: string | null;
+            /** Format: date-time */
+            issueDate: string;
+            /** Format: date-time */
+            validFrom: string;
+            /** Format: date-time */
+            validUntil: string;
+            /** Format: uuid */
+            certificationBodyId: string;
+            certificationBody: {
+                /** Format: uuid */
+                id?: string;
+                name: string;
+            };
+            /** @enum {string} */
+            status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
+            statusReason: string | null;
+            pdfKey: string | null;
+            showPdfPublicly: boolean;
+            /** Format: uuid */
+            applicationId: string | null;
+            /** Format: uuid */
+            businessEntityId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            _count: {
+                lookups: number;
+            };
+        };
         CertificationBodyList: {
             /** Format: uuid */
             id: string;
@@ -4560,7 +4659,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminCertificateList"];
+                };
             };
         };
     };
@@ -4602,6 +4703,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminCertificatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCertificateRow"];
+                };
             };
         };
     };

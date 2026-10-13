@@ -5637,7 +5637,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCertificateList"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5727,6 +5734,41 @@
         "responses": {
           "201": {
             "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
+    "/api/admin/certificates/{id}": {
+      "get": {
+        "operationId": "AdminCertificatesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCertificateRow"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -11891,6 +11933,300 @@
           ],
           "additionalProperties": false
         }
+      },
+      "AdminCertificateList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "certificateNumber": {
+                  "type": "string"
+                },
+                "verificationId": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "organizationName": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "address": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "issueDate": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "validFrom": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "validUntil": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "certificationBodyId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "certificationBody": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE",
+                    "SUSPENDED",
+                    "WITHDRAWN",
+                    "EXPIRED"
+                  ]
+                },
+                "statusReason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "pdfKey": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "showPdfPublicly": {
+                  "type": "boolean"
+                },
+                "applicationId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "businessEntityId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "_count": {
+                  "type": "object",
+                  "properties": {
+                    "lookups": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "lookups"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "certificateNumber",
+                "verificationId",
+                "type",
+                "organizationName",
+                "scope",
+                "address",
+                "issueDate",
+                "validFrom",
+                "validUntil",
+                "certificationBodyId",
+                "certificationBody",
+                "status",
+                "statusReason",
+                "pdfKey",
+                "showPdfPublicly",
+                "applicationId",
+                "businessEntityId",
+                "createdAt",
+                "updatedAt",
+                "_count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ],
+        "additionalProperties": false
+      },
+      "AdminCertificateRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "certificateNumber": {
+            "type": "string"
+          },
+          "verificationId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "certificationBodyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "certificationBody": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "WITHDRAWN",
+              "EXPIRED"
+            ]
+          },
+          "statusReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "pdfKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "showPdfPublicly": {
+            "type": "boolean"
+          },
+          "applicationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "businessEntityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "_count": {
+            "type": "object",
+            "properties": {
+              "lookups": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "lookups"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "certificateNumber",
+          "verificationId",
+          "type",
+          "organizationName",
+          "scope",
+          "address",
+          "issueDate",
+          "validFrom",
+          "validUntil",
+          "certificationBodyId",
+          "certificationBody",
+          "status",
+          "statusReason",
+          "pdfKey",
+          "showPdfPublicly",
+          "applicationId",
+          "businessEntityId",
+          "createdAt",
+          "updatedAt",
+          "_count"
+        ],
+        "additionalProperties": false
       },
       "CertificationBodyList": {
         "type": "array",

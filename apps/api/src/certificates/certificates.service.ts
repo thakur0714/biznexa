@@ -238,6 +238,22 @@ export class CertificatesService {
     return this.prisma.certificateLookup.findMany({ where: { certificateId: id }, orderBy: { createdAt: 'desc' }, take: 100 });
   }
 
+  async get(id: string) {
+    const cert = await this.prisma.certificate.findUnique({
+      where: { id },
+      include: {
+        certificationBody: { select: { id: true, name: true, accreditation: true, website: true } },
+        _count: { select: { lookups: true } },
+      },
+    });
+    if (!cert) throw new NotFoundException('Certificate not found');
+    return {
+      ...cert,
+      status: effectiveCertificateStatus(cert.status, cert.validUntil),
+      qrUrl: this.qrUrl(cert.verificationId),
+    };
+  }
+
   bodies() {
     return this.prisma.certificationBody.findMany({ orderBy: { name: 'asc' } });
   }
