@@ -56,8 +56,8 @@ function PaymentsList() {
           params: {
             query: {
               status: statusGroup,
-              from: fromDate ? new Date(fromDate).toISOString() : undefined,
-              to: toDate ? new Date(toDate).toISOString() : undefined,
+              from: fromDate || undefined,
+              to: toDate || undefined,
               q: query || undefined,
               page,
               limit: 25,
@@ -115,24 +115,12 @@ function PaymentsList() {
   const handleExportCsv = async () => {
     setExporting(true);
     try {
-      const queryParams = new URLSearchParams();
-      queryParams.set('status', statusGroup);
-      if (fromDate) queryParams.set('from', new Date(fromDate).toISOString());
-      if (toDate) queryParams.set('to', new Date(toDate).toISOString());
-      if (query) queryParams.set('q', query);
-
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-      const token = localStorage.getItem('bn_token') ?? '';
-      const res = await fetch(`${apiUrl}/api/admin/payments/export?${queryParams.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        const errJson = (await res.json().catch(() => ({}))) as { message?: string };
-        throw new Error(errJson.message ?? 'Export failed');
-      }
-
-      const blob = await res.blob();
+      const blob = await api.call<Blob>((c) =>
+        c.GET('/api/admin/payments/export', {
+          params: { query: { status: statusGroup, from: fromDate || undefined, to: toDate || undefined, q: query || undefined } },
+          parseAs: 'blob',
+        }),
+      );
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

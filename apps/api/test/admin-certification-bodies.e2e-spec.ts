@@ -169,8 +169,14 @@ describe('admin certification bodies (M7.2)', () => {
     expect(res.body.message).toMatch(/in use/i);
   });
 
+  it('lists bodies at GET /bodies (not taken for a certificate id)', async () => {
+    const res = await http.get('/api/admin/certificates/bodies').set(as(admin)).expect(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThan(0);
+  });
+
   it('refuses staff without certificates.manage with 403', async () => {
-    await http.get('/api/admin/certificates/bodies').set(as(ops)).expect(200); // GET is allowed for staff with cert permissions
+    await http.get('/api/admin/certificates/bodies').set(as(ops)).expect(403);
     await http.post('/api/admin/certificates/bodies').set(as(ops)).send({ name: `${prefix}-Ops` }).expect(403);
     await http.patch(`/api/admin/certificates/bodies/${randomUUID()}`).set(as(ops)).send({ name: 'x' }).expect(403);
     await http.delete(`/api/admin/certificates/bodies/${randomUUID()}`).set(as(ops)).expect(403);

@@ -151,10 +151,19 @@ export type PaymentStatusView = z.infer<typeof paymentStatusSchema>;
 
 const isoDate = z.string().datetime();
 
+const calendarDay = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-10-13')
+  .refine((d) => {
+    const t = Date.parse(`${d}T00:00:00Z`);
+    return !Number.isNaN(t) && new Date(t).toISOString().startsWith(d); // rejects 2026-02-30 too
+  }, 'Not a real date');
+
 export const adminPaymentListQuerySchema = z.object({
   status: z.enum(['all', 'success', 'failed', 'pending']).default('all'),
-  from: z.string().optional(),
-  to: z.string().optional(),
+  /** Calendar days in India (YYYY-MM-DD), both inclusive. */
+  from: calendarDay.optional(),
+  to: calendarDay.optional(),
   q: z.string().trim().max(100).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),

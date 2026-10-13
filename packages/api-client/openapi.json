@@ -5746,41 +5746,6 @@
         ]
       }
     },
-    "/api/admin/certificates/{id}": {
-      "get": {
-        "operationId": "AdminCertificatesController_get",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdminCertificateRow"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "admin · certificates"
-        ]
-      }
-    },
     "/api/admin/certificates/bodies": {
       "get": {
         "operationId": "AdminCertificatesController_bodies",
@@ -5989,6 +5954,41 @@
         "responses": {
           "200": {
             "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
+    "/api/admin/certificates/{id}": {
+      "get": {
+        "operationId": "AdminCertificatesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCertificateRow"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -7849,7 +7849,8 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             }
           },
           {
@@ -7857,7 +7858,8 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             }
           },
           {
@@ -7937,7 +7939,8 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             }
           },
           {
@@ -7945,7 +7948,8 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             }
           },
           {
@@ -12297,6 +12301,73 @@
         ],
         "additionalProperties": false
       },
+      "CertificationBodyList": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": "string"
+            },
+            "accreditation": {
+              "type": "string",
+              "nullable": true
+            },
+            "logoUrl": {
+              "type": "string",
+              "nullable": true
+            },
+            "website": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "accreditation",
+            "logoUrl",
+            "website"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "CertificationBodyRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "accreditation": {
+            "type": "string",
+            "nullable": true
+          },
+          "logoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "accreditation",
+          "logoUrl",
+          "website"
+        ],
+        "additionalProperties": false
+      },
       "AdminCertificateRow": {
         "type": "object",
         "properties": {
@@ -12429,73 +12500,6 @@
           "createdAt",
           "updatedAt",
           "_count"
-        ],
-        "additionalProperties": false
-      },
-      "CertificationBodyList": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "name": {
-              "type": "string"
-            },
-            "accreditation": {
-              "type": "string",
-              "nullable": true
-            },
-            "logoUrl": {
-              "type": "string",
-              "nullable": true
-            },
-            "website": {
-              "type": "string",
-              "nullable": true
-            }
-          },
-          "required": [
-            "id",
-            "name",
-            "accreditation",
-            "logoUrl",
-            "website"
-          ],
-          "additionalProperties": false
-        }
-      },
-      "CertificationBodyRow": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "accreditation": {
-            "type": "string",
-            "nullable": true
-          },
-          "logoUrl": {
-            "type": "string",
-            "nullable": true
-          },
-          "website": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "accreditation",
-          "logoUrl",
-          "website"
         ],
         "additionalProperties": false
       },

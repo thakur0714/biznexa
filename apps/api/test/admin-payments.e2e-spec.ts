@@ -118,7 +118,7 @@ describe('admin payments (M4.15)', () => {
     expect(res.headers['content-disposition']).toContain('attachment; filename="payments-');
 
     const csvText = res.text;
-    expect(csvText).toContain('Created,Paid,Order Code,Application Code,Customer Name');
+    expect(csvText.split('\n')[0]).toBe('"Created","Paid","Order Code","Application Code","Customer Name","Customer Email","Amount (₹)","Status","Method","Gateway Payment ID","Invoice Number"');
     // Amount in rupees with 2 decimals
     expect(csvText).toContain('"1180.00"');
     // Escaped formula injection
@@ -129,5 +129,23 @@ describe('admin payments (M4.15)', () => {
     await http.get('/api/admin/payments').set(as(ops)).expect(403);
     await http.get(`/api/admin/payments/${paymentId}`).set(as(ops)).expect(403);
     await http.get('/api/admin/payments/export').set(as(ops)).expect(403);
+  });
+
+  it('filters and dates by the day in India (00:30 IST belongs to that day, not the one before)', async () => {
+    // 13-Oct 00:30 IST = 12-Oct 19:00 UTC
+    await prisma.payment.update({ where: { id: paymentId }, data: { paidAt: new Date('2026-10-12T19:00:00Z') } });
+    const find = (from: string, to: string) =>
+      http.get('/api/admin/payments').set(as(admin)).query({ q: `ORD-PAY-${run}`, from, to }).expect(200);
+    expect((await find('2026-10-13', '2026-10-13')).body.items).toHaveLength(1);
+    expect((await find('2026-10-12', '2026-10-12')).body.items).toHaveLength(0);
+    expect((await find('2026-10-01', '2026-10-13')).body.items).toHaveLength(1);
+
+    const csv = await http.get('/api/admin/payments/export').set(as(admin)).query({ q: `ORD-PAY-${run}` }).expect(200);
+    expect(csv.text.split('\n')[1]).toMatch(/^"[\d-]+","2026-10-13",/);
+  });
+
+  it('refuses dates that are not calendar days with 400', async () => {
+    await http.get('/api/admin/payments').set(as(admin)).query({ from: '2026-02-30' }).expect(400);
+    await http.get('/api/admin/payments/export').set(as(admin)).query({ to: 'yesterday' }).expect(400);
   });
 });

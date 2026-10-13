@@ -59,6 +59,14 @@ Supervised steps to do with Claude (not Jules): **M4.1, M4.2, M4.13**.
   desktop/mobile), `fill` on a select, "Next" also matched the Next.js dev-tools button, waited for a
   success view the mock flow never reaches without reload, expected `APP-` codes (real: `BN…`).
   CHANGELOG had wrong claims and Playwright "passing" without a run. All fixed; no app code changed.
+- **13-Oct, J3 (`jules-j3`):** 2 of its own integration tests failed (it cannot run them): expected 200
+  for a user without the permission, and an unquoted CSV header. Real bugs: `GET :id` declared before
+  `GET bodies` → the existing bodies list answered 400; CSV export read a token from `localStorage`
+  that does not exist (always 401) and bypassed the same-origin `/api`; date filters sent as UTC
+  midnights and not validated. No ROADMAP ticks. All fixed; full suite 296/296.
+- Flaky since J2: `internal-notes.e2e-spec` creates its own category, and `app.e2e-spec`'s catalogue
+  test can pick it as "other category" → one of them fails now and then in a full run. Fix: the
+  catalogue test should create its own second category (or notes should not need a category).
 - Test teardown: Jules deleted shared seeded rows (category) and broke other suites — tests must
   create and delete only their own data.
 

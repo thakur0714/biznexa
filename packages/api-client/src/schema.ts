@@ -660,22 +660,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/certificates/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AdminCertificatesController_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/admin/certificates/bodies": {
         parameters: {
             query?: never;
@@ -706,6 +690,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["AdminCertificatesController_updateBody"];
+        trace?: never;
+    };
+    "/api/admin/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCertificatesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/admin/certificates/{id}/status": {
@@ -1956,6 +1956,22 @@ export interface components {
             page: number;
             limit: number;
         };
+        CertificationBodyList: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            accreditation: string | null;
+            logoUrl: string | null;
+            website: string | null;
+        }[];
+        CertificationBodyRow: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            accreditation: string | null;
+            logoUrl: string | null;
+            website: string | null;
+        };
         AdminCertificateRow: {
             /** Format: uuid */
             id: string;
@@ -1994,22 +2010,6 @@ export interface components {
             _count: {
                 lookups: number;
             };
-        };
-        CertificationBodyList: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            accreditation: string | null;
-            logoUrl: string | null;
-            website: string | null;
-        }[];
-        CertificationBodyRow: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            accreditation: string | null;
-            logoUrl: string | null;
-            website: string | null;
         };
         StoredFile: {
             /** Format: uuid */
@@ -4816,27 +4816,6 @@ export interface operations {
             };
         };
     };
-    AdminCertificatesController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdminCertificateRow"];
-                };
-            };
-        };
-    };
     AdminCertificatesController_bodies: {
         parameters: {
             query?: never;
@@ -4929,6 +4908,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CertificationBodyRow"];
+                };
+            };
+        };
+    };
+    AdminCertificatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCertificateRow"];
                 };
             };
         };

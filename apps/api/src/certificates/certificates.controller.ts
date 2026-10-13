@@ -65,12 +65,6 @@ export class AdminCertificatesController {
     return this.certs.list(q);
   }
 
-  @ApiZodResponse('AdminCertificateRow', adminCertificateRowSchema)
-  @Get(':id')
-  get(@Param('id', new ParseUUIDPipe()) id: string) {
-    return this.certs.get(id);
-  }
-
   @ApiZodResponse('CertificationBodyList', certificationBodyListSchema)
   @Get('bodies')
   bodies() {
@@ -92,6 +86,13 @@ export class AdminCertificatesController {
   @Delete('bodies/:id')
   deleteBody(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() u: AuthUser) {
     return this.certs.deleteBody(id, u.id);
+  }
+
+  // Declared after the `bodies` routes: Express matches in order, and `:id` would swallow "bodies".
+  @ApiZodResponse('AdminCertificateRow', adminCertificateRowSchema)
+  @Get(':id')
+  get(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.certs.get(id);
   }
 
   @Post()

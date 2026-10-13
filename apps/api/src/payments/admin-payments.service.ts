@@ -10,6 +10,11 @@ function escapeCsvCell(val: string | number | null | undefined): string {
   return `"${s.replace(/"/g, '""')}"`;
 }
 
+const DAY_MS = 86_400_000;
+const istDayStart = (day: string) => new Date(`${day}T00:00:00+05:30`);
+/** YYYY-MM-DD of an instant in India, so a payment at 00:30 IST is not dated the day before. */
+const istDay = (at: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(at);
+
 const SUCCESS_STATUSES = ['SUCCESS', 'REFUND_INITIATED', 'REFUNDED', 'PARTIALLY_REFUNDED'] as const;
 const PENDING_STATUSES = ['CREATED', 'PENDING'] as const;
 
@@ -29,18 +34,12 @@ export class AdminPaymentsService {
     }
 
     if (params.from || params.to) {
-      const fromDate = params.from ? new Date(params.from) : undefined;
-      const toDate = params.to ? new Date(params.to) : undefined;
-
+      // Whole days in India: from 00:00 IST on `from` up to (not including) 00:00 IST the day after `to`.
       const rangeFilter = {
-        ...(fromDate ? { gte: fromDate } : {}),
-        ...(toDate ? { lte: toDate } : {}),
+        ...(params.from ? { gte: istDayStart(params.from) } : {}),
+        ...(params.to ? { lt: new Date(istDayStart(params.to).getTime() + DAY_MS) } : {}),
       };
-
-      where.OR = [
-        { paidAt: rangeFilter },
-        { paidAt: null, createdAt: rangeFilter },
-      ];
+      where.OR = [{ paidAt: rangeFilter }, { paidAt: null, createdAt: rangeFilter }];
     }
 
     if (params.q) {
@@ -218,8 +217,8 @@ export class AdminPaymentsService {
     ];
 
     const rows = items.map((p) => [
-      escapeCsvCell(p.createdAt.toISOString().slice(0, 10)),
-      escapeCsvCell(p.paidAt ? p.paidAt.toISOString().slice(0, 10) : ''),
+      escapeCsvCell(istDay(p.createdAt)),
+      escapeCsvCell(p.paidAt ? istDay(p.paidAt) : ''),
       escapeCsvCell(p.order?.code ?? ''),
       escapeCsvCell(p.order?.applications[0]?.code ?? ''),
       escapeCsvCell(p.order?.customer.name ?? ''),
