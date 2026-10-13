@@ -1109,6 +1109,8 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([actorId])
+  @@index([createdAt])
+  @@index([actorId, createdAt])
 }
 
 /// A file uploaded through the API to private storage (D17). Documents, deliverables and
