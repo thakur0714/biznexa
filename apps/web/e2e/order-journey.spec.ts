@@ -1,11 +1,13 @@
+import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
+import path from 'node:path';
 import { expect, test } from '@playwright/test';
 
 /**
- * Full order journey e2e test (M3.24):
- * Customer logs in with mobile OTP -> picks service & package -> fills multi-step form ->
- * uploads PDF document -> applies admin-created coupon -> starts MOCK payment ->
- * sends signed mock payment webhook -> verifies success view with Application ID.
+ * Full order journey (M3.24): mobile OTP login → package → form → PDF upload → coupon → mock payment,
+ * completed by a webhook signed like the mock gateway → success view with the Application ID.
+ * Requires the API in development mode with the mock gateway (no Razorpay keys), seeded data, and the
+ * database on this machine (an admin is created per run with the create-admin script).
  */
 
 function hmacHex(secret: string, data: string): string {
@@ -41,33 +43,29 @@ function totpCode(secret: string, step = Math.floor(Date.now() / 1000 / 30)): st
 }
 
 test('full order journey from login to payment success with coupon and document upload', async ({ page, request }) => {
+  test.setTimeout(120_000);
   const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
   const runId = Date.now().toString().slice(-6) + Math.floor(Math.random() * 1000);
   const couponCode = `PWCOUPON${runId}`;
 
-  // 1. Create a coupon via admin API using demo admin login
-  const loginRes = await request.post(`${apiUrl}/api/auth/login`, {
-    data: { email: 'admin@biznexa.local', password: 'Admin@12345' },
+  // 1. Create a coupon via the admin API. Staff routes need 2FA and the seeded admin must not be
+  //    changed, so each run creates its own admin with the existing create-admin script.
+  const adminEmail = `pw-admin-${runId}@example.com`;
+  const adminPassword = 'Playwright@12345';
+  execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], {
+    cwd: path.resolve(__dirname, '../../..'),
+    env: { ...process.env, ADMIN_NAME: 'Playwright Admin', ADMIN_EMAIL: adminEmail, ADMIN_MOBILE: `6${runId.padStart(9, '0').slice(-9)}`, ADMIN_PASSWORD: adminPassword },
+    stdio: 'pipe',
   });
+  const loginRes = await request.post(`${apiUrl}/api/auth/login`, { data: { email: adminEmail, password: adminPassword } });
   expect(loginRes.status()).toBe(200);
-  const loginData = await loginRes.json();
-  let adminToken = loginData.accessToken;
-
-  if (loginData.user.twoFactor.required && !loginData.user.twoFactor.verified) {
-    if (!loginData.user.twoFactor.enabled) {
-      const setupRes = await request.post(`${apiUrl}/api/auth/2fa/setup`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
-      expect(setupRes.status()).toBe(200);
-      const { secret } = await setupRes.json();
-      const enableRes = await request.post(`${apiUrl}/api/auth/2fa/enable`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
-        data: { code: totpCode(secret) },
-      });
-      expect(enableRes.status()).toBe(200);
-      adminToken = (await enableRes.json()).accessToken;
-    }
-  }
+  const auth = { Authorization: `Bearer ${(await loginRes.json()).accessToken}` };
+  const setupRes = await request.post(`${apiUrl}/api/auth/2fa/setup`, { headers: auth });
+  expect(setupRes.status()).toBe(200);
+  const { secret } = await setupRes.json();
+  const enableRes = await request.post(`${apiUrl}/api/auth/2fa/enable`, { headers: auth, data: { code: totpCode(secret) } });
+  expect(enableRes.status()).toBe(200);
+  const adminToken = (await enableRes.json()).accessToken;
 
   const couponRes = await request.post(`${apiUrl}/api/admin/coupons`, {
     headers: { Authorization: `Bearer ${adminToken}` },
@@ -80,10 +78,15 @@ test('full order journey from login to payment success with coupon and document 
   });
   expect(couponRes.status()).toBe(201);
 
-  // 2. Customer logs in using Mobile OTP
+  // 2. A new customer for this run (the OTP resend wait would clash on a shared account), then mobile OTP login
+  const customerMobile = `7${runId.padStart(9, '0').slice(-9)}`;
+  const registerRes = await request.post(`${apiUrl}/api/auth/register`, {
+    data: { name: `Playwright Customer ${runId}`, mobile: customerMobile, email: `pw-customer-${runId}@example.com`, password: 'Customer@12345', consent: true },
+  });
+  expect(registerRes.status()).toBe(201);
   await page.goto('/login');
   await page.getByRole('tab', { name: 'Mobile OTP' }).click();
-  await page.getByLabel('Mobile number').fill('9876543210');
+  await page.getByLabel('Mobile number').fill(customerMobile);
   await page.getByRole('button', { name: 'Send code' }).click();
 
   const otpCode = await page.locator('text=Development mode: your code is').locator('span').innerText();
@@ -114,16 +117,16 @@ test('full order journey from login to payment success with coupon and document 
   await page.getByLabel('Applicant name').fill(`Applicant ${runId}`);
   await page.getByLabel('Address line 1').fill('123 Test Street');
   await page.getByLabel('City').fill('Chandigarh');
-  await page.getByLabel('State').fill('Punjab');
+  await page.getByLabel('State').selectOption('Punjab');
   await page.getByLabel('PIN code').fill('160017');
   await page.getByLabel('Email').fill(`pw-${runId}@example.com`);
-  await page.getByLabel('Mobile number').fill('9876543210');
-  await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByLabel('Mobile number').fill(customerMobile);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
 
   // Step 2: Your trademark
   await page.getByLabel('What do you want to register?').selectOption('A word or name');
   await page.getByLabel('Word or name to register').fill(`BRAND ${runId}`);
-  await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
 
   // Step 3: Goods and services
   await page.getByLabel('What will you sell under this brand?').fill('Legal and business compliance consultancy');
@@ -171,7 +174,7 @@ test('full order journey from login to payment success with coupon and document 
   // 8. Complete the payment via signed webhook
   const paymentId = `pay_mock_${runId}`;
   const eventId = `evt_mock_${runId}`;
-  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET ?? 'mock-webhook-secret';
+  const webhookSecret = 'mock-webhook-secret'; // MockPaymentGateway.webhookSecret
 
   const entity = {
     id: paymentId,
@@ -208,14 +211,16 @@ test('full order journey from login to payment success with coupon and document 
   });
   expect(webhookRes.status()).toBe(200);
 
-  // 9. Verify transition to payment success view showing Application ID
-  await page.getByRole('link', { name: 'View payment' }).click().catch(() => {});
-
-  await expect(page.getByRole('heading', { name: /Payment successful|Advance received/i })).toBeVisible();
+  // 9. The mock gateway opens no window, so the summary does not move on by itself: reload it, then open the payment page
+  await page.reload();
+  await expect(page.getByText('This order is paid.')).toBeVisible();
+  await page.getByRole('link', { name: 'View payment' }).click();
+  await expect(page).toHaveURL(/\/payment$/);
+  await expect(page.getByRole('heading', { name: 'Payment successful' })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Application ID')).toBeVisible();
 
   const appIdElement = page.locator('p:text("Application ID") + p');
   await expect(appIdElement).toBeVisible();
   const applicationIdCode = await appIdElement.innerText();
-  expect(applicationIdCode).toMatch(/^APP-/);
+  expect(applicationIdCode).toMatch(/^BN\d+$/);
 });

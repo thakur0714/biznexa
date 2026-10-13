@@ -7,7 +7,7 @@ Rules and queue live in [JULES.md](JULES.md); step details in [ROADMAP.md](ROADM
 
 | Batch | Steps | State | PR |
 |---|---|---|---|
-| J1 | M3.24 | **Next.** Old paused task: do not resume. Start a new task with the "J1 full prompt" below. | — |
+| J1 | M3.24 | Jules wrote it (task errored after pushing); fixed and run locally by Claude 13-Oct-2026 — 16/16 Playwright. ROADMAP ticked. | PR from `jules-j1` |
 | J2 | M4.9, M4.7, M4.10, M4.16 | Done by Jules, verified locally, **squash-merged 13-Oct-2026** (`1d13f88`). ROADMAP ticked. | merged |
 | J3 | M7.2, M7.1, M4.15 | Waiting for J2 + J1 | — |
 | J4 | M4.3–M4.6 | Waiting for M4.1, M4.2 (supervised, Claude) | — |
@@ -54,6 +54,11 @@ Supervised steps to do with Claude (not Jules): **M4.1, M4.2, M4.13**.
   `panEnc`, `codeHash`, `tokenHash` (or match *secret*/*token*/*hash*; careful: `company` contains
   "pan"); notes `updatedAt` always equals `createdAt`; note/preset write + audit not in one
   transaction; unused imports in `internal-notes.controller.ts`; `(actorId)` index now redundant.
+- **13-Oct, J1 (`jules-j1`):** Jules never ran the spec (code-only) and 6 things failed locally: it enabled
+  2FA on the seeded admin (second run 403), shared the seeded customer (OTP resend wait between
+  desktop/mobile), `fill` on a select, "Next" also matched the Next.js dev-tools button, waited for a
+  success view the mock flow never reaches without reload, expected `APP-` codes (real: `BN…`).
+  CHANGELOG had wrong claims and Playwright "passing" without a run. All fixed; no app code changed.
 - Test teardown: Jules deleted shared seeded rows (category) and broke other suites — tests must
   create and delete only their own data.
 
