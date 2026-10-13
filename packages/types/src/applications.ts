@@ -136,3 +136,29 @@ export function prefillAnswers(form: FormSchema, { business, user }: PrefillSour
   }
   return out;
 }
+
+
+
+
+/** Internal notes (M4.10) */
+export const internalNoteSchema = z.object({
+  id: z.string().uuid(),
+  applicationId: z.string().uuid(),
+  content: z.string().trim().min(1),
+  authorId: z.string().uuid(),
+  authorName: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type InternalNote = z.infer<typeof internalNoteSchema>;
+
+export const internalNoteListSchema = z.array(internalNoteSchema);
+
+export const createInternalNoteInput = z.object({
+  content: z.string({ required_error: 'Enter a note' }).trim().min(1, 'Note cannot be empty').max(5000, 'Use at most 5000 characters'),
+}).strict();
+export type CreateInternalNoteInput = z.infer<typeof createInternalNoteInput>;
+
+export const updateInternalNoteInput = createInternalNoteInput;
+export type UpdateInternalNoteInput = z.infer<typeof updateInternalNoteInput>;
+

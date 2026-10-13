@@ -66,19 +66,20 @@ export class SettingsService {
     }
     
     const value = presets as object;
-    await this.prisma.setting.upsert({
-      where: { key: REJECTION_PRESETS_KEY },
-      update: { value },
-      create: { key: REJECTION_PRESETS_KEY, value },
-    });
-    
-    await this.audit.log({
-      actorId,
-      action: 'settings.rejection-presets.update',
-      entityType: 'Setting',
-      entityId: REJECTION_PRESETS_KEY,
-      before: { presets: oldPresets },
-      after: { presets },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.setting.upsert({
+        where: { key: REJECTION_PRESETS_KEY },
+        update: { value },
+        create: { key: REJECTION_PRESETS_KEY, value },
+      });
+      await this.audit.log({
+        actorId,
+        action: 'settings.rejection-presets.update',
+        entityType: 'Setting',
+        entityId: REJECTION_PRESETS_KEY,
+        before: { presets: oldPresets },
+        after: { presets },
+      }, tx);
     });
     
     return this.rejectionPresets();

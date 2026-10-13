@@ -836,6 +836,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/applications/{applicationId}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InternalNotesController_list"];
+        put?: never;
+        post: operations["InternalNotesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/applications/{applicationId}/notes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["InternalNotesController_update"];
+        post?: never;
+        delete: operations["InternalNotesController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/coupons": {
         parameters: {
             query?: never;
@@ -2551,6 +2583,34 @@ export interface components {
                 percent: number | null;
                 governmentFee: number;
             } | null;
+        };
+        InternalNoteList: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            applicationId: string;
+            content: string;
+            /** Format: uuid */
+            authorId: string;
+            authorName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        }[];
+        InternalNote: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            applicationId: string;
+            content: string;
+            /** Format: uuid */
+            authorId: string;
+            authorName: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         SellerSettings: {
             name: string | null;
@@ -5007,6 +5067,102 @@ export interface operations {
             };
             /** @description A package on the order is no longer offered, or (coupon changes) payment has started */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InternalNotesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalNoteList"];
+                };
+            };
+        };
+    };
+    InternalNotesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    content: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalNote"];
+                };
+            };
+        };
+    };
+    InternalNotesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applicationId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    content: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalNote"];
+                };
+            };
+        };
+    };
+    InternalNotesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applicationId: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
