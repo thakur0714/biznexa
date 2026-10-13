@@ -58,6 +58,39 @@ describe('couponDiscount', () => {
 });
 
 describe('state machines', () => {
+
+  describe('document state machine', () => {
+    it('allows REQUIRED to UPLOADED', () => {
+      expect(canTransition('document', 'REQUIRED', 'UPLOADED')).toBe(true);
+    });
+    it('allows UPLOADED to UNDER_REVIEW, UPLOADED, APPROVED, REJECTED', () => {
+      expect(canTransition('document', 'UPLOADED', 'UNDER_REVIEW')).toBe(true);
+      expect(canTransition('document', 'UPLOADED', 'UPLOADED')).toBe(true);
+      expect(canTransition('document', 'UPLOADED', 'APPROVED')).toBe(true);
+      expect(canTransition('document', 'UPLOADED', 'REJECTED')).toBe(true);
+    });
+    it('allows UNDER_REVIEW to APPROVED, REJECTED', () => {
+      expect(canTransition('document', 'UNDER_REVIEW', 'APPROVED')).toBe(true);
+      expect(canTransition('document', 'UNDER_REVIEW', 'REJECTED')).toBe(true);
+    });
+    it('does not allow UNDER_REVIEW to REQUIRED or UPLOADED', () => {
+      expect(canTransition('document', 'UNDER_REVIEW', 'REQUIRED')).toBe(false);
+      expect(canTransition('document', 'UNDER_REVIEW', 'UPLOADED')).toBe(false);
+    });
+    it('does not allow APPROVED to anything', () => {
+      expect(canTransition('document', 'APPROVED', 'REQUIRED')).toBe(false);
+      expect(canTransition('document', 'APPROVED', 'UPLOADED')).toBe(false);
+      expect(canTransition('document', 'APPROVED', 'UNDER_REVIEW')).toBe(false);
+      expect(canTransition('document', 'APPROVED', 'REJECTED')).toBe(false);
+    });
+    it('allows REJECTED to UPLOADED only', () => {
+      expect(canTransition('document', 'REJECTED', 'UPLOADED')).toBe(true);
+      expect(canTransition('document', 'REJECTED', 'REQUIRED')).toBe(false);
+      expect(canTransition('document', 'REJECTED', 'UNDER_REVIEW')).toBe(false);
+      expect(canTransition('document', 'REJECTED', 'APPROVED')).toBe(false);
+    });
+  });
+
   it('allows valid application transitions only', () => {
     expect(canTransition('application', 'SUBMITTED', 'DOCUMENTS_UNDER_REVIEW')).toBe(true);
     expect(canTransition('application', 'DOCUMENTS_PENDING', 'DOCUMENTS_UNDER_REVIEW')).toBe(true);
