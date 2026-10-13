@@ -7,9 +7,9 @@ Rules and queue live in [JULES.md](JULES.md); step details in [ROADMAP.md](ROADM
 
 | Batch | Steps | State | PR |
 |---|---|---|---|
-| J1 | M3.24 | Jules wrote it (task errored after pushing); fixed and run locally by Claude 13-Oct-2026 — 16/16 Playwright. ROADMAP ticked. | PR from `jules-j1` |
+| J1 | M3.24 | Jules wrote it (task errored after pushing); fixed and run locally by Claude, **merged 13-Oct-2026** (`7f8af1c`). | merged (#2) |
 | J2 | M4.9, M4.7, M4.10, M4.16 | Done by Jules, verified locally, **squash-merged 13-Oct-2026** (`1d13f88`). ROADMAP ticked. | merged |
-| J3 | M7.2, M7.1, M4.15 | Waiting for J2 + J1 | — |
+| J3 | M7.2, M7.1, M4.15 | **Next.** Start a new task with the "J3 full prompt" below. | — |
 | J4 | M4.3–M4.6 | Waiting for M4.1, M4.2 (supervised, Claude) | — |
 
 Supervised steps to do with Claude (not Jules): **M4.1, M4.2, M4.13**.
@@ -240,4 +240,89 @@ M3.24 requirements (final, do not ask about them):
 Finish with the static verification from docs/JULES.md (typecheck, lint, unit tests) with
 pass/fail counts, then open the pull request to main. In the PR write clearly:
 "E2E not run — to be run locally".
+```
+
+J3 full prompt (M7.2, M7.1, M4.15 — code-only mode, 13-Oct-2026):
+```
+Do not wait for my approval or replies at any point. I will not reply until you open a pull
+request. Never ask "is there anything else" — just continue. Create branch jules-j3 from the
+latest main once; never reset, recreate or force-push it. Push after every commit.
+Use the GitHub token only for git authentication; never print it or put it in any file,
+commit, log or the PR description.
+
+Step 1: git fetch origin && git checkout main && git pull --ff-only origin main
+        git log --oneline -1 ; ls docs/JULES.md docs/JULES_LOG.md
+        If the files are missing, STOP and report.
+
+Step 2: Read docs/JULES.md fully and follow it — it is in CODE-ONLY MODE: write code and tests,
+run typecheck, lint and unit tests only. Do NOT install or start Postgres, Redis, the API, the
+web/admin apps or Playwright, and do not run next build. I run all of that locally.
+Batch J3 = M7.2, M7.1, M4.15, in that order. Phase 0 and Phase 1 first, with real output.
+
+Step-specific requirements (final, do not ask about them):
+
+Common to all three
+- Admin UI goes in apps/admin, copying the coupons pages (app/(portal)/coupons) and
+  components/data-table.tsx: loading / empty / error states, filters in the URL, works at 360px.
+- When a page is built, add `built: true` to its item in apps/admin/src/lib/nav.ts (keep the
+  existing slugs "certificates" and "payments") and update nav.test.ts if it counts built items.
+- New zod schemas in packages/types; API uses @ZodBody/@ZodQuery; OpenAPI + api-client
+  regenerated (pnpm --filter @biznexa/api-client generate) and committed.
+- Every staff write is audit logged (before/after), like the coupons module.
+- API integration tests in apps/api/test/ in the style of admin-coupons.e2e-spec.ts, using
+  test/staff.ts for staff sessions. Tests create and delete only their own rows — never touch
+  seeded rows. You cannot run them: write "not run, to be run locally".
+- Existing endpoints and response shapes stay as they are; only add.
+
+M7.2 Certification bodies CRUD (model CertificationBody already exists — no schema change)
+- Endpoints under /api/admin/certificates/bodies, all PERMS.CERTIFICATES_MANAGE: keep the
+  existing GET; add POST, PATCH /:id, DELETE /:id.
+- Fields: name (required, trimmed, unique → 409 with a clear message), accreditation
+  (optional), website and logoUrl (optional, https:// URLs only). Logo is a URL field — no file
+  upload (stored files are private; there is no public image hosting yet).
+- DELETE refuses with 409 when any certificate uses the body; otherwise deletes.
+- Admin UI: a "Certification bodies" page reachable from the certificates section (list, add,
+  edit, delete with confirm).
+- Tests: create, duplicate name 409, edit, delete unused, delete used → 409, non-https URL 400,
+  user without certificates.manage → 403.
+
+M7.1 Admin certificate UI (API exists: GET /api/admin/certificates, POST, PATCH /:id/status,
+GET /:id/qr, GET /:id/lookups — read certificates.controller.ts and certificates.service.ts)
+- Only one API addition allowed: GET /api/admin/certificates/:id (CERTIFICATES_MANAGE, 404 when
+  missing) returning the certificate with its body name and lookup count. Add a test for it.
+- Pages at /certificates: list (search + status filter, paging as the API does), create form
+  (body picker from the bodies endpoint, dates, the API's validation messages shown per field),
+  detail (all fields, QR image, status change with a required reason — use the transitions the
+  service already allows, do not change them — and the lookups table).
+- Do not build PDF upload/generation (that is M7.3).
+- Unit tests in apps/admin for the status-change form (reason required) and the create form
+  validation.
+
+M4.15 Payment management (admin) — READ-ONLY
+- Refund actions are NOT part of this batch: refunds are M4.13, a supervised [Opus] step. Show
+  existing Refund rows read-only; no refund buttons, endpoints or gateway calls. Do not change
+  payment status anywhere.
+- New controller /api/admin/payments, PERMS.PAYMENTS_VIEW on every route:
+  - GET list: filter status group (all | success | failed | pending — pending = CREATED or
+    PENDING; refund statuses count as success-group only under "all"), date range (paidAt or
+    createdAt), search by order code, application code or customer email/mobile; server-side
+    paging (default 25, max 100), newest first; no N+1 (one query with the joins needed).
+  - GET /:id: payment with order code, application code, customer name/email, method,
+    gateway ids, amounts, failure reason, refunds (read-only) and invoice summary (id, number,
+    issuedAt). Never return rawWebhook.
+  - GET export CSV with the same filters (max 10,000 rows, 400 above that), columns: created,
+    paid, order code, application code, customer name, customer email, amount (₹ with 2
+    decimals from integer paise), status, method, gateway payment id, invoice number.
+    Guard against CSV injection (prefix cells starting with = + - @ with a single quote).
+    Content-Type text/csv, filename payments-YYYY-MM-DD.csv.
+- Invoice download in the UI uses the existing POST /api/invoices/{id}/link (it already allows
+  payments.view) — do not add another download route.
+- Admin UI at /payments: list with status tabs, filters, "Export CSV", detail page.
+- Tests: PAYMENTS_VIEW user lists/filters/details; user without it → 403; rawWebhook never in
+  any response; CSV has the header, escapes a "=cmd" customer name, amounts in rupees; paging.
+
+Finish with the static verification from docs/JULES.md (typecheck, lint, unit tests, api tsc,
+api-client generate) with pass/fail counts. One commit per step, pushed right away. Then open
+the pull request to main with the full final report. In the PR write clearly:
+"API integration tests and the admin UI not run — to be run locally".
 ```
