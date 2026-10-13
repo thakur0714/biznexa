@@ -1,5 +1,6 @@
 import { configureApp } from '../src/main';
 import { INestApplication } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import * as supertest from 'supertest';
 const request = supertest.default || supertest;
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -9,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PERMS } from '@biznexa/types';
 
 describe('AuditController (e2e)', () => {
-  let app: INestApplication;
+  let app: NestExpressApplication;
   let prisma: PrismaService;
   let jwt: JwtService;
   let adminId: string;
@@ -20,7 +21,7 @@ describe('AuditController (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.init();
     prisma = app.get(PrismaService);
@@ -54,7 +55,7 @@ describe('AuditController (e2e)', () => {
           entityType: 'OtherEntity',
           entityId: '2',
           before: { pan: 'ABCD1234E' },
-          after: null,
+          after: undefined,
           createdAt: new Date('2026-10-11T12:00:00Z'),
         }
       ]

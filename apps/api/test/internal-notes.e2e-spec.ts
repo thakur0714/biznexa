@@ -1,6 +1,7 @@
 import { configureApp } from '../src/main';
 
 import { INestApplication } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import * as supertest from 'supertest';
 const request = supertest.default || supertest;
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -10,7 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PERMS } from '@biznexa/types';
 
 describe('InternalNotesController (e2e)', () => {
-  let app: INestApplication;
+  let app: NestExpressApplication;
   let prisma: PrismaService;
   let jwt: JwtService;
 
@@ -27,7 +28,7 @@ describe('InternalNotesController (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication<NestExpressApplication>();
     
     configureApp(app);
     await app.init();

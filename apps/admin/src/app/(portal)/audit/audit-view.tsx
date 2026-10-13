@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button, Field, Notice, Pagination } from '@biznexa/ui';
+import { Button, Field, Notice } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
 import { NotAllowed } from '@/components/portal-shell';
 import { useAuth } from '@/lib/auth';
@@ -39,12 +39,13 @@ function AuditLogPage() {
     };
   }, [params]);
 
-  const [data, setData] = useState<any | null>(null);
+  const [data, setData] = useState<import('@biznexa/types').AuditLogPage | null>(null);
 
-  useMemo(() => {
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     let cancelled = false;
-    api.call((c) => c.GET('/api/admin/audit', { params: { query: filter as any } }))
+    api.call((c) => c.GET('/api/admin/audit', { params: { query: filter as unknown as Record<string, never> } }))
       .then((d) => {
         if (!cancelled) {
           setData(d);
@@ -76,12 +77,12 @@ function AuditLogPage() {
         className="grid grid-cols-2 gap-4 sm:grid-cols-4"
         onSubmit={(e) => e.preventDefault()}
       >
-        <Field label="Actor ID" value={filter.actorId || ''} onChange={(e) => updateFilter('actorId', e.target.value)} />
-        <Field label="Entity Type" value={filter.entityType || ''} onChange={(e) => updateFilter('entityType', e.target.value)} />
-        <Field label="Entity ID" value={filter.entityId || ''} onChange={(e) => updateFilter('entityId', e.target.value)} />
-        <Field label="Action" value={filter.action || ''} onChange={(e) => updateFilter('action', e.target.value)} />
-        <Field label="From (IST)" type="date" value={filter.from?.split('T')[0] || ''} onChange={(e) => updateFilter('from', e.target.value ? new Date(e.target.value + 'T00:00:00+05:30').toISOString() : '')} />
-        <Field label="To (IST)" type="date" value={filter.to?.split('T')[0] || ''} onChange={(e) => updateFilter('to', e.target.value ? new Date(e.target.value + 'T23:59:59+05:30').toISOString() : '')} />
+        <Field id="filter-actor" label="Actor ID" value={filter.actorId || ''} onChange={(e) => updateFilter('actorId', e.target.value)} />
+        <Field id="filter-entityType" label="Entity Type" value={filter.entityType || ''} onChange={(e) => updateFilter('entityType', e.target.value)} />
+        <Field id="filter-entityId" label="Entity ID" value={filter.entityId || ''} onChange={(e) => updateFilter('entityId', e.target.value)} />
+        <Field id="filter-action" label="Action" value={filter.action || ''} onChange={(e) => updateFilter('action', e.target.value)} />
+        <Field id="filter-from" label="From (IST)" type="date" value={filter.from?.split('T')[0] || ''} onChange={(e) => updateFilter('from', e.target.value ? new Date(e.target.value + 'T00:00:00+05:30').toISOString() : '')} />
+        <Field id="filter-to" label="To (IST)" type="date" value={filter.to?.split('T')[0] || ''} onChange={(e) => updateFilter('to', e.target.value ? new Date(e.target.value + 'T23:59:59+05:30').toISOString() : '')} />
       </form>
 
       {error && <Notice tone="error">{error}</Notice>}
@@ -108,11 +109,11 @@ function AuditLogPage() {
                 <td colSpan={6} className="py-4 text-center text-muted">No records found.</td>
               </tr>
             ) : (
-              data.items.map((log: any) => (
+              data.items.map((log) => (
                 <tr key={log.id} className="border-b">
                   <td className="py-3 pr-4">{formatDate(log.createdAt)}</td>
                   <td className="py-3 pr-4">
-                    {log.actorName ? \`\${log.actorName} (\${log.actorEmail})\` : log.actorId || 'System'}
+                    {log.actorName ? `${log.actorName} (${log.actorEmail})` : log.actorId || 'System'}
                   </td>
                   <td className="py-3 pr-4">{log.action}</td>
                   <td className="py-3 pr-4">{log.entityType} {log.entityId}</td>
@@ -130,11 +131,13 @@ function AuditLogPage() {
       </div>
 
       {data && data.pages > 1 && (
-        <Pagination
-          page={data.page}
-          pages={data.pages}
-          onPage={(p) => updateFilter('page', String(p))}
-        />
+        
+          <div className="flex gap-4">
+            <Button disabled={data.page === 1} onClick={() => updateFilter('page', String(data.page - 1))}>Previous</Button>
+            <span className="text-sm self-center">Page {data.page} of {data.pages}</span>
+            <Button disabled={data.page === data.pages} onClick={() => updateFilter('page', String(data.page + 1))}>Next</Button>
+          </div>
+
       )}
     </div>
   );
