@@ -9,7 +9,7 @@ Rules and queue live in [JULES.md](JULES.md); step details in [ROADMAP.md](ROADM
 |---|---|---|---|
 | J1 | M3.24 | Jules wrote it (task errored after pushing); fixed and run locally by Claude, **merged 13-Oct-2026** (`7f8af1c`). | merged (#2) |
 | J2 | M4.9, M4.7, M4.10, M4.16 | Done by Jules, verified locally, **squash-merged 13-Oct-2026** (`1d13f88`). ROADMAP ticked. | merged |
-| J3 | M7.2, M7.1, M4.15 | **Next.** Start a new task with the "J3 full prompt" below. | — |
+| J3 | M7.2, M7.1, M4.15 | Jules pushed all 3 steps, then failed to open the PR. Fixed + verified locally by Claude 13-Oct-2026. | PR from `jules-j3` |
 | J4 | M4.3–M4.6 | Waiting for M4.1, M4.2 (supervised, Claude) | — |
 
 Supervised steps to do with Claude (not Jules): **M4.1, M4.2, M4.13**.
