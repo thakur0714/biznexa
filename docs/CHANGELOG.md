@@ -31,5 +31,27 @@
 - Service prices, testimonials, certification-body names and policy page text are demo content.
 - Logo and colours are a placeholder brand.
 
-### Next: Milestone 3 — Ordering
-Dynamic application form renderer, file upload to S3 (pre-signed URLs), cart/checkout, coupons at checkout, Razorpay payments with verified webhooks, GST invoice PDFs. The "Continue to your details" button on the order summary page is where this connects.
+## Milestone 3 — Ordering (13-Oct-2026)
+
+### Built and tested
+
+**Ordering & Application Forms**
+- Dynamic application form renderer: JSON schema forms with field types (text, select, multi-select, repeater, address, date, file), dynamic conditional fields (`showIf`), validation rules, autosaving drafts, and versioning.
+- Document management: required document checklist per service/package, file uploads via signed URLs, version history, virus scanning, and approval/rejection state machine.
+- Business entities: customer profile business entity picker and management.
+
+**Checkout & Payments**
+- Order summary and tax calculation: GST breakdown (CGST+SGST vs IGST based on place of supply), government fee handling, advance/partial payment options.
+- Coupon engine: discount validation (percentage / fixed amount, minimum order value, max discount cap, per-user and total usage limits), admin coupon management API.
+- Online payments: Razorpay integration and in-memory MOCK payment gateway, secure payment initiation, signed webhook handler with idempotent processing (`payment.captured`, `payment.failed`).
+- Invoicing & PDF generation: GST-compliant tax invoice template, HTML to PDF generation via Playwright/Chromium, signed invoice download links.
+- End-to-end full order journey Playwright test spec (`apps/web/e2e/order-journey.spec.ts`) covering customer login, package choice, form submission, document upload, coupon redemption, mock payment checkout, signed webhook verification, and success confirmation view.
+
+### Test results
+- Shared package (`@biznexa/types`): 244 unit tests passing.
+- UI package (`@biznexa/ui`): 40 unit tests passing.
+- Admin app (`@biznexa/admin`): 89 unit tests passing.
+- Browser: Playwright smoke spec + full order journey spec (`order-journey.spec.ts`).
+
+### Next: Milestone 4 — Fulfilment (Admin / Ops)
+Application state machine, admin applications list, detail view, assignment to ops executives/consultants, status update UI, document review queue, internal notes, rejection presets.
