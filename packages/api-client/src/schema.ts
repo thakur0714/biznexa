@@ -669,11 +669,27 @@ export interface paths {
         };
         get: operations["AdminCertificatesController_bodies"];
         put?: never;
-        post?: never;
+        post: operations["AdminCertificatesController_createBody"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/admin/certificates/bodies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AdminCertificatesController_deleteBody"];
+        options?: never;
+        head?: never;
+        patch: operations["AdminCertificatesController_updateBody"];
         trace?: never;
     };
     "/api/admin/certificates/{id}/status": {
@@ -1832,6 +1848,22 @@ export interface components {
             status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
             certificationBody: string;
         }[];
+        CertificationBodyList: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            accreditation: string | null;
+            logoUrl: string | null;
+            website: string | null;
+        }[];
+        CertificationBodyRow: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            accreditation: string | null;
+            logoUrl: string | null;
+            website: string | null;
+        };
         StoredFile: {
             /** Format: uuid */
             id: string;
@@ -4586,7 +4618,86 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["CertificationBodyList"];
+                };
+            };
+        };
+    };
+    AdminCertificatesController_createBody: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    accreditation?: string | null;
+                    website?: (string | "") | null;
+                    logoUrl?: (string | "") | null;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificationBodyRow"];
+                };
+            };
+        };
+    };
+    AdminCertificatesController_deleteBody: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
+            };
+        };
+    };
+    AdminCertificatesController_updateBody: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    accreditation?: string | null;
+                    website?: (string | "") | null;
+                    logoUrl?: (string | "") | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificationBodyRow"];
+                };
             };
         };
     };
