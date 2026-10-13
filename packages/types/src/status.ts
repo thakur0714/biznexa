@@ -1,3 +1,4 @@
+import { z } from 'zod';
 /**
  * Status models and allowed transitions (PRD prompt, Section 6).
  * The API must call assertTransition() before every status change.
@@ -121,3 +122,10 @@ export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
   DELIVERED: 'Documents Available',
   CANCELLED: 'Cancelled',
 };
+
+/** Required when moving a document to REJECTED. */
+export const rejectDocumentSchema = z.object({
+  reason: z.string({ required_error: 'Enter a rejection reason', invalid_type_error: 'Enter a rejection reason' })
+    .trim()
+    .min(1, 'Reason cannot be empty'),
+});
