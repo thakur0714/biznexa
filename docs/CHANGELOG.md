@@ -31,5 +31,31 @@
 - Service prices, testimonials, certification-body names and policy page text are demo content.
 - Logo and colours are a placeholder brand.
 
-### Next: Milestone 3 — Ordering
-Dynamic application form renderer, file upload to S3 (pre-signed URLs), cart/checkout, coupons at checkout, Razorpay payments with verified webhooks, GST invoice PDFs. The "Continue to your details" button on the order summary page is where this connects.
+## Milestone 3 — Ordering (13-Oct-2026)
+
+### Built and tested
+
+**Application forms**
+- Versioned form schemas per service (saving creates version N+1; an application keeps the version it started with), shared validator, admin form builder with preview.
+- Ready-made forms for 18 services (Private Limited, LLP, GST, Trademark, ITR, ISO, FSSAI…) and a generic form for the rest.
+- Web form renderer (text, select, multi-select, repeater, address, date, conditional `showIf` fields), multi-step form page with autosave and resume.
+- Customer business entities (GSTIN/PAN checked, PAN encrypted at rest); draft order + application with safe `ORD-YYYY-NNNNNN` / `BN…` codes.
+- Document checklist step: upload per required document, pay now and upload later.
+
+**Checkout and payments**
+- Coupons: validation (percentage / flat, minimum order, cap, per-user and total limits) and admin coupon management with usage stats.
+- Order summary with GST (CGST+SGST or IGST by place of supply), government fees outside GST, seller details from Settings.
+- Payment gateway interface with Razorpay and a mock gateway; start payment, client callback, signed and idempotent webhook (`payment.captured`, `payment.failed`), payment success page, partial (advance) payments.
+- Invoices: gap-free numbering, invoice record on payment, PDF generation queue (Chromium), GST rule-46 invoice template, owner-only signed download link.
+
+### Test results (13-Oct-2026, local)
+- Shared package: 244 unit tests passing. API client: 7. UI package: 40. Admin app: 89.
+- API: 279 tests passing in 33 suites (integration against a real database, plus unit tests).
+- Browser: 16 Playwright tests passing (smoke journeys + the full order journey, desktop and mobile). The order journey: new customer logs in with mobile OTP → Trademark Registration, Basic package → three-step form → uploads a PDF → applies a coupon made through the admin API → pays with the mock gateway (completed by a signed webhook) → payment success with the Application ID.
+
+### Placeholders to replace before launch
+- Service prices and placeholder invoice layout details (logo, signature line) — owner/CA to confirm.
+- Not tried against Razorpay test mode yet (no keys).
+
+### Next: Milestone 4 — Fulfilment (Admin / Ops)
+Admin applications list and detail, assignment, status updates and the document review queue. Rejection presets, internal notes, the audit log viewer and document state tests are already done (13-Oct-2026).
