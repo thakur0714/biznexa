@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Unauthor
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { TWO_FACTOR_REQUIRED } from '@biznexa/types';
-import { AuthUser, IS_PUBLIC, PERMISSIONS } from './auth.decorators';
+import { AuthUser, IS_PUBLIC, PERMISSIONS, ANY_PERMISSIONS } from './auth.decorators';
 
 /**
  * Global guard: every route requires a valid access token unless marked @Public().
@@ -40,12 +40,14 @@ export class AuthGuard implements CanActivate {
     if (!req.user) throw new UnauthorizedException('Please log in');
 
     const required = this.reflector.getAllAndOverride<string[]>(PERMISSIONS, targets) ?? [];
+    const anyRequired = this.reflector.getAllAndOverride<string[]>(ANY_PERMISSIONS, targets) ?? [];
     const user: AuthUser = req.user;
     const missing = required.filter((p) => !user.permissions.includes(p));
-    if (missing.length && user.twoFactorPending) {
+    const missingAny = anyRequired.length > 0 && !anyRequired.some((p) => user.permissions.includes(p));
+    if ((missing.length || missingAny) && user.twoFactorPending) {
       throw new ForbiddenException({ statusCode: 403, code: TWO_FACTOR_REQUIRED, message: 'Enter the code from your authenticator app to continue' });
     }
-    if (missing.length) throw new ForbiddenException('You do not have permission to do this');
+    if (missing.length || missingAny) throw new ForbiddenException('You do not have permission to do this');
     return true;
   }
 }

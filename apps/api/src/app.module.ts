@@ -6,7 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ApiTags } from '@nestjs/swagger';
 import { env } from './config/env';
 import { PrismaModule, PrismaService } from './prisma/prisma.service';
-import { AuditModule } from './audit/audit.service';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CatalogueModule } from './catalogue/catalogue.module';
 import { CertificatesModule } from './certificates/certificates.module';

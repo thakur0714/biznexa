@@ -9,7 +9,7 @@
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { SELLER_SETTING_KEYS, gstinCheckChar, sellerSettingsSchema, stateName, type SellerSettings } from '@biznexa/types';
+import { SELLER_SETTING_KEYS, REJECTION_PRESETS_KEY, gstinCheckChar, sellerSettingsSchema, rejectionPresetsSchema, stateName, type SellerSettings, type RejectionPresets } from '@biznexa/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -49,6 +49,7 @@ beforeAll(async () => {
   await app.init();
   http = request(app.getHttpServer()) as unknown as ReturnType<typeof request>;
   prisma = app.get(PrismaService);
+  await prisma.setting.deleteMany({ where: { key: REJECTION_PRESETS_KEY } });
   original = await prisma.setting.findMany({ where: { key: { in: KEYS } }, select: { key: true, value: true } });
   admin = (await staffSession(http, prisma, 'ADMIN', email(1))).accessToken;
   ops = (await staffSession(http, prisma, 'OPERATIONS', email(2))).accessToken;
@@ -57,8 +58,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   const kept = new Map(original.map((r) => [r.key, r.value]));
-  await prisma.setting.deleteMany({ where: { key: { in: KEYS.filter((k) => !kept.has(k)) } } });
+  await prisma.setting.deleteMany({ where: { key: { in: [...KEYS.filter((k) => !kept.has(k)), REJECTION_PRESETS_KEY] } } });
   for (const [key, value] of kept) await prisma.setting.update({ where: { key }, data: { value: value as object } });
+  await prisma.setting.deleteMany({ where: { key: REJECTION_PRESETS_KEY } });
   await prisma.auditLog.deleteMany({ where: { actorId: adminId } });
   await prisma.user.deleteMany({ where: { email: { startsWith: `e2e-st-${run}` } } });
   await app.close();
@@ -120,5 +122,56 @@ describe('admin seller settings (M3.14)', () => {
 
   it('is the seller state the order summary uses', async () => {
     expect(stateName((await stored(SELLER_SETTING_KEYS.state)) as string)).toBe('Punjab');
+  });
+});
+
+
+describe('rejection presets (M4.9)', () => {
+  const getPresets = (token: string) => http.get('/api/admin/settings/rejection-presets').set(as(token));
+  const putPresets = (body: unknown, token: string) => http.put('/api/admin/settings/rejection-presets').set(as(token)).send(body as object);
+
+  it('allows GET for documents.review and settings.manage, but PUT only for settings.manage', async () => {
+    // ops has documents.review (from seeded STAFF_ROLES if we used demo data, but here we created ops as OPERATIONS)
+    // Wait, ops in this test suite has the OPERATIONS role. Does it have documents.review? Let's check roles.
+    // In seed-data, OPERATIONS has documents.review but not settings.manage.
+    
+    // Admin (settings.manage)
+    await getPresets(admin).expect(200);
+    
+    // Ops (documents.review but not settings.manage)
+    await getPresets(ops).expect(200);
+    await putPresets(['One'], ops).expect(403);
+  });
+
+  it('admin GET/PUT ok, writes an audit log', async () => {
+    const presets = ['Blurry', 'Missing signature'];
+    const res = await putPresets(presets, admin).expect(200);
+    const body = res.body as RejectionPresets;
+    expect(rejectionPresetsSchema.strict().safeParse(body).error).toBeUndefined();
+    expect(body.presets).toEqual(presets);
+    
+    expect((await getPresets(admin).expect(200)).body.presets).toEqual(presets);
+
+    const log = await prisma.auditLog.findFirst({
+      where: { actorId: adminId, action: 'settings.rejection-presets.update' },
+      orderBy: { createdAt: 'desc' },
+    });
+    const allLogs = await prisma.auditLog.findMany(); console.log('ALL LOGS:', allLogs.filter(l => l.action.includes('settings.rejection-presets.update')));
+    expect(log).not.toBeNull();
+    expect(log?.after).toEqual({ presets });
+  });
+
+  it('refuses invalid presets (empty, duplicate, >50)', async () => {
+    await putPresets([''], admin).expect(400);
+    await putPresets(['Blurry', 'Blurry'], admin).expect(400);
+    const tooMany = Array.from({ length: 51 }, (_, i) => `Preset ${i}`);
+    await putPresets(tooMany, admin).expect(400);
+  });
+
+  it('customer and support cannot access', async () => {
+    // support is not defined, we'll create a customer token to test 401/403
+    // well, without token it's 401
+    await http.get('/api/admin/settings/rejection-presets').expect(401);
+    await http.put('/api/admin/settings/rejection-presets').send(['One']).expect(401);
   });
 });

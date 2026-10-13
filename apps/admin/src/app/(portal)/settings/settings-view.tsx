@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { OPTION_SOURCES, formatDate } from '@biznexa/types';
+import { OPTION_SOURCES, formatDate, type RejectionPresets } from '@biznexa/types';
 import { Button, Field, Notice, Select, useToast } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
@@ -16,7 +16,12 @@ export function SettingsView() {
   const item = findNavItem('settings');
   if (!user || !item) return null;
   if (!canSee(item, user.permissions)) return <NotAllowed />;
-  return <SellerSettingsPage />;
+  return (
+    <div className="space-y-12">
+      <SellerSettingsPage />
+      <RejectionPresetsPage />
+    </div>
+  );
 }
 
 type Errors = Partial<Record<SellerFormField, string>>;
@@ -153,6 +158,120 @@ function SellerSettingsPage() {
             <div className="flex flex-wrap items-center gap-3">
               <Button variant="ink" type="submit" disabled={saving}>
                 {saving ? 'Saving…' : 'Save details'}
+              </Button>
+              {saved?.updatedAt && <span className="text-sm text-muted">Last changed {formatDate(saved.updatedAt)}</span>}
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+function RejectionPresetsPage() {
+  const api = useApi();
+  const toast = useToast();
+  const [saved, setSaved] = useState<RejectionPresets | null>(null);
+  const [presets, setPresets] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.call((c) => c.GET('/api/admin/settings/rejection-presets')).then(
+      (s) => {
+        if (cancelled) return;
+        setSaved(s);
+        setPresets(s.presets);
+        setLoadError(null);
+      },
+      (err: Error) => !cancelled && setLoadError(err.message),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [api, reload]);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const clean = presets.map((p) => p.trim()).filter(Boolean);
+    if (new Set(clean).size !== clean.length) {
+      setFormError('Presets must be unique');
+      return;
+    }
+    setFormError(null);
+    setSaving(true);
+    try {
+      const s = await api.call((c) => c.PUT('/api/admin/settings/rejection-presets', { body: clean }));
+      setSaved(s);
+      setPresets(s.presets);
+      toast('Rejection presets saved', 'success');
+    } catch (err) {
+      if (err instanceof ClientApiError && err.errors.length) {
+        setFormError(err.errors[0].message);
+      } else setFormError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="max-w-[800px]">
+      <h2 className="text-xl font-bold tracking-[-0.02em]">Rejection Presets</h2>
+      <p className="mt-1 text-muted">Reasons for rejecting a document.</p>
+
+      <div className="mt-6">
+        {loadError ? (
+          <div className="space-y-3">
+            <Notice tone="error">{loadError}</Notice>
+            <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
+              Try again
+            </Button>
+          </div>
+        ) : !saved ? (
+          <p className="text-muted" role="status">
+            Loading presets…
+          </p>
+        ) : (
+          <form onSubmit={submit} noValidate className="space-y-6">
+            {formError && <Notice tone="error">{formError}</Notice>}
+
+            <fieldset className="grid gap-4 rounded-md border border-rule bg-white p-4">
+              <legend className="px-1 text-sm font-semibold text-night">Presets</legend>
+              {presets.map((preset, i) => (
+                <div key={i} className="flex gap-2">
+                  <Field
+                    id={`preset-${i}`}
+                    label={`Preset ${i + 1}`}
+                    value={preset}
+                    onChange={(e) => {
+                      const newPresets = [...presets];
+                      newPresets[i] = e.target.value;
+                      setPresets(newPresets);
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-6"
+                    onClick={() => setPresets(presets.filter((_, index) => index !== i))}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" onClick={() => setPresets([...presets, ''])}>
+                Add Preset
+              </Button>
+            </fieldset>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="ink" type="submit" disabled={saving}>
+                {saving ? 'Saving…' : 'Save presets'}
               </Button>
               {saved?.updatedAt && <span className="text-sm text-muted">Last changed {formatDate(saved.updatedAt)}</span>}
             </div>

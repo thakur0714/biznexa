@@ -6,11 +6,13 @@ import { ApplicationsController } from './applications.controller';
 import { ApplicationsService } from './applications.service';
 import { OrderSummaryController } from './order-summary.controller';
 import { OrderSummaryService } from './order-summary.service';
+import { InternalNotesController } from './internal-notes.controller';
+import { InternalNotesService } from './internal-notes.service';
 
 @Module({
   imports: [CouponsModule],
-  controllers: [ApplicationsController, ApplicationDocumentsController, OrderSummaryController],
-  providers: [ApplicationsService, ApplicationDocumentsService, OrderSummaryService],
+  controllers: [ApplicationsController, ApplicationDocumentsController, OrderSummaryController, InternalNotesController],
+  providers: [ApplicationsService, ApplicationDocumentsService, OrderSummaryService, InternalNotesService],
   exports: [ApplicationsService, ApplicationDocumentsService, OrderSummaryService],
 })
 export class ApplicationsModule {}

@@ -22,3 +22,4 @@ export * from './orders';
 export * from './settings';
 export * from './payments';
 export * from './invoices';
+export * from './audit';
