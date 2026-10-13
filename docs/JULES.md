@@ -96,10 +96,17 @@ in the same style as earlier steps. Add choices the spec didn't cover to `docs/D
 - No new, removed or upgraded dependencies unless the step clearly needs it; say which and why,
   and keep `pnpm-lock.yaml` in sync.
 - Money in integer paise; GST/coupon maths only through `packages/types` helpers.
-- Authorization in the API, not only the UI.
+- Authorization in the API, not only the UI. `PERMS.ADMIN_ACCESS` only means "may log in to the
+  admin portal" (every staff role has it) — never use it as a permission check. Users with only
+  `applications.view_assigned` may touch an application (and its documents, notes, messages)
+  only when `Application.assignedToId` is their id; otherwise 404.
 - No hard-coded services, prices, stages, documents or form fields.
 - No secrets, real keys or `.env` files in commits. No PII in logs.
 - Never take an `[Opus]` step, even if it looks easy.
+- "Tests pass" is not a result. Always give the exact command and its pass/fail counts, and never
+  call a step complete while its tests are still failing or not yet run.
+- Never change or remove an existing transition, schema field or API response; only add. If a
+  step seems to need it, STOP and report.
 - Stopping with a clear report is always better than a guess.
 
 ### Final report (always, also after a STOP)
