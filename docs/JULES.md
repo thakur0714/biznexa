@@ -87,7 +87,9 @@ item. Tick the step in `docs/ROADMAP.md` with a `*Done <DD-Mon-YYYY>:*` note and
 in the same style as earlier steps. Add choices the spec didn't cover to `docs/DECISIONS.md`
 (next D-number).
 
-**G. Commit.** One commit per step: `M4.9 — Rejection presets`. Then go to the next step.
+**G. Commit and push.** One commit per step: `M4.9 — Rejection presets`. Push the branch to
+GitHub right after each step's commit, so finished work is never lost. Then go to the next step.
+Open the pull request only at the end.
 
 ### Hard rules (every phase)
 - Only the steps of your batch. No "while I'm here" refactors or changes in other modules.
@@ -108,6 +110,10 @@ in the same style as earlier steps. Add choices the spec didn't cover to `docs/D
 - Never change or remove an existing transition, schema field or API response; only add. If a
   step seems to need it, STOP and report.
 - Stopping with a clear report is always better than a guess.
+- Never ask "is there anything else" or wait for confirmation — nobody replies until the PR.
+- Create your branch once. Never reset, recreate or force-push it, and never discard finished
+  steps. If you get new instructions mid-task, apply them on top of the existing work.
+- Never print, log or commit a GitHub token, and never put it in the PR description.
 
 ### Final report (always, also after a STOP)
 1. Phase 0 and Phase 1 output (with test counts)
