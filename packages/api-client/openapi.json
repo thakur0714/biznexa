@@ -5637,7 +5637,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCertificateList"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -5745,7 +5752,243 @@
         "parameters": [],
         "responses": {
           "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificationBodyList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      },
+      "post": {
+        "operationId": "AdminCertificatesController_createBody",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "accreditation": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  },
+                  "website": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      }
+                    ],
+                    "nullable": true
+                  },
+                  "logoUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      }
+                    ],
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificationBodyRow"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
+    "/api/admin/certificates/bodies/{id}": {
+      "patch": {
+        "operationId": "AdminCertificatesController_updateBody",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "accreditation": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  },
+                  "website": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      }
+                    ],
+                    "nullable": true
+                  },
+                  "logoUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      }
+                    ],
+                    "nullable": true
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificationBodyRow"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      },
+      "delete": {
+        "operationId": "AdminCertificatesController_deleteBody",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
+    "/api/admin/certificates/{id}": {
+      "get": {
+        "operationId": "AdminCertificatesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCertificateRow"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -7579,6 +7822,214 @@
         },
         "tags": [
           "payments"
+        ]
+      }
+    },
+    "/api/admin/payments": {
+      "get": {
+        "operationId": "AdminPaymentsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "success",
+                "failed",
+                "pending"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · payments"
+        ]
+      }
+    },
+    "/api/admin/payments/export": {
+      "get": {
+        "operationId": "AdminPaymentsController_exportCsv",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "success",
+                "failed",
+                "pending"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · payments"
+        ]
+      }
+    },
+    "/api/admin/payments/{id}": {
+      "get": {
+        "operationId": "AdminPaymentsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPaymentDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · payments"
         ]
       }
     },
@@ -11690,6 +12141,367 @@
           ],
           "additionalProperties": false
         }
+      },
+      "AdminCertificateList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "certificateNumber": {
+                  "type": "string"
+                },
+                "verificationId": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "organizationName": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "address": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "issueDate": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "validFrom": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "validUntil": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "certificationBodyId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "certificationBody": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE",
+                    "SUSPENDED",
+                    "WITHDRAWN",
+                    "EXPIRED"
+                  ]
+                },
+                "statusReason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "pdfKey": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "showPdfPublicly": {
+                  "type": "boolean"
+                },
+                "applicationId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "businessEntityId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "_count": {
+                  "type": "object",
+                  "properties": {
+                    "lookups": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "lookups"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "certificateNumber",
+                "verificationId",
+                "type",
+                "organizationName",
+                "scope",
+                "address",
+                "issueDate",
+                "validFrom",
+                "validUntil",
+                "certificationBodyId",
+                "certificationBody",
+                "status",
+                "statusReason",
+                "pdfKey",
+                "showPdfPublicly",
+                "applicationId",
+                "businessEntityId",
+                "createdAt",
+                "updatedAt",
+                "_count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ],
+        "additionalProperties": false
+      },
+      "CertificationBodyList": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": "string"
+            },
+            "accreditation": {
+              "type": "string",
+              "nullable": true
+            },
+            "logoUrl": {
+              "type": "string",
+              "nullable": true
+            },
+            "website": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "accreditation",
+            "logoUrl",
+            "website"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "CertificationBodyRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "accreditation": {
+            "type": "string",
+            "nullable": true
+          },
+          "logoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "accreditation",
+          "logoUrl",
+          "website"
+        ],
+        "additionalProperties": false
+      },
+      "AdminCertificateRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "certificateNumber": {
+            "type": "string"
+          },
+          "verificationId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "certificationBodyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "certificationBody": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "WITHDRAWN",
+              "EXPIRED"
+            ]
+          },
+          "statusReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "pdfKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "showPdfPublicly": {
+            "type": "boolean"
+          },
+          "applicationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "businessEntityId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "_count": {
+            "type": "object",
+            "properties": {
+              "lookups": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "lookups"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "certificateNumber",
+          "verificationId",
+          "type",
+          "organizationName",
+          "scope",
+          "address",
+          "issueDate",
+          "validFrom",
+          "validUntil",
+          "certificationBodyId",
+          "certificationBody",
+          "status",
+          "statusReason",
+          "pdfKey",
+          "showPdfPublicly",
+          "applicationId",
+          "businessEntityId",
+          "createdAt",
+          "updatedAt",
+          "_count"
+        ],
+        "additionalProperties": false
       },
       "StoredFile": {
         "type": "object",
@@ -16043,6 +16855,263 @@
         "required": [
           "presets",
           "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "AdminPaymentList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "gateway": {
+                  "type": "string"
+                },
+                "gatewayOrderId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "gatewayPaymentId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "amount": {
+                  "type": "integer"
+                },
+                "method": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "CREATED",
+                    "PENDING",
+                    "SUCCESS",
+                    "FAILED",
+                    "REFUND_INITIATED",
+                    "REFUNDED",
+                    "PARTIALLY_REFUNDED"
+                  ]
+                },
+                "failureReason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "paidAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "orderCode": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "applicationCode": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customerName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customerEmail": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "gateway",
+                "gatewayOrderId",
+                "gatewayPaymentId",
+                "amount",
+                "method",
+                "status",
+                "failureReason",
+                "paidAt",
+                "createdAt",
+                "orderCode",
+                "applicationCode",
+                "customerName",
+                "customerEmail"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ],
+        "additionalProperties": false
+      },
+      "AdminPaymentDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gateway": {
+            "type": "string"
+          },
+          "gatewayOrderId": {
+            "type": "string",
+            "nullable": true
+          },
+          "gatewayPaymentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "method": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "PENDING",
+              "SUCCESS",
+              "FAILED",
+              "REFUND_INITIATED",
+              "REFUNDED",
+              "PARTIALLY_REFUNDED"
+            ]
+          },
+          "failureReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "orderCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "applicationCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerMobile": {
+            "type": "string",
+            "nullable": true
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "amount": {
+                  "type": "integer"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "amount",
+                "reason",
+                "status",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "invoice": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "number": {
+                "type": "string"
+              },
+              "issuedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "issuedAt"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "gateway",
+          "gatewayOrderId",
+          "gatewayPaymentId",
+          "amount",
+          "method",
+          "status",
+          "failureReason",
+          "paidAt",
+          "createdAt",
+          "orderCode",
+          "applicationCode",
+          "customerName",
+          "customerEmail",
+          "customerMobile",
+          "refunds",
+          "invoice"
         ],
         "additionalProperties": false
       },
