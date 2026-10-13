@@ -3,11 +3,12 @@
 `docs/ROADMAP.md` stays the only source of truth for what each step is. This file only says
 **how** Jules works without supervision and **which** steps it may take, in which order.
 
-Task prompt to give Jules (change only the batch name):
+Task prompt to give Jules: the batch's full prompt from `docs/JULES_LOG.md`.
 
-```
-Follow docs/JULES.md exactly. Do batch J2.
-```
+**Code-only mode (since 13-Oct-2026).** Jules writes code and tests and checks them statically;
+it does **not** run the project. No database, Redis, API server, web server, Playwright or Next
+builds in Jules's container — they made it stop or loop. The owner runs all of that locally
+before merging.
 
 ---
 
@@ -20,29 +21,34 @@ protocol below replaces any approval waits — do not wait for plan approval, bu
 rule says STOP.
 
 ### Phase 0 — Environment check (once per task, no file changes allowed)
-Run and record the output of each:
+Run and record the output of each (no database or Redis needed):
 ```
 node -v                      # must be v22.x
 pnpm -v                      # must be 10.28.x
-pg_isready -h localhost      # Postgres must accept connections
-redis-cli ping               # must answer PONG
 pnpm install --frozen-lockfile
+cp -n apps/api/.env.example apps/api/.env   # git-ignored; placeholder values are enough
 pnpm --filter @biznexa/types build
-cd apps/api && npx prisma generate && npx prisma migrate deploy && npx tsx prisma/seed.ts
+cd apps/api && npx prisma generate
 ```
 If **any** of these is missing or fails → **STOP the whole task.** Do not create, edit or delete
 any file. Do not work around it by changing code, config, `package.json`, the lockfile, tests or
 migrations. Report which command failed, its error output, and what must be installed.
 
-### Phase 1 — Baseline tests (once per task, no file changes allowed)
+### Phase 1 — Baseline checks (once per task, no file changes allowed)
 ```
+pnpm typecheck
+pnpm lint
 pnpm --filter @biznexa/types test
 pnpm --filter @biznexa/ui test
 pnpm --filter @biznexa/admin test
-cd apps/api && npx tsc -p tsconfig.json --noEmit && npx jest
 ```
 Record pass/fail counts. If the baseline is not green → **STOP the whole task** and report the
-failing tests. Do not fix them.
+failures. Do not fix them.
+
+**Do not run** (the owner runs these locally): `npx jest` in `apps/api` (needs Postgres/Redis),
+`prisma migrate`, the seed, the API or web servers, Playwright, `next build`. Never install
+Postgres, Redis or Chromium. If a step can only be checked by running one of these, write the
+code and tests anyway and say in the PR exactly what must be run locally.
 
 ### For each step in the batch
 
@@ -63,24 +69,34 @@ you will add. Keep it in your final report. If the plan touches more than ~10 fi
 modules, or anything essential is ambiguous or contradicts `docs/DECISIONS.md` → STOP the batch
 and report your questions. Never guess on money, GST, payments, permissions or data rules.
 
-**D. Build in slices: build → test → build → test.** Split the plan into small slices (shared
+**D. Build in slices: code → check → code → check.** Split the plan into small slices (shared
 types → API service → controller → UI). For each slice: write the code, write its tests in the
-same slice, run that package's tests and typecheck, and only move on when green. If a test fails,
-fix the code, not the test (unless the test is wrong — then explain why). If the same failure
-happens twice and you are not sure of the cause → STOP the batch and report.
+same slice (API integration tests too — you write them, the owner runs them), then run
+`pnpm typecheck`, `pnpm lint` and the unit tests of the packages you changed (types, ui, admin),
+and only move on when green. If a check fails, fix the code, not the test (unless the test is
+wrong — then explain why). If the same failure happens twice and you are not sure of the cause
+→ STOP the batch and report.
 
-**E. Full verification (same as CI).**
+**D2. Code review instead of running.** Since the API and app are not run, review your own diff
+carefully before committing: trace each new endpoint from controller → service → Prisma query
+and check permissions, scoping (404 for records the user may not see), validation, transactions,
+audit log, error messages and the response shape; check every API test you wrote would really
+hit the code path it claims (right URL, method, user, seeded data it relies on); check new
+migrations are valid SQL for the schema change; check UI states (loading, empty, error, 360px).
+List what you checked in the PR.
+
+**E. Static verification (no database, no servers).**
 ```
 pnpm typecheck
 pnpm lint
 pnpm --filter @biznexa/types test
 pnpm --filter @biznexa/ui test
 pnpm --filter @biznexa/admin test
-cd apps/api && npx tsc -p tsconfig.json --noEmit && npx jest
-pnpm --filter @biznexa/api-client generate    # if the API changed; commit the result
-pnpm --filter @biznexa/api build && pnpm --filter @biznexa/web build && pnpm --filter @biznexa/admin build
+cd apps/api && npx tsc -p tsconfig.json --noEmit
+pnpm --filter @biznexa/api-client generate    # if the API changed (needs no DB); commit the result
 ```
-All green, or → STOP the batch and report. Never claim a command passed without running it.
+All green, or → STOP the batch and report. Never claim a command passed without running it, and
+never claim API integration tests, E2E or builds passed — write "not run, to be run locally".
 
 **F. Self-review and record.** Go through the self-review checklist in `docs/ROADMAP.md` item by
 item. Tick the step in `docs/ROADMAP.md` with a `*Done <DD-Mon-YYYY>:*` note and `*Follow-ups:*`
@@ -148,39 +164,16 @@ Start the next batch only after the previous batch's PR is reviewed, tested loca
 
 ## 3. Environment setup script
 
-Paste into Jules → repo → Configuration → Setup script. Values match `.github/workflows/ci.yml`.
+Paste into Jules → repo → Configuration → Setup script (if available). Code-only mode: no
+Postgres, Redis or Chromium.
 
 ```bash
 set -e
-sudo apt-get update
-sudo apt-get install -y postgresql redis-server
-sudo service postgresql start
-sudo service redis-server start
-sudo -u postgres psql -c "CREATE USER biznexa WITH PASSWORD 'biznexa' CREATEDB;" || true
-sudo -u postgres psql -c "CREATE DATABASE biznexa OWNER biznexa;" || true
-
 node -v
 corepack enable
 corepack prepare pnpm@10.28.0 --activate
 pnpm install --frozen-lockfile
-
-cat > apps/api/.env <<'EOF'
-NODE_ENV=test
-DATABASE_URL=postgresql://biznexa:biznexa@localhost:5432/biznexa?schema=public
-JWT_ACCESS_SECRET=ci-access-secret-0123456789abcdef0123456789
-OTP_PEPPER=ci-otp-pepper-0123456789
-CERT_QR_SECRET=ci-qr-secret-0123456789abcdef0123456789
-FILE_LINK_SECRET=ci-file-link-secret-0123456789abcdef0123
-DATA_ENCRYPTION_KEY=ci-data-encryption-key-0123456789abcdef0123
-API_URL=http://localhost:4000
-REDIS_URL=redis://localhost:6379
-PAYMENT_GATEWAY=mock
-VIRUS_SCANNER=stub
-PDF_RENDERER=playwright
-EOF
-
+cp -n apps/api/.env.example apps/api/.env || true
 pnpm --filter @biznexa/types build
-(cd apps/api && npx prisma generate && npx prisma migrate deploy && npx tsx prisma/seed.ts)
-# Chromium for PDF and E2E tests (the slowest part — needed for M3.24 and PDF steps)
-(cd apps/api && node node_modules/playwright-core/cli.js install --with-deps --only-shell chromium)
+(cd apps/api && npx prisma generate)
 ```

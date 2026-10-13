@@ -7,8 +7,8 @@ Rules and queue live in [JULES.md](JULES.md); step details in [ROADMAP.md](ROADM
 
 | Batch | Steps | State | PR |
 |---|---|---|---|
-| J1 | M3.24 | Old task **paused — do not resume**. Run again as a new task after J2 is merged. | — |
-| J2 | M4.9, M4.7, M4.10, M4.16 | First task looped (12–13 Oct), nothing pushed. **Restarted 13-Oct-2026** as a new task with the "J2 full prompt" below, branch `jules-j2`. | not yet |
+| J1 | M3.24 | **Next.** Old paused task: do not resume. Start a new task with the "J1 full prompt" below. | — |
+| J2 | M4.9, M4.7, M4.10, M4.16 | Done by Jules, verified locally, **squash-merged 13-Oct-2026** (`1d13f88`). ROADMAP ticked. | merged |
 | J3 | M7.2, M7.1, M4.15 | Waiting for J2 + J1 | — |
 | J4 | M4.3–M4.6 | Waiting for M4.1, M4.2 (supervised, Claude) | — |
 
@@ -39,6 +39,23 @@ Supervised steps to do with Claude (not Jules): **M4.1, M4.2, M4.13**.
       before/after (password, totpSecret, token, pan…) with a test; before/after diff view.
 - [ ] No tests deleted, skipped or weakened; no changes outside the four steps; no edited migrations.
 - [ ] ROADMAP ticked with Done notes; new DECISIONS entries make sense.
+
+## Review notes
+
+- **13-Oct, M4.9 (`ed2ff36`):** permissions, audit log, zod, no schema change — OK. New
+  `@RequireAnyPermission` in `auth.guard.ts` — logic OK, additive. Missing: API integration tests
+  (none in `apps/api/test/`), guard test, upsert + audit not in one transaction. Class-level
+  `SETTINGS_MANAGE` moved to each method on `AdminSettingsController` — any future method there
+  without a decorator would be open to every logged-in user. Squash the empty "trigger submit" commit.
+- **13-Oct, local verification of `815c80d`** (separate DB `biznexa_j2`): typecheck ✅, lint ✅ (1 old
+  warning in web), types 244 ✅, ui 40 ✅, admin 89 ✅, API 33 suites / 279 ✅, API + web + admin build ✅.
+  Notes scoping correct (404 unassigned, 403 other's note, view_all manages all); audit viewer
+  `audit.view`, paged, redacted. Follow-ups (not blockers): redaction matches exact keys only — add
+  `panEnc`, `codeHash`, `tokenHash` (or match *secret*/*token*/*hash*; careful: `company` contains
+  "pan"); notes `updatedAt` always equals `createdAt`; note/preset write + audit not in one
+  transaction; unused imports in `internal-notes.controller.ts`; `(actorId)` index now redundant.
+- Test teardown: Jules deleted shared seeded rows (category) and broke other suites — tests must
+  create and delete only their own data.
 
 ## What we learned about Jules
 
@@ -171,4 +188,43 @@ Do exactly this, once, in order:
 Use the GitHub token only for git authentication. Never print it, never put it in a file,
 commit, log, command output or the PR description.
 Start now.
+```
+
+J1 full prompt (M3.24 — code-only mode, 13-Oct-2026):
+```
+Do not wait for my approval or replies at any point. I will not reply until you open a pull
+request. Never ask "is there anything else" — just continue. Create branch jules-j1 from the
+latest main once; never reset, recreate or force-push it. Push after every commit.
+Use the GitHub token only for git authentication; never print it or put it in any file,
+commit, log or the PR description.
+
+Read docs/JULES.md fully and follow it — it is in CODE-ONLY MODE: write code and tests, run
+typecheck, lint and unit tests only. Do NOT install or start Postgres, Redis, the API, the web
+app or Playwright, and do not run next build. I run all of that locally.
+Batch J1 = step M3.24 only.
+
+M3.24 requirements (final, do not ask about them):
+- One new Playwright spec in apps/web/e2e/ (next to smoke.spec.ts, same style, role/label
+  selectors, no fixed sleeps) for the full order journey: customer logs in with mobile OTP
+  (in development the OTP is shown on screen — see the smoke.spec.ts header comment) → opens a
+  seeded service → picks a package → fills the form → uploads a small PDF → applies a coupon →
+  pays with the MOCK gateway → sees the success view with the Application ID.
+- Mock payments open no payment window (see payment-step.tsx "Test mode"). Complete the
+  payment from the test the same way the API tests do: a webhook signed like the mock gateway
+  (see apps/api/test/payment-webhook.e2e-spec.ts and apps/api/src/payments/mock-payment-gateway.ts).
+  Do not add any test-only endpoint or shortcut to the API or web code.
+- No coupon is seeded: create one in the test through the admin API (admin demo login from
+  the seed), with a unique code. Do not change seed data.
+- Every record the test creates uses unique values; never delete or edit seeded rows.
+- Written to work on both Playwright projects (desktop and mobile) in playwright.config.ts.
+- Do not change application code. If reading the code shows the journey cannot work because
+  of a real bug, describe it in the PR — do not work around it.
+- Since you cannot run it: read every page and component the journey passes through and make
+  sure each selector matches the real label/role/text in the code. List them in the PR.
+- Update docs/CHANGELOG.md with a Milestone 3 summary in the style of the existing entries,
+  and tick M3.24 in docs/ROADMAP.md.
+
+Finish with the static verification from docs/JULES.md (typecheck, lint, unit tests) with
+pass/fail counts, then open the pull request to main. In the PR write clearly:
+"E2E not run — to be run locally".
 ```

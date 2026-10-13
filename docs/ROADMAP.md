@@ -179,16 +179,24 @@ Gaps found while planning are moved into Milestone 2.5 below.
 - [ ] **M4.4 — Application detail API + UI shell.** `[Sonnet]` Customer, service, package, order, payments, form data (read-only), documents, history.
 - [ ] **M4.5 — Assignment.** `[Sonnet]` Assign/reassign to ops exec or consultant; bulk assign; status → ASSIGNED when appropriate; SLA `slaDueAt` set from service timeline. Audit logged.
 - [ ] **M4.6 — Status update UI.** `[Sonnet]` Move status + service stage (`currentStageId`), customer-visible note option; ON_HOLD with reason; CANCELLED admin-only with reason (refund hook left for M4.13).
-- [ ] **M4.7 — Document state machine.** `[Sonnet]` REQUIRED → UPLOADED → UNDER_REVIEW → APPROVED/REJECTED(reason) → re-upload new version. Unit tests.
+- [x] **M4.7 — Document state machine.** `[Sonnet]` REQUIRED → UPLOADED → UNDER_REVIEW → APPROVED/REJECTED(reason) → re-upload new version. Unit tests.
+  - *Done 13-Oct-2026 (Jules, batch J2):* `DOCUMENT_TRANSITIONS` in `packages/types/src/status.ts` unchanged; tests for every allowed and forbidden move in `core.test.ts`; `rejectDocumentSchema` requires a non-empty reason for REJECTED.
+  - *Follow-ups:* the API service that applies document moves (with reason, history, audit) comes with the review queue (M4.8).
 - [ ] **M4.8 — Document review queue.** `[Sonnet]` API + UI: list uploaded docs oldest first, inline PDF/image preview via signed download link (M2.5.6), approve, reject with preset or free-text reason, request additional document. **Done when:** all docs approved → application auto-moves to DOCUMENTS_APPROVED; any reject → DOCUMENTS_PENDING.
-- [ ] **M4.9 — Rejection presets.** `[Haiku]` Admin-editable list of rejection reasons (Setting or table).
-- [ ] **M4.10 — Internal notes.** `[Sonnet]` CRUD on `InternalNote`; staff only; test that customer API never returns them.
+- [x] **M4.9 — Rejection presets.** `[Haiku]` Admin-editable list of rejection reasons (Setting or table).
+  - *Done 13-Oct-2026 (Jules, batch J2):* `Setting` key `rejection.presets` (no schema change); `GET /api/admin/settings/rejection-presets` for `documents.review` or `settings.manage` via new `@RequireAnyPermission()` (guard change is additive), `PUT` for `settings.manage` with audit log; zod `rejectionPresetsInput` (trimmed, unique, ≤ 50 × ≤ 200 chars); presets editor on the admin settings page; API + unit tests.
+  - *Follow-ups:* `AdminSettingsController` now sets permissions per method — every new method there needs its own decorator. Upsert + audit log are not in one transaction.
+- [x] **M4.10 — Internal notes.** `[Sonnet]` CRUD on `InternalNote`; staff only; test that customer API never returns them.
+  - *Done 13-Oct-2026 (Jules, batch J2):* `InternalNotesController`/`Service` under `/api/admin/applications/:applicationId/notes` (list, create, update, delete). Users with only `applications.view_assigned` reach notes only on applications assigned to them (404 otherwise); editing/deleting another user's note needs `applications.view_all` (403). Audit log on every write. Integration tests: unassigned ops, assigned ops (own vs other's note), admin, customer, support.
+  - *Follow-ups:* `InternalNote` has no `updatedAt`, so responses repeat `createdAt`; write + audit log not in one transaction; unused imports in the controller. The notes UI arrives with the application detail page (M4.4).
 - [ ] **M4.11 — Messaging threads (async).** `[Sonnet]` `Conversation` per application; post message with text + attachments; unread counts per participant; staff and owning customer only. Emits `message.created`. *Ref: §7.12.*
 - [ ] **M4.12 — Final deliverables.** `[Sonnet]` Ops uploads final documents (type, file) via the upload service (M2.5.6); application → COMPLETED → DELIVERED; customer download (owner only).
 - [ ] **M4.13 — Refunds.** `[Opus]` Admin full/partial refund with reason → gateway refund → `Refund` record → payment REFUND_INITIATED/REFUNDED/PARTIALLY_REFUNDED via webhook; credit note number + PDF. Idempotent.
 - [ ] **M4.14 — Customer management (admin).** `[Sonnet]` Search by name/mobile/email/application ID; profile, entities, orders, payments, documents; block/deactivate (revokes sessions). Support role read-only.
 - [ ] **M4.15 — Payment management (admin).** `[Sonnet]` Payments list (all/success/failed/pending), refunds, invoices, export CSV.
-- [ ] **M4.16 — Audit log viewer.** `[Sonnet]` Filter by actor, entity, date; before/after diff view.
+- [x] **M4.16 — Audit log viewer.** `[Sonnet]` Filter by actor, entity, date; before/after diff view.
+  - *Done 13-Oct-2026 (Jules, batch J2):* `GET /api/admin/audit` (`audit.view`, read-only), server-side paging (default 50, max 100, newest first), filters (actor, entity type/id, action, from/to) validated by `auditLogFilterSchema`; actor name/email in the same query; before/after redacted recursively (case-insensitive key match). Migration `add_audit_log_indexes` (`createdAt`, `actorId+createdAt`). Admin `/audit` page with filters and before/after diff. Integration tests incl. redaction and 403 without `audit.view`.
+  - *Follow-ups:* redaction matches exact keys only — add `panEnc`, `codeHash`, `tokenHash` (or pattern match without catching `company`). The old `(actorId)` index is now redundant.
 - [ ] **M4.17 — M4 integration + E2E.** `[Sonnet]` Ops reviews → rejects → (customer re-upload in M5) → approves → in progress → delivers. Authorization tests for every new route. Update CHANGELOG.
 
 ---
