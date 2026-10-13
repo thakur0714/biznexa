@@ -8,6 +8,10 @@ export const PERMISSIONS = 'permissions';
 /** Caller must hold ALL listed permissions. */
 export const RequirePermissions = (...perms: string[]) => SetMetadata(PERMISSIONS, perms);
 
+export const ANY_PERMISSIONS = 'anyPermissions';
+/** Caller must hold AT LEAST ONE of the listed permissions. */
+export const RequireAnyPermission = (...perms: string[]) => SetMetadata(ANY_PERMISSIONS, perms);
+
 export interface AuthUser {
   id: string;
   roles: string[];

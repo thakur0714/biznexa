@@ -900,6 +900,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/settings/rejection-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminSettingsController_rejectionPresets"];
+        put: operations["AdminSettingsController_updateRejectionPresets"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/applications/{id}/payment": {
         parameters: {
             query?: never;
@@ -2551,6 +2567,11 @@ export interface components {
             } | null;
             state: string | null;
             invoicePrefix: string | null;
+            /** Format: date-time */
+            updatedAt: string | null;
+        };
+        RejectionPresets: {
+            presets: string[];
             /** Format: date-time */
             updatedAt: string | null;
         };
@@ -5225,6 +5246,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SellerSettings"];
+                };
+            };
+        };
+    };
+    AdminSettingsController_rejectionPresets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RejectionPresets"];
+                };
+            };
+        };
+    };
+    AdminSettingsController_updateRejectionPresets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": string[];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RejectionPresets"];
                 };
             };
         };

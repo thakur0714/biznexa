@@ -7005,6 +7005,72 @@
         ]
       }
     },
+    "/api/admin/settings/rejection-presets": {
+      "get": {
+        "operationId": "AdminSettingsController_rejectionPresets",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectionPresets"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · settings"
+        ]
+      },
+      "put": {
+        "operationId": "AdminSettingsController_updateRejectionPresets",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "maxItems": 50
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectionPresets"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · settings"
+        ]
+      }
+    },
     "/api/applications/{id}/payment": {
       "post": {
         "operationId": "CheckoutController_start",
@@ -15485,6 +15551,27 @@
           "address",
           "state",
           "invoicePrefix",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "RejectionPresets": {
+        "type": "object",
+        "properties": {
+          "presets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "presets",
           "updatedAt"
         ],
         "additionalProperties": false

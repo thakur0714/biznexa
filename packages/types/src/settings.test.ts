@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gstinCheckChar } from './business-entities';
-import { SELLER_SETTING_KEYS, readSellerSettings, sellerSettingValues, sellerSettingsInput } from './settings';
+import { SELLER_SETTING_KEYS, readSellerSettings, sellerSettingValues, sellerSettingsInput, rejectionPresetsInput } from './settings';
 
 const gstin = (first14: string) => first14 + gstinCheckChar(first14);
 const PUNJAB_GSTIN = gstin('03AABCB1234F1Z');
@@ -54,5 +54,24 @@ describe('stored seller settings', () => {
 
   it('ignores an address stored in a shape it no longer accepts', () => {
     expect(readSellerSettings({ 'company.address': '12 Mall Road', 'company.state': '03' })).toMatchObject({ address: null, state: 'Punjab' });
+  });
+
+  describe('rejectionPresetsInput', () => {
+    it('accepts valid presets', () => {
+      const res = rejectionPresetsInput.safeParse(['Blurry image', 'Missing signature']);
+      expect(res.success).toBe(true);
+    });
+
+    it('rejects empty preset', () => {
+      const res = rejectionPresetsInput.safeParse(['']);
+      expect(res.success).toBe(false);
+      expect(res.error?.issues[0]?.message).toBe('Preset cannot be empty');
+    });
+
+    it('rejects duplicate presets', () => {
+      const res = rejectionPresetsInput.safeParse(['Blurry image', 'Blurry image']);
+      expect(res.success).toBe(false);
+      expect(res.error?.issues[0]?.message).toBe('Presets must be unique');
+    });
   });
 });

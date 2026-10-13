@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { Injectable } from '@nestjs/common';
-import { SELLER_SETTING_KEYS, readSellerSettings, sellerSettingValues, type SellerSettings, type SellerSettingsData } from '@biznexa/types';
+import { SELLER_SETTING_KEYS, REJECTION_PRESETS_KEY, readSellerSettings, sellerSettingValues, type SellerSettings, type SellerSettingsData, type RejectionPresets, type RejectionPresetsInput } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { Prisma } from '../generated/prisma/client';
@@ -46,5 +46,41 @@ export class SettingsService {
       after: Object.fromEntries(changed.map((k) => [k, values[k]])),
     });
     return this.seller();
+  }
+
+  async rejectionPresets(db: Prisma.TransactionClient = this.prisma): Promise<RejectionPresets> {
+    const row = await db.setting.findUnique({ where: { key: REJECTION_PRESETS_KEY }, select: { value: true, updatedAt: true } });
+    let presets: string[] = [];
+    if (row && Array.isArray(row.value)) {
+      presets = row.value as string[];
+    }
+    return { presets, updatedAt: row?.updatedAt?.toISOString() ?? null };
+  }
+
+  async updateRejectionPresets(presets: RejectionPresetsInput, actorId: string): Promise<RejectionPresets> {
+    const beforeRow = await this.prisma.setting.findUnique({ where: { key: REJECTION_PRESETS_KEY }, select: { value: true } });
+    const oldPresets = Array.isArray(beforeRow?.value) ? beforeRow?.value : [];
+    
+    if (isDeepStrictEqual(oldPresets, presets)) {
+      return this.rejectionPresets();
+    }
+    
+    const value = presets as object;
+    await this.prisma.setting.upsert({
+      where: { key: REJECTION_PRESETS_KEY },
+      update: { value },
+      create: { key: REJECTION_PRESETS_KEY, value },
+    });
+    
+    await this.audit.log({
+      actorId,
+      action: 'settings.rejection-presets.update',
+      entityType: 'Setting',
+      entityId: REJECTION_PRESETS_KEY,
+      before: { presets: oldPresets },
+      after: { presets },
+    });
+    
+    return this.rejectionPresets();
   }
 }

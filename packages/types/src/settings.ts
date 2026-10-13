@@ -106,6 +106,26 @@ export function readSellerSettings(values: Partial<Record<string, unknown>>, upd
   };
 }
 
+/** Document rejection presets (M4.9). */
+export const REJECTION_PRESETS_KEY = 'rejection.presets';
+
+/** Body of `PUT /api/admin/settings/rejection-presets` */
+export const rejectionPresetsInput = z
+  .array(z.string({ invalid_type_error: 'Enter a valid preset' }).trim().min(1, 'Preset cannot be empty').max(200, 'Use at most 200 characters'))
+  .max(50, 'Use at most 50 presets')
+  .refine((items) => new Set(items).size === items.length, 'Presets must be unique');
+
+export type RejectionPresetsInput = z.infer<typeof rejectionPresetsInput>;
+
+/** Response of `GET`/`PUT /api/admin/settings/rejection-presets`. */
+export const rejectionPresetsSchema = z.object({
+  presets: z.array(z.string()),
+  updatedAt: z.string().datetime({ offset: true }).nullable(),
+});
+
+export type RejectionPresets = z.infer<typeof rejectionPresetsSchema>;
+
+
 /** `SellerSettingsData` → the value stored under each key (blanks as `''`, like the seed). */
 export function sellerSettingValues(d: SellerSettingsData): Record<string, unknown> {
   return {
