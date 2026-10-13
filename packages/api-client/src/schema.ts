@@ -1044,6 +1044,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPaymentsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payments/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPaymentsController_exportCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/payments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPaymentsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invoices": {
         parameters: {
             query?: never;
@@ -2808,6 +2856,68 @@ export interface components {
             presets: string[];
             /** Format: date-time */
             updatedAt: string | null;
+        };
+        AdminPaymentList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                gateway: string;
+                gatewayOrderId: string | null;
+                gatewayPaymentId: string | null;
+                amount: number;
+                method: string | null;
+                /** @enum {string} */
+                status: "CREATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUND_INITIATED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+                failureReason: string | null;
+                /** Format: date-time */
+                paidAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                orderCode: string | null;
+                applicationCode: string | null;
+                customerName: string | null;
+                customerEmail: string | null;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        AdminPaymentDetail: {
+            /** Format: uuid */
+            id: string;
+            gateway: string;
+            gatewayOrderId: string | null;
+            gatewayPaymentId: string | null;
+            amount: number;
+            method: string | null;
+            /** @enum {string} */
+            status: "CREATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUND_INITIATED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+            failureReason: string | null;
+            /** Format: date-time */
+            paidAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            orderCode: string | null;
+            applicationCode: string | null;
+            customerName: string | null;
+            customerEmail: string | null;
+            customerMobile: string | null;
+            refunds: {
+                /** Format: uuid */
+                id: string;
+                amount: number;
+                reason: string;
+                status: string;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            invoice: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                /** Format: date-time */
+                issuedAt: string;
+            } | null;
         };
         PaymentCheckout: {
             /** Format: uuid */
@@ -5915,6 +6025,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminPaymentsController_list: {
+        parameters: {
+            query?: {
+                status?: "all" | "success" | "failed" | "pending";
+                from?: string;
+                to?: string;
+                q?: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPaymentList"];
+                };
+            };
+        };
+    };
+    AdminPaymentsController_exportCsv: {
+        parameters: {
+            query?: {
+                status?: "all" | "success" | "failed" | "pending";
+                from?: string;
+                to?: string;
+                q?: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPaymentsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPaymentDetail"];
+                };
             };
         };
     };
