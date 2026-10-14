@@ -1,8 +1,9 @@
-import { Controller, Get, Param, ParseUUIDPipe, Res, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, ParseUUIDPipe, Res, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { adminApplicationListQuery, adminApplicationPageSchema, adminApplicationDetailSchema, PERMS, type AdminApplicationListQuery } from '@biznexa/types';
+import { adminApplicationListQuery, adminApplicationPageSchema, adminApplicationDetailSchema, PERMS, type AdminApplicationListQuery, assigneeInputSchema, type AssigneeInput, bulkAssignInputSchema, type BulkAssignInput, eligibleStaffListSchema } from '@biznexa/types';
 import { AuthUser, CurrentUser, RequireAnyPermission } from '../common/auth.decorators';
-import { ApiZodResponse, ZodQuery } from '../common/openapi';
+import { ApiZodResponse, ZodQuery, ZodBody } from '../common/openapi';
+import { RequirePermissions } from '../common/auth.decorators';
 import { AdminApplicationsService } from './admin-applications.service';
 import type { Response } from 'express';
 
@@ -30,6 +31,26 @@ export class AdminApplicationsController {
   @Get()
   list(@ZodQuery(adminApplicationListQuery) q: AdminApplicationListQuery, @CurrentUser() u: AuthUser) {
     return this.applications.list(u, q);
+  }
+
+
+  @RequireAnyPermission(PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED)
+  @ApiZodResponse('EligibleStaffList', eligibleStaffListSchema)
+  @Get('staff')
+  getStaff() {
+    return this.applications.getStaff();
+  }
+
+  @RequirePermissions(PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_UPDATE)
+  @Post('bulk-assign')
+  bulkAssign(@ZodBody(bulkAssignInputSchema) body: BulkAssignInput, @CurrentUser() u: AuthUser) {
+    return this.applications.bulkAssign(body, u);
+  }
+
+  @RequirePermissions(PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_UPDATE)
+  @Patch(':id/assignee')
+  assign(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(assigneeInputSchema) body: AssigneeInput, @CurrentUser() u: AuthUser) {
+    return this.applications.assign(id, body.assigneeId, u);
   }
 
   @RequireAnyPermission(PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED)

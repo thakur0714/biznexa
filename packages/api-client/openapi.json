@@ -6823,6 +6823,131 @@
         ]
       }
     },
+    "/api/admin/applications/staff": {
+      "get": {
+        "operationId": "AdminApplicationsController_getStaff",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EligibleStaffList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · applications"
+        ]
+      }
+    },
+    "/api/admin/applications/bulk-assign": {
+      "post": {
+        "operationId": "AdminApplicationsController_bulkAssign",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "applicationIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "minItems": 1,
+                    "maxItems": 100
+                  },
+                  "assigneeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "applicationIds",
+                  "assigneeId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · applications"
+        ]
+      }
+    },
+    "/api/admin/applications/{id}/assignee": {
+      "patch": {
+        "operationId": "AdminApplicationsController_assign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "assigneeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "assigneeId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · applications"
+        ]
+      }
+    },
     "/api/admin/applications/{id}": {
       "get": {
         "operationId": "AdminApplicationsController_get",
@@ -17016,6 +17141,30 @@
           "limit"
         ],
         "additionalProperties": false
+      },
+      "EligibleStaffList": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": "string"
+            },
+            "role": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "role"
+          ],
+          "additionalProperties": false
+        }
       },
       "AdminApplicationDetail": {
         "type": "object",

@@ -163,3 +163,25 @@ export const adminApplicationDetailSchema = z.object({
 });
 
 export type AdminApplicationDetail = z.infer<typeof adminApplicationDetailSchema>;
+
+export const assigneeInputSchema = z.object({
+  assigneeId: z.string().uuid().nullable()
+});
+
+export type AssigneeInput = z.infer<typeof assigneeInputSchema>;
+
+export const bulkAssignInputSchema = z.object({
+  applicationIds: z.array(z.string().uuid()).min(1).max(100),
+  assigneeId: z.string().uuid().nullable()
+});
+
+export type BulkAssignInput = z.infer<typeof bulkAssignInputSchema>;
+
+export const eligibleStaffSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  role: z.string()
+});
+
+export const eligibleStaffListSchema = z.array(eligibleStaffSchema);
+export type EligibleStaff = z.infer<typeof eligibleStaffSchema>;

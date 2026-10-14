@@ -1,9 +1,12 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 
-import { SLA_DUE_SOON_HOURS, APPLICATION_STATUS_LABEL, type AdminApplicationListQuery, type AdminApplicationPage, type AdminApplicationDetail, type ApplicationStatus } from '@biznexa/types';
+import { SLA_DUE_SOON_HOURS, APPLICATION_STATUS_LABEL, PERMS, type AdminApplicationListQuery, type AdminApplicationPage, type BulkAssignInput, type AdminApplicationDetail, type ApplicationStatus } from '@biznexa/types';
 import type { AuthUser } from '../common/auth.decorators';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { ApplicationStatusService } from './application-status.service';
+import { EventBus } from '../events/event-bus';
 import { applicationScope, findVisibleApplication } from './application-access';
 
 const DAY_MS = 86_400_000;
@@ -33,7 +36,7 @@ const rowSelect = {
 /** Staff applications list (M4.2). Scoping comes first; the filters can only narrow it. */
 @Injectable()
 export class AdminApplicationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly status: ApplicationStatusService, private readonly events: EventBus) {}
 
   async list(user: AuthUser, q: AdminApplicationListQuery, now = new Date()): Promise<AdminApplicationPage> {
     const where: Prisma.ApplicationWhereInput = { AND: [applicationScope(user), ...(await this.filters(user, q, now))] };
@@ -281,5 +284,106 @@ export class AdminApplicationsService {
       assignedTo: app.assignedTo ? { id: app.assignedTo.id, name: app.assignedTo.name } : null,
       currentStage: app.currentStage ? { id: app.currentStage.id, name: app.currentStage.name } : null,
     };
+  }
+
+  async getStaff() {
+    const roles = await this.prisma.role.findMany({
+      where: { permissions: { some: { permissionId: { in: [PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED] } } } },
+      select: { id: true }
+    });
+    const roleIds = roles.map(r => r.id);
+    const users = await this.prisma.user.findMany({
+      where: { roles: { some: { roleId: { in: roleIds } } } },
+      select: { id: true, name: true, roles: { select: { role: { select: { name: true } } } } },
+      orderBy: { name: 'asc' }
+    });
+
+    return users.map(u => ({
+      id: u.id,
+      name: u.name,
+      role: u.roles.map(r => r.role.name).join(', ')
+    }));
+  }
+
+  async bulkAssign({ applicationIds, assigneeId }: BulkAssignInput, u: AuthUser) {
+    if (assigneeId) {
+      const eligible = await this.getStaff();
+      if (!eligible.some(s => s.id === assigneeId)) {
+        throw new BadRequestException('The selected user cannot be assigned applications');
+      }
+    }
+
+    const events: any[] = [];
+    await this.prisma.$transaction(async (tx) => {
+      for (const id of applicationIds) {
+        const event = await this.assignIn(tx, id, assigneeId, u);
+        if (event) events.push(event);
+      }
+    });
+
+    for (const e of events) {
+      await this.events.emit('application.status_changed', e);
+    }
+  }
+
+  async assign(id: string, assigneeId: string | null, u: AuthUser) {
+    if (assigneeId) {
+      const eligible = await this.getStaff();
+      if (!eligible.some(s => s.id === assigneeId)) {
+        throw new BadRequestException('The selected user cannot be assigned applications');
+      }
+    }
+
+    let event: any = null;
+    await this.prisma.$transaction(async (tx) => {
+      event = await this.assignIn(tx, id, assigneeId, u);
+    });
+
+    if (event) {
+      await this.events.emit('application.status_changed', event);
+    }
+  }
+
+  private async assignIn(tx: Prisma.TransactionClient, id: string, assigneeId: string | null, u: AuthUser) {
+    const app = await tx.application.findUnique({ 
+      where: { id },
+      include: { service: true } 
+    });
+    if (!app) throw new NotFoundException('Application not found');
+
+    if (app.assignedToId === assigneeId) return null;
+
+    let slaDueAt = app.slaDueAt;
+    if (!app.assignedToId && assigneeId && !app.slaDueAt && app.service.estimatedDaysMax) {
+      slaDueAt = new Date();
+      slaDueAt.setDate(slaDueAt.getDate() + app.service.estimatedDaysMax);
+    }
+
+    let event = null;
+    let finalStatus = app.status;
+    if (app.status === 'DOCUMENTS_APPROVED' && assigneeId) {
+      event = await this.status.transitionIn(tx, {
+        applicationId: id,
+        to: 'ASSIGNED',
+        actorId: u.id,
+      });
+      finalStatus = 'ASSIGNED';
+    }
+
+    await tx.application.update({
+      where: { id },
+      data: { assignedToId: assigneeId, slaDueAt }
+    });
+
+    await this.audit.log({
+      actorId: u.id,
+      action: 'application.assign',
+      entityType: 'Application',
+      entityId: id,
+      before: { assignedToId: app.assignedToId },
+      after: { assignedToId: assigneeId }
+    }, tx);
+
+    return event;
   }
 }
