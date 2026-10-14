@@ -123,8 +123,9 @@ export const smsProviderFactory = {
   useFactory: () => {
     const e = env();
     if (e.SMS_PROVIDER === 'msg91') {
-      return new Msg91SmsProvider({ authKey: e.MSG91_AUTH_KEY || '' });
+      return new Msg91SmsProvider({ authKey: e.MSG91_AUTH_KEY ?? '' });
     }
     return new FakeSmsProvider();
   },
 };
+

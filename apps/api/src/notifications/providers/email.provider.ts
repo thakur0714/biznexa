@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import nodemailer, { type Transporter } from 'nodemailer';
 import { env } from '../../config/env';
 
@@ -54,7 +53,7 @@ export class SmtpEmailProvider extends EmailProvider {
     defaultFrom?: string;
   }) {
     super();
-    this.defaultFrom = config.defaultFrom || 'BizNexa <no-reply@biznexa.com>';
+    this.defaultFrom = config.defaultFrom ?? 'BizNexa <no-reply@biznexa.com>';
     this.transporter = nodemailer.createTransport({
       host: config.host,
       port: config.port,
@@ -62,6 +61,7 @@ export class SmtpEmailProvider extends EmailProvider {
       auth: config.user && config.pass ? { user: config.user, pass: config.pass } : undefined,
     });
   }
+
 
   async sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
     const from = options.from || this.defaultFrom;
@@ -89,7 +89,7 @@ export class SendGridEmailProvider extends EmailProvider {
     },
   ) {
     super();
-    this.defaultFrom = config.defaultFrom || 'no-reply@biznexa.com';
+    this.defaultFrom = config.defaultFrom ?? 'no-reply@biznexa.com';
   }
 
   async sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
@@ -133,7 +133,7 @@ export class SesEmailProvider extends EmailProvider {
     },
   ) {
     super();
-    this.defaultFrom = config.defaultFrom || 'no-reply@biznexa.com';
+    this.defaultFrom = config.defaultFrom ?? 'no-reply@biznexa.com';
   }
 
   async sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {

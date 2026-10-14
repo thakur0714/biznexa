@@ -146,9 +146,10 @@ export class NotificationsService {
 
     return {
       ...updated,
-      readAt: updated.readAt!.toISOString(),
+      readAt: (updated.readAt ?? new Date()).toISOString(),
       createdAt: updated.createdAt.toISOString(),
     };
+
   }
 
   /**

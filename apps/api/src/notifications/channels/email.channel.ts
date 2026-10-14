@@ -44,7 +44,8 @@ export class EmailChannel implements NotificationChannel {
         ...(input.payload ?? {}),
       };
 
-      const invoiceId = input.payload?.invoiceId ?? (input.event === 'invoice.issued' && input.payload?.id);
+      const invoiceId =
+        input.payload?.invoiceId ?? (input.event === 'invoice.issued' ? input.payload?.id : undefined);
       let signedInvoiceUrl: string | undefined;
 
       if (invoiceId) {
@@ -54,6 +55,7 @@ export class EmailChannel implements NotificationChannel {
           variables.invoiceLink = signedInvoiceUrl;
         }
       }
+
 
       // 3. Render subject and body from TemplateEngineService
       let subject = input.title ?? 'Notification from BizNexa';
