@@ -27,7 +27,7 @@ export const NAV: NavGroup[] = [
   {
     label: 'Work',
     items: [
-      { slug: 'applications', label: 'Applications', requires: { any: [PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED] } },
+      { slug: 'applications', label: 'Applications', requires: { any: [PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED] }, built: true },
       { slug: 'documents', label: 'Document review', requires: { all: [PERMS.DOCUMENTS_REVIEW] } },
       { slug: 'customers', label: 'Customers', requires: { all: [PERMS.CUSTOMERS_VIEW] } },
       { slug: 'support', label: 'Support tickets', requires: { all: [PERMS.TICKETS_MANAGE] } },

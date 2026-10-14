@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 
-import { SLA_DUE_SOON_HOURS, APPLICATION_STATUS_LABEL, PERMS, type ApplicationTransitionInput, type AdminApplicationListQuery, type AdminApplicationPage, type BulkAssignInput, type AdminApplicationDetail, type ApplicationStatus } from '@biznexa/types';
+import { SLA_DUE_SOON_HOURS, APPLICATION_STATUS_LABEL, PERMS, maskPan, type ApplicationTransitionInput, type AdminApplicationListQuery, type AdminApplicationPage, type BulkAssignInput, type AdminApplicationDetail, type ApplicationStatus } from '@biznexa/types';
 import type { AuthUser } from '../common/auth.decorators';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,6 +8,7 @@ import { AuditService } from '../audit/audit.service';
 import { ApplicationStatusService } from './application-status.service';
 import { EventBus } from '../events/event-bus';
 import { applicationScope, findVisibleApplication } from './application-access';
+import { decryptField } from '../common/encryption';
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -179,6 +180,7 @@ export class AdminApplicationsService {
       createdAt: true,
       updatedAt: true,
       formData: true,
+      customerId: true,
       /* formSchemaVersion is a number */
       
       service: { select: { id: true, name: true } },
@@ -197,6 +199,7 @@ export class AdminApplicationsService {
       currentStage: { select: { id: true, name: true } },
       
       documents: {
+        where: { isLatest: true },
         select: {
           id: true, requirementId: true, name: true, status: true, fileKey: true, fileName: true, sizeBytes: true, mimeType: true
         },
@@ -213,11 +216,12 @@ export class AdminApplicationsService {
       }
     });
 
-    const order = app.order as any;
-    const customer = order.customer;
+    const order = app.order;
+    // Application has no customer relation; a draft may have no order yet.
+    const customer = order?.customer ?? (await this.prisma.user.findUnique({ where: { id: app.customerId }, select: { id: true, name: true, email: true, mobile: true } }));
     
     // Payments: get from order
-    const payments = await this.prisma.payment.findMany({
+    const payments = !order ? [] : await this.prisma.payment.findMany({
       where: { orderId: order.id },
       select: { id: true, status: true, amount: true, method: true, paidAt: true },
       orderBy: { createdAt: 'desc' },
@@ -242,7 +246,7 @@ export class AdminApplicationsService {
       
       businessEntity: app.businessEntity ? {
         id: app.businessEntity.id,
-        maskedPan: app.businessEntity.pan ? 'XXXXX' + app.businessEntity.pan.slice(5, 9) + 'X' : null
+        maskedPan: app.businessEntity.pan ? maskPan(decryptField(app.businessEntity.pan)) : null
       } : null,
       
       order: order ? {
@@ -286,23 +290,18 @@ export class AdminApplicationsService {
     };
   }
 
+  /** Active staff who may hold applications: their role grants applications.view_assigned or applications.view_all. */
   async getStaff() {
-    const roles = await this.prisma.role.findMany({
-      where: { permissions: { some: { permissionId: { in: [PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED] } } } },
-      select: { id: true }
-    });
-    const roleIds = roles.map(r => r.id);
     const users = await this.prisma.user.findMany({
-      where: { roles: { some: { roleId: { in: roleIds } } } },
+      where: {
+        status: 'ACTIVE',
+        deletedAt: null,
+        roles: { some: { role: { permissions: { some: { permission: { key: { in: [PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED] } } } } } } },
+      },
       select: { id: true, name: true, roles: { select: { role: { select: { name: true } } } } },
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' },
     });
-
-    return users.map(u => ({
-      id: u.id,
-      name: u.name,
-      role: u.roles.map(r => r.role.name).join(', ')
-    }));
+    return users.map((u) => ({ id: u.id, name: u.name, role: u.roles.map((r) => r.role.name).join(', ') }));
   }
 
   async bulkAssign({ applicationIds, assigneeId }: BulkAssignInput, u: AuthUser) {

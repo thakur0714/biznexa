@@ -9,8 +9,8 @@ Rules and queue live in [JULES.md](JULES.md); step details in [ROADMAP.md](ROADM
 |---|---|---|---|
 | J1 | M3.24 | Jules wrote it (task errored after pushing); fixed and run locally by Claude, **merged 13-Oct-2026** (`7f8af1c`). | merged (#2) |
 | J2 | M4.9, M4.7, M4.10, M4.16 | Done by Jules, verified locally, **squash-merged 13-Oct-2026** (`1d13f88`). ROADMAP ticked. | merged |
-| J3 | M7.2, M7.1, M4.15 | Jules pushed all 3 steps, then failed to open the PR. Fixed + verified locally by Claude 13-Oct-2026. | PR from `jules-j3` |
-| J4 | M4.3–M4.6 | Waiting for M4.1, M4.2 (supervised, Claude) | — |
+| J3 | M7.2, M7.1, M4.15 | Fixed + verified by Claude, merged 13-Oct-2026. | merged |
+| J4 | M4.3–M4.6 | API fixed + tested by Claude 14-Oct-2026; UI gaps left for J4b. | PR from `jules-j4` |
 
 Supervised steps to do with Claude (not Jules): **M4.1, M4.2, M4.13**.
 
@@ -69,6 +69,11 @@ Supervised steps to do with Claude (not Jules): **M4.1, M4.2, M4.13**.
   ran. Missed that the J2 audit page showed "Not allowed" to everyone (`findNavItem('audit')` vs
   nav slug `audit-log`) and the date filter showing the previous day. Fixed on `fix-audit-ui`.
   Lesson: use Jules for writing code, not for finding bugs.
+- **14-Oct, J4 (`jules-j4`):** wrote **no integration tests** (asked for in every step) and ticked the
+  ROADMAP with empty notes. Real bugs found by Claude's tests: assignment always 400 (permission keys vs
+  ids), detail 500 without an order, PAN masked from the encrypted value, applications nav not built.
+  UI left half done (no assignee picker, empty stage list, no documents/form data). API fixed and
+  tested (`admin-application-work.e2e-spec.ts`); UI → next Jules batch.
 - Flaky since J2: `internal-notes.e2e-spec` creates its own category, and `app.e2e-spec`'s catalogue
   test can pick it as "other category" → one of them fails now and then in a full run. Fix: the
   catalogue test should create its own second category (or notes should not need a category).
