@@ -788,6 +788,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminApplicationsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/applications": {
         parameters: {
             query?: never;
@@ -2753,6 +2769,47 @@ export interface components {
             };
             /** Format: date-time */
             createdAt: string;
+        };
+        AdminApplicationPage: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                code: string;
+                /** @enum {string} */
+                status: "DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED";
+                /** @enum {string} */
+                priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+                /** Format: date-time */
+                slaDueAt: string | null;
+                /** Format: date-time */
+                submittedAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                service: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                };
+                packageName: string;
+                orderCode: string | null;
+                customer: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                    email: string | null;
+                    mobile: string | null;
+                } | null;
+                assignedTo: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                } | null;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
         };
         OrderSummary: {
             /** Format: uuid */
@@ -5161,6 +5218,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminApplicationsController_list: {
+        parameters: {
+            query?: {
+                status?: ("DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED")[];
+                serviceId?: string;
+                assignee?: string | ("me" | "unassigned");
+                priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+                sla?: "overdue" | "due_soon";
+                from?: string;
+                to?: string;
+                q?: string;
+                sort?: "createdAt" | "updatedAt" | "submittedAt" | "slaDueAt" | "priority";
+                dir?: "asc" | "desc";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminApplicationPage"];
+                };
             };
         };
     };
