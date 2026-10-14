@@ -3,6 +3,7 @@ import { PrismaModule } from '../prisma/prisma.service';
 import { EmailChannel } from './channels/email.channel';
 import { EmailProvider, emailProviderFactory } from './providers/email.provider';
 import { SmsChannel } from './channels/sms.channel';
+import { SmsProvider, smsProviderFactory } from './providers/sms.provider';
 import { PushChannel } from './channels/push.channel';
 import { InAppChannel } from './channels/in-app.channel';
 import { WhatsAppChannel } from './channels/whatsapp.channel';
@@ -17,6 +18,7 @@ import { NotificationsController } from './notifications.controller';
   controllers: [NotificationsController],
   providers: [
     emailProviderFactory,
+    smsProviderFactory,
     EmailChannel,
     SmsChannel,
     PushChannel,
@@ -29,6 +31,7 @@ import { NotificationsController } from './notifications.controller';
   ],
   exports: [
     EmailProvider,
+    SmsProvider,
     NotificationPreferencesService,
     NotificationDispatcherService,
     TemplateEngineService,
