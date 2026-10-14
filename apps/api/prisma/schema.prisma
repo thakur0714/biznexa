@@ -198,6 +198,7 @@ model User {
   totpLastStep    Int?
   totpFailures    Int        @default(0)
   totpLockedUntil DateTime?
+  notificationPrefs Json?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   deletedAt      DateTime?

@@ -12,6 +12,7 @@ import { PrismaClient } from '../src/generated/prisma/client';
 import { CATEGORIES, CERTIFICATION_BODIES, TESTIMONIALS } from './seed-data';
 import { seedAccess } from './seed-access';
 import { seedForms } from './seed-forms';
+import { seedNotificationTemplates } from './seed-notifications';
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) });
 const isProd = process.env.NODE_ENV === 'production';
@@ -228,6 +229,7 @@ async function main() {
   console.log(`✓ application forms: ${forms.created} new, ${forms.upgraded} moved to their ready-made form, ${forms.kept} kept`);
   await seedCertificates();
   await seedContent();
+  await seedNotificationTemplates(prisma);
 }
 
 main()
