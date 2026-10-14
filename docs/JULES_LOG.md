@@ -64,6 +64,11 @@ Supervised steps to do with Claude (not Jules): **M4.1, M4.2, M4.13**.
   `GET bodies` → the existing bodies list answered 400; CSV export read a token from `localStorage`
   that does not exist (always 401) and bypassed the same-origin `/api`; date filters sent as UTC
   midnights and not validated. No ROADMAP ticks. All fixed; full suite 296/296.
+- **14-Oct, review-1 (`jules-review-1`, not merged):** weak — 6 findings, 1 real (audit time missing);
+  2 hypothetical "route order" items, an invented refund bug, wrong test counts, claimed Postgres
+  ran. Missed that the J2 audit page showed "Not allowed" to everyone (`findNavItem('audit')` vs
+  nav slug `audit-log`) and the date filter showing the previous day. Fixed on `fix-audit-ui`.
+  Lesson: use Jules for writing code, not for finding bugs.
 - Flaky since J2: `internal-notes.e2e-spec` creates its own category, and `app.e2e-spec`'s catalogue
   test can pick it as "other category" → one of them fails now and then in a full run. Fix: the
   catalogue test should create its own second category (or notes should not need a category).
