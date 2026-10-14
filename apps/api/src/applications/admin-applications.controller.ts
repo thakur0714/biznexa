@@ -1,6 +1,6 @@
-import { Controller, Get, Res, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Res, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { adminApplicationListQuery, adminApplicationPageSchema, PERMS, type AdminApplicationListQuery } from '@biznexa/types';
+import { adminApplicationListQuery, adminApplicationPageSchema, adminApplicationDetailSchema, PERMS, type AdminApplicationListQuery } from '@biznexa/types';
 import { AuthUser, CurrentUser, RequireAnyPermission } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery } from '../common/openapi';
 import { AdminApplicationsService } from './admin-applications.service';
@@ -31,4 +31,12 @@ export class AdminApplicationsController {
   list(@ZodQuery(adminApplicationListQuery) q: AdminApplicationListQuery, @CurrentUser() u: AuthUser) {
     return this.applications.list(u, q);
   }
+
+  @RequireAnyPermission(PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED)
+  @ApiZodResponse('AdminApplicationDetail', adminApplicationDetailSchema)
+  @Get(':id')
+  get(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() u: AuthUser) {
+    return this.applications.get(u, id);
+  }
+
 }

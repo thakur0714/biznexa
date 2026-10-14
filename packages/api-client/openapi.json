@@ -6823,6 +6823,41 @@
         ]
       }
     },
+    "/api/admin/applications/{id}": {
+      "get": {
+        "operationId": "AdminApplicationsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplicationDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · applications"
+        ]
+      }
+    },
     "/api/applications": {
       "post": {
         "operationId": "ApplicationsController_start",
@@ -16979,6 +17014,3347 @@
           "total",
           "page",
           "limit"
+        ],
+        "additionalProperties": false
+      },
+      "AdminApplicationDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PAYMENT_PENDING",
+              "SUBMITTED",
+              "DOCUMENTS_UNDER_REVIEW",
+              "DOCUMENTS_PENDING",
+              "DOCUMENTS_APPROVED",
+              "ASSIGNED",
+              "IN_PROGRESS",
+              "ON_HOLD",
+              "COMPLETED",
+              "DELIVERED",
+              "CANCELLED"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH",
+              "URGENT"
+            ]
+          },
+          "slaDueAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "mobile": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "email",
+              "mobile"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "service": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "package": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "businessEntity": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "maskedPan": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "maskedPan"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "order": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "code": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "taxTotal": {
+                "type": "integer"
+              },
+              "subtotal": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "code",
+              "status",
+              "total",
+              "taxTotal",
+              "subtotal"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "integer"
+                },
+                "method": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "paidAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "status",
+                "amount",
+                "method",
+                "paidAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "formSchema": {
+            "type": "object",
+            "properties": {
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "description": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "text"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "placeholder": {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              "minLength": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000
+                              },
+                              "maxLength": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 10000
+                              },
+                              "pattern": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "patternMessage": {
+                                "type": "string",
+                                "maxLength": 200
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "textarea"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "placeholder": {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              "minLength": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000
+                              },
+                              "maxLength": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 10000
+                              },
+                              "pattern": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "patternMessage": {
+                                "type": "string",
+                                "maxLength": 200
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "email"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "placeholder": {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              "minLength": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000
+                              },
+                              "maxLength": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 10000
+                              },
+                              "pattern": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "patternMessage": {
+                                "type": "string",
+                                "maxLength": 200
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "tel"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "placeholder": {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              "minLength": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000
+                              },
+                              "maxLength": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 10000
+                              },
+                              "pattern": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "patternMessage": {
+                                "type": "string",
+                                "maxLength": 200
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "number"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "placeholder": {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              "min": {
+                                "type": "number"
+                              },
+                              "max": {
+                                "type": "number"
+                              },
+                              "integer": {
+                                "type": "boolean",
+                                "default": false
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "date"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "min": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "today"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  }
+                                ]
+                              },
+                              "max": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "today"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "select"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "options": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "value": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": [
+                                        "value",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                },
+                                "minItems": 1,
+                                "maxItems": 500
+                              },
+                              "optionsSource": {
+                                "type": "string",
+                                "enum": [
+                                  "states"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "multi-select"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "options": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "value": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": [
+                                        "value",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                },
+                                "minItems": 1,
+                                "maxItems": 500
+                              },
+                              "optionsSource": {
+                                "type": "string",
+                                "enum": [
+                                  "states"
+                                ]
+                              },
+                              "minItems": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 500
+                              },
+                              "maxItems": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 500
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "file"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "accept": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "application/pdf",
+                                    "image/jpeg",
+                                    "image/png",
+                                    "image/webp"
+                                  ]
+                                },
+                                "minItems": 1,
+                                "default": [
+                                  "application/pdf",
+                                  "image/jpeg",
+                                  "image/png"
+                                ]
+                              },
+                              "maxSizeMb": {
+                                "type": "number",
+                                "exclusiveMinimum": true,
+                                "minimum": 0,
+                                "maximum": 50,
+                                "default": 10
+                              },
+                              "maxFiles": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 10,
+                                "default": 1
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "address"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "repeater"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "maxLength": 64,
+                                "pattern": "^[A-Za-z]\\w*$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "helpText": {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "showIf": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "equals": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "maxLength": 200
+                                          },
+                                          {
+                                            "type": "number"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "equals"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "oneOf": {
+                                        "type": "array",
+                                        "items": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "number"
+                                            }
+                                          ]
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 50
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "oneOf"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "field": {
+                                        "type": "string",
+                                        "maxLength": 64,
+                                        "pattern": "^[A-Za-z]\\w*$"
+                                      },
+                                      "filled": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "field",
+                                      "filled"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "itemLabel": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 60,
+                                "default": "Item"
+                              },
+                              "minItems": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              "maxItems": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 100
+                              },
+                              "fields": {
+                                "type": "array",
+                                "items": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "text"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "maxLength": 64,
+                                          "pattern": "^[A-Za-z]\\w*$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "helpText": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "default": false
+                                        },
+                                        "showIf": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "equals": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "maxLength": 200
+                                                    },
+                                                    {
+                                                      "type": "number"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "equals"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "oneOf": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "maxLength": 200
+                                                      },
+                                                      {
+                                                        "type": "number"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "minItems": 1,
+                                                  "maxItems": 50
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "oneOf"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "filled": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "filled"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        },
+                                        "placeholder": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "minLength": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 10000
+                                        },
+                                        "maxLength": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 10000
+                                        },
+                                        "pattern": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 500
+                                        },
+                                        "patternMessage": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "name",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "textarea"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "maxLength": 64,
+                                          "pattern": "^[A-Za-z]\\w*$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "helpText": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "default": false
+                                        },
+                                        "showIf": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "equals": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "maxLength": 200
+                                                    },
+                                                    {
+                                                      "type": "number"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "equals"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "oneOf": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "maxLength": 200
+                                                      },
+                                                      {
+                                                        "type": "number"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "minItems": 1,
+                                                  "maxItems": 50
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "oneOf"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "filled": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "filled"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        },
+                                        "placeholder": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "minLength": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 10000
+                                        },
+                                        "maxLength": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 10000
+                                        },
+                                        "pattern": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 500
+                                        },
+                                        "patternMessage": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "name",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "email"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "maxLength": 64,
+                                          "pattern": "^[A-Za-z]\\w*$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "helpText": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "default": false
+                                        },
+                                        "showIf": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "equals": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "maxLength": 200
+                                                    },
+                                                    {
+                                                      "type": "number"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "equals"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "oneOf": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "maxLength": 200
+                                                      },
+                                                      {
+                                                        "type": "number"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "minItems": 1,
+                                                  "maxItems": 50
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "oneOf"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "filled": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "filled"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        },
+                                        "placeholder": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "minLength": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 10000
+                                        },
+                                        "maxLength": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 10000
+                                        },
+                                        "pattern": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 500
+                                        },
+                                        "patternMessage": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "name",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "tel"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "maxLength": 64,
+                                          "pattern": "^[A-Za-z]\\w*$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "helpText": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "default": false
+                                        },
+                                        "showIf": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "equals": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "maxLength": 200
+                                                    },
+                                                    {
+                                                      "type": "number"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "equals"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "oneOf": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "maxLength": 200
+                                                      },
+                                                      {
+                                                        "type": "number"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "minItems": 1,
+                                                  "maxItems": 50
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "oneOf"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "filled": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "filled"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        },
+                                        "placeholder": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "minLength": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 10000
+                                        },
+                                        "maxLength": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 10000
+                                        },
+                                        "pattern": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 500
+                                        },
+                                        "patternMessage": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "name",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "number"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "maxLength": 64,
+                                          "pattern": "^[A-Za-z]\\w*$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "helpText": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "default": false
+                                        },
+                                        "showIf": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "equals": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "maxLength": 200
+                                                    },
+                                                    {
+                                                      "type": "number"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "equals"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "oneOf": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "maxLength": 200
+                                                      },
+                                                      {
+                                                        "type": "number"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "minItems": 1,
+                                                  "maxItems": 50
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "oneOf"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "filled": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "filled"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        },
+                                        "placeholder": {
+                                          "type": "string",
+                                          "maxLength": 200
+                                        },
+                                        "min": {
+                                          "type": "number"
+                                        },
+                                        "max": {
+                                          "type": "number"
+                                        },
+                                        "integer": {
+                                          "type": "boolean",
+                                          "default": false
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "name",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "date"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "maxLength": 64,
+                                          "pattern": "^[A-Za-z]\\w*$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "helpText": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "default": false
+                                        },
+                                        "showIf": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "equals": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "maxLength": 200
+                                                    },
+                                                    {
+                                                      "type": "number"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "equals"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "oneOf": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "maxLength": 200
+                                                      },
+                                                      {
+                                                        "type": "number"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "minItems": 1,
+                                                  "maxItems": 50
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "oneOf"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "filled": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "filled"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        },
+                                        "min": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "today"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                            }
+                                          ]
+                                        },
+                                        "max": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "enum": [
+                                                "today"
+                                              ]
+                                            },
+                                            {
+                                              "type": "string",
+                                              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "name",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "select"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "maxLength": 64,
+                                          "pattern": "^[A-Za-z]\\w*$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "helpText": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "default": false
+                                        },
+                                        "showIf": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "equals": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "maxLength": 200
+                                                    },
+                                                    {
+                                                      "type": "number"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "equals"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "oneOf": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "maxLength": 200
+                                                      },
+                                                      {
+                                                        "type": "number"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "minItems": 1,
+                                                  "maxItems": 50
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "oneOf"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "filled": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "filled"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        },
+                                        "options": {
+                                          "type": "array",
+                                          "items": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 200
+                                              },
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "value": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 200
+                                                  },
+                                                  "label": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 200
+                                                  }
+                                                },
+                                                "required": [
+                                                  "value",
+                                                  "label"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            ]
+                                          },
+                                          "minItems": 1,
+                                          "maxItems": 500
+                                        },
+                                        "optionsSource": {
+                                          "type": "string",
+                                          "enum": [
+                                            "states"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "name",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "multi-select"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "maxLength": 64,
+                                          "pattern": "^[A-Za-z]\\w*$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "helpText": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "default": false
+                                        },
+                                        "showIf": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "equals": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "maxLength": 200
+                                                    },
+                                                    {
+                                                      "type": "number"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "equals"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "oneOf": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "maxLength": 200
+                                                      },
+                                                      {
+                                                        "type": "number"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "minItems": 1,
+                                                  "maxItems": 50
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "oneOf"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "filled": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "filled"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        },
+                                        "options": {
+                                          "type": "array",
+                                          "items": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 200
+                                              },
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "value": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 200
+                                                  },
+                                                  "label": {
+                                                    "type": "string",
+                                                    "minLength": 1,
+                                                    "maxLength": 200
+                                                  }
+                                                },
+                                                "required": [
+                                                  "value",
+                                                  "label"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            ]
+                                          },
+                                          "minItems": 1,
+                                          "maxItems": 500
+                                        },
+                                        "optionsSource": {
+                                          "type": "string",
+                                          "enum": [
+                                            "states"
+                                          ]
+                                        },
+                                        "minItems": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 500
+                                        },
+                                        "maxItems": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 500
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "name",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "file"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "maxLength": 64,
+                                          "pattern": "^[A-Za-z]\\w*$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "helpText": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "default": false
+                                        },
+                                        "showIf": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "equals": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "maxLength": 200
+                                                    },
+                                                    {
+                                                      "type": "number"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "equals"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "oneOf": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "maxLength": 200
+                                                      },
+                                                      {
+                                                        "type": "number"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "minItems": 1,
+                                                  "maxItems": 50
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "oneOf"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "filled": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "filled"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        },
+                                        "accept": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string",
+                                            "enum": [
+                                              "application/pdf",
+                                              "image/jpeg",
+                                              "image/png",
+                                              "image/webp"
+                                            ]
+                                          },
+                                          "minItems": 1,
+                                          "default": [
+                                            "application/pdf",
+                                            "image/jpeg",
+                                            "image/png"
+                                          ]
+                                        },
+                                        "maxSizeMb": {
+                                          "type": "number",
+                                          "exclusiveMinimum": true,
+                                          "minimum": 0,
+                                          "maximum": 50,
+                                          "default": 10
+                                        },
+                                        "maxFiles": {
+                                          "type": "integer",
+                                          "minimum": 1,
+                                          "maximum": 10,
+                                          "default": 1
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "name",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "address"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "maxLength": 64,
+                                          "pattern": "^[A-Za-z]\\w*$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "helpText": {
+                                          "type": "string",
+                                          "maxLength": 500
+                                        },
+                                        "required": {
+                                          "type": "boolean",
+                                          "default": false
+                                        },
+                                        "showIf": {
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "equals": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string",
+                                                      "maxLength": 200
+                                                    },
+                                                    {
+                                                      "type": "number"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "equals"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "oneOf": {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "maxLength": 200
+                                                      },
+                                                      {
+                                                        "type": "number"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "minItems": 1,
+                                                  "maxItems": 50
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "oneOf"
+                                              ],
+                                              "additionalProperties": false
+                                            },
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "field": {
+                                                  "type": "string",
+                                                  "maxLength": 64,
+                                                  "pattern": "^[A-Za-z]\\w*$"
+                                                },
+                                                "filled": {
+                                                  "type": "boolean"
+                                                }
+                                              },
+                                              "required": [
+                                                "field",
+                                                "filled"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "type",
+                                        "name",
+                                        "label"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                },
+                                "minItems": 1,
+                                "maxItems": 30
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "name",
+                              "label",
+                              "fields"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "minItems": 1,
+                      "maxItems": 50
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "fields"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 20
+              }
+            },
+            "required": [
+              "steps"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "formData": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "requirementId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "fileKey": {
+                  "type": "string"
+                },
+                "fileName": {
+                  "type": "string"
+                },
+                "fileSize": {
+                  "type": "integer"
+                },
+                "mimeType": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "requirementId",
+                "name",
+                "status",
+                "fileKey",
+                "fileName",
+                "fileSize",
+                "mimeType"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "stageId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "visibleToCustomer": {
+                  "type": "boolean"
+                },
+                "changedBy": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "status",
+                "stageId",
+                "visibleToCustomer",
+                "changedBy",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "assignedTo": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "currentStage": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "status",
+          "priority",
+          "slaDueAt",
+          "submittedAt",
+          "createdAt",
+          "updatedAt",
+          "customer",
+          "service",
+          "package",
+          "businessEntity",
+          "order",
+          "payments",
+          "formSchema",
+          "formData",
+          "documents",
+          "history",
+          "assignedTo",
+          "currentStage"
         ],
         "additionalProperties": false
       },

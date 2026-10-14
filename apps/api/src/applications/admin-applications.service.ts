@@ -1,10 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 
-import { SLA_DUE_SOON_HOURS, APPLICATION_STATUS_LABEL, type AdminApplicationListQuery, type AdminApplicationPage, type ApplicationStatus } from '@biznexa/types';
+import { SLA_DUE_SOON_HOURS, APPLICATION_STATUS_LABEL, type AdminApplicationListQuery, type AdminApplicationPage, type AdminApplicationDetail, type ApplicationStatus } from '@biznexa/types';
 import type { AuthUser } from '../common/auth.decorators';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { applicationScope } from './application-access';
+import { applicationScope, findVisibleApplication } from './application-access';
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -163,5 +163,123 @@ export class AdminApplicationsService {
       ].join(',');
     });
     return [header, ...rows].join('\n');
+  }
+
+  async get(u: AuthUser, id: string): Promise<AdminApplicationDetail> {
+    const app = await findVisibleApplication(this.prisma, u, id, {
+      id: true,
+      code: true,
+      status: true,
+      priority: true,
+      slaDueAt: true,
+      submittedAt: true,
+      createdAt: true,
+      updatedAt: true,
+      formData: true,
+      /* formSchemaVersion is a number */
+      
+      service: { select: { id: true, name: true } },
+      package: { select: { id: true, name: true } },
+      
+      businessEntity: { select: { id: true, pan: true } },
+      
+      order: {
+        select: {
+          id: true, code: true, status: true, total: true, taxTotal: true, subtotal: true,
+          customer: { select: { id: true, name: true, email: true, mobile: true } }
+        }
+      },
+      
+      assignedTo: { select: { id: true, name: true } },
+      currentStage: { select: { id: true, name: true } },
+      
+      documents: {
+        select: {
+          id: true, requirementId: true, name: true, status: true, fileKey: true, fileName: true, sizeBytes: true, mimeType: true
+        },
+        orderBy: { requirement: { sortOrder: 'asc' } },
+        
+      },
+      
+      history: {
+        select: {
+          id: true, status: true, stageId: true, visibleToCustomer: true, changedAt: true,
+          changedBy: { select: { id: true, name: true } }
+        },
+        orderBy: { changedAt: 'desc' }
+      }
+    });
+
+    const order = app.order as any;
+    const customer = order.customer;
+    
+    // Payments: get from order
+    const payments = await this.prisma.payment.findMany({
+      where: { orderId: order.id },
+      select: { id: true, status: true, amount: true, method: true, paidAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      id: app.id,
+      code: app.code,
+      status: app.status as any,
+      priority: app.priority as any,
+      slaDueAt: app.slaDueAt ? app.slaDueAt.toISOString() : null,
+      submittedAt: app.submittedAt ? app.submittedAt.toISOString() : null,
+      createdAt: app.createdAt.toISOString(),
+      updatedAt: app.updatedAt.toISOString(),
+      
+      customer: customer ? {
+        id: customer.id, name: customer.name, email: customer.email, mobile: customer.mobile
+      } : null,
+      
+      service: { id: app.service.id, name: app.service.name },
+      package: { id: app.package.id, name: app.package.name },
+      
+      businessEntity: app.businessEntity ? {
+        id: app.businessEntity.id,
+        maskedPan: app.businessEntity.pan ? 'XXXXX' + app.businessEntity.pan.slice(5, 9) + 'X' : null
+      } : null,
+      
+      order: order ? {
+        id: order.id, code: order.code, status: order.status,
+        total: order.total, taxTotal: order.taxTotal, subtotal: order.subtotal
+      } : null,
+      
+      payments: payments.map(p => ({
+        id: p.id,
+        status: p.status,
+        amount: p.amount,
+        method: p.method,
+        paidAt: p.paidAt ? p.paidAt.toISOString() : null,
+      })),
+      
+      formSchema: (app as any).service?.formSchemas?.[0]?.schema as any ?? null,
+      formData: app.formData as Record<string, unknown>,
+      
+      documents: app.documents.map(d => ({
+        id: d.id,
+        name: d.name,
+        status: d.status,
+        fileKey: d.fileKey || '',
+        fileName: d.fileName || '',
+        fileSize: d.sizeBytes || 0,
+        mimeType: d.mimeType || '',
+        requirementId: d.requirementId || '',
+      })),
+      
+      history: app.history.map(h => ({
+        id: h.id,
+        status: h.status,
+        stageId: h.stageId,
+        visibleToCustomer: h.visibleToCustomer,
+        changedBy: h.changedBy ? { id: h.changedBy?.id, name: h.changedBy?.name } : null,
+        createdAt: h.changedAt.toISOString(),
+      })),
+      
+      assignedTo: app.assignedTo ? { id: app.assignedTo.id, name: app.assignedTo.name } : null,
+      currentStage: app.currentStage ? { id: app.currentStage.id, name: app.currentStage.name } : null,
+    };
   }
 }
