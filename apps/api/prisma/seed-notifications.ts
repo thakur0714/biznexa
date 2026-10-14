@@ -1,195 +1,142 @@
 import type { PrismaClient, NotificationChannel } from '../src/generated/prisma/client';
+import { NOTIFICATION_EVENTS, type NotificationEvent } from '@biznexa/types';
 
 export interface SeedTemplate {
-  event: string;
+  event: NotificationEvent;
   channel: NotificationChannel;
   subject?: string;
   body: string;
-  dltTemplateId?: string;
+  dltTemplateId?: string | null;
 }
 
 /**
  * Seed templates for all events listed in PROMPT §7.9:
- * registration, OTP, payment success/failure, invoice issued, document requested,
- * document approved, document rejected, application status change, expert assigned,
- * consultation booked/reminder/cancelled, certificate issued, certificate expiring,
- * compliance reminder, ticket created/replied/resolved.
+ * Exactly one name per event, matching packages/types/src/events.ts where applicable.
+ * 19 events × 5 channels = 95 templates.
  */
 export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
-  // ────────────────── Registration ──────────────────
+  // ────────────────── auth.registered ──────────────────
   {
-    event: 'registration',
+    event: 'auth.registered',
     channel: 'EMAIL',
     subject: 'Welcome to BizNexa, {{customerName}}!',
     body: '<p>Hello {{customerName}},</p><p>Welcome to BizNexa! Your account has been registered successfully. Explore our full suite of business registration, compliance, tax, and intellectual property services.</p>',
   },
   {
-    event: 'registration',
+    event: 'auth.registered',
     channel: 'SMS',
     body: 'Hello {{customerName}}, welcome to BizNexa! Your account is active. Manage all your business services at biznexa.com.',
   },
   {
-    event: 'registration',
+    event: 'auth.registered',
     channel: 'PUSH',
     subject: 'Welcome to BizNexa',
     body: 'Hello {{customerName}}, your account is now ready.',
   },
   {
-    event: 'registration',
+    event: 'auth.registered',
     channel: 'IN_APP',
     subject: 'Welcome to BizNexa',
     body: 'Hello {{customerName}}, welcome to BizNexa! Start exploring our compliance and registration services.',
   },
   {
-    event: 'registration',
+    event: 'auth.registered',
     channel: 'WHATSAPP',
     body: 'Hello {{customerName}}, welcome to BizNexa! Your account has been created successfully.',
   },
-  // Alias auth.registered
-  {
-    event: 'auth.registered',
-    channel: 'EMAIL',
-    subject: 'Welcome to BizNexa, {{customerName}}!',
-    body: '<p>Hello {{customerName}},</p><p>Welcome to BizNexa! Your account has been registered successfully.</p>',
-  },
-  {
-    event: 'auth.registered',
-    channel: 'IN_APP',
-    subject: 'Welcome to BizNexa',
-    body: 'Hello {{customerName}}, your account has been registered successfully.',
-  },
 
-  // ────────────────── OTP ──────────────────
+  // ────────────────── auth.otp ──────────────────
   {
-    event: 'otp',
+    event: 'auth.otp',
     channel: 'EMAIL',
     subject: 'Your BizNexa Verification Code: {{otp}}',
     body: '<p>Hello,</p><p>Your verification code is <strong>{{otp}}</strong>. It is valid for {{validMinutes}} minutes. Do not share this code with anyone.</p>',
   },
   {
-    event: 'otp',
+    event: 'auth.otp',
     channel: 'SMS',
     body: '{{otp}} is your BizNexa verification code. Valid for {{validMinutes}} minutes. Do not share this code.',
-    dltTemplateId: '1107161234567890101',
+    dltTemplateId: null,
   },
   {
-    event: 'otp',
+    event: 'auth.otp',
     channel: 'PUSH',
     subject: 'Verification Code',
     body: 'Your BizNexa verification code is {{otp}}.',
   },
   {
-    event: 'otp',
+    event: 'auth.otp',
     channel: 'IN_APP',
     subject: 'Verification Code',
     body: 'Your verification code is {{otp}} (valid for {{validMinutes}} minutes).',
   },
   {
-    event: 'otp',
+    event: 'auth.otp',
     channel: 'WHATSAPP',
     body: 'Your BizNexa verification code is {{otp}}. Valid for {{validMinutes}} minutes.',
   },
-  // Alias auth.otp
-  {
-    event: 'auth.otp',
-    channel: 'SMS',
-    body: '{{otp}} is your BizNexa verification code. Valid for {{validMinutes}} minutes.',
-    dltTemplateId: '1107161234567890101',
-  },
-  {
-    event: 'auth.otp',
-    channel: 'EMAIL',
-    subject: 'Your BizNexa Verification Code: {{otp}}',
-    body: '<p>Your verification code is <strong>{{otp}}</strong> (valid for {{validMinutes}} minutes).</p>',
-  },
 
-  // ────────────────── Payment Success ──────────────────
+  // ────────────────── payment.succeeded ──────────────────
   {
-    event: 'payment.success',
+    event: 'payment.succeeded',
     channel: 'EMAIL',
     subject: 'Payment Successful for Order #{{orderId}}',
     body: '<p>Hello {{customerName}},</p><p>We received your payment of Rs. {{amount}} for Order #{{orderId}}.</p>',
   },
   {
-    event: 'payment.success',
+    event: 'payment.succeeded',
     channel: 'SMS',
     body: 'Payment of Rs. {{amount}} received for Order {{orderId}}. Thank you for choosing BizNexa.',
   },
   {
-    event: 'payment.success',
+    event: 'payment.succeeded',
     channel: 'PUSH',
     subject: 'Payment Received',
     body: 'Payment of Rs. {{amount}} for Order {{orderId}} was successful.',
   },
   {
-    event: 'payment.success',
+    event: 'payment.succeeded',
     channel: 'IN_APP',
     subject: 'Payment Successful',
     body: 'Your payment of Rs. {{amount}} for Order {{orderId}} was successful.',
   },
   {
-    event: 'payment.success',
+    event: 'payment.succeeded',
     channel: 'WHATSAPP',
     body: 'Hello {{customerName}}, your payment of Rs. {{amount}} for Order {{orderId}} has been processed.',
   },
-  // Alias payment.succeeded
-  {
-    event: 'payment.succeeded',
-    channel: 'EMAIL',
-    subject: 'Payment Successful for Order #{{orderId}}',
-    body: '<p>Hello {{customerName}},</p><p>We received your payment of Rs. {{amount}} for Order #{{orderId}}.</p>',
-  },
-  {
-    event: 'payment.succeeded',
-    channel: 'IN_APP',
-    subject: 'Payment Successful',
-    body: 'Your payment of Rs. {{amount}} for Order {{orderId}} was successful.',
-  },
 
-  // ────────────────── Payment Failure ──────────────────
+  // ────────────────── payment.failed ──────────────────
   {
-    event: 'payment.failure',
+    event: 'payment.failed',
     channel: 'EMAIL',
     subject: 'Payment Failed for Order #{{orderId}}',
     body: '<p>Hello {{customerName}},</p><p>Your payment attempt of Rs. {{amount}} for Order #{{orderId}} could not be completed. Reason: {{reason}}.</p>',
   },
   {
-    event: 'payment.failure',
+    event: 'payment.failed',
     channel: 'SMS',
     body: 'Payment of Rs. {{amount}} for Order {{orderId}} failed: {{reason}}. Please retry on BizNexa.',
   },
   {
-    event: 'payment.failure',
+    event: 'payment.failed',
     channel: 'PUSH',
     subject: 'Payment Failed',
     body: 'Payment for Order {{orderId}} failed. Tap to retry.',
   },
   {
-    event: 'payment.failure',
+    event: 'payment.failed',
     channel: 'IN_APP',
     subject: 'Payment Failed',
     body: 'Payment of Rs. {{amount}} for Order {{orderId}} failed: {{reason}}.',
   },
   {
-    event: 'payment.failure',
+    event: 'payment.failed',
     channel: 'WHATSAPP',
     body: 'Hello {{customerName}}, payment for Order {{orderId}} was unsuccessful: {{reason}}.',
   },
-  // Alias payment.failed
-  {
-    event: 'payment.failed',
-    channel: 'EMAIL',
-    subject: 'Payment Failed for Order #{{orderId}}',
-    body: '<p>Hello {{customerName}},</p><p>Payment for Order {{orderId}} could not be completed: {{reason}}.</p>',
-  },
-  {
-    event: 'payment.failed',
-    channel: 'IN_APP',
-    subject: 'Payment Failed',
-    body: 'Payment of Rs. {{amount}} for Order {{orderId}} failed: {{reason}}.',
-  },
 
-  // ────────────────── Invoice Issued ──────────────────
+  // ────────────────── invoice.issued ──────────────────
   {
     event: 'invoice.issued',
     channel: 'EMAIL',
@@ -219,7 +166,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, your invoice {{invoiceNumber}} for Rs. {{total}} is now available.',
   },
 
-  // ────────────────── Document Requested ──────────────────
+  // ────────────────── document.requested ──────────────────
   {
     event: 'document.requested',
     channel: 'EMAIL',
@@ -249,7 +196,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, please upload {{documentName}} for application {{applicationNumber}} on BizNexa.',
   },
 
-  // ────────────────── Document Approved ──────────────────
+  // ────────────────── document.approved ──────────────────
   {
     event: 'document.approved',
     channel: 'EMAIL',
@@ -279,7 +226,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, {{documentName}} for application {{applicationNumber}} has been approved.',
   },
 
-  // ────────────────── Document Rejected ──────────────────
+  // ────────────────── document.rejected ──────────────────
   {
     event: 'document.rejected',
     channel: 'EMAIL',
@@ -309,7 +256,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, document {{documentName}} was rejected: {{reason}}. Please re-upload on BizNexa.',
   },
 
-  // ────────────────── Application Status Change ──────────────────
+  // ────────────────── application.status_changed ──────────────────
   {
     event: 'application.status_changed',
     channel: 'EMAIL',
@@ -339,7 +286,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, your application {{applicationNumber}} for {{serviceName}} is now {{status}}.',
   },
 
-  // ────────────────── Expert Assigned ──────────────────
+  // ────────────────── expert.assigned ──────────────────
   {
     event: 'expert.assigned',
     channel: 'EMAIL',
@@ -369,7 +316,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, {{expertName}} has been assigned to your application {{applicationNumber}}.',
   },
 
-  // ────────────────── Consultation Booked ──────────────────
+  // ────────────────── consultation.booked ──────────────────
   {
     event: 'consultation.booked',
     channel: 'EMAIL',
@@ -399,7 +346,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, your consultation with {{expertName}} is confirmed for {{date}} at {{time}}. Link: {{meetingLink}}.',
   },
 
-  // ────────────────── Consultation Reminder ──────────────────
+  // ────────────────── consultation.reminder ──────────────────
   {
     event: 'consultation.reminder',
     channel: 'EMAIL',
@@ -429,7 +376,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Reminder: Consultation with {{expertName}} starts in {{minutesBefore}} minutes. Join: {{meetingLink}}.',
   },
 
-  // ────────────────── Consultation Cancelled ──────────────────
+  // ────────────────── consultation.cancelled ──────────────────
   {
     event: 'consultation.cancelled',
     channel: 'EMAIL',
@@ -459,7 +406,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, your consultation on {{date}} has been cancelled.',
   },
 
-  // ────────────────── Certificate Issued ──────────────────
+  // ────────────────── certificate.issued ──────────────────
   {
     event: 'certificate.issued',
     channel: 'EMAIL',
@@ -489,7 +436,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Congratulations {{customerName}}! Your certificate {{certificateNumber}} has been issued.',
   },
 
-  // ────────────────── Certificate Expiring ──────────────────
+  // ────────────────── certificate.expiring ──────────────────
   {
     event: 'certificate.expiring',
     channel: 'EMAIL',
@@ -519,7 +466,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, your certificate {{certificateNumber}} expires in {{daysLeft}} days. Renew on BizNexa.',
   },
 
-  // ────────────────── Compliance Reminder ──────────────────
+  // ────────────────── compliance.reminder ──────────────────
   {
     event: 'compliance.reminder',
     channel: 'EMAIL',
@@ -549,7 +496,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, compliance reminder: {{complianceName}} for {{entityName}} is due on {{dueDate}}.',
   },
 
-  // ────────────────── Ticket Created ──────────────────
+  // ────────────────── ticket.created ──────────────────
   {
     event: 'ticket.created',
     channel: 'EMAIL',
@@ -579,7 +526,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, your support ticket #{{ticketCode}} has been created.',
   },
 
-  // ────────────────── Ticket Replied ──────────────────
+  // ────────────────── ticket.replied ──────────────────
   {
     event: 'ticket.replied',
     channel: 'EMAIL',
@@ -609,7 +556,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     body: 'Hello {{customerName}}, support has replied to your ticket #{{ticketCode}}.',
   },
 
-  // ────────────────── Ticket Resolved ──────────────────
+  // ────────────────── ticket.resolved ──────────────────
   {
     event: 'ticket.resolved',
     channel: 'EMAIL',
@@ -649,12 +596,7 @@ export async function seedNotificationTemplates(prisma: PrismaClient): Promise<{
           channel: t.channel,
         },
       },
-      update: {
-        subject: t.subject ?? null,
-        body: t.body,
-        dltTemplateId: t.dltTemplateId ?? null,
-        isActive: true,
-      },
+      update: {}, // Create-only: do not overwrite admin edits!
       create: {
         event: t.event,
         channel: t.channel,

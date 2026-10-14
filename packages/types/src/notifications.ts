@@ -4,6 +4,31 @@ export const NOTIFICATION_CHANNELS = ['EMAIL', 'SMS', 'PUSH', 'IN_APP', 'WHATSAP
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 export const notificationChannelSchema = z.enum(NOTIFICATION_CHANNELS);
 
+/** Events supported for notifications from spec §7.9 (matching events.ts where applicable). */
+export const NOTIFICATION_EVENTS = [
+  'auth.registered',
+  'auth.otp',
+  'payment.succeeded',
+  'payment.failed',
+  'invoice.issued',
+  'document.requested',
+  'document.approved',
+  'document.rejected',
+  'application.status_changed',
+  'expert.assigned',
+  'consultation.booked',
+  'consultation.reminder',
+  'consultation.cancelled',
+  'certificate.issued',
+  'certificate.expiring',
+  'compliance.reminder',
+  'ticket.created',
+  'ticket.replied',
+  'ticket.resolved',
+] as const;
+export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
+export const notificationEventSchema = z.enum(NOTIFICATION_EVENTS);
+
 export const NOTIFICATION_CATEGORIES = ['TRANSACTIONAL', 'MARKETING'] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 export const notificationCategorySchema = z.enum(NOTIFICATION_CATEGORIES);
@@ -72,7 +97,7 @@ export interface RenderedNotification {
   body: string;
 }
 
-/** Escapes HTML special characters in values for EMAIL and IN_APP channels. */
+/** Escapes HTML special characters in values for EMAIL channel. */
 export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')

@@ -6,31 +6,24 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
 
-export const NOTIFICATION_PREFERENCE_PREFIX = 'notification.preferences.';
-
 @Injectable()
 export class NotificationPreferencesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private preferenceKey(userId: string): string {
-    return `${NOTIFICATION_PREFERENCE_PREFIX}${userId}`;
-  }
-
   async getPreferences(userId: string): Promise<UserNotificationPreferences> {
-    const key = this.preferenceKey(userId);
-    const row = await this.prisma.setting.findUnique({
-      where: { key },
-      select: { value: true },
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { notificationPrefs: true },
     });
 
-    if (!row || !row.value || typeof row.value !== 'object') {
+    if (!user || !user.notificationPrefs || typeof user.notificationPrefs !== 'object') {
       return {
         marketingOptOut: false,
         channelPreferences: {},
       };
     }
 
-    const parsed = userNotificationPreferencesSchema.safeParse(row.value);
+    const parsed = userNotificationPreferencesSchema.safeParse(user.notificationPrefs);
     if (!parsed.success) {
       return {
         marketingOptOut: false,
@@ -55,12 +48,10 @@ export class NotificationPreferencesService {
     };
 
     const validated = userNotificationPreferencesSchema.parse(merged);
-    const key = this.preferenceKey(userId);
 
-    await this.prisma.setting.upsert({
-      where: { key },
-      update: { value: validated as unknown as Prisma.InputJsonValue },
-      create: { key, value: validated as unknown as Prisma.InputJsonValue },
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { notificationPrefs: validated as unknown as Prisma.InputJsonValue },
     });
 
     return validated;

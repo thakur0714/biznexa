@@ -21,9 +21,41 @@ describe('seedNotificationTemplates (e2e)', () => {
     expect(count).toBeGreaterThanOrEqual(SEED_NOTIFICATION_TEMPLATES.length);
   });
 
+  it('does not overwrite admin edits when seed is re-run', async () => {
+    // 1. Ensure template exists
+    await seedNotificationTemplates(prisma);
+
+    // 2. Simulate an admin editing a template
+    const editedBody = '<p>Custom admin edited body: {{customerName}} paid {{amount}} for {{orderId}}.</p>';
+    await prisma.notificationTemplate.update({
+      where: {
+        event_channel: {
+          event: 'payment.succeeded',
+          channel: 'EMAIL',
+        },
+      },
+      data: { body: editedBody },
+    });
+
+    // 3. Re-run seed
+    await seedNotificationTemplates(prisma);
+
+    // 4. Verify the body stays changed
+    const afterSeed = await prisma.notificationTemplate.findUniqueOrThrow({
+      where: {
+        event_channel: {
+          event: 'payment.succeeded',
+          channel: 'EMAIL',
+        },
+      },
+    });
+
+    expect(afterSeed.body).toBe(editedBody);
+  });
+
   it('allows TemplateEngineService to load and render seeded templates', async () => {
     const engine = new TemplateEngineService(prisma);
-    const rendered = await engine.renderTemplate('payment.success', 'EMAIL', {
+    const rendered = await engine.renderTemplate('payment.succeeded', 'EMAIL', {
       customerName: 'Rohit Verma',
       amount: 1500,
       orderId: 'ORD-999',

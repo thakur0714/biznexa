@@ -67,7 +67,8 @@ export class TemplateEngineService {
 
   /**
    * Pure render of subject and body from template data.
-   * Escapes HTML for EMAIL and IN_APP channels; leaves plain text for SMS, PUSH, and WHATSAPP.
+   * Escapes HTML only for EMAIL channel. IN_APP is rendered as text by React,
+   * while SMS, PUSH, and WHATSAPP are plain text.
    */
   render(
     template: {
@@ -78,7 +79,7 @@ export class TemplateEngineService {
     },
     variables: Record<string, unknown>,
   ): RenderedNotification {
-    const escapeHtmlValues = template.channel === 'EMAIL' || template.channel === 'IN_APP';
+    const escapeHtmlValues = template.channel === 'EMAIL';
     const contextInfo = template.event
       ? `event="${template.event}" channel="${template.channel}"`
       : `channel="${template.channel}"`;

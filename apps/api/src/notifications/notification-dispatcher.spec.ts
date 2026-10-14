@@ -158,7 +158,7 @@ describe('NotificationDispatcherService', () => {
 
       const input: SendNotificationInput = {
         userId: 'user-1',
-        event: 'payment.success',
+        event: 'payment.succeeded',
         channel: 'EMAIL',
         category: 'TRANSACTIONAL',
         title: 'Payment Received',

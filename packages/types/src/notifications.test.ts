@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   NOTIFICATION_CHANNELS,
   notificationChannelSchema,
+  NOTIFICATION_EVENTS,
+  notificationEventSchema,
   userNotificationPreferencesSchema,
   sendNotificationInputSchema,
   escapeHtml,
@@ -31,10 +33,17 @@ describe('notification types and schemas', () => {
     expect(parsed.channelPreferences?.EMAIL).toBe(true);
   });
 
+  it('validates notification events', () => {
+    expect(NOTIFICATION_EVENTS).toHaveLength(19);
+    expect(notificationEventSchema.safeParse('payment.succeeded').success).toBe(true);
+    expect(notificationEventSchema.safeParse('auth.registered').success).toBe(true);
+    expect(notificationEventSchema.safeParse('invalid.event').success).toBe(false);
+  });
+
   it('validates sendNotificationInput with defaults', () => {
     const parsed = sendNotificationInputSchema.parse({
       userId: 'user-123',
-      event: 'payment.success',
+      event: 'payment.succeeded',
       channel: 'EMAIL',
       body: 'Your payment succeeded',
     });
@@ -45,7 +54,7 @@ describe('notification types and schemas', () => {
   it('rejects invalid channels in sendNotificationInput', () => {
     const res = sendNotificationInputSchema.safeParse({
       userId: 'user-123',
-      event: 'payment.success',
+      event: 'payment.succeeded',
       channel: 'CARRIER_PIGEON',
       body: 'Hi',
     });

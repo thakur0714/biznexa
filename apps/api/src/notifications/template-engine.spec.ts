@@ -5,6 +5,7 @@ import {
 } from './template-engine.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import { SEED_NOTIFICATION_TEMPLATES } from '../../prisma/seed-notifications';
+import { NOTIFICATION_EVENTS } from '@biznexa/types';
 
 describe('TemplateEngineService', () => {
   let service: TemplateEngineService;
@@ -22,7 +23,7 @@ describe('TemplateEngineService', () => {
   describe('rendering', () => {
     it('renders variables in subject and body', () => {
       const template = {
-        event: 'payment.success',
+        event: 'payment.succeeded',
         channel: 'EMAIL' as const,
         subject: 'Payment of Rs. {{amount}} Received for Order {{orderId}}',
         body: '<p>Hello {{customerName}}, your payment of Rs. {{amount}} was successful.</p>',
@@ -65,7 +66,7 @@ describe('TemplateEngineService', () => {
   });
 
   describe('escaping HTML', () => {
-    it('escapes HTML special characters for EMAIL channel', () => {
+    it('escapes HTML special characters only for EMAIL channel', () => {
       const template = {
         channel: 'EMAIL' as const,
         subject: 'Update for {{companyName}}',
@@ -82,27 +83,19 @@ describe('TemplateEngineService', () => {
       expect(result.body).toBe('<p>Welcome &lt;Acme &amp; Co&gt;, O&#39;Connor and &quot;VIP&quot;.</p>');
     });
 
-    it('escapes HTML special characters for IN_APP channel', () => {
-      const template = {
-        channel: 'IN_APP' as const,
-        subject: 'Notice for {{name}}',
-        body: 'Attention: <script>alert("xss")</script> from {{name}}.',
-      };
-
-      const result = service.render(template, {
-        name: '<b>Malicious</b>',
-      });
-
-      expect(result.subject).toBe('Notice for &lt;b&gt;Malicious&lt;/b&gt;');
-      // Variable value is escaped
-      expect(result.body).toContain('&lt;b&gt;Malicious&lt;/b&gt;');
-    });
-
-    it('does NOT escape HTML for SMS, PUSH, and WHATSAPP channels', () => {
+    it('does NOT escape HTML for IN_APP, SMS, PUSH, and WHATSAPP channels', () => {
       const vars = {
         company: 'R&D Solutions <India>',
         quote: '"Fast & Reliable"',
       };
+
+      const inApp = service.render(
+        { channel: 'IN_APP', subject: 'Notice for {{company}}', body: 'Service {{quote}}' },
+        vars,
+      );
+      // React escapes text on its own, so IN_APP does not HTML-escape values
+      expect(inApp.subject).toBe('Notice for R&D Solutions <India>');
+      expect(inApp.body).toBe('Service "Fast & Reliable"');
 
       const sms = service.render(
         { channel: 'SMS', body: 'Service for {{company}}: {{quote}}' },
@@ -199,7 +192,7 @@ describe('TemplateEngineService', () => {
 
     it('throws TemplateNotFoundError when template is inactive', async () => {
       mockPrisma.notificationTemplate.findUnique.mockResolvedValue({
-        event: 'payment.success',
+        event: 'payment.succeeded',
         channel: 'EMAIL',
         subject: 'Payment Received',
         body: 'Thank you {{customerName}}',
@@ -207,12 +200,12 @@ describe('TemplateEngineService', () => {
       });
 
       await expect(
-        service.renderTemplate('payment.success', 'EMAIL', { customerName: 'Aarav' }),
+        service.renderTemplate('payment.succeeded', 'EMAIL', { customerName: 'Aarav' }),
       ).rejects.toThrow(TemplateNotFoundError);
 
       await expect(
-        service.renderTemplate('payment.success', 'EMAIL', { customerName: 'Aarav' }),
-      ).rejects.toThrow('Notification template for event="payment.success" channel="EMAIL" is inactive');
+        service.renderTemplate('payment.succeeded', 'EMAIL', { customerName: 'Aarav' }),
+      ).rejects.toThrow('Notification template for event="payment.succeeded" channel="EMAIL" is inactive');
     });
 
     it('renders successfully when template is found in database', async () => {
@@ -231,43 +224,27 @@ describe('TemplateEngineService', () => {
   });
 
   describe('seed templates for §7.9 events', () => {
-    it('contains seed templates for every event in §7.9 across channels', () => {
-      const expectedEvents = [
-        'registration',
-        'otp',
-        'payment.success',
-        'payment.failure',
-        'invoice.issued',
-        'document.requested',
-        'document.approved',
-        'document.rejected',
-        'application.status_changed',
-        'expert.assigned',
-        'consultation.booked',
-        'consultation.reminder',
-        'consultation.cancelled',
-        'certificate.issued',
-        'certificate.expiring',
-        'compliance.reminder',
-        'ticket.created',
-        'ticket.replied',
-        'ticket.resolved',
-      ];
-
+    it('contains seed templates for every event in NOTIFICATION_EVENTS across all 5 channels', () => {
       const seededEvents = new Set(SEED_NOTIFICATION_TEMPLATES.map((t) => t.event));
-      for (const ev of expectedEvents) {
+      for (const ev of NOTIFICATION_EVENTS) {
         expect(seededEvents.has(ev)).toBe(true);
       }
+      expect(seededEvents.size).toBe(NOTIFICATION_EVENTS.length);
+    });
 
-      // Check all 5 channels are covered for each core event
-      const channels = ['EMAIL', 'SMS', 'PUSH', 'IN_APP', 'WHATSAPP'];
-      for (const ev of expectedEvents) {
-        for (const ch of channels) {
-          const match = SEED_NOTIFICATION_TEMPLATES.find((t) => t.event === ev && t.channel === ch);
-          expect(match).toBeDefined();
-          expect(match?.body.length).toBeGreaterThan(0);
-        }
+    it('has no duplicate (event, channel) pairs and every event is in NOTIFICATION_EVENTS', () => {
+      const validEventSet = new Set<string>(NOTIFICATION_EVENTS);
+      const seenPairs = new Set<string>();
+
+      for (const t of SEED_NOTIFICATION_TEMPLATES) {
+        expect(validEventSet.has(t.event)).toBe(true);
+        const key = `${t.event}::${t.channel}`;
+        expect(seenPairs.has(key)).toBe(false);
+        seenPairs.add(key);
+        expect(t.dltTemplateId ?? null).toBeNull();
       }
+
+      expect(SEED_NOTIFICATION_TEMPLATES.length).toBe(NOTIFICATION_EVENTS.length * 5);
     });
   });
 });
