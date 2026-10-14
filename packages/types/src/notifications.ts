@@ -106,3 +106,47 @@ export function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+/** In-app notification item representation (M6.7). */
+export const notificationItemSchema = z.object({
+  id: z.string().uuid(),
+  event: z.string(),
+  title: z.string(),
+  body: z.string(),
+  link: z.string().nullable(),
+  readAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+});
+export type NotificationItem = z.infer<typeof notificationItemSchema>;
+
+/** Paging and filter options for GET /api/notifications. */
+export const notificationListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  cursor: z.string().uuid().optional(),
+});
+export type NotificationListQuery = z.infer<typeof notificationListQuerySchema>;
+
+/** Page response for GET /api/notifications. */
+export const notificationListPageSchema = z.object({
+  items: z.array(notificationItemSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+  pages: z.number().int(),
+  nextCursor: z.string().uuid().nullable().optional(),
+});
+export type NotificationListPage = z.infer<typeof notificationListPageSchema>;
+
+/** Response for GET /api/notifications/unread-count. */
+export const notificationUnreadCountSchema = z.object({
+  count: z.number().int().min(0),
+});
+export type NotificationUnreadCount = z.infer<typeof notificationUnreadCountSchema>;
+
+/** Response for POST /api/notifications/read-all. */
+export const markAllReadResponseSchema = z.object({
+  count: z.number().int().min(0),
+});
+export type MarkAllReadResponse = z.infer<typeof markAllReadResponseSchema>;
+

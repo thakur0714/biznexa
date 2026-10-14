@@ -8,6 +8,7 @@ import { Icon } from './icons';
 import { buttonClass } from '@biznexa/ui';
 import { useAuth } from '@/lib/auth';
 import type { CategorySummary } from '@/lib/api';
+import { NotificationBell } from './notification-bell';
 
 const NAV = [
   { href: '/consultants', label: 'Consultations' },
@@ -48,10 +49,13 @@ export function SiteHeader({ categories }: { categories: CategorySummary[] }) {
 
   const account = ready ? (
     user ? (
-      <Link href="/dashboard" className={buttonClass('outline', 'sm')}>
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-ink text-[11px] font-semibold text-white">{user.name.charAt(0).toUpperCase()}</span>
-        My account
-      </Link>
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+        <Link href="/dashboard" className={buttonClass('outline', 'sm')}>
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-ink text-[11px] font-semibold text-white">{user.name.charAt(0).toUpperCase()}</span>
+          My account
+        </Link>
+      </div>
     ) : (
       <>
         <Link href="/login" className={buttonClass('ghost', 'sm')}>
@@ -95,9 +99,12 @@ export function SiteHeader({ categories }: { categories: CategorySummary[] }) {
 
         <div className="ml-auto hidden items-center gap-2 lg:flex">{account}</div>
 
-        <button type="button" className="ml-auto rounded-md p-2 lg:hidden" aria-label={mobileOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileOpen} onClick={() => setMobileOpen((v) => !v)}>
-          <Icon name={mobileOpen ? 'x' : 'menu'} size={24} />
-        </button>
+        <div className="ml-auto flex items-center gap-1 lg:hidden">
+          {ready && user && <NotificationBell />}
+          <button type="button" className="rounded-md p-2" aria-label={mobileOpen ? 'Close menu' : 'Open menu'} aria-expanded={mobileOpen} onClick={() => setMobileOpen((v) => !v)}>
+            <Icon name={mobileOpen ? 'x' : 'menu'} size={24} />
+          </button>
+        </div>
 
         {menuOpen && (
           <div id="services-menu" className="absolute inset-x-4 top-[calc(100%+1px)] z-50 rounded-b-lg border border-t-0 border-rule bg-white p-6 shadow-[0_24px_40px_-20px_rgba(18,26,69,0.35)] sm:inset-x-6">

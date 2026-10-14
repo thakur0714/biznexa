@@ -7,6 +7,10 @@ import {
   userNotificationPreferencesSchema,
   sendNotificationInputSchema,
   escapeHtml,
+  notificationItemSchema,
+  notificationListQuerySchema,
+  notificationUnreadCountSchema,
+  markAllReadResponseSchema,
 } from './notifications';
 
 describe('notification types and schemas', () => {
@@ -64,5 +68,43 @@ describe('notification types and schemas', () => {
   it('escapes HTML special characters correctly', () => {
     const input = `<script>alert("xss & 'hack'")</script>`;
     expect(escapeHtml(input)).toBe('&lt;script&gt;alert(&quot;xss &amp; &#39;hack&#39;&quot;)&lt;/script&gt;');
+  });
+
+  it('validates notificationItemSchema', () => {
+    const valid = {
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      event: 'payment.succeeded',
+      title: 'Payment Received',
+      body: 'Your payment was successful.',
+      link: '/dashboard/payments/1',
+      readAt: '2026-10-14T10:00:00.000Z',
+      createdAt: '2026-10-14T09:00:00.000Z',
+    };
+    expect(notificationItemSchema.safeParse(valid).success).toBe(true);
+
+    const invalid = { ...valid, id: 'not-a-uuid' };
+    expect(notificationItemSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it('validates notificationListQuerySchema defaults and bounds', () => {
+    const parsed = notificationListQuerySchema.parse({});
+    expect(parsed.page).toBe(1);
+    expect(parsed.limit).toBe(20);
+
+    const clamped = notificationListQuerySchema.safeParse({ limit: 51 });
+    expect(clamped.success).toBe(false);
+
+    const validWithCursor = notificationListQuerySchema.parse({
+      cursor: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      limit: 10,
+    });
+    expect(validWithCursor.cursor).toBe('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
+    expect(validWithCursor.limit).toBe(10);
+  });
+
+  it('validates notificationUnreadCountSchema and markAllReadResponseSchema', () => {
+    expect(notificationUnreadCountSchema.safeParse({ count: 5 }).success).toBe(true);
+    expect(notificationUnreadCountSchema.safeParse({ count: -1 }).success).toBe(false);
+    expect(markAllReadResponseSchema.safeParse({ count: 0 }).success).toBe(true);
   });
 });
