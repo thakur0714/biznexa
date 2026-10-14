@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { SLA_DUE_SOON_HOURS, type AdminApplicationListQuery, type AdminApplicationPage, type ApplicationStatus } from '@biznexa/types';
+import { Injectable, BadRequestException } from '@nestjs/common';
+
+import { SLA_DUE_SOON_HOURS, APPLICATION_STATUS_LABEL, type AdminApplicationListQuery, type AdminApplicationPage, type ApplicationStatus } from '@biznexa/types';
 import type { AuthUser } from '../common/auth.decorators';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -113,5 +114,54 @@ export class AdminApplicationsService {
       });
     }
     return and;
+  }
+
+  
+  async exportCSV(u: AuthUser, q: AdminApplicationListQuery): Promise<string> {
+    const where: Prisma.ApplicationWhereInput = { AND: [applicationScope(u), ...(await this.filters(u, q, new Date()))] };
+    const total = await this.prisma.application.count({ where });
+    if (total > 10000) throw new BadRequestException('Cannot export more than 10,000 rows. Please narrow the filters.');
+
+    const items = await this.prisma.application.findMany({
+      where,
+      orderBy: { [q.sort]: q.dir },
+      select: {
+        code: true,
+        order: { select: { code: true, customer: { select: { name: true, email: true } } } },
+        status: true,
+        priority: true,
+        service: { select: { name: true } },
+        package: { select: { name: true } },
+        assignedTo: { select: { name: true } },
+        createdAt: true,
+        slaDueAt: true,
+      },
+    });
+
+    const escape = (v: string | null | undefined) => {
+      if (!v) return '';
+      const text = String(v).replace(/"/g, '""');
+      if (/^[=+\-@]/.test(text)) return `"'${text}"`;
+      return `"${text}"`;
+    };
+    
+    const header = 'Application code,Order code,Status,Priority,Service,Package,Customer name,Customer email,Assigned to,Created,SLA due';
+    const rows = items.map(r => {
+      const customer = r.order?.customer;
+      return [
+        escape(r.code),
+        escape(r.order?.code),
+        escape(APPLICATION_STATUS_LABEL[r.status] || r.status),
+        escape(r.priority),
+        escape(r.service.name),
+        escape(r.package.name),
+        escape(customer?.name),
+        escape(customer?.email),
+        escape(r.assignedTo?.name),
+        escape(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(r.createdAt).replace(',', '')),
+        escape(r.slaDueAt ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(r.slaDueAt).replace(',', '') : ''),
+      ].join(',');
+    });
+    return [header, ...rows].join('\n');
   }
 }

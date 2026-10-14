@@ -788,6 +788,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/applications/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminApplicationsController_exportCSV"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/applications": {
         parameters: {
             query?: never;
@@ -5214,6 +5230,36 @@ export interface operations {
         responses: {
             /** @description No such business among yours (another customer’s business looks the same) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminApplicationsController_exportCSV: {
+        parameters: {
+            query?: {
+                status?: ("DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED")[];
+                serviceId?: string;
+                assignee?: string | ("me" | "unassigned");
+                priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+                sla?: "overdue" | "due_soon";
+                from?: string;
+                to?: string;
+                q?: string;
+                sort?: "createdAt" | "updatedAt" | "submittedAt" | "slaDueAt" | "priority";
+                dir?: "asc" | "desc";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
