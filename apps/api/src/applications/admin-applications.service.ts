@@ -28,7 +28,7 @@ const rowSelect = {
   createdAt: true,
   updatedAt: true,
   customerId: true,
-  service: { select: { id: true, name: true, stages: { select: { id: true, name: true, sortOrder: true }, orderBy: { sortOrder: 'asc' } } } },
+  service: { select: { id: true, name: true } },
   package: { select: { name: true } },
   order: { select: { code: true } },
   assignedTo: { select: { id: true, name: true } },

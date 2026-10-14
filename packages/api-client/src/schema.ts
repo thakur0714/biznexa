@@ -3505,6 +3505,12 @@ export interface components {
                 id: string;
                 name: string;
             } | null;
+            stages?: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                sortOrder: number;
+            }[];
         };
         OrderSummary: {
             /** Format: uuid */

@@ -29,7 +29,7 @@ describe('ApplicationsView Assignment UI (M4.5)', () => {
   it('shows the assignee picker only if the user has view_all and update permissions', async () => {
     vi.spyOn(auth, 'useAuth').mockReturnValue({ 
       user: { id: 'u1', name: 'Ops', email: 'ops@test.com', permissions: ['applications.view_all', 'applications.update'] } 
-    } as unknown as import('@biznexa/types').AuthUser);
+    } as unknown as ReturnType<typeof auth.useAuth>);
 
     render(<ApplicationsView />);
     expect(screen.getByRole('button', { name: 'Assign Selected' })).not.toBeNull();
@@ -38,7 +38,7 @@ describe('ApplicationsView Assignment UI (M4.5)', () => {
   it('hides the assignee picker if the user is missing update permission', async () => {
     vi.spyOn(auth, 'useAuth').mockReturnValue({ 
       user: { id: 'u1', name: 'Ops', email: 'ops@test.com', permissions: ['applications.view_all'] } 
-    } as unknown as import('@biznexa/types').AuthUser);
+    } as unknown as ReturnType<typeof auth.useAuth>);
 
     render(<ApplicationsView />);
     expect(screen.queryByRole('button', { name: 'Assign Selected' })).toBeNull();
@@ -47,7 +47,7 @@ describe('ApplicationsView Assignment UI (M4.5)', () => {
   it('hides the assignee picker if the user is missing view_all permission', async () => {
     vi.spyOn(auth, 'useAuth').mockReturnValue({ 
       user: { id: 'u1', name: 'Ops', email: 'ops@test.com', permissions: ['applications.view_assigned', 'applications.update'] } 
-    } as unknown as import('@biznexa/types').AuthUser);
+    } as unknown as ReturnType<typeof auth.useAuth>);
 
     render(<ApplicationsView />);
     expect(screen.queryByRole('button', { name: 'Assign Selected' })).toBeNull();
