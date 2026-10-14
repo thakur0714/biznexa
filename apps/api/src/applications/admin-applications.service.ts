@@ -1,6 +1,6 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 
-import { SLA_DUE_SOON_HOURS, APPLICATION_STATUS_LABEL, PERMS, type AdminApplicationListQuery, type AdminApplicationPage, type BulkAssignInput, type AdminApplicationDetail, type ApplicationStatus } from '@biznexa/types';
+import { SLA_DUE_SOON_HOURS, APPLICATION_STATUS_LABEL, PERMS, type ApplicationTransitionInput, type AdminApplicationListQuery, type AdminApplicationPage, type BulkAssignInput, type AdminApplicationDetail, type ApplicationStatus } from '@biznexa/types';
 import type { AuthUser } from '../common/auth.decorators';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -385,5 +385,22 @@ export class AdminApplicationsService {
     }, tx);
 
     return event;
+  }
+
+  async updateStatus(id: string, body: ApplicationTransitionInput, u: AuthUser) {
+    await findVisibleApplication(this.prisma, u, id, { id: true });
+    
+    if (body.to === 'CANCELLED' && !u.permissions.includes(PERMS.APPLICATIONS_VIEW_ALL)) {
+      throw new ForbiddenException('Only admins can cancel applications');
+    }
+
+    return this.status.transition({
+      applicationId: id,
+      to: body.to,
+      actorId: u.id,
+      note: body.note,
+      visibleToCustomer: body.visibleToCustomer,
+      stageId: body.stageId
+    });
   }
 }

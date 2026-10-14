@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Param, ParseUUIDPipe, Res, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { adminApplicationListQuery, adminApplicationPageSchema, adminApplicationDetailSchema, PERMS, type AdminApplicationListQuery, assigneeInputSchema, type AssigneeInput, bulkAssignInputSchema, type BulkAssignInput, eligibleStaffListSchema } from '@biznexa/types';
+import { adminApplicationListQuery, adminApplicationPageSchema, adminApplicationDetailSchema, PERMS, type AdminApplicationListQuery, assigneeInputSchema, type AssigneeInput, bulkAssignInputSchema, type BulkAssignInput, eligibleStaffListSchema, applicationTransitionSchema, type ApplicationTransitionInput } from '@biznexa/types';
 import { AuthUser, CurrentUser, RequireAnyPermission } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery, ZodBody } from '../common/openapi';
 import { RequirePermissions } from '../common/auth.decorators';
@@ -51,6 +51,13 @@ export class AdminApplicationsController {
   @Patch(':id/assignee')
   assign(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(assigneeInputSchema) body: AssigneeInput, @CurrentUser() u: AuthUser) {
     return this.applications.assign(id, body.assigneeId, u);
+  }
+
+
+  @RequirePermissions(PERMS.APPLICATIONS_UPDATE)
+  @Post(':id/status')
+  status(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(applicationTransitionSchema) body: ApplicationTransitionInput, @CurrentUser() u: AuthUser) {
+    return this.applications.updateStatus(id, body, u);
   }
 
   @RequireAnyPermission(PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED)

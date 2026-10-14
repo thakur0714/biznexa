@@ -868,6 +868,22 @@ export interface paths {
         patch: operations["AdminApplicationsController_assign"];
         trace?: never;
     };
+    "/api/admin/applications/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminApplicationsController_status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/applications/{id}": {
         parameters: {
             query?: never;
@@ -6025,6 +6041,37 @@ export interface operations {
         };
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminApplicationsController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    to: "DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED";
+                    note?: string;
+                    /** @default true */
+                    visibleToCustomer?: boolean;
+                    /** Format: uuid */
+                    stageId?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

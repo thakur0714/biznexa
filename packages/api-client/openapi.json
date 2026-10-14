@@ -6948,6 +6948,79 @@
         ]
       }
     },
+    "/api/admin/applications/{id}/status": {
+      "post": {
+        "operationId": "AdminApplicationsController_status",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string",
+                    "enum": [
+                      "DRAFT",
+                      "PAYMENT_PENDING",
+                      "SUBMITTED",
+                      "DOCUMENTS_UNDER_REVIEW",
+                      "DOCUMENTS_PENDING",
+                      "DOCUMENTS_APPROVED",
+                      "ASSIGNED",
+                      "IN_PROGRESS",
+                      "ON_HOLD",
+                      "COMPLETED",
+                      "DELIVERED",
+                      "CANCELLED"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "visibleToCustomer": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "stageId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · applications"
+        ]
+      }
+    },
     "/api/admin/applications/{id}": {
       "get": {
         "operationId": "AdminApplicationsController_get",

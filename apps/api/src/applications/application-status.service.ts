@@ -14,6 +14,7 @@ export interface ApplicationTransition {
   note?: string;
   /** False keeps the history row off the customer timeline (staff-only note). Default true. */
   visibleToCustomer?: boolean;
+  stageId?: string;
   ip?: string;
 }
 
@@ -38,26 +39,32 @@ export class ApplicationStatusService {
   }
 
   async transitionIn(tx: Prisma.TransactionClient, input: ApplicationTransition): Promise<StatusChanged> {
-    const { applicationId, to, actorId } = input;
+    const { applicationId, to, actorId, stageId } = input;
     const note = input.note?.trim() || undefined;
     if (note && note.length > APPLICATION_NOTE_MAX) throw new BadRequestException(`Keep the note under ${APPLICATION_NOTE_MAX} characters`);
     if (to === 'CANCELLED' && !note) throw new BadRequestException('Enter the reason for cancelling');
 
-    const app = await tx.application.findUnique({ where: { id: applicationId }, select: { id: true, status: true } });
+    const app = await tx.application.findUnique({ where: { id: applicationId }, select: { id: true, status: true, serviceId: true } });
     if (!app) throw new NotFoundException('Application not found');
     const from = app.status as ApplicationStatus;
+
+    if (stageId) {
+      const stage = await tx.serviceStage.findUnique({ where: { id: stageId, serviceId: app.serviceId } });
+      if (!stage) throw new BadRequestException('Stage not found for this service');
+    }
+
     if (!canTransition('application', from, to)) {
       throw new ConflictException(`An application that is “${APPLICATION_STATUS_LABEL[from]}” cannot be moved to “${APPLICATION_STATUS_LABEL[to]}”`);
     }
 
     const updated = await tx.application.updateMany({
       where: { id: applicationId, status: from },
-      data: { status: to, ...(to === 'COMPLETED' ? { completedAt: new Date() } : {}) },
+      data: { status: to, ...(to === 'COMPLETED' ? { completedAt: new Date() } : {}), ...(stageId !== undefined ? { currentStageId: stageId } : {}) },
     });
     if (updated.count === 0) throw new ConflictException('This application was changed by someone else just now. Reload and try again.');
 
     const visibleToCustomer = input.visibleToCustomer ?? true;
-    await tx.applicationStageHistory.create({ data: { applicationId, status: to, note, visibleToCustomer, changedById: actorId } });
+    await tx.applicationStageHistory.create({ data: { applicationId, status: to, note, visibleToCustomer, changedById: actorId, stageId } });
     await this.audit.log(
       { actorId, action: 'application.status_change', entityType: 'Application', entityId: applicationId, before: { status: from }, after: { status: to, note, visibleToCustomer }, ip: input.ip },
       tx,

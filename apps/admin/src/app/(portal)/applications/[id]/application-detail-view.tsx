@@ -1,3 +1,4 @@
+import { StatusForm } from './status-form';
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -35,6 +36,8 @@ export function ApplicationDetailView({ id }: { id: string }) {
           {APPLICATION_STATUS_LABEL[data.status as keyof typeof APPLICATION_STATUS_LABEL] || data.status}
         </span>
       </div>
+
+      <StatusForm id={id} current={data.status as any} stages={[]} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <section className="p-4 bg-white border border-rule rounded-md space-y-2">
