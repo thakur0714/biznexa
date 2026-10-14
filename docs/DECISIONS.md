@@ -60,3 +60,15 @@ Choices made where the prompt was silent or where the environment forced a trade
 ## Open questions carried from the prompt (Section 16)
 
 Unchanged — assumptions in the prompt are in effect until the owner answers.
+
+**D53: M4.3 Applications list CSV export (14-Oct-2026)**
+The export stream is simple text/csv mapping, escaping cells starting with `= + - @` by adding a single quote, limiting to 10,000 to prevent massive bulk downloads blocking the DB.
+
+**D54: M4.4 Application detail (14-Oct-2026)**
+The detail endpoint relies on `findVisibleApplication` to prevent unauthorized staff from seeing details of applications not assigned to them, keeping notes scoped to appropriate boundaries without duplicating auth logic.
+
+**D55: M4.5 Assignment and SLA (14-Oct-2026)**
+Initial assignment sets SLA due based on service `estimatedDaysMax`. If an application is manually reassigned later, the SLA does not shift, to prevent extending the due date unethically by simply bouncing assignments.
+
+**D56: M4.6 Status updates (14-Oct-2026)**
+Staff cancelling applications explicitly requires the `APPLICATIONS_VIEW_ALL` permission. An explicit reason must be captured within the transition payload.
