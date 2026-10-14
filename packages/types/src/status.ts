@@ -142,6 +142,7 @@ export const applicationTransitionSchema = z
     to: z.enum(APPLICATION_STATUSES),
     note: z.string().trim().max(APPLICATION_NOTE_MAX).optional(),
     visibleToCustomer: z.boolean().default(true),
+    stageId: z.string().uuid().optional(),
   })
   .superRefine((v, ctx) => {
     if (v.to === 'CANCELLED' && !v.note) ctx.addIssue({ code: 'custom', path: ['note'], message: 'Enter the reason for cancelling' });

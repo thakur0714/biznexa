@@ -74,3 +74,116 @@ export const adminApplicationPageSchema = z.object({
   limit: z.number().int(),
 });
 export type AdminApplicationPage = z.infer<typeof adminApplicationPageSchema>;
+
+import { formSchema } from './form-schema';
+
+export const adminApplicationDetailSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  status: z.enum(APPLICATION_STATUSES),
+  priority: z.enum(PRIORITIES),
+  slaDueAt: z.string().datetime().nullable(),
+  submittedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  
+  customer: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    email: z.string().nullable(),
+    mobile: z.string().nullable(),
+  }).nullable(),
+
+  service: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+  }),
+  package: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+  }),
+
+  businessEntity: z.object({
+    id: z.string().uuid(),
+    maskedPan: z.string().nullable(),
+  }).nullable(),
+
+  order: z.object({
+    id: z.string().uuid(),
+    code: z.string(),
+    status: z.string(),
+    total: z.number().int(),
+    taxTotal: z.number().int(),
+    subtotal: z.number().int(),
+  }).nullable(),
+
+  payments: z.array(z.object({
+    id: z.string().uuid(),
+    status: z.string(),
+    amount: z.number().int(),
+    method: z.string().nullable(),
+    paidAt: z.string().datetime().nullable(),
+  })),
+
+  formSchema: formSchema.nullable(),
+  formData: z.record(z.unknown()),
+
+  documents: z.array(z.object({
+    id: z.string().uuid(),
+    requirementId: z.string().uuid(),
+    name: z.string(),
+    status: z.string(),
+    fileKey: z.string(),
+    fileName: z.string(),
+    fileSize: z.number().int(),
+    mimeType: z.string(),
+  })),
+
+  history: z.array(z.object({
+    id: z.string().uuid(),
+    status: z.string(),
+    stageId: z.string().uuid().nullable(),
+    visibleToCustomer: z.boolean(),
+    changedBy: z.object({
+      id: z.string().uuid(),
+      name: z.string(),
+    }).nullable(),
+    createdAt: z.string().datetime(),
+  })),
+
+  assignedTo: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+  }).nullable(),
+  
+  currentStage: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+  }).nullable(),
+});
+
+export type AdminApplicationDetail = z.infer<typeof adminApplicationDetailSchema>;
+
+export const assigneeInputSchema = z.object({
+  assigneeId: z.string().uuid().nullable()
+});
+
+export type AssigneeInput = z.infer<typeof assigneeInputSchema>;
+
+export const bulkAssignInputSchema = z.object({
+  applicationIds: z.array(z.string().uuid()).min(1).max(100),
+  assigneeId: z.string().uuid().nullable()
+});
+
+export type BulkAssignInput = z.infer<typeof bulkAssignInputSchema>;
+
+export const eligibleStaffSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  role: z.string()
+});
+
+export const eligibleStaffListSchema = z.array(eligibleStaffSchema);
+export type EligibleStaff = z.infer<typeof eligibleStaffSchema>;
+
+
