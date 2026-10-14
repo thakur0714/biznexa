@@ -183,7 +183,7 @@ export class AdminApplicationsService {
       customerId: true,
       formSchemaVersion: true,
       
-      service: { select: { id: true, name: true } },
+      service: { select: { id: true, name: true, stages: { select: { id: true, name: true, sortOrder: true }, orderBy: { sortOrder: 'asc' } } } },
       package: { select: { id: true, name: true } },
       
       businessEntity: { select: { id: true, pan: true } },
@@ -252,7 +252,7 @@ export class AdminApplicationsService {
       } : null,
       
       service: { id: app.service.id, name: app.service.name },
-      stages: (app.service as any).stages,
+      stages: app.service.stages,
       package: { id: app.package.id, name: app.package.name },
       
       businessEntity: app.businessEntity ? {

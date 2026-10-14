@@ -1,5 +1,5 @@
-import { useAuth } from '@/lib/auth';
 'use client';
+import { useAuth } from '@/lib/auth';
 import { StatusForm } from './status-form';
 
 import { useEffect, useState } from 'react';
@@ -12,6 +12,8 @@ export function ApplicationDetailView({ id }: { id: string }) {
   const { user } = useAuth();
   const [data, setData] = useState<import('@biznexa/types').AdminApplicationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Bumped after an assignment: it can also change the status and SLA, so the whole detail is reloaded. */
+  const [version, setVersion] = useState(0);
 
   const canAssign = user?.permissions?.includes('applications.view_all') && user?.permissions?.includes('applications.update');
   const [staff, setStaff] = useState<import('@biznexa/types').EligibleStaff[]>([]);
@@ -31,7 +33,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
         params: { path: { id } },
         body: { assigneeId: assigneeId || null }
       }));
-      setData(prev => prev ? { ...prev, assignedTo: staff.find(s => s.id === assigneeId) || null } : null);
+      setVersion((v) => v + 1);
     } catch (e: unknown) {
       alert((e as Error).message);
     }
@@ -50,7 +52,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
       .catch(() => {});
       
     return () => { cancelled = true; };
-  }, [api, id]);
+  }, [api, id, version]);
 
   if (error) return <Notice tone="error">{error}</Notice>;
   if (!data) return <p className="text-muted">Loading application...</p>;

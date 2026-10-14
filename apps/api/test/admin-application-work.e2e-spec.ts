@@ -93,6 +93,17 @@ describe('M4.4 detail', () => {
     await http.get(`/api/admin/applications/${a}`).set(as('support')).expect(403);
   });
 
+  it('returns the form schema version the application uses and the service stages in order', async () => {
+    const a = await make('SUBMITTED');
+    const form = await prisma.serviceFormSchema.findFirst({ where: { serviceId: pkg.serviceId }, orderBy: { version: 'desc' } });
+    if (form) await prisma.application.update({ where: { id: a }, data: { formSchemaVersion: form.version, formData: { x: 1 } } });
+    const res = await http.get(`/api/admin/applications/${a}`).set(as('admin')).expect(200);
+    if (form) expect(res.body.formSchema).toEqual(form.schema);
+    expect(res.body.formData).toEqual(form ? { x: 1 } : {});
+    const stages = await prisma.serviceStage.findMany({ where: { serviceId: pkg.serviceId }, orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, sortOrder: true } });
+    expect(res.body.stages).toEqual(stages);
+  });
+
   it('shows an application that has no order yet', async () => {
     const a = await make('DRAFT');
     const res = await http.get(`/api/admin/applications/${a}`).set(as('admin')).expect(200);
