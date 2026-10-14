@@ -129,3 +129,21 @@ export const rejectDocumentSchema = z.object({
     .trim()
     .min(1, 'Reason cannot be empty'),
 });
+
+/** Longest note kept on an application status change (history + audit). */
+export const APPLICATION_NOTE_MAX = 1000;
+
+/**
+ * A staff-requested application status change (M4.1). `note` is shown on the customer timeline unless
+ * `visibleToCustomer` is false; cancelling needs a reason (§6: "admin only, with reason").
+ */
+export const applicationTransitionSchema = z
+  .object({
+    to: z.enum(APPLICATION_STATUSES),
+    note: z.string().trim().max(APPLICATION_NOTE_MAX).optional(),
+    visibleToCustomer: z.boolean().default(true),
+  })
+  .superRefine((v, ctx) => {
+    if (v.to === 'CANCELLED' && !v.note) ctx.addIssue({ code: 'custom', path: ['note'], message: 'Enter the reason for cancelling' });
+  });
+export type ApplicationTransitionInput = z.input<typeof applicationTransitionSchema>;
