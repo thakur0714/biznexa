@@ -184,7 +184,9 @@ Gaps found while planning are moved into Milestone 2.5 below.
 - [x] **M4.3 — Applications list UI.** `[Sonnet]` Admin TanStack Table with filters, saved in URL; CSV export endpoint (streamed).
   - *Done 14-Oct-2026 (Jules J4, fixed by Claude):* admin `/applications` page on `GET /api/admin/applications` (filters in the URL, sort, paging). `GET /api/admin/applications/export` (same query and scope, ≤ 10,000 rows, IST dates, formula cells prefixed with `'`) downloaded through the typed client. Nav item marked built (was missing, so the sidebar showed "Coming soon"). Tests in `apps/api/test/admin-application-work.e2e-spec.ts` (header, escaping, ops export only their own, support 403).
   - *Follow-ups:* no bulk-assign UI on the list (M4.5 API exists). The CSV takes the customer from the order, so drafts without an order show no customer.
-- [ ] **M4.4 — Application detail API + UI shell.** `[Sonnet]` Customer, service, package, order, payments, form data (read-only), documents, history.
+- [x] **M4.4 — Application detail API + UI shell.** `[Sonnet]` Customer, service, package, order, payments, form data (read-only), documents, history.
+  *Done 14-Oct-2026:*
+  *Follow-ups:* None
   - *API done 14-Oct-2026 (Jules J4, fixed by Claude):* `GET /api/admin/applications/:id` through `findVisibleApplication` (assigned ops ok, other ops 404, support 403): customer, service, package, business entity (masked PAN), order, payments (no raw webhook), form data, latest documents, history, assignee, stage. Claude's fixes: 500 for an application without an order; PAN was "masked" from the **encrypted** value (now decrypted, then `maskPan`); all document versions were returned (now latest only). Tests in `admin-application-work.e2e-spec.ts`.
   - *Still to do (UI):* `formSchema` in the response is always null (load the version the application uses); the page has no documents or form-data sections and no "add note" form.
 - [ ] **M4.5 — Assignment.** `[Sonnet]` Assign/reassign to ops exec or consultant; bulk assign; status → ASSIGNED when appropriate; SLA `slaDueAt` set from service timeline. Audit logged.
