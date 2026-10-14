@@ -788,6 +788,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/applications/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminApplicationsController_exportCSV"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/applications": {
         parameters: {
             query?: never;
@@ -796,6 +812,86 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AdminApplicationsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/applications/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminApplicationsController_getStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/applications/bulk-assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminApplicationsController_bulkAssign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/applications/{id}/assignee": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminApplicationsController_assign"];
+        trace?: never;
+    };
+    "/api/admin/applications/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminApplicationsController_status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/applications/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminApplicationsController_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2810,6 +2906,605 @@ export interface components {
             total: number;
             page: number;
             limit: number;
+        };
+        EligibleStaffList: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            role: string;
+        }[];
+        AdminApplicationDetail: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            /** @enum {string} */
+            status: "DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED";
+            /** @enum {string} */
+            priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+            /** Format: date-time */
+            slaDueAt: string | null;
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            customer: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                email: string | null;
+                mobile: string | null;
+            } | null;
+            service: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            };
+            package: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            };
+            businessEntity: {
+                /** Format: uuid */
+                id: string;
+                maskedPan: string | null;
+            } | null;
+            order: {
+                /** Format: uuid */
+                id: string;
+                code: string;
+                status: string;
+                total: number;
+                taxTotal: number;
+                subtotal: number;
+            } | null;
+            payments: {
+                /** Format: uuid */
+                id: string;
+                status: string;
+                amount: number;
+                method: string | null;
+                /** Format: date-time */
+                paidAt: string | null;
+            }[];
+            formSchema: {
+                steps: {
+                    title: string;
+                    description?: string;
+                    fields: ({
+                        /** @enum {string} */
+                        type: "text";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                        placeholder?: string;
+                        minLength?: number;
+                        maxLength?: number;
+                        pattern?: string;
+                        patternMessage?: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "textarea";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                        placeholder?: string;
+                        minLength?: number;
+                        maxLength?: number;
+                        pattern?: string;
+                        patternMessage?: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "email";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                        placeholder?: string;
+                        minLength?: number;
+                        maxLength?: number;
+                        pattern?: string;
+                        patternMessage?: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "tel";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                        placeholder?: string;
+                        minLength?: number;
+                        maxLength?: number;
+                        pattern?: string;
+                        patternMessage?: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "number";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                        placeholder?: string;
+                        min?: number;
+                        max?: number;
+                        /** @default false */
+                        integer: boolean;
+                    } | {
+                        /** @enum {string} */
+                        type: "date";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                        min?: "today" | string;
+                        max?: "today" | string;
+                    } | {
+                        /** @enum {string} */
+                        type: "select";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                        options?: (string | {
+                            value: string;
+                            label: string;
+                        })[];
+                        /** @enum {string} */
+                        optionsSource?: "states";
+                    } | {
+                        /** @enum {string} */
+                        type: "multi-select";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                        options?: (string | {
+                            value: string;
+                            label: string;
+                        })[];
+                        /** @enum {string} */
+                        optionsSource?: "states";
+                        minItems?: number;
+                        maxItems?: number;
+                    } | {
+                        /** @enum {string} */
+                        type: "file";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                        /**
+                         * @default [
+                         *       "application/pdf",
+                         *       "image/jpeg",
+                         *       "image/png"
+                         *     ]
+                         */
+                        accept: ("application/pdf" | "image/jpeg" | "image/png" | "image/webp")[];
+                        /** @default 10 */
+                        maxSizeMb: number;
+                        /** @default 1 */
+                        maxFiles: number;
+                    } | {
+                        /** @enum {string} */
+                        type: "address";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                    } | {
+                        /** @enum {string} */
+                        type: "repeater";
+                        name: string;
+                        label: string;
+                        helpText?: string;
+                        /** @default false */
+                        required: boolean;
+                        showIf?: {
+                            field: string;
+                            equals: string | number;
+                        } | {
+                            field: string;
+                            oneOf: (string | number)[];
+                        } | {
+                            field: string;
+                            filled: boolean;
+                        };
+                        /** @default Item */
+                        itemLabel: string;
+                        minItems?: number;
+                        maxItems?: number;
+                        fields: ({
+                            /** @enum {string} */
+                            type: "text";
+                            name: string;
+                            label: string;
+                            helpText?: string;
+                            /** @default false */
+                            required: boolean;
+                            showIf?: {
+                                field: string;
+                                equals: string | number;
+                            } | {
+                                field: string;
+                                oneOf: (string | number)[];
+                            } | {
+                                field: string;
+                                filled: boolean;
+                            };
+                            placeholder?: string;
+                            minLength?: number;
+                            maxLength?: number;
+                            pattern?: string;
+                            patternMessage?: string;
+                        } | {
+                            /** @enum {string} */
+                            type: "textarea";
+                            name: string;
+                            label: string;
+                            helpText?: string;
+                            /** @default false */
+                            required: boolean;
+                            showIf?: {
+                                field: string;
+                                equals: string | number;
+                            } | {
+                                field: string;
+                                oneOf: (string | number)[];
+                            } | {
+                                field: string;
+                                filled: boolean;
+                            };
+                            placeholder?: string;
+                            minLength?: number;
+                            maxLength?: number;
+                            pattern?: string;
+                            patternMessage?: string;
+                        } | {
+                            /** @enum {string} */
+                            type: "email";
+                            name: string;
+                            label: string;
+                            helpText?: string;
+                            /** @default false */
+                            required: boolean;
+                            showIf?: {
+                                field: string;
+                                equals: string | number;
+                            } | {
+                                field: string;
+                                oneOf: (string | number)[];
+                            } | {
+                                field: string;
+                                filled: boolean;
+                            };
+                            placeholder?: string;
+                            minLength?: number;
+                            maxLength?: number;
+                            pattern?: string;
+                            patternMessage?: string;
+                        } | {
+                            /** @enum {string} */
+                            type: "tel";
+                            name: string;
+                            label: string;
+                            helpText?: string;
+                            /** @default false */
+                            required: boolean;
+                            showIf?: {
+                                field: string;
+                                equals: string | number;
+                            } | {
+                                field: string;
+                                oneOf: (string | number)[];
+                            } | {
+                                field: string;
+                                filled: boolean;
+                            };
+                            placeholder?: string;
+                            minLength?: number;
+                            maxLength?: number;
+                            pattern?: string;
+                            patternMessage?: string;
+                        } | {
+                            /** @enum {string} */
+                            type: "number";
+                            name: string;
+                            label: string;
+                            helpText?: string;
+                            /** @default false */
+                            required: boolean;
+                            showIf?: {
+                                field: string;
+                                equals: string | number;
+                            } | {
+                                field: string;
+                                oneOf: (string | number)[];
+                            } | {
+                                field: string;
+                                filled: boolean;
+                            };
+                            placeholder?: string;
+                            min?: number;
+                            max?: number;
+                            /** @default false */
+                            integer: boolean;
+                        } | {
+                            /** @enum {string} */
+                            type: "date";
+                            name: string;
+                            label: string;
+                            helpText?: string;
+                            /** @default false */
+                            required: boolean;
+                            showIf?: {
+                                field: string;
+                                equals: string | number;
+                            } | {
+                                field: string;
+                                oneOf: (string | number)[];
+                            } | {
+                                field: string;
+                                filled: boolean;
+                            };
+                            min?: "today" | string;
+                            max?: "today" | string;
+                        } | {
+                            /** @enum {string} */
+                            type: "select";
+                            name: string;
+                            label: string;
+                            helpText?: string;
+                            /** @default false */
+                            required: boolean;
+                            showIf?: {
+                                field: string;
+                                equals: string | number;
+                            } | {
+                                field: string;
+                                oneOf: (string | number)[];
+                            } | {
+                                field: string;
+                                filled: boolean;
+                            };
+                            options?: (string | {
+                                value: string;
+                                label: string;
+                            })[];
+                            /** @enum {string} */
+                            optionsSource?: "states";
+                        } | {
+                            /** @enum {string} */
+                            type: "multi-select";
+                            name: string;
+                            label: string;
+                            helpText?: string;
+                            /** @default false */
+                            required: boolean;
+                            showIf?: {
+                                field: string;
+                                equals: string | number;
+                            } | {
+                                field: string;
+                                oneOf: (string | number)[];
+                            } | {
+                                field: string;
+                                filled: boolean;
+                            };
+                            options?: (string | {
+                                value: string;
+                                label: string;
+                            })[];
+                            /** @enum {string} */
+                            optionsSource?: "states";
+                            minItems?: number;
+                            maxItems?: number;
+                        } | {
+                            /** @enum {string} */
+                            type: "file";
+                            name: string;
+                            label: string;
+                            helpText?: string;
+                            /** @default false */
+                            required: boolean;
+                            showIf?: {
+                                field: string;
+                                equals: string | number;
+                            } | {
+                                field: string;
+                                oneOf: (string | number)[];
+                            } | {
+                                field: string;
+                                filled: boolean;
+                            };
+                            /**
+                             * @default [
+                             *       "application/pdf",
+                             *       "image/jpeg",
+                             *       "image/png"
+                             *     ]
+                             */
+                            accept: ("application/pdf" | "image/jpeg" | "image/png" | "image/webp")[];
+                            /** @default 10 */
+                            maxSizeMb: number;
+                            /** @default 1 */
+                            maxFiles: number;
+                        } | {
+                            /** @enum {string} */
+                            type: "address";
+                            name: string;
+                            label: string;
+                            helpText?: string;
+                            /** @default false */
+                            required: boolean;
+                            showIf?: {
+                                field: string;
+                                equals: string | number;
+                            } | {
+                                field: string;
+                                oneOf: (string | number)[];
+                            } | {
+                                field: string;
+                                filled: boolean;
+                            };
+                        })[];
+                    })[];
+                }[];
+            } | null;
+            formData: {
+                [key: string]: unknown;
+            };
+            documents: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                requirementId: string;
+                name: string;
+                status: string;
+                fileKey: string;
+                fileName: string;
+                fileSize: number;
+                mimeType: string;
+            }[];
+            history: {
+                /** Format: uuid */
+                id: string;
+                status: string;
+                /** Format: uuid */
+                stageId: string | null;
+                visibleToCustomer: boolean;
+                changedBy: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                } | null;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            assignedTo: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            } | null;
+            currentStage: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            } | null;
         };
         OrderSummary: {
             /** Format: uuid */
@@ -5221,6 +5916,36 @@ export interface operations {
             };
         };
     };
+    AdminApplicationsController_exportCSV: {
+        parameters: {
+            query?: {
+                status?: ("DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED")[];
+                serviceId?: string;
+                assignee?: string | ("me" | "unassigned");
+                priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+                sla?: "overdue" | "due_soon";
+                from?: string;
+                to?: string;
+                q?: string;
+                sort?: "createdAt" | "updatedAt" | "submittedAt" | "slaDueAt" | "priority";
+                dir?: "asc" | "desc";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminApplicationsController_list: {
         parameters: {
             query?: {
@@ -5249,6 +5974,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminApplicationPage"];
+                };
+            };
+        };
+    };
+    AdminApplicationsController_getStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EligibleStaffList"];
+                };
+            };
+        };
+    };
+    AdminApplicationsController_bulkAssign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    applicationIds: string[];
+                    /** Format: uuid */
+                    assigneeId: string | null;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminApplicationsController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    assigneeId: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminApplicationsController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    to: "DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED";
+                    note?: string;
+                    /** @default true */
+                    visibleToCustomer?: boolean;
+                    /** Format: uuid */
+                    stageId?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminApplicationsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminApplicationDetail"];
                 };
             };
         };
