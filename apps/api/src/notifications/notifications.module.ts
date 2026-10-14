@@ -8,9 +8,12 @@ import { WhatsAppChannel } from './channels/whatsapp.channel';
 import { NotificationPreferencesService } from './notification-preferences.service';
 import { NotificationDispatcherService } from './notification-dispatcher.service';
 import { TemplateEngineService } from './template-engine.service';
+import { NotificationsService } from './notifications.service';
+import { NotificationsController } from './notifications.controller';
 
 @Module({
   imports: [PrismaModule],
+  controllers: [NotificationsController],
   providers: [
     EmailChannel,
     SmsChannel,
@@ -20,11 +23,13 @@ import { TemplateEngineService } from './template-engine.service';
     NotificationPreferencesService,
     NotificationDispatcherService,
     TemplateEngineService,
+    NotificationsService,
   ],
   exports: [
     NotificationPreferencesService,
     NotificationDispatcherService,
     TemplateEngineService,
+    NotificationsService,
     EmailChannel,
     SmsChannel,
     PushChannel,
