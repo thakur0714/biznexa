@@ -66,9 +66,13 @@ afterAll(async () => {
   await prisma.notification.deleteMany({
     where: { user: users },
   });
+  await prisma.deviceToken.deleteMany({
+    where: { user: users },
+  });
   await prisma.user.deleteMany({ where: users });
   await app.close();
 });
+
 
 describe('In-app inbox (M6.7)', () => {
   let aliceNotif1Id: string;
@@ -383,4 +387,120 @@ describe('In-app inbox (M6.7)', () => {
       expect(res2.body.count).toBe(0);
     });
   });
+
+  describe('Device token register / unregister API (M6.6)', () => {
+    const tokenA = `device-token-alice-${run}-1`;
+    const tokenB = `device-token-bob-${run}-1`;
+
+    it('requires authentication to register or unregister device token', async () => {
+      await http
+        .post('/api/notifications/devices/register')
+        .send({ token: tokenA })
+        .expect(401);
+
+      await http
+        .post('/api/notifications/devices/unregister')
+        .send({ token: tokenA })
+        .expect(401);
+    });
+
+    it('registers a device token for authenticated user (owner)', async () => {
+      const res = await http
+        .post('/api/notifications/devices/register')
+        .set(as(aliceToken))
+        .send({ token: tokenA, platform: 'ios' })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.token).toBe(tokenA);
+
+      const dbToken = await prisma.deviceToken.findUnique({
+        where: { token: tokenA },
+      });
+      expect(dbToken).toBeTruthy();
+      expect(dbToken?.userId).toBe(aliceId);
+      expect(dbToken?.platform).toBe('ios');
+    });
+
+    it('allows idempotent registration for the same owner', async () => {
+      const res = await http
+        .post('/api/notifications/devices/register')
+        .set(as(aliceToken))
+        .send({ token: tokenA, platform: 'web' })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      const dbToken = await prisma.deviceToken.findUnique({
+        where: { token: tokenA },
+      });
+      expect(dbToken?.platform).toBe('web');
+    });
+
+    it('prevents registering a token already owned by another user (owner only)', async () => {
+      // Bob tries to register Alice's tokenA
+      await http
+        .post('/api/notifications/devices/register')
+        .set(as(bobToken))
+        .send({ token: tokenA, platform: 'android' })
+        .expect(403);
+    });
+
+    it('prevents unregistering a token owned by another user (owner only)', async () => {
+      // Bob tries to unregister Alice's tokenA
+      await http
+        .post('/api/notifications/devices/unregister')
+        .set(as(bobToken))
+        .send({ token: tokenA })
+        .expect(403);
+
+      // DELETE variant also 403
+      await http
+        .delete(`/api/notifications/devices/${tokenA}`)
+        .set(as(bobToken))
+        .expect(403);
+    });
+
+    it('returns 404 when attempting to unregister non-existent token', async () => {
+      await http
+        .post('/api/notifications/devices/unregister')
+        .set(as(aliceToken))
+        .send({ token: 'non-existent-device-token' })
+        .expect(404);
+    });
+
+    it('allows owner to unregister their device token', async () => {
+      // Register tokenB for Bob
+      await http
+        .post('/api/notifications/devices/register')
+        .set(as(bobToken))
+        .send({ token: tokenB, platform: 'android' })
+        .expect(200);
+
+      // Bob unregisters tokenB via POST
+      const res = await http
+        .post('/api/notifications/devices/unregister')
+        .set(as(bobToken))
+        .send({ token: tokenB })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      const dbToken = await prisma.deviceToken.findUnique({
+        where: { token: tokenB },
+      });
+      expect(dbToken).toBeNull();
+
+      // Alice unregisters tokenA via DELETE
+      const delRes = await http
+        .delete(`/api/notifications/devices/${tokenA}`)
+        .set(as(aliceToken))
+        .expect(200);
+
+      expect(delRes.body.success).toBe(true);
+      const dbTokenAlice = await prisma.deviceToken.findUnique({
+        where: { token: tokenA },
+      });
+      expect(dbTokenAlice).toBeNull();
+    });
+  });
 });
+

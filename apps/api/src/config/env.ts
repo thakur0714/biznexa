@@ -40,6 +40,9 @@ const schema = z
     AWS_REGION: z.string().optional().default('ap-south-1'),
     AWS_ACCESS_KEY_ID: z.string().optional().default(''),
     AWS_SECRET_ACCESS_KEY: z.string().optional().default(''),
+    FCM_PROVIDER: z.enum(['fake', 'firebase']).default('fake'),
+    FIREBASE_PROJECT_ID: z.string().optional().default(''),
+    FIREBASE_SERVICE_ACCOUNT_KEY: z.string().optional().default(''),
     /** Online payments (D42). `mock` is in-memory (dev/test) and refused in production. */
     PAYMENT_GATEWAY: z.enum(['mock', 'razorpay']).default('mock'),
     RAZORPAY_KEY_ID: z.string().optional().default(''),
@@ -69,6 +72,10 @@ const schema = z
         ctx.addIssue({ code: 'custom', path: ['EMAIL_PROVIDER'], message: 'EMAIL_PROVIDER must be ses or sendgrid in production' });
       if (v.EMAIL_PROVIDER === 'sendgrid' && !v.SENDGRID_API_KEY)
         ctx.addIssue({ code: 'custom', path: ['SENDGRID_API_KEY'], message: 'Required when EMAIL_PROVIDER=sendgrid' });
+      if (v.FCM_PROVIDER === 'fake')
+        ctx.addIssue({ code: 'custom', path: ['FCM_PROVIDER'], message: 'Fake FCM provider is not allowed in production' });
+      if (v.FCM_PROVIDER === 'firebase' && !v.FIREBASE_PROJECT_ID)
+        ctx.addIssue({ code: 'custom', path: ['FIREBASE_PROJECT_ID'], message: 'Required when FCM_PROVIDER=firebase' });
       if (v.VIRUS_SCANNER === 'stub')
         ctx.addIssue({ code: 'custom', path: ['VIRUS_SCANNER'], message: 'Stub virus scanner is not allowed in production' });
       if (v.PDF_RENDERER === 'stub')
