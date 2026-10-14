@@ -64,7 +64,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
         </span>
       </div>
 
-      <StatusForm id={id} current={data.status as import('@biznexa/types').ApplicationStatus} stages={[]} />
+      <StatusForm id={id} current={data.status as import('@biznexa/types').ApplicationStatus} stages={data.stages || []} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <section className="p-4 bg-white border border-rule rounded-md space-y-2">
@@ -174,8 +174,8 @@ export function ApplicationDetailView({ id }: { id: string }) {
         </div>
         <form onSubmit={async (e) => {
           e.preventDefault();
-          const el = (e.target as HTMLFormElement).elements.namedItem('noteContent');
-          if (!el.value.trim()) return;
+          const el = (e.target as HTMLFormElement).elements.namedItem('noteContent') as HTMLInputElement | null;
+          if (!el || !el.value.trim()) return;
           try {
             const newNote = await api.call(c => c.POST('/api/admin/applications/{applicationId}/notes', {
               params: { path: { applicationId: id } },

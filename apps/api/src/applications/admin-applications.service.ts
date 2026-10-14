@@ -28,7 +28,7 @@ const rowSelect = {
   createdAt: true,
   updatedAt: true,
   customerId: true,
-  service: { select: { id: true, name: true } },
+  service: { select: { id: true, name: true, stages: { select: { id: true, name: true, sortOrder: true }, orderBy: { sortOrder: 'asc' } } } },
   package: { select: { name: true } },
   order: { select: { code: true } },
   assignedTo: { select: { id: true, name: true } },
@@ -252,6 +252,7 @@ export class AdminApplicationsService {
       } : null,
       
       service: { id: app.service.id, name: app.service.name },
+      stages: (app.service as any).stages,
       package: { id: app.package.id, name: app.package.name },
       
       businessEntity: app.businessEntity ? {
