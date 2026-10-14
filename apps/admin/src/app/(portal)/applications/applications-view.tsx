@@ -20,14 +20,46 @@ export function ApplicationsView() {
 
 function ApplicationsPage() {
   const api = useApi();
+  const { user } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const filter = useMemo(() => {
-    return {
+  const canAssign = user?.permissions?.includes('applications.view_all') && user?.permissions?.includes('applications.update');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [staff, setStaff] = useState<import('@biznexa/types').EligibleStaff[]>([]);
+  const [bulkAssignee, setBulkAssignee] = useState<string>('');
+
+  useEffect(() => {
+    let cancelled = false;
+    if (canAssign) {
+      api.call((c) => c.GET('/api/admin/applications/staff'))
+        .then((d) => !cancelled && setStaff(d as import('@biznexa/types').EligibleStaff[]))
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [api, canAssign]);
+
+  const handleBulkAssign = async () => {
+    if (selected.length === 0) return;
+    try {
+      await api.call(c => c.POST('/api/admin/applications/bulk-assign', {
+        body: { applicationIds: selected, assigneeId: bulkAssignee || null }
+      }));
+      setSelected([]);
+      router.refresh();
+      // Refetch data
+      const d = await api.call((c) => c.GET('/api/admin/applications', { params: { query: filter as unknown as Record<string, never> } }));
+      setData(d as unknown as import('@biznexa/types').AdminApplicationPage);
+    } catch (e: unknown) {
+      alert((e as Error).message);
+    }
+  };
+
+
+  const filter = {
       status: params.get('status') ? params.get('status')?.split(',') : undefined,
       serviceId: params.get('serviceId') || undefined,
       assignee: params.get('assignee') || undefined,
@@ -41,7 +73,6 @@ function ApplicationsPage() {
       page: Number(params.get('page')) || 1,
       limit: 25,
     };
-  }, [params]);
 
   const [data, setData] = useState<import('@biznexa/types').AdminApplicationPage | null>(null);
 
@@ -119,10 +150,27 @@ function ApplicationsPage() {
 
       {error && <Notice tone="error">{error}</Notice>}
 
+      
+      {canAssign && (
+        <div className="flex items-center gap-2 mb-4 p-4 bg-paper rounded border border-rule">
+          <span className="text-sm font-medium">Selected: {selected.length}</span>
+          <select 
+            className="border border-rule rounded p-2 text-sm"
+            value={bulkAssignee}
+            onChange={e => setBulkAssignee(e.target.value)}
+          >
+            <option value="">Unassigned</option>
+            {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <Button variant="ink" onClick={handleBulkAssign} disabled={selected.length === 0}>Assign Selected</Button>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm whitespace-nowrap">
           <thead>
             <tr className="border-b text-muted">
+              {canAssign && <th className="py-2 pr-4"><input type="checkbox" onChange={e => setSelected(e.target.checked ? data?.items.map((i: import('@biznexa/types').AdminApplicationRow) => i.id) || [] : [])} checked={selected.length > 0 && selected.length === data?.items.length} /></th>}
               <th className="py-2 pr-4 font-medium">Code</th>
               <th className="py-2 pr-4 font-medium">Status</th>
               <th className="py-2 pr-4 font-medium">Priority</th>
@@ -140,6 +188,7 @@ function ApplicationsPage() {
             ) : (
               data.items.map((app: import('@biznexa/types').AdminApplicationRow) => (
                 <tr key={app.id} className="border-b">
+                  {canAssign && <td className="py-3 pr-4"><input type="checkbox" checked={selected.includes(app.id)} onChange={e => setSelected(prev => e.target.checked ? [...prev, app.id] : prev.filter(id => id !== app.id))} /></td>}
                   <td className="py-3 pr-4 font-medium text-night">
                     <a href={`/applications/${app.id}`} className="hover:underline">{app.code}</a>
                   </td>

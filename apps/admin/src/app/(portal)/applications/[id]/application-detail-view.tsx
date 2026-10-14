@@ -1,3 +1,4 @@
+import { useAuth } from '@/lib/auth';
 'use client';
 import { StatusForm } from './status-form';
 
@@ -8,8 +9,34 @@ import { APPLICATION_STATUS_LABEL, formatDate, formatINR } from '@biznexa/types'
 
 export function ApplicationDetailView({ id }: { id: string }) {
   const api = useApi();
+  const { user } = useAuth();
   const [data, setData] = useState<import('@biznexa/types').AdminApplicationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const canAssign = user?.permissions?.includes('applications.view_all') && user?.permissions?.includes('applications.update');
+  const [staff, setStaff] = useState<import('@biznexa/types').EligibleStaff[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (canAssign) {
+      api.call((c) => c.GET('/api/admin/applications/staff'))
+        .then((d) => !cancelled && setStaff(d as import('@biznexa/types').EligibleStaff[]))
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [api, canAssign]);
+
+  const updateAssignee = async (assigneeId: string) => {
+    try {
+      await api.call(c => c.PATCH('/api/admin/applications/{id}/assignee', {
+        params: { path: { id } },
+        body: { assigneeId: assigneeId || null }
+      }));
+      setData(prev => prev ? { ...prev, assignedTo: staff.find(s => s.id === assigneeId) || null } : null);
+    } catch (e: unknown) {
+      alert((e as Error).message);
+    }
+  };
+
   const [notes, setNotes] = useState<import('@biznexa/types').InternalNote[]>([]);
 
   useEffect(() => {
@@ -51,14 +78,27 @@ export function ApplicationDetailView({ id }: { id: string }) {
           ) : <p className="text-muted">No customer linked</p>}
         </section>
 
+        
         <section className="p-4 bg-white border border-rule rounded-md space-y-2">
           <h2 className="font-semibold text-lg border-b pb-2">Service Details</h2>
           <p><span className="text-muted">Service:</span> {data.service.name}</p>
           <p><span className="text-muted">Package:</span> {data.package.name}</p>
           <p><span className="text-muted">Priority:</span> {data.priority}</p>
-          <p><span className="text-muted">Assignee:</span> {data.assignedTo?.name || 'Unassigned'}</p>
+          <p className="flex items-center gap-2">
+            <span className="text-muted">Assignee:</span> {data.assignedTo?.name || 'Unassigned'} {canAssign && staff.length > 0 && (
+              <select 
+                className="ml-2 border rounded p-1 text-sm"
+                value={data.assignedTo?.id || ''}
+                onChange={e => updateAssignee(e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            )}
+          </p>
           <p><span className="text-muted">SLA Due:</span> {data.slaDueAt ? formatDate(data.slaDueAt) : 'N/A'}</p>
         </section>
+
 
         <section className="p-4 bg-white border border-rule rounded-md space-y-2">
           <h2 className="font-semibold text-lg border-b pb-2">Order & Payments</h2>
@@ -89,7 +129,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
       <section className="p-4 bg-white border border-rule rounded-md">
         <h2 className="font-semibold text-lg mb-4">Documents</h2>
         <div className="space-y-3">
-          {data.documents?.map((d: any) => (
+          {data.documents?.map((d: import('@biznexa/types').AdminApplicationDetail['documents'][0]) => (
             <div key={d.id} className="flex justify-between items-center text-sm border-b pb-2">
               <div>
                 <p className="font-medium">{d.name}</p>
@@ -105,12 +145,12 @@ export function ApplicationDetailView({ id }: { id: string }) {
       <section className="p-4 bg-white border border-rule rounded-md">
         <h2 className="font-semibold text-lg mb-4">Form Answers</h2>
         <div className="space-y-4 text-sm">
-          {data.formSchema?.steps?.map((step: any, idx: number) => (
+          {data.formSchema?.steps?.map((step: import('@biznexa/types').FormSchema['steps'][0], idx: number) => (
             <div key={idx} className="border border-rule rounded-md p-3">
               <h3 className="font-medium border-b pb-2 mb-2">{step.title}</h3>
-              {step.fields?.map((f: any) => (
+              {step.fields?.map((f: import('@biznexa/types').FormField) => (
                 <p key={f.name}>
-                  <span className="text-muted">{f.label}:</span> {String((data.formData as any)?.[f.name] ?? '—')}
+                  <span className="text-muted">{f.label}:</span> {String((data.formData as Record<string, unknown>)?.[f.name] ?? '—')}
                 </p>
               ))}
             </div>
@@ -134,7 +174,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
         </div>
         <form onSubmit={async (e) => {
           e.preventDefault();
-          const el = (e.target as any).elements.namedItem('noteContent');
+          const el = (e.target as HTMLFormElement).elements.namedItem('noteContent');
           if (!el.value.trim()) return;
           try {
             const newNote = await api.call(c => c.POST('/api/admin/applications/{applicationId}/notes', {
