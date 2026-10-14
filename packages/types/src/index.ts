@@ -24,3 +24,4 @@ export * from './payments';
 export * from './invoices';
 export * from './audit';
 export * from './admin-applications';
+export * from './notifications';
