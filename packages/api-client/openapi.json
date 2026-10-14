@@ -20554,6 +20554,30 @@
             ],
             "additionalProperties": false,
             "nullable": true
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "sortOrder": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "sortOrder"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [

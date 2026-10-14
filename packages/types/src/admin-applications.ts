@@ -160,6 +160,13 @@ export const adminApplicationDetailSchema = z.object({
     id: z.string().uuid(),
     name: z.string(),
   }).nullable(),
+
+  stages: z.array(z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    sortOrder: z.number().int(),
+  })).optional(),
+
 });
 
 export type AdminApplicationDetail = z.infer<typeof adminApplicationDetailSchema>;
