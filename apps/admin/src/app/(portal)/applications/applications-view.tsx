@@ -52,7 +52,7 @@ function ApplicationsPage() {
     api.call((c) => c.GET('/api/admin/applications', { params: { query: filter as unknown as Record<string, never> } }))
       .then((d) => {
         if (!cancelled) {
-          setData(d as any);
+          setData(d as unknown as import('@biznexa/types').AdminApplicationPage);
           setLoading(false);
           setError(null);
         }
@@ -83,8 +83,8 @@ function ApplicationsPage() {
       a.download = `applications-${new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).split('/').reverse().join('-')}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      alert(e.message);
+    } catch (e: unknown) {
+      alert((e as Error).message);
     }
   };
 
@@ -138,7 +138,7 @@ function ApplicationsPage() {
             ) : !data?.items.length ? (
               <tr><td colSpan={7} className="py-4 text-center text-muted">No applications found.</td></tr>
             ) : (
-              data.items.map((app: any) => (
+              data.items.map((app: import('@biznexa/types').AdminApplicationRow) => (
                 <tr key={app.id} className="border-b">
                   <td className="py-3 pr-4 font-medium text-night">
                     <a href={`/applications/${app.id}`} className="hover:underline">{app.code}</a>

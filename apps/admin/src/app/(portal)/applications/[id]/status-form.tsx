@@ -6,7 +6,7 @@ import { Button, Field, Notice, Select } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
 import { APPLICATION_STATUS_LABEL, allowedNext, type ApplicationStatus, type ApplicationTransitionInput } from '@biznexa/types';
 
-export function StatusForm({ id, current, stages }: { id: string, current: ApplicationStatus, stages: any[] }) {
+export function StatusForm({ id, current, stages }: { id: string, current: ApplicationStatus, stages: { id: string, name: string }[] }) {
   const api = useApi();
   const router = useRouter();
   
@@ -45,8 +45,8 @@ export function StatusForm({ id, current, stages }: { id: string, current: Appli
       router.refresh();
       setTo(to);
       setNote('');
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError((e as Error).message);
     } finally {
       setSaving(false);
     }

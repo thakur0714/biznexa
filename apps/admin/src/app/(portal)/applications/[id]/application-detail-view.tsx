@@ -1,25 +1,25 @@
-import { StatusForm } from './status-form';
 'use client';
+import { StatusForm } from './status-form';
 
 import { useEffect, useState } from 'react';
 import { useApi } from '@biznexa/api-client/react';
-import { Notice, Button } from '@biznexa/ui';
+import { Notice } from '@biznexa/ui';
 import { APPLICATION_STATUS_LABEL, formatDate, formatINR } from '@biznexa/types';
 
 export function ApplicationDetailView({ id }: { id: string }) {
   const api = useApi();
   const [data, setData] = useState<import('@biznexa/types').AdminApplicationDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notes, setNotes] = useState<any[]>([]);
+  const [notes, setNotes] = useState<import('@biznexa/types').InternalNote[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     api.call((c) => c.GET('/api/admin/applications/{id}', { params: { path: { id } } }))
-      .then((d) => !cancelled && setData(d as any))
+      .then((d) => !cancelled && setData(d as unknown as import('@biznexa/types').AdminApplicationDetail))
       .catch((e) => !cancelled && setError(e.message));
 
     api.call((c) => c.GET('/api/admin/applications/{applicationId}/notes', { params: { path: { applicationId: id } } }))
-      .then((d) => !cancelled && setNotes(d as any))
+      .then((d) => !cancelled && setNotes(d as unknown as import('@biznexa/types').InternalNote[]))
       .catch(() => {});
       
     return () => { cancelled = true; };
@@ -37,7 +37,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
         </span>
       </div>
 
-      <StatusForm id={id} current={data.status as any} stages={[]} />
+      <StatusForm id={id} current={data.status as import('@biznexa/types').ApplicationStatus} stages={[]} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <section className="p-4 bg-white border border-rule rounded-md space-y-2">
