@@ -52,7 +52,7 @@ export const NAV: NavGroup[] = [
     label: 'Administration',
     items: [
       { slug: 'reports', label: 'Reports', requires: { all: [PERMS.REPORTS_VIEW] } },
-      { slug: 'audit-log', label: 'Audit log', requires: { all: [PERMS.AUDIT_VIEW] } },
+      { slug: 'audit', label: 'Audit log', requires: { all: [PERMS.AUDIT_VIEW] }, built: true },
       { slug: 'settings', label: 'Settings', requires: { all: [PERMS.SETTINGS_MANAGE] }, built: true },
     ],
   },

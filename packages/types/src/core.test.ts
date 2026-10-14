@@ -7,6 +7,8 @@ import {
   effectiveCertificateStatus,
   formatINR,
   formatDate,
+  formatDateTime,
+  istDay,
   financialYear,
   registerSchema,
 } from './index';
@@ -120,6 +122,9 @@ describe('formatting', () => {
   });
   it('formats dates as DD-MMM-YYYY in IST', () => {
     expect(formatDate('2026-10-08T20:00:00Z')).toBe('09-Oct-2026');
+    expect(formatDateTime('2026-10-08T20:05:09Z')).toBe('09-Oct-2026, 01:35:09');
+    expect(istDay('2026-10-08T18:30:00Z')).toBe('2026-10-09'); // 00:00 IST is the next day
+    expect(istDay('2026-10-08T18:29:59Z')).toBe('2026-10-08');
   });
   it('computes the Indian financial year', () => {
     expect(financialYear(new Date('2026-10-09T00:00:00Z'))).toBe('2026-27');

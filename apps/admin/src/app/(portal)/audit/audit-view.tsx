@@ -7,7 +7,7 @@ import { useApi } from '@biznexa/api-client/react';
 import { NotAllowed } from '@/components/portal-shell';
 import { useAuth } from '@/lib/auth';
 import { canSee, findNavItem } from '@/lib/nav';
-import { formatDate } from '@biznexa/types';
+import { formatDateTime, istDay } from '@biznexa/types';
 
 export function AuditLogView() {
   const { user } = useAuth();
@@ -81,8 +81,8 @@ function AuditLogPage() {
         <Field id="filter-entityType" label="Entity Type" value={filter.entityType || ''} onChange={(e) => updateFilter('entityType', e.target.value)} />
         <Field id="filter-entityId" label="Entity ID" value={filter.entityId || ''} onChange={(e) => updateFilter('entityId', e.target.value)} />
         <Field id="filter-action" label="Action" value={filter.action || ''} onChange={(e) => updateFilter('action', e.target.value)} />
-        <Field id="filter-from" label="From (IST)" type="date" value={filter.from?.split('T')[0] || ''} onChange={(e) => updateFilter('from', e.target.value ? new Date(e.target.value + 'T00:00:00+05:30').toISOString() : '')} />
-        <Field id="filter-to" label="To (IST)" type="date" value={filter.to?.split('T')[0] || ''} onChange={(e) => updateFilter('to', e.target.value ? new Date(e.target.value + 'T23:59:59+05:30').toISOString() : '')} />
+        <Field id="filter-from" label="From (IST)" type="date" value={filter.from ? istDay(filter.from) : ''} onChange={(e) => updateFilter('from', e.target.value ? new Date(e.target.value + 'T00:00:00+05:30').toISOString() : '')} />
+        <Field id="filter-to" label="To (IST)" type="date" value={filter.to ? istDay(filter.to) : ''} onChange={(e) => updateFilter('to', e.target.value ? new Date(e.target.value + 'T23:59:59.999+05:30').toISOString() : '')} />
       </form>
 
       {error && <Notice tone="error">{error}</Notice>}
@@ -111,7 +111,7 @@ function AuditLogPage() {
             ) : (
               data.items.map((log) => (
                 <tr key={log.id} className="border-b">
-                  <td className="py-3 pr-4">{formatDate(log.createdAt)}</td>
+                  <td className="py-3 pr-4">{formatDateTime(log.createdAt)}</td>
                   <td className="py-3 pr-4">
                     {log.actorName ? `${log.actorName} (${log.actorEmail})` : log.actorId || 'System'}
                   </td>
