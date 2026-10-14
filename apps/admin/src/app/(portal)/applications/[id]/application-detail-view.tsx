@@ -3,7 +3,7 @@ import { StatusForm } from './status-form';
 
 import { useEffect, useState } from 'react';
 import { useApi } from '@biznexa/api-client/react';
-import { Notice } from '@biznexa/ui';
+import { Notice, Button } from '@biznexa/ui';
 import { APPLICATION_STATUS_LABEL, formatDate, formatINR } from '@biznexa/types';
 
 export function ApplicationDetailView({ id }: { id: string }) {
@@ -84,9 +84,44 @@ export function ApplicationDetailView({ id }: { id: string }) {
         </section>
       </div>
 
+      
+      
       <section className="p-4 bg-white border border-rule rounded-md">
+        <h2 className="font-semibold text-lg mb-4">Documents</h2>
+        <div className="space-y-3">
+          {data.documents?.map((d: any) => (
+            <div key={d.id} className="flex justify-between items-center text-sm border-b pb-2">
+              <div>
+                <p className="font-medium">{d.name}</p>
+                <p className="text-xs text-muted">{d.fileName || 'No file'} • {d.status}</p>
+              </div>
+            </div>
+          ))}
+          {!data.documents?.length && <p className="text-muted text-sm">No documents required.</p>}
+        </div>
+      </section>
+
+
+      <section className="p-4 bg-white border border-rule rounded-md">
+        <h2 className="font-semibold text-lg mb-4">Form Answers</h2>
+        <div className="space-y-4 text-sm">
+          {data.formSchema?.steps?.map((step: any, idx: number) => (
+            <div key={idx} className="border border-rule rounded-md p-3">
+              <h3 className="font-medium border-b pb-2 mb-2">{step.title}</h3>
+              {step.fields?.map((f: any) => (
+                <p key={f.name}>
+                  <span className="text-muted">{f.label}:</span> {String((data.formData as any)?.[f.name] ?? '—')}
+                </p>
+              ))}
+            </div>
+          ))}
+          {!data.formSchema && <p className="text-muted text-sm">No form schema available.</p>}
+        </div>
+      </section>
+
+<section className="p-4 bg-white border border-rule rounded-md">
         <h2 className="font-semibold text-lg mb-4">Internal Notes</h2>
-        <div className="space-y-4">
+        <div className="space-y-4 mb-4">
           {notes.map(note => (
             <div key={note.id} className="p-3 bg-paper rounded border border-rule">
               <p className="text-sm">{note.content}</p>
@@ -97,7 +132,26 @@ export function ApplicationDetailView({ id }: { id: string }) {
           ))}
           {notes.length === 0 && <p className="text-muted">No internal notes yet.</p>}
         </div>
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          const el = (e.target as any).elements.namedItem('noteContent');
+          if (!el.value.trim()) return;
+          try {
+            const newNote = await api.call(c => c.POST('/api/admin/applications/{applicationId}/notes', {
+              params: { path: { applicationId: id } },
+              body: { content: el.value }
+            }));
+            setNotes([newNote as unknown as import('@biznexa/types').InternalNote, ...notes]);
+            el.value = '';
+          } catch(err: unknown) {
+            alert((err as Error).message);
+          }
+        }} className="flex gap-2">
+          <input name="noteContent" placeholder="Write a note..." className="flex-1 border border-rule p-2 rounded text-sm" />
+          <Button variant="ink" type="submit">Add Note</Button>
+        </form>
       </section>
+
 
       <section className="p-4 bg-white border border-rule rounded-md">
         <h2 className="font-semibold text-lg mb-4">History</h2>
