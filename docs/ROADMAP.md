@@ -240,8 +240,12 @@ Gaps found while planning are moved into Milestone 2.5 below.
 
 ## Milestone 6 — Notifications & Reminders
 
-- [ ] **M6.1 — Notification channel interface.** `[Sonnet]` `NotificationChannel` (email, sms, push, in-app; WhatsApp stub). Dispatcher reads preferences, transactional vs marketing. *Ref: §7.9, §10.*
-- [ ] **M6.2 — Template engine.** `[Sonnet]` `NotificationTemplate` per event × channel with `{{variables}}`; safe rendering (escape HTML); missing-variable check; seed templates for all events in §7.9.
+- [x] **M6.1 — Notification channel interface.** `[Sonnet]` `NotificationChannel` (email, sms, push, in-app; WhatsApp stub). Dispatcher reads preferences, transactional vs marketing. *Ref: §7.9, §10.*
+  - *Done 14-Oct-2026 (Antigravity, fixed after Claude review):* `apps/api/src/notifications/`: `NotificationChannel` interface; email/SMS/push/WhatsApp are logging stubs (real providers in M6.4–M6.6), in-app writes a `Notification` row. Dispatcher: transactional always sent; marketing skipped on opt-out or channel opt-out. Preferences in `User.notificationPrefs` (JSON, migration `user_notification_prefs`), zod schema in `packages/types`. Unit tests for dispatcher, preferences, in-app channel.
+  - *Follow-ups:* no API/UI for preferences yet (M5.11). Dispatcher doesn't validate input with the zod schema; no queue/retries (M6.3).
+- [x] **M6.2 — Template engine.** `[Sonnet]` `NotificationTemplate` per event × channel with `{{variables}}`; safe rendering (escape HTML); missing-variable check; seed templates for all events in §7.9.
+  - *Done 14-Oct-2026 (Antigravity, fixed after Claude review):* `TemplateEngineService` renders `{{var}}` in subject/body; values HTML-escaped for EMAIL only (in-app is shown as text by React); a missing variable throws, never sends `{{name}}`; inactive/unknown template → error. Event names in `NOTIFICATION_EVENTS` (`packages/types`), matching `events.ts` (`payment.succeeded`/`payment.failed`). Seed (`prisma/seed-notifications.ts`): 19 events × 5 channels, create-only so admin edits survive re-seeding; `dltTemplateId` left null until real DLT IDs exist. Tests: unit (render, escaping, missing variable), e2e (seed, re-seed keeps edits, render from DB).
+  - *Follow-ups:* real DLT template IDs before SMS goes live (M6.5). `auth.registered`, `auth.otp`, `expert.assigned`, `consultation.*`, `ticket.*`, `compliance.reminder`, `certificate.expiring`, `document.requested/approved/rejected` are not yet emitted on the event bus (M6.8).
 - [ ] **M6.3 — Notification queue + delivery log.** `[Opus]` Queue job per notification, retries with backoff, status stored (queued/sent/failed/delivered). Idempotency key per event+user+channel.
 - [ ] **M6.4 — Email channel (SES/SendGrid).** `[Sonnet]` With dev mailbox (e.g. Mailpit in Docker). Invoice email with PDF attached/linked.
 - [ ] **M6.5 — SMS channel (MSG91, DLT template IDs).** `[Sonnet]` Replace current OTP sender with this channel.
