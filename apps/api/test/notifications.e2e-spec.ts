@@ -276,6 +276,21 @@ describe('In-app inbox (M6.7)', () => {
       expect(res2.body.items[0].id).toBe(aliceNotif2Id);
     });
 
+    it('returns 400 when cursor is unknown or belongs to another user', async () => {
+      // Unknown cursor (random UUID)
+      const unknownId = randomUUID();
+      await http
+        .get(`/api/notifications?cursor=${unknownId}`)
+        .set(as(aliceToken))
+        .expect(400);
+
+      // Cursor belongs to another user (Alice querying with Bob's notification id)
+      await http
+        .get(`/api/notifications?cursor=${bobNotif1Id}`)
+        .set(as(aliceToken))
+        .expect(400);
+    });
+
     it('does not expose another user notifications in list', async () => {
       const res = await http
         .get('/api/notifications')

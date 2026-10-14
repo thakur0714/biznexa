@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   MarkAllReadResponse,
   NotificationItem,
@@ -32,27 +32,26 @@ export class NotificationsService {
         where: { id: query.cursor, userId, channel: 'IN_APP' },
         select: { id: true },
       });
-      if (cursorExists) {
-        items = await this.prisma.notification.findMany({
-          where,
-          take: limit,
-          skip: 1,
-          cursor: { id: query.cursor },
-          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          select: {
-            id: true,
-            event: true,
-            title: true,
-            body: true,
-            link: true,
-            readAt: true,
-            createdAt: true,
-          },
-        });
+      if (!cursorExists) {
+        throw new BadRequestException('Invalid pagination cursor');
       }
-    }
-
-    if (!items) {
+      items = await this.prisma.notification.findMany({
+        where,
+        take: limit,
+        skip: 1,
+        cursor: { id: query.cursor },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: {
+          id: true,
+          event: true,
+          title: true,
+          body: true,
+          link: true,
+          readAt: true,
+          createdAt: true,
+        },
+      });
+    } else {
       items = await this.prisma.notification.findMany({
         where,
         take: limit,

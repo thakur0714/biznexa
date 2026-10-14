@@ -1,17 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import { Icon } from './icons';
 import { useAuth } from '@/lib/auth';
 import { useApi } from '@biznexa/api-client/react';
 
+export const NOTIFICATIONS_CHANGED_EVENT = 'biznexa:notifications-changed';
+
+export function notifyNotificationsChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(NOTIFICATIONS_CHANGED_EVENT));
+  }
+}
+
 export function NotificationBell() {
   const { user } = useAuth();
   const api = useApi();
+  const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
-  useEffect(() => {
+  const fetchUnreadCount = useCallback(() => {
     if (!user) return;
     let cancelled = false;
 
@@ -30,6 +40,21 @@ export function NotificationBell() {
       cancelled = true;
     };
   }, [api, user]);
+
+  useEffect(() => {
+    return fetchUnreadCount();
+  }, [fetchUnreadCount, pathname]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleUpdate = () => {
+      fetchUnreadCount();
+    };
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, handleUpdate);
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, handleUpdate);
+    };
+  }, [fetchUnreadCount]);
 
   if (!user) return null;
 
