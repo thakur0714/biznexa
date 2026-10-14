@@ -4,6 +4,7 @@ import {
   notificationChannelSchema,
   userNotificationPreferencesSchema,
   sendNotificationInputSchema,
+  escapeHtml,
 } from './notifications';
 
 describe('notification types and schemas', () => {
@@ -49,5 +50,10 @@ describe('notification types and schemas', () => {
       body: 'Hi',
     });
     expect(res.success).toBe(false);
+  });
+
+  it('escapes HTML special characters correctly', () => {
+    const input = `<script>alert("xss & 'hack'")</script>`;
+    expect(escapeHtml(input)).toBe('&lt;script&gt;alert(&quot;xss &amp; &#39;hack&#39;&quot;)&lt;/script&gt;');
   });
 });

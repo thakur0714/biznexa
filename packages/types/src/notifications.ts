@@ -54,3 +54,30 @@ export const notificationResultSchema = z.object({
   error: z.string().optional(),
 });
 export type NotificationResult = z.infer<typeof notificationResultSchema>;
+
+export const notificationTemplateSchema = z.object({
+  id: z.string().uuid().optional(),
+  event: z.string().min(1, 'event is required'),
+  channel: notificationChannelSchema,
+  subject: z.string().nullable().optional(),
+  body: z.string().min(1, 'body is required'),
+  dltTemplateId: z.string().nullable().optional(),
+  isActive: z.boolean().default(true),
+});
+export type NotificationTemplateInput = z.input<typeof notificationTemplateSchema>;
+export type NotificationTemplateData = z.output<typeof notificationTemplateSchema>;
+
+export interface RenderedNotification {
+  subject?: string;
+  body: string;
+}
+
+/** Escapes HTML special characters in values for EMAIL and IN_APP channels. */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
