@@ -181,9 +181,9 @@ export class AdminApplicationsService {
       updatedAt: true,
       formData: true,
       customerId: true,
-      /* formSchemaVersion is a number */
+      formSchemaVersion: true,
       
-      service: { select: { id: true, name: true } },
+      service: { select: { id: true, name: true, stages: { select: { id: true, name: true, sortOrder: true }, orderBy: { sortOrder: 'asc' } } } },
       package: { select: { id: true, name: true } },
       
       businessEntity: { select: { id: true, pan: true } },
@@ -220,6 +220,16 @@ export class AdminApplicationsService {
     // Application has no customer relation; a draft may have no order yet.
     const customer = order?.customer ?? (await this.prisma.user.findUnique({ where: { id: app.customerId }, select: { id: true, name: true, email: true, mobile: true } }));
     
+    
+    let formSchema = null;
+    if (app.formSchemaVersion) {
+      const schemaRow = await this.prisma.serviceFormSchema.findUnique({
+        where: { serviceId_version: { serviceId: app.service.id, version: app.formSchemaVersion } },
+        select: { schema: true }
+      });
+      formSchema = schemaRow?.schema ?? null;
+    }
+
     // Payments: get from order
     const payments = !order ? [] : await this.prisma.payment.findMany({
       where: { orderId: order.id },
@@ -242,6 +252,7 @@ export class AdminApplicationsService {
       } : null,
       
       service: { id: app.service.id, name: app.service.name },
+      stages: app.service.stages,
       package: { id: app.package.id, name: app.package.name },
       
       businessEntity: app.businessEntity ? {
@@ -262,7 +273,7 @@ export class AdminApplicationsService {
         paidAt: p.paidAt ? p.paidAt.toISOString() : null,
       })),
       
-      formSchema: (app as any).service?.formSchemas?.[0]?.schema as any ?? null,
+      formSchema: formSchema as any,
       formData: app.formData as Record<string, unknown>,
       
       documents: app.documents.map(d => ({

@@ -10,7 +10,8 @@ Rules and queue live in [JULES.md](JULES.md); step details in [ROADMAP.md](ROADM
 | J1 | M3.24 | Jules wrote it (task errored after pushing); fixed and run locally by Claude, **merged 13-Oct-2026** (`7f8af1c`). | merged (#2) |
 | J2 | M4.9, M4.7, M4.10, M4.16 | Done by Jules, verified locally, **squash-merged 13-Oct-2026** (`1d13f88`). ROADMAP ticked. | merged |
 | J3 | M7.2, M7.1, M4.15 | Fixed + verified by Claude, merged 13-Oct-2026. | merged |
-| J4 | M4.3–M4.6 | API fixed + tested by Claude 14-Oct-2026; UI gaps left for J4b. | PR from `jules-j4` |
+| J4 | M4.3–M4.6 | API fixed + tested by Claude, merged 14-Oct-2026 (#9). | merged |
+| J4b | M4.4–M4.6 UI | UI done by Jules; 3 bugs fixed by Claude 14-Oct-2026. | PR from `jules-j4b` |
 
 Supervised steps to do with Claude (not Jules): **M4.1, M4.2, M4.13**.
 
@@ -74,6 +75,11 @@ Supervised steps to do with Claude (not Jules): **M4.1, M4.2, M4.13**.
   ids), detail 500 without an order, PAN masked from the encrypted value, applications nav not built.
   UI left half done (no assignee picker, empty stage list, no documents/form data). API fixed and
   tested (`admin-application-work.e2e-spec.ts`); UI → next Jules batch.
+- **14-Oct, J4b (`jules-j4b`):** committed a debug script at the repo root; again empty ROADMAP notes;
+  skipped the asked-for API assertion. Bugs: `stages` dropped from the query (stage picker empty),
+  `'use client'` below an import, page kept stale status after assigning. Fixed + tested.
+- Flaky: `admin-settings.e2e-spec` failed once in a full run (passes alone and on re-run) — likely shared
+  `Setting` rows between suites; look at it with the other J2 flake.
 - Flaky since J2: `internal-notes.e2e-spec` creates its own category, and `app.e2e-spec`'s catalogue
   test can pick it as "other category" → one of them fails now and then in a full run. Fix: the
   catalogue test should create its own second category (or notes should not need a category).
