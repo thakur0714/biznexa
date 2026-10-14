@@ -29,7 +29,17 @@ const schema = z
     SMS_PROVIDER: z.enum(['console', 'msg91']).default('console'),
     MSG91_AUTH_KEY: z.string().optional().default(''),
     MSG91_OTP_TEMPLATE_ID: z.string().optional().default(''),
-    EMAIL_PROVIDER: z.enum(['console', 'ses', 'sendgrid']).default('console'),
+    EMAIL_PROVIDER: z.enum(['console', 'ses', 'sendgrid', 'smtp']).default('smtp'),
+    EMAIL_FROM: z.string().default('BizNexa <no-reply@biznexa.com>'),
+    SMTP_HOST: z.string().default('localhost'),
+    SMTP_PORT: z.coerce.number().int().default(1025),
+    SMTP_USER: z.string().optional().default(''),
+    SMTP_PASS: z.string().optional().default(''),
+    SMTP_SECURE: z.coerce.boolean().default(false),
+    SENDGRID_API_KEY: z.string().optional().default(''),
+    AWS_REGION: z.string().optional().default('ap-south-1'),
+    AWS_ACCESS_KEY_ID: z.string().optional().default(''),
+    AWS_SECRET_ACCESS_KEY: z.string().optional().default(''),
     /** Online payments (D42). `mock` is in-memory (dev/test) and refused in production. */
     PAYMENT_GATEWAY: z.enum(['mock', 'razorpay']).default('mock'),
     RAZORPAY_KEY_ID: z.string().optional().default(''),
@@ -55,6 +65,10 @@ const schema = z
       }
       if (v.SMS_PROVIDER === 'console')
         ctx.addIssue({ code: 'custom', path: ['SMS_PROVIDER'], message: 'Console SMS provider is not allowed in production' });
+      if (v.EMAIL_PROVIDER === 'console' || v.EMAIL_PROVIDER === 'smtp')
+        ctx.addIssue({ code: 'custom', path: ['EMAIL_PROVIDER'], message: 'EMAIL_PROVIDER must be ses or sendgrid in production' });
+      if (v.EMAIL_PROVIDER === 'sendgrid' && !v.SENDGRID_API_KEY)
+        ctx.addIssue({ code: 'custom', path: ['SENDGRID_API_KEY'], message: 'Required when EMAIL_PROVIDER=sendgrid' });
       if (v.VIRUS_SCANNER === 'stub')
         ctx.addIssue({ code: 'custom', path: ['VIRUS_SCANNER'], message: 'Stub virus scanner is not allowed in production' });
       if (v.PDF_RENDERER === 'stub')

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.service';
 import { EmailChannel } from './channels/email.channel';
+import { EmailProvider, emailProviderFactory } from './providers/email.provider';
 import { SmsChannel } from './channels/sms.channel';
 import { PushChannel } from './channels/push.channel';
 import { InAppChannel } from './channels/in-app.channel';
@@ -15,6 +16,7 @@ import { NotificationsController } from './notifications.controller';
   imports: [PrismaModule],
   controllers: [NotificationsController],
   providers: [
+    emailProviderFactory,
     EmailChannel,
     SmsChannel,
     PushChannel,
@@ -26,6 +28,7 @@ import { NotificationsController } from './notifications.controller';
     NotificationsService,
   ],
   exports: [
+    EmailProvider,
     NotificationPreferencesService,
     NotificationDispatcherService,
     TemplateEngineService,
