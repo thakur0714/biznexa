@@ -5,10 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Badge, Button, EmptyState, LinkButton, Notice } from '@biznexa/ui';
 import { Icon } from '@/components/icons';
+import { notifyNotificationsChanged } from '@/components/notification-bell';
 import { formatDate } from '@biznexa/types';
 import type { NotificationItem, NotificationListPage } from '@biznexa/types';
 import { useApi } from '@biznexa/api-client/react';
 import { ClientApiError } from '@biznexa/api-client/browser';
+
+function isInternalLink(link?: string | null): link is string {
+  return typeof link === 'string' && link.startsWith('/') && !link.startsWith('//');
+}
 
 interface NotificationsState {
   items: NotificationItem[];
@@ -80,6 +85,7 @@ export function NotificationsView() {
             }
           : prev
       );
+      notifyNotificationsChanged();
     } catch (err) {
       const message = err instanceof ClientApiError ? err.message : 'Could not mark notifications as read.';
       setError(message);
@@ -102,17 +108,22 @@ export function NotificationsView() {
           : prev
       );
 
-      // Call API in background
+      // Call API in background and notify bell
       api
         .call((c) =>
           c.POST('/api/notifications/{id}/read', {
             params: { path: { id: item.id } },
           })
         )
+        .then(() => {
+          notifyNotificationsChanged();
+        })
         .catch(() => undefined);
+
+      notifyNotificationsChanged();
     }
 
-    if (item.link) {
+    if (isInternalLink(item.link)) {
       router.push(item.link);
     }
   }
@@ -243,7 +254,7 @@ export function NotificationsView() {
                       {item.body}
                     </p>
 
-                    {item.link && (
+                    {isInternalLink(item.link) && (
                       <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-ink group-hover:underline">
                         <span>View details</span>
                         <Icon name="chevronRight" size={14} />

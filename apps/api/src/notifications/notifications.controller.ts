@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -8,15 +9,20 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
+  deviceTokenActionResponseSchema,
   markAllReadResponseSchema,
   notificationItemSchema,
   notificationListPageSchema,
   notificationListQuerySchema,
   notificationUnreadCountSchema,
+  registerDeviceTokenInputSchema,
+  unregisterDeviceTokenInputSchema,
   type NotificationListQuery,
+  type RegisterDeviceTokenInput,
+  type UnregisterDeviceTokenInput,
 } from '@biznexa/types';
 import { AuthUser, CurrentUser } from '../common/auth.decorators';
-import { ApiZodResponse, ZodQuery } from '../common/openapi';
+import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 import { NotificationsService } from './notifications.service';
 
 const uuid = new ParseUUIDPipe();
@@ -69,4 +75,47 @@ export class NotificationsController {
   markRead(@Param('id', uuid) id: string, @CurrentUser() user: AuthUser) {
     return this.notifications.markRead(id, user.id);
   }
+
+  /**
+   * Registers a device token for push notifications. Owner only.
+   */
+  @ApiBearerAuth()
+  @ApiZodResponse('DeviceTokenActionResponse', deviceTokenActionResponseSchema)
+  @HttpCode(200)
+  @Post(['devices/register', 'device-tokens/register', 'device-tokens'])
+  registerDeviceToken(
+    @ZodBody(registerDeviceTokenInputSchema) body: RegisterDeviceTokenInput,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.notifications.registerDeviceToken(user.id, body);
+  }
+
+  /**
+   * Unregisters a device token for push notifications. Owner only, else 403 or 404.
+   */
+  @ApiBearerAuth()
+  @ApiZodResponse('DeviceTokenActionResponse', deviceTokenActionResponseSchema)
+  @HttpCode(200)
+  @Post(['devices/unregister', 'device-tokens/unregister'])
+  unregisterDeviceToken(
+    @ZodBody(unregisterDeviceTokenInputSchema) body: UnregisterDeviceTokenInput,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.notifications.unregisterDeviceToken(user.id, body.token);
+  }
+
+  /**
+   * Unregisters a device token via DELETE. Owner only, else 403 or 404.
+   */
+  @ApiBearerAuth()
+  @ApiZodResponse('DeviceTokenActionResponse', deviceTokenActionResponseSchema)
+  @HttpCode(200)
+  @Delete(['devices/:token', 'device-tokens/:token'])
+  deleteDeviceToken(
+    @Param('token') token: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.notifications.unregisterDeviceToken(user.id, token);
+  }
 }
+

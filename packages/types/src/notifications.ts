@@ -150,3 +150,30 @@ export const markAllReadResponseSchema = z.object({
 });
 export type MarkAllReadResponse = z.infer<typeof markAllReadResponseSchema>;
 
+export const registerDeviceTokenInputSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+  platform: z.enum(['ios', 'android', 'web']).optional(),
+});
+export type RegisterDeviceTokenInput = z.infer<typeof registerDeviceTokenInputSchema>;
+
+export const unregisterDeviceTokenInputSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+});
+export type UnregisterDeviceTokenInput = z.infer<typeof unregisterDeviceTokenInputSchema>;
+
+export const deviceTokenSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  token: z.string(),
+  platform: z.string().nullable().optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type DeviceToken = z.infer<typeof deviceTokenSchema>;
+
+export const deviceTokenActionResponseSchema = z.object({
+  success: z.boolean(),
+  token: z.string().optional(),
+});
+export type DeviceTokenActionResponse = z.infer<typeof deviceTokenActionResponseSchema>;
+
