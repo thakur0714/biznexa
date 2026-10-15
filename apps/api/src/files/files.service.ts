@@ -102,9 +102,9 @@ export class FilesService {
    * M4 adds operations staff assigned to the application the file belongs to.
    */
   private async canRead(user: AuthUser, file: StoredFile) {
-    if (file.ownerId === user.id || user.permissions.includes(PERMS.APPLICATIONS_VIEW_ALL)) return true;
+    if (file.ownerId === user.id || user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ALL)) return true;
 
-    if (user.permissions.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED)) {
+    if (user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED)) {
       const doc = await this.prisma.applicationDocument.findFirst({
         where: {
           fileKey: file.fileKey,
