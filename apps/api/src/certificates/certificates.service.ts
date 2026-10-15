@@ -206,14 +206,11 @@ export class CertificatesService {
     if (startFrom && startFrom.startsWith(prefix)) {
         currentMax = parseInt(startFrom.slice(prefix.length), 10);
     } else {
-        const highest = await tx.certificate.findFirst({
-            where: { certificateNumber: { startsWith: prefix } },
-            orderBy: { certificateNumber: 'desc' },
-            select: { certificateNumber: true }
-        });
-        if (highest) {
-            currentMax = parseInt(highest.certificateNumber.slice(prefix.length), 10);
-        }
+      // Highest auto-style number only: a hand-typed number such as BNC-2026-ABC must not break the sequence.
+      const [row] = await tx.$queryRaw<{ max: number | null }[]>`
+        SELECT MAX(CAST(SUBSTRING("certificateNumber" FROM ${'^' + prefix + '([0-9]{1,9})$'}) AS INTEGER)) AS max
+        FROM "Certificate" WHERE "certificateNumber" LIKE ${prefix + '%'}`;
+      currentMax = row?.max ?? 0;
     }
 
     return `${prefix}${String(currentMax + 1).padStart(6, '0')}`;
@@ -695,7 +692,6 @@ export class CertificatesService {
       throw new BadRequestException('No valid rows found to import');
     }
 
-    const year = new Date().getFullYear();
     let attempts = 0;
 
     while (attempts < 3) {
