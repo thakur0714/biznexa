@@ -29,7 +29,18 @@ const schema = z
     SMS_PROVIDER: z.enum(['console', 'msg91']).default('console'),
     MSG91_AUTH_KEY: z.string().optional().default(''),
     MSG91_OTP_TEMPLATE_ID: z.string().optional().default(''),
-    EMAIL_PROVIDER: z.enum(['console', 'ses', 'sendgrid']).default('console'),
+    /** `console` = in-memory (nothing sent), `smtp` = Mailpit in dev (docker compose), `sendgrid` in production. */
+    EMAIL_PROVIDER: z.enum(['console', 'sendgrid', 'smtp']).default('console'),
+    EMAIL_FROM: z.string().default('BizNexa <no-reply@biznexa.com>'),
+    SMTP_HOST: z.string().default('localhost'),
+    SMTP_PORT: z.coerce.number().int().default(1025),
+    SMTP_USER: z.string().optional().default(''),
+    SMTP_PASS: z.string().optional().default(''),
+    SMTP_SECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+    SENDGRID_API_KEY: z.string().optional().default(''),
+    FCM_PROVIDER: z.enum(['fake', 'firebase']).default('fake'),
+    FIREBASE_PROJECT_ID: z.string().optional().default(''),
+    FIREBASE_SERVICE_ACCOUNT_KEY: z.string().optional().default(''),
     /** Online payments (D42). `mock` is in-memory (dev/test) and refused in production. */
     PAYMENT_GATEWAY: z.enum(['mock', 'razorpay']).default('mock'),
     RAZORPAY_KEY_ID: z.string().optional().default(''),
@@ -55,6 +66,16 @@ const schema = z
       }
       if (v.SMS_PROVIDER === 'console')
         ctx.addIssue({ code: 'custom', path: ['SMS_PROVIDER'], message: 'Console SMS provider is not allowed in production' });
+      if (v.SMS_PROVIDER === 'msg91' && (!v.MSG91_AUTH_KEY || !v.MSG91_OTP_TEMPLATE_ID))
+        ctx.addIssue({ code: 'custom', path: ['MSG91_OTP_TEMPLATE_ID'], message: 'MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID are required when SMS_PROVIDER=msg91' });
+      if (v.EMAIL_PROVIDER !== 'sendgrid')
+        ctx.addIssue({ code: 'custom', path: ['EMAIL_PROVIDER'], message: 'EMAIL_PROVIDER must be sendgrid in production' });
+      if (v.EMAIL_PROVIDER === 'sendgrid' && !v.SENDGRID_API_KEY)
+        ctx.addIssue({ code: 'custom', path: ['SENDGRID_API_KEY'], message: 'Required when EMAIL_PROVIDER=sendgrid' });
+      if (v.FCM_PROVIDER === 'fake')
+        ctx.addIssue({ code: 'custom', path: ['FCM_PROVIDER'], message: 'Fake FCM provider is not allowed in production' });
+      if (v.FCM_PROVIDER === 'firebase' && (!v.FIREBASE_PROJECT_ID || !v.FIREBASE_SERVICE_ACCOUNT_KEY))
+        ctx.addIssue({ code: 'custom', path: ['FIREBASE_SERVICE_ACCOUNT_KEY'], message: 'FIREBASE_PROJECT_ID and FIREBASE_SERVICE_ACCOUNT_KEY are required when FCM_PROVIDER=firebase' });
       if (v.VIRUS_SCANNER === 'stub')
         ctx.addIssue({ code: 'custom', path: ['VIRUS_SCANNER'], message: 'Stub virus scanner is not allowed in production' });
       if (v.PDF_RENDERER === 'stub')

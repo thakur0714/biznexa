@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
+  DeviceTokenActionResponse,
   MarkAllReadResponse,
   NotificationItem,
   NotificationListPage,
   NotificationListQuery,
   NotificationUnreadCount,
+  RegisterDeviceTokenInput,
 } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -32,27 +34,26 @@ export class NotificationsService {
         where: { id: query.cursor, userId, channel: 'IN_APP' },
         select: { id: true },
       });
-      if (cursorExists) {
-        items = await this.prisma.notification.findMany({
-          where,
-          take: limit,
-          skip: 1,
-          cursor: { id: query.cursor },
-          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          select: {
-            id: true,
-            event: true,
-            title: true,
-            body: true,
-            link: true,
-            readAt: true,
-            createdAt: true,
-          },
-        });
+      if (!cursorExists) {
+        throw new BadRequestException('Invalid pagination cursor');
       }
-    }
-
-    if (!items) {
+      items = await this.prisma.notification.findMany({
+        where,
+        take: limit,
+        skip: 1,
+        cursor: { id: query.cursor },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: {
+          id: true,
+          event: true,
+          title: true,
+          body: true,
+          link: true,
+          readAt: true,
+          createdAt: true,
+        },
+      });
+    } else {
       items = await this.prisma.notification.findMany({
         where,
         take: limit,
@@ -145,9 +146,10 @@ export class NotificationsService {
 
     return {
       ...updated,
-      readAt: updated.readAt!.toISOString(),
+      readAt: (updated.readAt ?? new Date()).toISOString(),
       createdAt: updated.createdAt.toISOString(),
     };
+
   }
 
   /**
@@ -167,4 +169,63 @@ export class NotificationsService {
 
     return { count: result.count };
   }
+
+  /**
+   * Registers a device token for push notifications (moves it to this user if it was someone else's).
+   */
+  async registerDeviceToken(
+    userId: string,
+    input: RegisterDeviceTokenInput,
+  ): Promise<DeviceTokenActionResponse> {
+    // A token identifies an app install, not a person: when someone else logs in on the same device the
+    // token moves to them, so the previous user's pushes stop going to a phone they no longer use.
+    await this.prisma.deviceToken.upsert({
+      where: { token: input.token },
+      create: {
+        userId,
+        token: input.token,
+        platform: input.platform ?? null,
+      },
+      update: {
+        userId,
+        platform: input.platform ?? null,
+        updatedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      token: input.token,
+    };
+  }
+
+  /**
+   * Unregisters a device token for push notifications. Owner only, else 403 or 404.
+   */
+  async unregisterDeviceToken(
+    userId: string,
+    token: string,
+  ): Promise<DeviceTokenActionResponse> {
+    const existing = await this.prisma.deviceToken.findUnique({
+      where: { token },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Device token not found');
+    }
+
+    if (existing.userId !== userId) {
+      throw new ForbiddenException('Forbidden: cannot unregister device token belonging to another user');
+    }
+
+    await this.prisma.deviceToken.delete({
+      where: { token },
+    });
+
+    return {
+      success: true,
+      token,
+    };
+  }
 }
+

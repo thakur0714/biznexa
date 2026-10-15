@@ -220,6 +220,7 @@ model User {
   stageChanges      ApplicationStageHistory[]
   files             StoredFile[]
   invoices          Invoice[]
+  deviceTokens      DeviceToken[]
 }
 
 model Role {
@@ -954,6 +955,18 @@ model Notification {
   user      User                @relation(fields: [userId], references: [id])
 
   @@index([userId, readAt])
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Ticket {
