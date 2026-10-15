@@ -1156,6 +1156,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/documents/review-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminApplicationDocumentsController_getReviewQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/documents/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminApplicationDocumentsController_approveDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/documents/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminApplicationDocumentsController_rejectDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/applications/{applicationId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminApplicationDocumentsController_requestAdditionalDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/applications/export": {
         parameters: {
             query?: never;
@@ -3371,6 +3435,37 @@ export interface components {
             };
             /** Format: date-time */
             createdAt: string;
+        };
+        AdminDocumentReviewQueuePage: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                requirementId: string | null;
+                name: string;
+                status: string;
+                version: number;
+                /** Format: uuid */
+                fileId: string | null;
+                fileKey: string | null;
+                fileName: string | null;
+                sizeBytes: number | null;
+                mimeType: string | null;
+                /** Format: date-time */
+                uploadedAt: string | null;
+                application: {
+                    /** Format: uuid */
+                    id: string;
+                    code: string;
+                    customer: {
+                        name: string;
+                        email: string | null;
+                    } | null;
+                };
+            }[];
+            total: number;
+            page: number;
+            limit: number;
         };
         AdminApplicationPage: {
             items: {
@@ -6982,6 +7077,98 @@ export interface operations {
         responses: {
             /** @description No such business among yours (another customer’s business looks the same) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminApplicationDocumentsController_getReviewQueue: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDocumentReviewQueuePage"];
+                };
+            };
+        };
+    };
+    AdminApplicationDocumentsController_approveDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminApplicationDocumentsController_rejectDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminApplicationDocumentsController_requestAdditionalDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    description?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

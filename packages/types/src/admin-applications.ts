@@ -194,3 +194,46 @@ export const eligibleStaffListSchema = z.array(eligibleStaffSchema);
 export type EligibleStaff = z.infer<typeof eligibleStaffSchema>;
 
 
+
+export const adminDocumentReviewQueueQuery = z.object({
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type AdminDocumentReviewQueueQuery = z.output<typeof adminDocumentReviewQueueQuery>;
+
+export const adminDocumentReviewQueueRowSchema = z.object({
+  id: z.string().uuid(),
+  requirementId: z.string().uuid().nullable(),
+  name: z.string(),
+  status: z.string(),
+  version: z.number().int(),
+  fileId: z.string().uuid().nullable(),
+  fileKey: z.string().nullable(),
+  fileName: z.string().nullable(),
+  sizeBytes: z.number().int().nullable(),
+  mimeType: z.string().nullable(),
+  uploadedAt: z.string().datetime().nullable(),
+  application: z.object({
+    id: z.string().uuid(),
+    code: z.string(),
+    customer: z.object({
+      name: z.string(),
+      email: z.string().nullable(),
+    }).nullable(),
+  }),
+});
+export type AdminDocumentReviewQueueRow = z.infer<typeof adminDocumentReviewQueueRowSchema>;
+
+export const adminDocumentReviewQueuePageSchema = z.object({
+  items: z.array(adminDocumentReviewQueueRowSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+});
+export type AdminDocumentReviewQueuePage = z.infer<typeof adminDocumentReviewQueuePageSchema>;
+
+export const requestAdditionalDocumentInput = z.object({
+  name: z.string().trim().min(1).max(100),
+  description: z.string().trim().max(500).optional(),
+});
+export type RequestAdditionalDocumentInput = z.infer<typeof requestAdditionalDocumentInput>;
