@@ -3,6 +3,8 @@ import { CouponsModule } from '../coupons/coupons.module';
 import { ApplicationDocumentsController } from './application-documents.controller';
 import { ApplicationDocumentsService } from './application-documents.service';
 import { ApplicationsController } from './applications.controller';
+import { AdminApplicationDocumentsController } from './admin-application-documents.controller';
+import { AdminApplicationDocumentsService } from './admin-application-documents.service';
 import { AdminApplicationsController } from './admin-applications.controller';
 import { AdminApplicationsService } from './admin-applications.service';
 import { ApplicationStatusService } from './application-status.service';
@@ -14,8 +16,23 @@ import { InternalNotesService } from './internal-notes.service';
 
 @Module({
   imports: [CouponsModule],
-  controllers: [AdminApplicationsController, ApplicationsController, ApplicationDocumentsController, OrderSummaryController, InternalNotesController],
-  providers: [AdminApplicationsService, ApplicationsService, ApplicationStatusService, ApplicationDocumentsService, OrderSummaryService, InternalNotesService],
+  controllers: [
+    AdminApplicationDocumentsController,
+    AdminApplicationsController,
+    ApplicationsController,
+    ApplicationDocumentsController,
+    OrderSummaryController,
+    InternalNotesController
+  ],
+  providers: [
+    AdminApplicationDocumentsService,
+    AdminApplicationsService,
+    ApplicationsService,
+    ApplicationStatusService,
+    ApplicationDocumentsService,
+    OrderSummaryService,
+    InternalNotesService
+  ],
   exports: [ApplicationsService, ApplicationStatusService, ApplicationDocumentsService, OrderSummaryService],
 })
 export class ApplicationsModule {}

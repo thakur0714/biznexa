@@ -7451,6 +7451,184 @@
         ]
       }
     },
+    "/api/admin/documents/review-queue": {
+      "get": {
+        "operationId": "AdminApplicationDocumentsController_getReviewQueue",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDocumentReviewQueuePage"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · applications"
+        ]
+      }
+    },
+    "/api/admin/documents/{id}/approve": {
+      "post": {
+        "operationId": "AdminApplicationDocumentsController_approveDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · applications"
+        ]
+      }
+    },
+    "/api/admin/documents/{id}/reject": {
+      "post": {
+        "operationId": "AdminApplicationDocumentsController_rejectDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · applications"
+        ]
+      }
+    },
+    "/api/admin/applications/{applicationId}/documents": {
+      "post": {
+        "operationId": "AdminApplicationDocumentsController_requestAdditionalDocument",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · applications"
+        ]
+      }
+    },
     "/api/admin/applications/export": {
       "get": {
         "operationId": "AdminApplicationsController_exportCSV",
@@ -18581,6 +18759,130 @@
           "formData",
           "formSchema",
           "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "AdminDocumentReviewQueuePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "requirementId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer"
+                },
+                "fileId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "fileKey": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "fileName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "sizeBytes": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "mimeType": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "uploadedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "application": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "customer": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "email"
+                      ],
+                      "additionalProperties": false,
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "customer"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "requirementId",
+                "name",
+                "status",
+                "version",
+                "fileId",
+                "fileKey",
+                "fileName",
+                "sizeBytes",
+                "mimeType",
+                "uploadedAt",
+                "application"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
         ],
         "additionalProperties": false
       },
