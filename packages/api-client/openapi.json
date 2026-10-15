@@ -6919,6 +6919,67 @@
         ]
       }
     },
+    "/api/certificates": {
+      "get": {
+        "operationId": "CertificatesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerCertificateList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "certificates"
+        ]
+      }
+    },
+    "/api/certificates/{id}": {
+      "get": {
+        "operationId": "CertificatesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerCertificateRow"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "certificates"
+        ]
+      }
+    },
     "/api/certificates/{id}/link": {
       "post": {
         "operationId": "CertificatesController_link",
@@ -14289,6 +14350,264 @@
           "createdAt",
           "updatedAt",
           "_count"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerCertificateList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "certificateNumber": {
+                  "type": "string"
+                },
+                "verificationId": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "organizationName": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "address": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "issueDate": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "validFrom": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "validUntil": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "certificationBody": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "accreditation": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "website": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "accreditation",
+                    "website"
+                  ],
+                  "additionalProperties": false
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE",
+                    "SUSPENDED",
+                    "WITHDRAWN",
+                    "EXPIRED"
+                  ]
+                },
+                "effectiveStatus": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE",
+                    "SUSPENDED",
+                    "WITHDRAWN",
+                    "EXPIRED"
+                  ]
+                },
+                "pdfAvailable": {
+                  "type": "boolean"
+                },
+                "qrUrl": {
+                  "type": "string"
+                },
+                "qrDataUrl": {
+                  "type": "string"
+                },
+                "daysUntilExpiry": {
+                  "type": "integer"
+                },
+                "isExpiringSoon": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "certificateNumber",
+                "verificationId",
+                "type",
+                "organizationName",
+                "scope",
+                "address",
+                "issueDate",
+                "validFrom",
+                "validUntil",
+                "certificationBody",
+                "status",
+                "effectiveStatus",
+                "pdfAvailable",
+                "qrUrl",
+                "daysUntilExpiry",
+                "isExpiringSoon",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerCertificateRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "certificateNumber": {
+            "type": "string"
+          },
+          "verificationId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "organizationName": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "issueDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validFrom": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "certificationBody": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "accreditation": {
+                "type": "string",
+                "nullable": true
+              },
+              "website": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "name",
+              "accreditation",
+              "website"
+            ],
+            "additionalProperties": false
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "WITHDRAWN",
+              "EXPIRED"
+            ]
+          },
+          "effectiveStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUSPENDED",
+              "WITHDRAWN",
+              "EXPIRED"
+            ]
+          },
+          "pdfAvailable": {
+            "type": "boolean"
+          },
+          "qrUrl": {
+            "type": "string"
+          },
+          "qrDataUrl": {
+            "type": "string"
+          },
+          "daysUntilExpiry": {
+            "type": "integer"
+          },
+          "isExpiringSoon": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "certificateNumber",
+          "verificationId",
+          "type",
+          "organizationName",
+          "scope",
+          "address",
+          "issueDate",
+          "validFrom",
+          "validUntil",
+          "certificationBody",
+          "status",
+          "effectiveStatus",
+          "pdfAvailable",
+          "qrUrl",
+          "daysUntilExpiry",
+          "isExpiringSoon",
+          "createdAt"
         ],
         "additionalProperties": false
       },

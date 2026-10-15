@@ -1060,6 +1060,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CertificatesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/certificates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CertificatesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/certificates/{id}/link": {
         parameters: {
             query?: never;
@@ -2529,6 +2561,73 @@ export interface components {
             _count: {
                 lookups: number;
             };
+        };
+        CustomerCertificateList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                certificateNumber: string;
+                verificationId: string;
+                type: string;
+                organizationName: string;
+                scope: string | null;
+                address: string | null;
+                /** Format: date-time */
+                issueDate: string;
+                /** Format: date-time */
+                validFrom: string;
+                /** Format: date-time */
+                validUntil: string;
+                certificationBody: {
+                    name: string;
+                    accreditation: string | null;
+                    website: string | null;
+                };
+                /** @enum {string} */
+                status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
+                /** @enum {string} */
+                effectiveStatus: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
+                pdfAvailable: boolean;
+                qrUrl: string;
+                qrDataUrl?: string;
+                daysUntilExpiry: number;
+                isExpiringSoon: boolean;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            total: number;
+        };
+        CustomerCertificateRow: {
+            /** Format: uuid */
+            id: string;
+            certificateNumber: string;
+            verificationId: string;
+            type: string;
+            organizationName: string;
+            scope: string | null;
+            address: string | null;
+            /** Format: date-time */
+            issueDate: string;
+            /** Format: date-time */
+            validFrom: string;
+            /** Format: date-time */
+            validUntil: string;
+            certificationBody: {
+                name: string;
+                accreditation: string | null;
+                website: string | null;
+            };
+            /** @enum {string} */
+            status: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
+            /** @enum {string} */
+            effectiveStatus: "ACTIVE" | "SUSPENDED" | "WITHDRAWN" | "EXPIRED";
+            pdfAvailable: boolean;
+            qrUrl: string;
+            qrDataUrl?: string;
+            daysUntilExpiry: number;
+            isExpiringSoon: boolean;
+            /** Format: date-time */
+            createdAt: string;
         };
         FileLink: {
             url: string;
@@ -6611,6 +6710,46 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    CertificatesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerCertificateList"];
+                };
+            };
+        };
+    };
+    CertificatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerCertificateRow"];
+                };
             };
         };
     };

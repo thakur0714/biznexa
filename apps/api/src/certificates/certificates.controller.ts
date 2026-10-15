@@ -14,6 +14,8 @@ import {
   certificationBodyListSchema,
   certificationBodySchema,
   createCertificationBodyInput,
+  customerCertificateListSchema,
+  customerCertificateRowSchema,
   fileLinkSchema,
   updateCertificationBodyInput,
   verifyCertificateSchema,
@@ -223,7 +225,24 @@ const certLinkQuery = z.object({
 @ApiTags('certificates')
 @Controller('certificates')
 export class CertificatesController {
-  constructor(private readonly pdfService: CertificatePdfService) {}
+  constructor(
+    private readonly certs: CertificatesService,
+    private readonly pdfService: CertificatePdfService,
+  ) {}
+
+  @ApiBearerAuth()
+  @ApiZodResponse('CustomerCertificateList', customerCertificateListSchema)
+  @Get()
+  list(@CurrentUser() user: AuthUser) {
+    return this.certs.listForCustomer(user);
+  }
+
+  @ApiBearerAuth()
+  @ApiZodResponse('CustomerCertificateRow', customerCertificateRowSchema)
+  @Get(':id')
+  get(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() user: AuthUser) {
+    return this.certs.getForCustomer(id, user);
+  }
 
   @ApiBearerAuth()
   @ApiZodResponse('FileLink', fileLinkSchema)

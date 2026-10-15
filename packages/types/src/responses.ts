@@ -139,3 +139,37 @@ export const adminCertificateListSchema = z.object({
   page: z.number().int(),
   limit: z.number().int(),
 });
+
+export const customerCertificateRowSchema = z.object({
+  id: z.string().uuid(),
+  certificateNumber: z.string(),
+  verificationId: z.string(),
+  type: z.string(),
+  organizationName: z.string(),
+  scope: z.string().nullable(),
+  address: z.string().nullable(),
+  issueDate: isoDate,
+  validFrom: isoDate,
+  validUntil: isoDate,
+  certificationBody: z.object({
+    name: z.string(),
+    accreditation: z.string().nullable(),
+    website: z.string().nullable(),
+  }),
+  status: z.enum(CERTIFICATE_STATUSES),
+  effectiveStatus: z.enum(CERTIFICATE_STATUSES),
+  pdfAvailable: z.boolean(),
+  qrUrl: z.string(),
+  qrDataUrl: z.string().optional(),
+  daysUntilExpiry: z.number().int(),
+  isExpiringSoon: z.boolean(),
+  createdAt: isoDate,
+});
+export type CustomerCertificateRow = z.infer<typeof customerCertificateRowSchema>;
+
+export const customerCertificateListSchema = z.object({
+  items: z.array(customerCertificateRowSchema),
+  total: z.number().int(),
+});
+export type CustomerCertificateList = z.infer<typeof customerCertificateListSchema>;
+

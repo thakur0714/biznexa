@@ -15,9 +15,11 @@ import {
 } from '@biznexa/types';
 import { mapHeaders, parseCsv, parseCsvBoolean, parseCsvDate } from './certificate-csv';
 import { PrismaService } from '../prisma/prisma.service';
+import type { Prisma } from '../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { EventBus } from '../events/event-bus';
 import { env } from '../config/env';
+import { AuthUser, PERMS } from '../common/auth.decorators';
 import type { CertificateStatus } from '../generated/prisma/enums';
 
 // No 0/O/1/I so IDs read cleanly off paper certificates.
@@ -280,6 +282,137 @@ export class CertificatesService {
       ...cert,
       status: effectiveCertificateStatus(cert.status, cert.validUntil),
       qrUrl: this.qrUrl(cert.verificationId),
+    };
+  }
+
+  async listForCustomer(user: AuthUser) {
+    const isStaff =
+      user.permissions.includes(PERMS.CERTIFICATES_MANAGE) ||
+      user.permissions.includes(PERMS.ADMIN_ACCESS) ||
+      user.permissions.includes(PERMS.APPLICATIONS_VIEW_ALL);
+
+    let where: Prisma.CertificateWhereInput;
+
+    if (isStaff) {
+      where = {};
+    } else {
+      const entities = await this.prisma.businessEntity.findMany({
+        where: { ownerId: user.id },
+        select: { id: true, legalName: true },
+      });
+      const entityIds = entities.map((e) => e.id);
+      const entityNames = entities.map((e) => e.legalName.trim()).filter(Boolean);
+
+      where = {
+        OR: [
+          ...(entityIds.length ? [{ businessEntityId: { in: entityIds } }] : []),
+          { application: { customerId: user.id } },
+          ...(entityNames.length ? [{ organizationName: { in: entityNames, mode: 'insensitive' as const } }] : []),
+        ],
+      };
+    }
+
+    const certs = await this.prisma.certificate.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        certificationBody: { select: { name: true, accreditation: true, website: true } },
+      },
+    });
+
+    const items = await Promise.all(
+      certs.map(async (c) => {
+        const qrUrl = this.qrUrl(c.verificationId);
+        const qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 1, width: 200 });
+        const daysUntilExpiry = Math.ceil((c.validUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        const effectiveStatus = effectiveCertificateStatus(c.status, c.validUntil);
+        const isExpiringSoon = c.status === 'ACTIVE' && daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+
+        return {
+          id: c.id,
+          certificateNumber: c.certificateNumber,
+          verificationId: c.verificationId,
+          type: c.type,
+          organizationName: c.organizationName,
+          scope: c.scope,
+          address: c.address,
+          issueDate: c.issueDate.toISOString(),
+          validFrom: c.validFrom.toISOString(),
+          validUntil: c.validUntil.toISOString(),
+          certificationBody: c.certificationBody,
+          status: c.status,
+          effectiveStatus,
+          pdfAvailable: Boolean(c.pdfKey),
+          qrUrl,
+          qrDataUrl,
+          daysUntilExpiry,
+          isExpiringSoon,
+          createdAt: c.createdAt.toISOString(),
+        };
+      }),
+    );
+
+    return { items, total: items.length };
+  }
+
+  async getForCustomer(id: string, user: AuthUser) {
+    const isStaff =
+      user.permissions.includes(PERMS.CERTIFICATES_MANAGE) ||
+      user.permissions.includes(PERMS.ADMIN_ACCESS) ||
+      user.permissions.includes(PERMS.APPLICATIONS_VIEW_ALL);
+
+    const cert = await this.prisma.certificate.findUnique({
+      where: { id },
+      include: {
+        businessEntity: { select: { ownerId: true, legalName: true } },
+        application: { select: { customerId: true } },
+        certificationBody: { select: { name: true, accreditation: true, website: true } },
+      },
+    });
+
+    if (!cert) throw new NotFoundException('Certificate not found');
+
+    if (!isStaff) {
+      let isOwner =
+        cert.businessEntity?.ownerId === user.id ||
+        cert.application?.customerId === user.id;
+
+      if (!isOwner) {
+        const matchingEntity = await this.prisma.businessEntity.findFirst({
+          where: { ownerId: user.id, legalName: { equals: cert.organizationName, mode: 'insensitive' } },
+        });
+        if (matchingEntity) isOwner = true;
+      }
+
+      if (!isOwner) throw new NotFoundException('Certificate not found');
+    }
+
+    const qrUrl = this.qrUrl(cert.verificationId);
+    const qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 1, width: 240 });
+    const daysUntilExpiry = Math.ceil((cert.validUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const effectiveStatus = effectiveCertificateStatus(cert.status, cert.validUntil);
+    const isExpiringSoon = cert.status === 'ACTIVE' && daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+
+    return {
+      id: cert.id,
+      certificateNumber: cert.certificateNumber,
+      verificationId: cert.verificationId,
+      type: cert.type,
+      organizationName: cert.organizationName,
+      scope: cert.scope,
+      address: cert.address,
+      issueDate: cert.issueDate.toISOString(),
+      validFrom: cert.validFrom.toISOString(),
+      validUntil: cert.validUntil.toISOString(),
+      certificationBody: cert.certificationBody,
+      status: cert.status,
+      effectiveStatus,
+      pdfAvailable: Boolean(cert.pdfKey),
+      qrUrl,
+      qrDataUrl,
+      daysUntilExpiry,
+      isExpiringSoon,
+      createdAt: cert.createdAt.toISOString(),
     };
   }
 
