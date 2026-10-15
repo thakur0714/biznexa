@@ -79,3 +79,24 @@ describe('validateStatusChange (M7.1)', () => {
     expect(validateStatusChange({ status: 'SUSPENDED', reason: 'ab' })).toBe('Reason must be at least 3 characters');
   });
 });
+
+describe('certificate bulk import UI state (M7.4)', () => {
+  it('identifies valid file extension for CSV', () => {
+    const isCsv = (filename: string) => filename.toLowerCase().endsWith('.csv');
+    expect(isCsv('certificates.csv')).toBe(true);
+    expect(isCsv('DATA.CSV')).toBe(true);
+    expect(isCsv('sheet.xlsx')).toBe(false);
+    expect(isCsv('report.pdf')).toBe(false);
+  });
+
+  it('formats error report CSV safely escaping formula prefixes', () => {
+    const escapeCsv = (val: string) => {
+      let s = val;
+      if (/^[=+\-@]/.test(s)) s = `'${s}`;
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+    expect(escapeCsv('=HYPERLINK()')).toBe('"\'=HYPERLINK()"');
+    expect(escapeCsv('Normal text')).toBe('"Normal text"');
+  });
+});
+

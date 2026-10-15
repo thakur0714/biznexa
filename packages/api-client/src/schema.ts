@@ -884,6 +884,70 @@ export interface paths {
         patch: operations["AdminCertificatesController_updateBody"];
         trace?: never;
     };
+    "/api/admin/certificates/import/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCertificatesController_getImportTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/certificates/import/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCertificatesController_previewImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/certificates/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCertificatesController_importCertificates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/certificates/import/error-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCertificatesController_downloadErrorReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/certificates/{id}": {
         parameters: {
             query?: never;
@@ -2397,6 +2461,35 @@ export interface components {
             accreditation: string | null;
             logoUrl: string | null;
             website: string | null;
+        };
+        CertificateImportPreviewResponse: {
+            totalRows: number;
+            validRows: number;
+            invalidRows: number;
+            errors: {
+                rowNumber: number;
+                field?: string;
+                message: string;
+            }[];
+            preview: {
+                rowNumber: number;
+                certificateNumber?: string;
+                type: string;
+                organizationName: string;
+                scope?: string;
+                address?: string;
+                issueDate: string;
+                validFrom: string;
+                validUntil: string;
+                certificationBodyId: string;
+                certificationBodyName: string;
+                showPdfPublicly: boolean;
+            }[];
+        };
+        CertificateImportResponse: {
+            success: boolean;
+            importedCount: number;
+            certificateIds: string[];
         };
         AdminCertificateRow: {
             /** Format: uuid */
@@ -6266,6 +6359,102 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CertificationBodyRow"];
                 };
+            };
+        };
+    };
+    AdminCertificatesController_getImportTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCertificatesController_previewImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    csv: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateImportPreviewResponse"];
+                };
+            };
+        };
+    };
+    AdminCertificatesController_importCertificates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    csv: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CertificateImportResponse"];
+                };
+            };
+        };
+    };
+    AdminCertificatesController_downloadErrorReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    errors: {
+                        rowNumber: number;
+                        certificateNumber?: string;
+                        organizationName?: string;
+                        field?: string;
+                        message: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

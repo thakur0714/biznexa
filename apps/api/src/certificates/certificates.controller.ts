@@ -6,6 +6,9 @@ import { z } from 'zod';
 import {
   adminCertificateListSchema,
   adminCertificateRowSchema,
+  certificateImportInputSchema,
+  certificateImportPreviewResponseSchema,
+  certificateImportResponseSchema,
   certificateOrgResultSchema,
   certificateVerifyResultSchema,
   certificationBodyListSchema,
@@ -14,9 +17,11 @@ import {
   fileLinkSchema,
   updateCertificationBodyInput,
   verifyCertificateSchema,
+  type CertificateImportInput,
   type CreateCertificationBodyInput,
   type UpdateCertificationBodyInput,
 } from '@biznexa/types';
+import { CSV_SAMPLE_TEMPLATE, generateCsvErrorReport } from './certificate-csv';
 import { CertificatesService, createCertificateInput, statusInput } from './certificates.service';
 import { CertificatePdfService } from './certificate-pdf.service';
 import { AuthUser, CurrentUser, PERMS, Public, RequirePermissions } from '../common/auth.decorators';
@@ -109,7 +114,58 @@ export class AdminCertificatesController {
     return this.certs.deleteBody(id, u.id);
   }
 
-  // Declared after the `bodies` routes: Express matches in order, and `:id` would swallow "bodies".
+  @Get('import/template')
+  @ApiProduces('text/csv')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="certificate-import-template.csv"')
+  getImportTemplate() {
+    return CSV_SAMPLE_TEMPLATE;
+  }
+
+  @ApiZodResponse('CertificateImportPreviewResponse', certificateImportPreviewResponseSchema)
+  @Post('import/preview')
+  previewImport(@ZodBody(certificateImportInputSchema) body: CertificateImportInput) {
+    return this.certs.previewImport(body.csv);
+  }
+
+  @ApiZodResponse('CertificateImportResponse', certificateImportResponseSchema)
+  @Post('import')
+  importCertificates(@ZodBody(certificateImportInputSchema) body: CertificateImportInput, @CurrentUser() u: AuthUser) {
+    return this.certs.importCertificates(body.csv, u.id);
+  }
+
+  @Post('import/error-report')
+  @ApiProduces('text/csv')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="certificate-import-errors.csv"')
+  downloadErrorReport(
+    @ZodBody(
+      z.object({
+        errors: z.array(
+          z.object({
+            rowNumber: z.number().int(),
+            certificateNumber: z.string().optional(),
+            organizationName: z.string().optional(),
+            field: z.string().optional(),
+            message: z.string(),
+          }),
+        ),
+      }),
+    )
+    body: {
+      errors: Array<{
+        rowNumber: number;
+        certificateNumber?: string;
+        organizationName?: string;
+        field?: string;
+        message: string;
+      }>;
+    },
+  ) {
+    return generateCsvErrorReport(body.errors);
+  }
+
+  // Declared after the `bodies` and `import` routes: Express matches in order, and `:id` would swallow subpaths.
   @ApiZodResponse('AdminCertificateRow', adminCertificateRowSchema)
   @Get(':id')
   get(@Param('id', new ParseUUIDPipe()) id: string) {

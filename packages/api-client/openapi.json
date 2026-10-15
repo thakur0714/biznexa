@@ -6472,6 +6472,180 @@
         ]
       }
     },
+    "/api/admin/certificates/import/template": {
+      "get": {
+        "operationId": "AdminCertificatesController_getImportTemplate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
+    "/api/admin/certificates/import/preview": {
+      "post": {
+        "operationId": "AdminCertificatesController_previewImport",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "csv": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "csv"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateImportPreviewResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
+    "/api/admin/certificates/import": {
+      "post": {
+        "operationId": "AdminCertificatesController_importCertificates",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "csv": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "csv"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CertificateImportResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
+    "/api/admin/certificates/import/error-report": {
+      "post": {
+        "operationId": "AdminCertificatesController_downloadErrorReport",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "errors": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "rowNumber": {
+                          "type": "integer"
+                        },
+                        "certificateNumber": {
+                          "type": "string"
+                        },
+                        "organizationName": {
+                          "type": "string"
+                        },
+                        "field": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "rowNumber",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "errors"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
     "/api/admin/certificates/{id}": {
       "get": {
         "operationId": "AdminCertificatesController_get",
@@ -13856,6 +14030,130 @@
           "accreditation",
           "logoUrl",
           "website"
+        ],
+        "additionalProperties": false
+      },
+      "CertificateImportPreviewResponse": {
+        "type": "object",
+        "properties": {
+          "totalRows": {
+            "type": "integer"
+          },
+          "validRows": {
+            "type": "integer"
+          },
+          "invalidRows": {
+            "type": "integer"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rowNumber": {
+                  "type": "integer"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rowNumber",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "preview": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rowNumber": {
+                  "type": "integer"
+                },
+                "certificateNumber": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "organizationName": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "issueDate": {
+                  "type": "string"
+                },
+                "validFrom": {
+                  "type": "string"
+                },
+                "validUntil": {
+                  "type": "string"
+                },
+                "certificationBodyId": {
+                  "type": "string"
+                },
+                "certificationBodyName": {
+                  "type": "string"
+                },
+                "showPdfPublicly": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "rowNumber",
+                "type",
+                "organizationName",
+                "issueDate",
+                "validFrom",
+                "validUntil",
+                "certificationBodyId",
+                "certificationBodyName",
+                "showPdfPublicly"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "totalRows",
+          "validRows",
+          "invalidRows",
+          "errors",
+          "preview"
+        ],
+        "additionalProperties": false
+      },
+      "CertificateImportResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "importedCount": {
+            "type": "integer"
+          },
+          "certificateIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "importedCount",
+          "certificateIds"
         ],
         "additionalProperties": false
       },
