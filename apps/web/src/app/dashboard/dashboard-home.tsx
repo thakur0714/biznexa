@@ -12,14 +12,14 @@ import { useApi } from '@biznexa/api-client/react';
 
 /** Customer portal sections (PRD 7.3). Each one comes alive in its milestone. */
 const NAV = [
-  { label: 'Dashboard', icon: 'clipboard', ready: true },
+  { label: 'Dashboard', icon: 'clipboard', ready: true, href: '/dashboard' },
   { label: 'My Services', icon: 'file' },
   { label: 'Pending Actions', icon: 'alert' },
   { label: 'Documents', icon: 'upload' },
   { label: 'Payments', icon: 'rupee' },
-  { label: 'Certificates', icon: 'badge' },
+  { label: 'Certificates', icon: 'badge', ready: true, href: '/dashboard/certificates' },
   { label: 'Consultations', icon: 'people' },
-  { label: 'Notifications', icon: 'clock' },
+  { label: 'Notifications', icon: 'clock', ready: true, href: '/dashboard/notifications' },
   { label: 'Support', icon: 'phone' },
 ];
 
@@ -53,15 +53,30 @@ export function DashboardHome() {
         <ul className="flex gap-1 overflow-x-auto lg:flex-col">
           {NAV.map((n) => (
             <li key={n.label} className="shrink-0">
-              <span
-                aria-current={n.ready ? 'page' : undefined}
-                aria-disabled={!n.ready}
-                className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${n.ready ? 'bg-ink text-white' : 'text-muted'}`}
-              >
-                <Icon name={n.icon} size={18} />
-                {n.label}
-                {!n.ready && <span className="ml-auto hidden rounded bg-paper px-1.5 text-[11px] text-muted ring-1 ring-rule lg:inline">Soon</span>}
-              </span>
+              {n.href && n.ready ? (
+                <Link
+                  href={n.href}
+                  className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${
+                    n.label === 'Dashboard' ? 'bg-ink text-white' : 'text-night hover:bg-paper'
+                  }`}
+                >
+                  <Icon name={n.icon} size={18} />
+                  {n.label}
+                </Link>
+              ) : (
+                <span
+                  aria-disabled={!n.ready}
+                  className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted"
+                >
+                  <Icon name={n.icon} size={18} />
+                  {n.label}
+                  {!n.ready && (
+                    <span className="ml-auto hidden rounded bg-paper px-1.5 text-[11px] text-muted ring-1 ring-rule lg:inline">
+                      Soon
+                    </span>
+                  )}
+                </span>
+              )}
             </li>
           ))}
         </ul>

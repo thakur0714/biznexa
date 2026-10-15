@@ -25,3 +25,4 @@ export * from './invoices';
 export * from './audit';
 export * from './admin-applications';
 export * from './notifications';
+export * from './certificate-import';

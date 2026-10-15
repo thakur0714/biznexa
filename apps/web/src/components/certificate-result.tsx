@@ -83,6 +83,20 @@ export function CertificateResult({ result, query }: { result: Schemas['Certific
         ))}
       </dl>
 
+      {c.pdfAvailable && (
+        <div className="border-b border-rule bg-paper/50 px-6 py-4 sm:px-8">
+          <a
+            href={`/api/public/certificates/${encodeURIComponent(c.verificationId)}/download`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-md bg-night px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-ink focus:outline-none focus:ring-2 focus:ring-ink"
+          >
+            <Icon name="download" size={16} />
+            Download Official Certificate (PDF)
+          </a>
+        </div>
+      )}
+
       <footer className="flex flex-wrap items-center justify-between gap-3 px-6 pb-6 text-sm text-muted sm:px-8">
         <p>
           Checked on {formatDate(result.verifiedAt)} at{' '}

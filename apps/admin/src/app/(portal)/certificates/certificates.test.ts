@@ -21,6 +21,15 @@ describe('validateCertificateCreate (M7.1)', () => {
     expect(Object.keys(errs)).toHaveLength(0);
   });
 
+  it('accepts optional fileId for uploaded custom PDF', () => {
+    const draftWithFile = {
+      ...validDraft,
+      fileId: '22222222-3333-4444-5555-666666666666',
+    };
+    const errs = validateCertificateCreate(draftWithFile);
+    expect(Object.keys(errs)).toHaveLength(0);
+  });
+
   it('requires type, organisation, dates, and certification body', () => {
     const emptyDraft: CertificateCreateDraft = {
       certificateNumber: '',
@@ -70,3 +79,24 @@ describe('validateStatusChange (M7.1)', () => {
     expect(validateStatusChange({ status: 'SUSPENDED', reason: 'ab' })).toBe('Reason must be at least 3 characters');
   });
 });
+
+describe('certificate bulk import UI state (M7.4)', () => {
+  it('identifies valid file extension for CSV', () => {
+    const isCsv = (filename: string) => filename.toLowerCase().endsWith('.csv');
+    expect(isCsv('certificates.csv')).toBe(true);
+    expect(isCsv('DATA.CSV')).toBe(true);
+    expect(isCsv('sheet.xlsx')).toBe(false);
+    expect(isCsv('report.pdf')).toBe(false);
+  });
+
+  it('formats error report CSV safely escaping formula prefixes', () => {
+    const escapeCsv = (val: string) => {
+      let s = val;
+      if (/^[=+\-@]/.test(s)) s = `'${s}`;
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+    expect(escapeCsv('=HYPERLINK()')).toBe('"\'=HYPERLINK()"');
+    expect(escapeCsv('Normal text')).toBe('"Normal text"');
+  });
+});
+

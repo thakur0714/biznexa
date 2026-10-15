@@ -29,6 +29,7 @@ export type CertificateCreateDraft = {
   validUntil: string;
   certificationBodyId: string;
   showPdfPublicly: boolean;
+  fileId?: string;
 };
 
 export function validateCertificateCreate(draft: CertificateCreateDraft): Record<string, string> {
@@ -53,6 +54,9 @@ function CertificateForm() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState('');
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [uploadError, setUploadError] = useState('');
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const threeYears = new Date();
@@ -70,7 +74,35 @@ function CertificateForm() {
     validUntil: threeYearsStr,
     certificationBodyId: '',
     showPdfPublicly: false,
+    fileId: undefined,
   });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      setUploadingPdf(true);
+      setUploadError('');
+      const res = await fetch('/api/files', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'File upload failed');
+      }
+      const uploaded = await res.json();
+      setDraft((d) => ({ ...d, fileId: uploaded.id }));
+      setUploadedFileName(file.name);
+    } catch (err: unknown) {
+      setUploadError((err as Error).message);
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +142,7 @@ function CertificateForm() {
             validUntil: new Date(draft.validUntil).toISOString(),
             certificationBodyId: draft.certificationBodyId,
             showPdfPublicly: draft.showPdfPublicly,
+            fileId: draft.fileId || undefined,
           },
         }),
       );
@@ -246,6 +279,21 @@ function CertificateForm() {
             onChange={(e) => setDraft((d) => ({ ...d, validUntil: e.target.value }))}
             error={errors.validUntil}
           />
+        </div>
+
+        <div className="rounded-md border border-dashed border-rule p-4">
+          <label className="block text-sm font-medium text-night mb-1">Upload custom PDF certificate (optional)</label>
+          <p className="text-xs text-muted mb-2">If left blank, BizNexa will automatically generate an official PDF certificate with embedded QR code.</p>
+          <input
+            type="file"
+            accept="application/pdf"
+            disabled={uploadingPdf}
+            onChange={handleFileUpload}
+            className="block w-full text-xs text-muted file:mr-2 file:rounded file:border file:border-rule file:bg-paper file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-night hover:file:bg-white"
+          />
+          {uploadingPdf && <p className="mt-1 text-xs text-muted">Uploading PDF…</p>}
+          {uploadedFileName && <p className="mt-1 text-xs text-seal font-medium">✓ Uploaded: {uploadedFileName}</p>}
+          {uploadError && <p className="mt-1 text-xs text-danger">{uploadError}</p>}
         </div>
 
         <div className="pt-2">

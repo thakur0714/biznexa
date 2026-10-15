@@ -3,11 +3,23 @@ import { Cron } from '@nestjs/schedule';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import * as QRCode from 'qrcode';
 import { z } from 'zod';
-import { assertTransition, createCertificationBodyInput, effectiveCertificateStatus, updateCertificationBodyInput } from '@biznexa/types';
+import {
+  assertTransition,
+  createCertificationBodyInput,
+  effectiveCertificateStatus,
+  updateCertificationBodyInput,
+  type CertificateImportPreviewResponse,
+  type CertificateImportPreviewRow,
+  type CertificateImportResponse,
+  type CertificateImportRowError,
+} from '@biznexa/types';
+import { mapHeaders, parseCsv, parseCsvBoolean, parseCsvDate } from './certificate-csv';
 import { PrismaService } from '../prisma/prisma.service';
+import type { Prisma } from '../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { EventBus } from '../events/event-bus';
 import { env } from '../config/env';
+import { AuthUser, PERMS } from '../common/auth.decorators';
 import type { CertificateStatus } from '../generated/prisma/enums';
 
 // No 0/O/1/I so IDs read cleanly off paper certificates.
@@ -36,6 +48,7 @@ export const createCertificateInput = z
     showPdfPublicly: z.boolean().default(false),
     applicationId: z.string().uuid().optional(),
     businessEntityId: z.string().uuid().optional(),
+    fileId: z.string().uuid().optional(),
   })
   .refine((v) => v.validUntil > v.validFrom, { message: 'Valid until must be after valid from', path: ['validUntil'] });
 
@@ -47,6 +60,8 @@ export const statusInput = z.object({
 export interface LookupMeta {
   ip?: string;
   userAgent?: string;
+  apiKey?: string;
+  isPartnerApi?: boolean;
 }
 
 @Injectable()
@@ -74,7 +89,8 @@ export class CertificatesService {
   async verify(params: { number?: string; id?: string; t?: string }, meta: LookupMeta) {
     const number = params.number?.trim();
     const id = params.id?.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const method = id ? (params.t ? 'QR' : 'VERIFICATION_ID') : 'NUMBER';
+    const defaultMethod = id ? (params.t ? 'QR' : 'VERIFICATION_ID') : 'NUMBER';
+    const method = meta.isPartnerApi ? 'API' : defaultMethod;
 
     const cert = await this.prisma.certificate.findFirst({
       where: id ? { verificationId: id } : { certificateNumber: { equals: number, mode: 'insensitive' } },
@@ -189,12 +205,30 @@ export class CertificatesService {
   }
 
   async create(input: z.infer<typeof createCertificateInput>, actorId: string) {
+    let pdfKey: string | null = null;
+    if (input.fileId) {
+      const stored = await this.prisma.storedFile.findUnique({ where: { id: input.fileId } });
+      if (!stored) throw new BadRequestException('Uploaded file not found');
+      if (stored.mimeType !== 'application/pdf' && !stored.originalName.toLowerCase().endsWith('.pdf')) {
+        throw new BadRequestException('The attached file must be a PDF');
+      }
+      if (stored.scanStatus === 'INFECTED') {
+        throw new BadRequestException('This file was blocked because a virus was found in it. Please upload a clean copy.');
+      }
+      if (stored.scanStatus === 'PENDING') {
+        throw new ConflictException('This file is still being checked for viruses. Please try again in a minute.');
+      }
+      pdfKey = stored.fileKey;
+    }
+
+    const { fileId, ...rest } = input;
     const cert = await this.prisma.certificate.create({
       data: {
-        ...input,
+        ...rest,
         certificateNumber: input.certificateNumber ?? (await this.nextCertificateNumber()),
         verificationId: newVerificationId(),
         status: input.validUntil.getTime() < Date.now() ? 'EXPIRED' : 'ACTIVE',
+        pdfKey,
       },
     });
     await this.audit.log({ actorId, action: 'certificate.issue', entityType: 'Certificate', entityId: cert.id, after: cert });
@@ -254,6 +288,113 @@ export class CertificatesService {
     };
   }
 
+  async listForCustomer(user: AuthUser) {
+    // ADMIN_ACCESS only means "may open the admin portal" (every staff role has it) — not a permission.
+    const isStaff = user.permissions.includes(PERMS.CERTIFICATES_MANAGE);
+
+    let where: Prisma.CertificateWhereInput;
+
+    if (isStaff) {
+      where = {};
+    } else {
+      // Only certificates linked to the customer's own entity or application. Never match on organisation
+      // name: anyone can create a business entity called "Acme Pvt Ltd" and would then see Acme's certificates.
+      where = {
+        OR: [{ businessEntity: { ownerId: user.id } }, { application: { customerId: user.id } }],
+      };
+    }
+
+    const certs = await this.prisma.certificate.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        certificationBody: { select: { name: true, accreditation: true, website: true } },
+      },
+    });
+
+    const items = await Promise.all(
+      certs.map(async (c) => {
+        const qrUrl = this.qrUrl(c.verificationId);
+        const qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 1, width: 200 });
+        const daysUntilExpiry = Math.ceil((c.validUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        const effectiveStatus = effectiveCertificateStatus(c.status, c.validUntil);
+        const isExpiringSoon = c.status === 'ACTIVE' && daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+
+        return {
+          id: c.id,
+          certificateNumber: c.certificateNumber,
+          verificationId: c.verificationId,
+          type: c.type,
+          organizationName: c.organizationName,
+          scope: c.scope,
+          address: c.address,
+          issueDate: c.issueDate.toISOString(),
+          validFrom: c.validFrom.toISOString(),
+          validUntil: c.validUntil.toISOString(),
+          certificationBody: c.certificationBody,
+          status: c.status,
+          effectiveStatus,
+          pdfAvailable: Boolean(c.pdfKey),
+          qrUrl,
+          qrDataUrl,
+          daysUntilExpiry,
+          isExpiringSoon,
+          createdAt: c.createdAt.toISOString(),
+        };
+      }),
+    );
+
+    return { items, total: items.length };
+  }
+
+  async getForCustomer(id: string, user: AuthUser) {
+    // ADMIN_ACCESS only means "may open the admin portal" (every staff role has it) — not a permission.
+    const isStaff = user.permissions.includes(PERMS.CERTIFICATES_MANAGE);
+
+    const cert = await this.prisma.certificate.findUnique({
+      where: { id },
+      include: {
+        businessEntity: { select: { ownerId: true, legalName: true } },
+        application: { select: { customerId: true } },
+        certificationBody: { select: { name: true, accreditation: true, website: true } },
+      },
+    });
+
+    if (!cert) throw new NotFoundException('Certificate not found');
+
+    if (!isStaff && cert.businessEntity?.ownerId !== user.id && cert.application?.customerId !== user.id) {
+      throw new NotFoundException('Certificate not found');
+    }
+
+    const qrUrl = this.qrUrl(cert.verificationId);
+    const qrDataUrl = await QRCode.toDataURL(qrUrl, { margin: 1, width: 240 });
+    const daysUntilExpiry = Math.ceil((cert.validUntil.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    const effectiveStatus = effectiveCertificateStatus(cert.status, cert.validUntil);
+    const isExpiringSoon = cert.status === 'ACTIVE' && daysUntilExpiry <= 30 && daysUntilExpiry > 0;
+
+    return {
+      id: cert.id,
+      certificateNumber: cert.certificateNumber,
+      verificationId: cert.verificationId,
+      type: cert.type,
+      organizationName: cert.organizationName,
+      scope: cert.scope,
+      address: cert.address,
+      issueDate: cert.issueDate.toISOString(),
+      validFrom: cert.validFrom.toISOString(),
+      validUntil: cert.validUntil.toISOString(),
+      certificationBody: cert.certificationBody,
+      status: cert.status,
+      effectiveStatus,
+      pdfAvailable: Boolean(cert.pdfKey),
+      qrUrl,
+      qrDataUrl,
+      daysUntilExpiry,
+      isExpiringSoon,
+      createdAt: cert.createdAt.toISOString(),
+    };
+  }
+
   bodies() {
     return this.prisma.certificationBody.findMany({ orderBy: { name: 'asc' } });
   }
@@ -306,6 +447,291 @@ export class CertificatesService {
     return { message: 'Certification body deleted' };
   }
 
+  async validateCsv(csv: string) {
+    const rawRows = parseCsv(csv);
+    if (rawRows.length < 2) {
+      throw new BadRequestException('CSV file must contain a header row and at least one data row');
+    }
+
+    const headerRow = rawRows[0];
+    const mapping = mapHeaders(headerRow);
+
+    const requiredFields = [
+      { key: 'type', label: 'Certificate Type' },
+      { key: 'organizationName', label: 'Organization Name' },
+      { key: 'validFrom', label: 'Valid From' },
+      { key: 'validUntil', label: 'Valid Until' },
+      { key: 'certificationBody', label: 'Certification Body' },
+    ];
+
+    const missingColumns = requiredFields
+      .filter((rf) => mapping[rf.key] === undefined)
+      .map((rf) => rf.label);
+
+    if (missingColumns.length > 0) {
+      throw new BadRequestException(`Missing required columns in CSV header: ${missingColumns.join(', ')}`);
+    }
+
+    const bodies = await this.prisma.certificationBody.findMany({
+      select: { id: true, name: true },
+    });
+    const bodyById = new Map<string, { id: string; name: string }>();
+    const bodyByName = new Map<string, { id: string; name: string }>();
+    for (const b of bodies) {
+      bodyById.set(b.id.toLowerCase(), b);
+      bodyByName.set(b.name.trim().toLowerCase(), b);
+    }
+
+    const csvCertNumbers: string[] = [];
+    const certNumberIndex = mapping.certificateNumber;
+    for (let r = 1; r < rawRows.length; r++) {
+      if (certNumberIndex !== undefined && rawRows[r][certNumberIndex]) {
+        const num = rawRows[r][certNumberIndex].trim();
+        if (num) csvCertNumbers.push(num);
+      }
+    }
+
+    const existingCerts =
+      csvCertNumbers.length > 0
+        ? await this.prisma.certificate.findMany({
+            where: { certificateNumber: { in: csvCertNumbers, mode: 'insensitive' } },
+            select: { certificateNumber: true },
+          })
+        : [];
+    const existingNumberSet = new Set(existingCerts.map((c) => c.certificateNumber.toLowerCase()));
+
+    const errors: CertificateImportRowError[] = [];
+    const validRows: (CertificateImportPreviewRow & { validFromDate: Date; validUntilDate: Date; issueDateDate: Date })[] = [];
+    const seenCsvNumbers = new Map<string, number>();
+
+    const dataRows = rawRows.slice(1);
+    const totalRows = dataRows.length;
+
+    for (let idx = 0; idx < dataRows.length; idx++) {
+      const row = dataRows[idx];
+      const rowNumber = idx + 2;
+      let hasError = false;
+
+      const getVal = (fieldKey: string): string => {
+        const colIdx = mapping[fieldKey];
+        return colIdx !== undefined && row[colIdx] !== undefined ? row[colIdx].trim() : '';
+      };
+
+      const type = getVal('type');
+      const orgName = getVal('organizationName');
+      const rawIssueDate = getVal('issueDate');
+      const rawValidFrom = getVal('validFrom');
+      const rawValidUntil = getVal('validUntil');
+      const rawBody = getVal('certificationBody');
+      const certNumber = getVal('certificateNumber');
+      const scope = getVal('scope') || undefined;
+      const address = getVal('address') || undefined;
+      const showPdfPublicly = parseCsvBoolean(getVal('showPdfPublicly'));
+
+      if (!orgName || orgName.length < 2) {
+        errors.push({ rowNumber, field: 'organizationName', message: 'Organisation name is required (minimum 2 characters)' });
+        hasError = true;
+      } else if (orgName.length > 200) {
+        errors.push({ rowNumber, field: 'organizationName', message: 'Organisation name cannot exceed 200 characters' });
+        hasError = true;
+      }
+
+      if (!type || type.length < 2) {
+        errors.push({ rowNumber, field: 'type', message: 'Certificate type is required (minimum 2 characters)' });
+        hasError = true;
+      } else if (type.length > 120) {
+        errors.push({ rowNumber, field: 'type', message: 'Certificate type cannot exceed 120 characters' });
+        hasError = true;
+      }
+
+      const validFromDate = parseCsvDate(rawValidFrom);
+      if (!validFromDate) {
+        errors.push({ rowNumber, field: 'validFrom', message: 'Valid from date is required and must be a valid date' });
+        hasError = true;
+      }
+
+      const validUntilDate = parseCsvDate(rawValidUntil);
+      if (!validUntilDate) {
+        errors.push({ rowNumber, field: 'validUntil', message: 'Valid until date is required and must be a valid date' });
+        hasError = true;
+      }
+
+      if (validFromDate && validUntilDate && validUntilDate <= validFromDate) {
+        errors.push({ rowNumber, field: 'validUntil', message: 'Valid until must be after valid from' });
+        hasError = true;
+      }
+
+      const issueDateDate = parseCsvDate(rawIssueDate) || validFromDate || new Date();
+
+      let matchedBody: { id: string; name: string } | undefined;
+      if (!rawBody) {
+        errors.push({ rowNumber, field: 'certificationBody', message: 'Certification body is required' });
+        hasError = true;
+      } else {
+        matchedBody = bodyById.get(rawBody.toLowerCase()) || bodyByName.get(rawBody.trim().toLowerCase());
+        if (!matchedBody) {
+          errors.push({
+            rowNumber,
+            field: 'certificationBody',
+            message: `Certification body "${rawBody}" was not found. Please create it under Certification Bodies first.`,
+          });
+          hasError = true;
+        }
+      }
+
+      if (certNumber) {
+        if (certNumber.length < 3 || certNumber.length > 64) {
+          errors.push({ rowNumber, field: 'certificateNumber', message: 'Certificate number must be between 3 and 64 characters' });
+          hasError = true;
+        } else {
+          const lowerNum = certNumber.toLowerCase();
+          const prevRow = seenCsvNumbers.get(lowerNum);
+          if (prevRow !== undefined) {
+            errors.push({
+              rowNumber,
+              field: 'certificateNumber',
+              message: `Duplicate certificate number "${certNumber}" in CSV (already in row ${prevRow})`,
+            });
+            hasError = true;
+          } else {
+            seenCsvNumbers.set(lowerNum, rowNumber);
+          }
+
+          if (existingNumberSet.has(lowerNum)) {
+            errors.push({ rowNumber, field: 'certificateNumber', message: `Certificate number "${certNumber}" already exists in the database` });
+            hasError = true;
+          }
+        }
+      }
+
+      if (scope && scope.length > 1000) {
+        errors.push({ rowNumber, field: 'scope', message: 'Scope cannot exceed 1000 characters' });
+        hasError = true;
+      }
+      if (address && address.length > 500) {
+        errors.push({ rowNumber, field: 'address', message: 'Address cannot exceed 500 characters' });
+        hasError = true;
+      }
+
+      if (!hasError && matchedBody && validFromDate && validUntilDate) {
+        validRows.push({
+          rowNumber,
+          certificateNumber: certNumber || undefined,
+          type,
+          organizationName: orgName,
+          scope,
+          address,
+          issueDate: issueDateDate.toISOString().slice(0, 10),
+          validFrom: validFromDate.toISOString().slice(0, 10),
+          validUntil: validUntilDate.toISOString().slice(0, 10),
+          certificationBodyId: matchedBody.id,
+          certificationBodyName: matchedBody.name,
+          showPdfPublicly,
+          validFromDate,
+          validUntilDate,
+          issueDateDate,
+        });
+      }
+    }
+
+    const invalidRowsCount = new Set(errors.map((e) => e.rowNumber)).size;
+    return {
+      totalRows,
+      validRows,
+      invalidRowsCount,
+      errors,
+    };
+  }
+
+  async previewImport(csv: string): Promise<CertificateImportPreviewResponse> {
+    const { totalRows, validRows, invalidRowsCount, errors } = await this.validateCsv(csv);
+    return {
+      totalRows,
+      validRows: validRows.length,
+      invalidRows: invalidRowsCount,
+      errors,
+      preview: validRows.slice(0, 10).map(({ validFromDate: _vf, validUntilDate: _vu, issueDateDate: _id, ...r }) => r),
+    };
+  }
+
+  async importCertificates(csv: string, actorId: string): Promise<CertificateImportResponse> {
+    const { validRows, invalidRowsCount, errors } = await this.validateCsv(csv);
+    if (errors.length > 0) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: `Cannot import CSV: found ${errors.length} validation error(s) across ${invalidRowsCount} row(s).`,
+        errors,
+      });
+    }
+    if (validRows.length === 0) {
+      throw new BadRequestException('No valid rows found to import');
+    }
+
+    const year = new Date().getFullYear();
+    const created = await this.prisma.$transaction(async (tx) => {
+      let currentCount = await tx.certificate.count({ where: { certificateNumber: { startsWith: `BNC-${year}-` } } });
+      const results = [];
+
+      for (const row of validRows) {
+        let certNumber = row.certificateNumber;
+        if (!certNumber) {
+          currentCount++;
+          certNumber = `BNC-${year}-${String(currentCount).padStart(6, '0')}`;
+        }
+
+        const cert = await tx.certificate.create({
+          data: {
+            certificateNumber: certNumber,
+            verificationId: newVerificationId(),
+            type: row.type,
+            organizationName: row.organizationName,
+            scope: row.scope,
+            address: row.address,
+            issueDate: row.issueDateDate,
+            validFrom: row.validFromDate,
+            validUntil: row.validUntilDate,
+            certificationBodyId: row.certificationBodyId,
+            showPdfPublicly: row.showPdfPublicly,
+            status: row.validUntilDate.getTime() < Date.now() ? 'EXPIRED' : 'ACTIVE',
+          },
+        });
+        results.push(cert);
+      }
+
+      await this.audit.log(
+        {
+          actorId,
+          action: 'certificate.bulk_import',
+          entityType: 'Certificate',
+          entityId: results[0].id,
+          after: {
+            importedCount: results.length,
+            firstCertificateNumber: results[0].certificateNumber,
+            lastCertificateNumber: results[results.length - 1].certificateNumber,
+          },
+        },
+        tx,
+      );
+
+      return results;
+    });
+
+    for (const cert of created) {
+      await this.events.emit('certificate.issued', {
+        certificateId: cert.id,
+        certificateNumber: cert.certificateNumber,
+        status: cert.status,
+        actorId,
+      });
+    }
+
+    return {
+      success: true,
+      importedCount: created.length,
+      certificateIds: created.map((c) => c.id),
+    };
+  }
+
   /** Nightly: mark certificates past their validity as EXPIRED. */
   @Cron('5 0 * * *', { timeZone: 'Asia/Kolkata' })
   async expireCertificates() {
@@ -333,3 +759,4 @@ export class CertificatesService {
     return count;
   }
 }
+

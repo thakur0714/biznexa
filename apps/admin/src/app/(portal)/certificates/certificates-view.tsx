@@ -135,6 +135,12 @@ function CertificatesList() {
             Certification bodies
           </Link>
           <Link
+            href="/certificates/import"
+            className="inline-flex items-center rounded-md border border-rule bg-white px-3 py-2 text-sm font-medium text-night hover:bg-paper"
+          >
+            Bulk import
+          </Link>
+          <Link
             href="/certificates/new"
             className="inline-flex items-center rounded-md bg-ink px-3 py-2 text-sm font-medium text-white hover:bg-ink/90"
           >

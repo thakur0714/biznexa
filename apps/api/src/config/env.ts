@@ -52,6 +52,8 @@ const schema = z
     PDF_RENDERER: z.enum(['playwright', 'stub']).default('playwright'),
     /** Redis key prefix for queues; tests use their own so a running dev API never picks up test jobs. */
     QUEUE_PREFIX: z.string().min(1).default('bn'),
+    /** Comma-separated list of approved partner API keys for public certificate verification */
+    CERT_VERIFY_API_KEYS: z.string().optional().default(''),
   })
   .superRefine((v, ctx) => {
     if (v.PAYMENT_GATEWAY === 'razorpay') {
