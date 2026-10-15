@@ -1,5 +1,5 @@
-import { Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Controller, Delete, Get, Header, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Req, StreamableFile } from '@nestjs/common';
+import { ApiBearerAuth, ApiProduces, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { z } from 'zod';
@@ -11,12 +11,14 @@ import {
   certificationBodyListSchema,
   certificationBodySchema,
   createCertificationBodyInput,
+  fileLinkSchema,
   updateCertificationBodyInput,
   verifyCertificateSchema,
   type CreateCertificationBodyInput,
   type UpdateCertificationBodyInput,
 } from '@biznexa/types';
 import { CertificatesService, createCertificateInput, statusInput } from './certificates.service';
+import { CertificatePdfService } from './certificate-pdf.service';
 import { AuthUser, CurrentUser, PERMS, Public, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 
@@ -27,7 +29,10 @@ const VERIFY_LIMIT = { default: { limit: 30, ttl: 60_000 } };
 @Public()
 @Controller('public/certificates')
 export class PublicCertificatesController {
-  constructor(private readonly certs: CertificatesService) {}
+  constructor(
+    private readonly certs: CertificatesService,
+    private readonly pdfService: CertificatePdfService,
+  ) {}
 
   @Throttle(VERIFY_LIMIT)
   @ApiZodResponse('CertificateVerifyResult', certificateVerifyResultSchema)
@@ -43,6 +48,19 @@ export class PublicCertificatesController {
   search(@Query('organization') organization = '', @Req() req: Request) {
     return this.certs.searchByOrganization(String(organization).slice(0, 100), meta(req));
   }
+
+  @Get(':id/download')
+  @ApiProduces('application/pdf')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Header('Cache-Control', 'public, max-age=3600')
+  @Header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+  async downloadPublic(
+    @Param('id') id: string,
+    @Query('disposition') disposition?: 'attachment' | 'inline',
+  ) {
+    const { stream, size, disposition: cd } = await this.pdfService.openPublic(id, disposition ?? 'attachment');
+    return new StreamableFile(stream, { type: 'application/pdf', length: size, disposition: cd });
+  }
 }
 
 const listQuery = z.object({
@@ -57,7 +75,10 @@ const listQuery = z.object({
 @RequirePermissions(PERMS.CERTIFICATES_MANAGE)
 @Controller('admin/certificates')
 export class AdminCertificatesController {
-  constructor(private readonly certs: CertificatesService) {}
+  constructor(
+    private readonly certs: CertificatesService,
+    private readonly pdfService: CertificatePdfService,
+  ) {}
 
   @ApiZodResponse('AdminCertificateList', adminCertificateListSchema)
   @Get()
@@ -105,6 +126,29 @@ export class AdminCertificatesController {
     return this.certs.changeStatus(id, body, u.id);
   }
 
+  @Patch(':id/public-download')
+  togglePublicDownload(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ZodBody(z.object({ showPdfPublicly: z.boolean() })) body: { showPdfPublicly: boolean },
+    @CurrentUser() u: AuthUser,
+  ) {
+    return this.pdfService.togglePublicDownload(id, body.showPdfPublicly, u.id);
+  }
+
+  @Post(':id/pdf')
+  attachPdf(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ZodBody(z.object({ fileId: z.string().uuid() })) body: { fileId: string },
+    @CurrentUser() u: AuthUser,
+  ) {
+    return this.pdfService.attachUploadedPdf(id, body.fileId, u.id);
+  }
+
+  @Post(':id/pdf/regenerate')
+  regeneratePdf(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() u: AuthUser) {
+    return this.pdfService.regenerate(id, u.id);
+  }
+
   @Get(':id/qr')
   qr(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.certs.qr(id);
@@ -113,5 +157,46 @@ export class AdminCertificatesController {
   @Get(':id/lookups')
   lookups(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.certs.lookups(id);
+  }
+}
+
+const certLinkQuery = z.object({
+  disposition: z.enum(['attachment', 'inline']).default('attachment').describe('inline = open in the browser'),
+});
+
+@ApiTags('certificates')
+@Controller('certificates')
+export class CertificatesController {
+  constructor(private readonly pdfService: CertificatePdfService) {}
+
+  @ApiBearerAuth()
+  @ApiZodResponse('FileLink', fileLinkSchema)
+  @ApiResponse({ status: 404, description: 'No such certificate among yours' })
+  @ApiResponse({ status: 409, description: 'The certificate PDF is still being generated — try again shortly' })
+  @HttpCode(200)
+  @Post(':id/link')
+  link(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ZodQuery(certLinkQuery) q: z.infer<typeof certLinkQuery>,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.pdfService.createLink(id, user, q.disposition);
+  }
+
+  @Public()
+  @ApiQuery({ name: 'e', description: 'Expiry (unix seconds)' })
+  @ApiQuery({ name: 'd', required: false, enum: ['attachment', 'inline'] })
+  @ApiQuery({ name: 's', description: 'Signature' })
+  @ApiProduces('application/pdf')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Header('Cache-Control', 'private, no-store')
+  @Header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+  @Get(':id/download')
+  async download(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query() q: { e?: string; d?: string; s?: string },
+  ) {
+    const { stream, size, disposition } = await this.pdfService.openLinked(id, q);
+    return new StreamableFile(stream, { type: 'application/pdf', length: size, disposition });
   }
 }

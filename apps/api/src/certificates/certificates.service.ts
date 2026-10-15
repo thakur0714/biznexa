@@ -36,6 +36,7 @@ export const createCertificateInput = z
     showPdfPublicly: z.boolean().default(false),
     applicationId: z.string().uuid().optional(),
     businessEntityId: z.string().uuid().optional(),
+    fileId: z.string().uuid().optional(),
   })
   .refine((v) => v.validUntil > v.validFrom, { message: 'Valid until must be after valid from', path: ['validUntil'] });
 
@@ -189,12 +190,30 @@ export class CertificatesService {
   }
 
   async create(input: z.infer<typeof createCertificateInput>, actorId: string) {
+    let pdfKey: string | null = null;
+    if (input.fileId) {
+      const stored = await this.prisma.storedFile.findUnique({ where: { id: input.fileId } });
+      if (!stored) throw new BadRequestException('Uploaded file not found');
+      if (stored.mimeType !== 'application/pdf' && !stored.originalName.toLowerCase().endsWith('.pdf')) {
+        throw new BadRequestException('The attached file must be a PDF');
+      }
+      if (stored.scanStatus === 'INFECTED') {
+        throw new BadRequestException('This file was blocked because a virus was found in it. Please upload a clean copy.');
+      }
+      if (stored.scanStatus === 'PENDING') {
+        throw new ConflictException('This file is still being checked for viruses. Please try again in a minute.');
+      }
+      pdfKey = stored.fileKey;
+    }
+
+    const { fileId, ...rest } = input;
     const cert = await this.prisma.certificate.create({
       data: {
-        ...input,
+        ...rest,
         certificateNumber: input.certificateNumber ?? (await this.nextCertificateNumber()),
         verificationId: newVerificationId(),
         status: input.validUntil.getTime() < Date.now() ? 'EXPIRED' : 'ACTIVE',
+        pdfKey,
       },
     });
     await this.audit.log({ actorId, action: 'certificate.issue', entityType: 'Certificate', entityId: cert.id, after: cert });

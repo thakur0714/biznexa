@@ -21,6 +21,15 @@ describe('validateCertificateCreate (M7.1)', () => {
     expect(Object.keys(errs)).toHaveLength(0);
   });
 
+  it('accepts optional fileId for uploaded custom PDF', () => {
+    const draftWithFile = {
+      ...validDraft,
+      fileId: '22222222-3333-4444-5555-666666666666',
+    };
+    const errs = validateCertificateCreate(draftWithFile);
+    expect(Object.keys(errs)).toHaveLength(0);
+  });
+
   it('requires type, organisation, dates, and certification body', () => {
     const emptyDraft: CertificateCreateDraft = {
       certificateNumber: '',

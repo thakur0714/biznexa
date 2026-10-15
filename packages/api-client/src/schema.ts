@@ -820,6 +820,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/certificates/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicCertificatesController_downloadPublic"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/certificates": {
         parameters: {
             query?: never;
@@ -900,6 +916,54 @@ export interface paths {
         patch: operations["AdminCertificatesController_status"];
         trace?: never;
     };
+    "/api/admin/certificates/{id}/public-download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminCertificatesController_togglePublicDownload"];
+        trace?: never;
+    };
+    "/api/admin/certificates/{id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCertificatesController_attachPdf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/certificates/{id}/pdf/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCertificatesController_regeneratePdf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/certificates/{id}/qr": {
         parameters: {
             query?: never;
@@ -924,6 +988,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AdminCertificatesController_lookups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/certificates/{id}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CertificatesController_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/certificates/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CertificatesController_download"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2341,6 +2437,11 @@ export interface components {
                 lookups: number;
             };
         };
+        FileLink: {
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
         StoredFile: {
             /** Format: uuid */
             id: string;
@@ -2357,11 +2458,6 @@ export interface components {
             scanStatus: "PENDING" | "CLEAN" | "INFECTED";
             /** Format: date-time */
             createdAt: string;
-        };
-        FileLink: {
-            url: string;
-            /** Format: date-time */
-            expiresAt: string;
         };
         BusinessEntityList: {
             items: {
@@ -5989,6 +6085,27 @@ export interface operations {
             };
         };
     };
+    PublicCertificatesController_downloadPublic: {
+        parameters: {
+            query: {
+                disposition: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminCertificatesController_list: {
         parameters: {
             query?: {
@@ -6042,6 +6159,8 @@ export interface operations {
                     applicationId?: string;
                     /** Format: uuid */
                     businessEntityId?: string;
+                    /** Format: uuid */
+                    fileId?: string;
                 };
             };
         };
@@ -6198,6 +6317,76 @@ export interface operations {
             };
         };
     };
+    AdminCertificatesController_togglePublicDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    showPdfPublicly: boolean;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCertificatesController_attachPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    fileId: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCertificatesController_regeneratePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminCertificatesController_qr: {
         parameters: {
             query?: never;
@@ -6220,6 +6409,69 @@ export interface operations {
     AdminCertificatesController_lookups: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CertificatesController_link: {
+        parameters: {
+            query?: {
+                /** @description inline = open in the browser */
+                disposition?: "attachment" | "inline";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileLink"];
+                };
+            };
+            /** @description No such certificate among yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The certificate PDF is still being generated — try again shortly */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CertificatesController_download: {
+        parameters: {
+            query: {
+                /** @description Signature */
+                s: unknown;
+                d?: "attachment" | "inline";
+                /** @description Expiry (unix seconds) */
+                e: unknown;
+            };
             header?: never;
             path: {
                 id: string;

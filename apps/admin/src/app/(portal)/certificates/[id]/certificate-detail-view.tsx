@@ -57,6 +57,94 @@ function CertificateDetail({ id }: { id: string }) {
   const [reason, setReason] = useState('');
   const [statusError, setStatusError] = useState<string | null>(null);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [regeneratingPdf, setRegeneratingPdf] = useState(false);
+
+  const handleTogglePublic = async () => {
+    if (!cert) return;
+    try {
+      const updated = await api.call<{ id: string; showPdfPublicly: boolean }>((client) =>
+        client.PATCH('/api/admin/certificates/{id}/public-download', {
+          params: { path: { id } },
+          body: { showPdfPublicly: !cert.showPdfPublicly },
+        }),
+      );
+      if (updated) {
+        setCert((c) => (c ? { ...c, showPdfPublicly: updated.showPdfPublicly } : c));
+        toast(`Public PDF download ${updated.showPdfPublicly ? 'enabled' : 'disabled'}.`, 'success');
+      }
+    } catch (err: unknown) {
+      toast((err as Error).message, 'error');
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!cert) return;
+    try {
+      const link = await api.call<{ url: string }>((client) =>
+        client.POST('/api/certificates/{id}/link', {
+          params: { path: { id } },
+          body: undefined,
+        }),
+      );
+      if (link?.url) window.open(link.url, '_blank');
+    } catch (err: unknown) {
+      toast((err as Error).message, 'error');
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      setUploadingPdf(true);
+      const res = await fetch('/api/files', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'File upload failed');
+      }
+      const uploaded = await res.json();
+      const updated = await api.call<{ id: string; pdfKey: string }>((client) =>
+        client.POST('/api/admin/certificates/{id}/pdf', {
+          params: { path: { id } },
+          body: { fileId: uploaded.id },
+        }),
+      );
+      if (updated) {
+        setCert((c) => (c ? { ...c, pdfKey: updated.pdfKey } : c));
+        toast('Custom PDF attached successfully.', 'success');
+      }
+    } catch (err: unknown) {
+      toast((err as Error).message, 'error');
+    } finally {
+      setUploadingPdf(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRegeneratePdf = async () => {
+    try {
+      setRegeneratingPdf(true);
+      await api.call((client) =>
+        client.POST('/api/admin/certificates/{id}/pdf/regenerate', {
+          params: { path: { id } },
+          body: undefined,
+        }),
+      );
+      setCert((c) => (c ? { ...c, pdfKey: null } : c));
+      toast('PDF regeneration queued.', 'success');
+    } catch (err: unknown) {
+      toast((err as Error).message, 'error');
+    } finally {
+      setRegeneratingPdf(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -235,6 +323,60 @@ function CertificateDetail({ id }: { id: string }) {
         </div>
 
         <aside className="space-y-6">
+          <section className="rounded-lg border border-rule bg-white p-6">
+            <h2 className="text-sm font-semibold text-night">Certificate PDF</h2>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-xs text-muted">Status:</span>
+              <Badge tone={cert.pdfKey ? 'success' : 'warning'}>
+                {cert.pdfKey ? 'PDF Ready' : 'Generating…'}
+              </Badge>
+            </div>
+
+            {cert.pdfKey && (
+              <div className="mt-3">
+                <Button variant="ink" className="w-full" onClick={handleDownloadPdf}>
+                  Download PDF
+                </Button>
+              </div>
+            )}
+
+            <div className="mt-4 border-t border-rule pt-4">
+              <label className="flex cursor-pointer items-start gap-2 text-xs font-medium text-night">
+                <input
+                  type="checkbox"
+                  checked={cert.showPdfPublicly}
+                  onChange={handleTogglePublic}
+                  className="mt-0.5 h-4 w-4 rounded border-rule text-ink focus:ring-ink"
+                />
+                <span>Allow public PDF download on verification page</span>
+              </label>
+            </div>
+
+            <div className="mt-4 border-t border-rule pt-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Upload custom PDF</label>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  disabled={uploadingPdf}
+                  onChange={handleFileUpload}
+                  className="block w-full text-xs text-muted file:mr-2 file:rounded file:border file:border-rule file:bg-paper file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-night hover:file:bg-white"
+                />
+                {uploadingPdf && <p className="mt-1 text-xs text-muted">Uploading PDF…</p>}
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  disabled={regeneratingPdf}
+                  onClick={handleRegeneratePdf}
+                  className="text-xs text-muted hover:text-ink underline"
+                >
+                  {regeneratingPdf ? 'Regenerating…' : 'Regenerate from official template'}
+                </button>
+              </div>
+            </div>
+          </section>
           {qr && (
             <section className="rounded-lg border border-rule bg-white p-6 text-center">
               <h2 className="text-sm font-semibold text-night">QR Verification</h2>

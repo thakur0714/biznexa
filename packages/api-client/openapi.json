@@ -6057,6 +6057,37 @@
         ]
       }
     },
+    "/api/public/certificates/{id}/download": {
+      "get": {
+        "operationId": "PublicCertificatesController_downloadPublic",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "disposition",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "public · certificates"
+        ]
+      }
+    },
     "/api/admin/certificates": {
       "get": {
         "operationId": "AdminCertificatesController_list",
@@ -6185,6 +6216,10 @@
                     "format": "uuid"
                   },
                   "businessEntityId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "fileId": {
                     "type": "string",
                     "format": "uuid"
                   }
@@ -6531,6 +6566,129 @@
         ]
       }
     },
+    "/api/admin/certificates/{id}/public-download": {
+      "patch": {
+        "operationId": "AdminCertificatesController_togglePublicDownload",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "showPdfPublicly": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "showPdfPublicly"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
+    "/api/admin/certificates/{id}/pdf": {
+      "post": {
+        "operationId": "AdminCertificatesController_attachPdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "fileId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
+    "/api/admin/certificates/{id}/pdf/regenerate": {
+      "post": {
+        "operationId": "AdminCertificatesController_regeneratePdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · certificates"
+        ]
+      }
+    },
     "/api/admin/certificates/{id}/qr": {
       "get": {
         "operationId": "AdminCertificatesController_qr",
@@ -6584,6 +6742,110 @@
         ],
         "tags": [
           "admin · certificates"
+        ]
+      }
+    },
+    "/api/certificates/{id}/link": {
+      "post": {
+        "operationId": "CertificatesController_link",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "disposition",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "attachment",
+                "inline"
+              ],
+              "default": "attachment"
+            },
+            "description": "inline = open in the browser"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileLink"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such certificate among yours"
+          },
+          "409": {
+            "description": "The certificate PDF is still being generated — try again shortly"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "certificates"
+        ]
+      }
+    },
+    "/api/certificates/{id}/download": {
+      "get": {
+        "operationId": "CertificatesController_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s",
+            "required": true,
+            "in": "query",
+            "description": "Signature",
+            "schema": {}
+          },
+          {
+            "name": "d",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "attachment",
+                "inline"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "e",
+            "required": true,
+            "in": "query",
+            "description": "Expiry (unix seconds)",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "certificates"
         ]
       }
     },
@@ -13732,6 +13994,23 @@
         ],
         "additionalProperties": false
       },
+      "FileLink": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "url",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
       "StoredFile": {
         "type": "object",
         "properties": {
@@ -13779,23 +14058,6 @@
           "requirementId",
           "scanStatus",
           "createdAt"
-        ],
-        "additionalProperties": false
-      },
-      "FileLink": {
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": "string"
-          },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "url",
-          "expiresAt"
         ],
         "additionalProperties": false
       },
