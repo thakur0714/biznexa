@@ -4,7 +4,7 @@ import { StatusForm } from './status-form';
 
 import { useEffect, useState } from 'react';
 import { useApi } from '@biznexa/api-client/react';
-import { Notice, Button } from '@biznexa/ui';
+import { Notice, Button, Dialog, Field } from '@biznexa/ui';
 import { APPLICATION_STATUS_LABEL, formatDate, formatINR } from '@biznexa/types';
 
 export function ApplicationDetailView({ id }: { id: string }) {
@@ -16,6 +16,33 @@ export function ApplicationDetailView({ id }: { id: string }) {
   const [version, setVersion] = useState(0);
 
   const canAssign = user?.permissions?.includes('applications.view_all') && user?.permissions?.includes('applications.update');
+  const canRequestDocument = user?.permissions?.includes('documents.review') ?? false;
+  const [requestDocDialog, setRequestDocDialog] = useState(false);
+  const [docName, setDocName] = useState('');
+  const [docDescription, setDocDescription] = useState('');
+  const [isRequestingDoc, setIsRequestingDoc] = useState(false);
+  const [docRequestError, setDocRequestError] = useState<string | null>(null);
+
+  const handleRequestDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!docName.trim()) return;
+    setIsRequestingDoc(true);
+    setDocRequestError(null);
+    try {
+      await api.call(c => c.POST('/api/admin/applications/{applicationId}/documents', {
+        params: { path: { applicationId: id } },
+        body: { name: docName, description: docDescription || undefined }
+      }));
+      setRequestDocDialog(false);
+      setDocName('');
+      setDocDescription('');
+      setVersion(v => v + 1);
+    } catch (err: unknown) {
+      setDocRequestError((err as Error).message || 'Failed to request document');
+    } finally {
+      setIsRequestingDoc(false);
+    }
+  };
   const [staff, setStaff] = useState<import('@biznexa/types').EligibleStaff[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -129,7 +156,14 @@ export function ApplicationDetailView({ id }: { id: string }) {
       
       
       <section className="p-4 bg-white border border-rule rounded-md">
-        <h2 className="font-semibold text-lg mb-4">Documents</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-semibold text-lg">Documents</h2>
+          {canRequestDocument && (
+            <Button variant="outline" size="sm" onClick={() => setRequestDocDialog(true)}>
+              Request document
+            </Button>
+          )}
+        </div>
         <div className="space-y-3">
           {data.documents?.map((d: import('@biznexa/types').AdminApplicationDetail['documents'][0]) => (
             <div key={d.id} className="flex justify-between items-center text-sm border-b pb-2">
@@ -209,6 +243,43 @@ export function ApplicationDetailView({ id }: { id: string }) {
           ))}
         </div>
       </section>
+
+      {canRequestDocument && (
+        <Dialog
+          open={requestDocDialog}
+          onClose={() => { setRequestDocDialog(false); setDocName(''); setDocDescription(''); setDocRequestError(null); }}
+          title="Request Document"
+          description="Request a new document from the customer."
+        >
+          <form onSubmit={handleRequestDocument} className="space-y-4 mt-4">
+            {docRequestError && <Notice tone="error">{docRequestError}</Notice>}
+            <Field
+              id="docName"
+              label="Document Name"
+              value={docName}
+              onChange={(e) => setDocName(e.target.value)}
+              required
+              maxLength={100}
+            />
+            <Field
+              id="docDescription"
+              label="Description (optional)"
+              type="textarea"
+              value={docDescription}
+              onChange={(e) => setDocDescription(e.target.value)}
+              maxLength={500}
+            />
+            <div className="flex justify-end gap-3 mt-6">
+              <Button type="button" variant="outline" onClick={() => { setRequestDocDialog(false); setDocName(''); setDocDescription(''); setDocRequestError(null); }}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="ink" disabled={isRequestingDoc || !docName.trim()}>
+                {isRequestingDoc ? 'Requesting...' : 'Request Document'}
+              </Button>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }
