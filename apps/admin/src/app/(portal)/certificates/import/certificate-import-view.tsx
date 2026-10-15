@@ -110,36 +110,25 @@ function CertificateImportForm() {
     }
   };
 
+  // Downloads go through the API client: the access token lives in memory, not in localStorage.
+  const saveBlob = (blob: Blob, fileName: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const handleDownloadTemplate = async () => {
     setDownloadingTemplate(true);
     try {
-      const res = await fetch('/api/admin/certificates/import/template', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
-      });
-      if (!res.ok) throw new Error('Failed to download template');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'certificate-import-template.csv';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Fallback: create client-side sample CSV
-      const fallback =
-        'Certificate Number,Certificate Type,Organization Name,Scope,Address,Issue Date,Valid From,Valid Until,Certification Body,Allow Public Download\r\n' +
-        ',ISO 9001:2015,Acme Innovations Pvt Ltd,Design and manufacturing of sensors,42 MIDC Phase II Mumbai 400093,2026-01-15,2026-01-15,2029-01-14,Bureau Veritas India,true\r\n';
-      const blob = new Blob([fallback], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'certificate-import-template.csv';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      const blob = await api.call<Blob>((c) => c.GET('/api/admin/certificates/import/template', { parseAs: 'blob' }));
+      saveBlob(blob, 'certificate-import-template.csv');
+    } catch (err) {
+      setErrorNotice(err instanceof Error ? err.message : 'Could not download the template.');
     } finally {
       setDownloadingTemplate(false);
     }
@@ -149,42 +138,12 @@ function CertificateImportForm() {
     if (!previewResult || previewResult.errors.length === 0) return;
     setDownloadingReport(true);
     try {
-      const res = await fetch('/api/admin/certificates/import/error-report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
-        },
-        body: JSON.stringify({ errors: previewResult.errors }),
-      });
-      if (!res.ok) throw new Error('Failed to generate error report');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `certificate-import-errors-${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Client-side fallback report
-      const headers = ['Row Number', 'Field', 'Error Message'];
-      const rows = previewResult.errors.map((e) => [
-        `"${e.rowNumber}"`,
-        `"${(e.field || '').replace(/"/g, '""')}"`,
-        `"${e.message.replace(/"/g, '""')}"`,
-      ]);
-      const csvText = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
-      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `certificate-import-errors-${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      const blob = await api.call<Blob>((c) =>
+        c.POST('/api/admin/certificates/import/error-report', { body: { errors: previewResult.errors }, parseAs: 'blob' }),
+      );
+      saveBlob(blob, `certificate-import-errors-${new Date().toISOString().slice(0, 10)}.csv`);
+    } catch (err) {
+      setErrorNotice(err instanceof Error ? err.message : 'Could not download the error report.');
     } finally {
       setDownloadingReport(false);
     }

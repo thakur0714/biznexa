@@ -100,16 +100,10 @@ function CertificateDetail({ id }: { id: string }) {
     formData.append('file', file);
     try {
       setUploadingPdf(true);
-      const res = await fetch('/api/files', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || 'File upload failed');
-      }
-      const uploaded = await res.json();
+      // Through the API client: the access token lives in memory, a bare fetch would get 401.
+      const uploaded = await api.call<{ id: string }>((client) =>
+        client.POST('/api/files', { body: formData as unknown as { file: string } }),
+      );
       const updated = await api.call<{ id: string; pdfKey: string }>((client) =>
         client.POST('/api/admin/certificates/{id}/pdf', {
           params: { path: { id } },

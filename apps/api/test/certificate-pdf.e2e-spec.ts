@@ -199,6 +199,11 @@ describe('Certificate PDF template + generation (M7.3)', () => {
     const res = await http.get(`/api/public/certificates/${verId}/download`).buffer(true).parse(binary).expect(200);
     expect(res.headers['content-type']).toBe('application/pdf');
     expect(res.headers['content-disposition']).toContain(`attachment; filename="Certificate ${certNum.replace(/\//g, '-')}.pdf"`);
+
+    // A suspended certificate's PDF is no longer public, even with the toggle on
+    await prisma.certificate.update({ where: { id: certId }, data: { status: 'SUSPENDED' } });
+    await http.get(`/api/public/certificates/${verId}/download`).expect(403);
+    await prisma.certificate.update({ where: { id: certId }, data: { status: 'ACTIVE' } });
   });
 
   it('upload-your-own PDF attaches stored file key and does not overwrite it', async () => {

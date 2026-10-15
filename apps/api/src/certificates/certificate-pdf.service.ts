@@ -8,7 +8,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import * as QRCode from 'qrcode';
-import { PERMS, type FileLinkResult } from '@biznexa/types';
+import { PERMS, effectiveCertificateStatus, type FileLinkResult } from '@biznexa/types';
 import type { AuthUser } from '../common/auth.decorators';
 import { EventBus } from '../events/event-bus';
 import { checkSignedLink, contentDisposition, signedLink, type Disposition } from '../files/files.service';
@@ -98,10 +98,7 @@ export class CertificatePdfService implements OnModuleInit {
       },
     });
 
-    const isStaff =
-      user.permissions.includes(PERMS.CERTIFICATES_MANAGE) ||
-      user.permissions.includes(PERMS.ADMIN_ACCESS) ||
-      user.permissions.includes(PERMS.APPLICATIONS_VIEW_ALL);
+    const isStaff = user.permissions.includes(PERMS.CERTIFICATES_MANAGE);
     const isOwner =
       cert?.businessEntity?.ownerId === user.id ||
       cert?.application?.customerId === user.id;
@@ -139,11 +136,12 @@ export class CertificatePdfService implements OnModuleInit {
       where: isUuid
         ? { OR: [{ id: idOrNumber }, { certificateNumber: idOrNumber }, { verificationId: idOrNumber }] }
         : { OR: [{ certificateNumber: { equals: idOrNumber, mode: 'insensitive' } }, { verificationId: idOrNumber.toUpperCase() }] },
-      select: { id: true, certificateNumber: true, pdfKey: true, showPdfPublicly: true },
+      select: { id: true, certificateNumber: true, pdfKey: true, showPdfPublicly: true, status: true, validUntil: true },
     });
 
     if (!cert) throw new NotFoundException('Certificate not found');
-    if (!cert.showPdfPublicly) {
+    // A suspended, withdrawn or expired certificate's PDF still reads "valid" — never hand it out publicly.
+    if (!cert.showPdfPublicly || effectiveCertificateStatus(cert.status, cert.validUntil) !== 'ACTIVE') {
       throw new ForbiddenException('Public PDF download is not enabled for this certificate');
     }
     if (!cert.pdfKey) {

@@ -7,5 +7,4 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'json'],
   testTimeout: 30000,
   setupFiles: ['<rootDir>/test/setup-env.js'],
-  maxWorkers: 2,
 };

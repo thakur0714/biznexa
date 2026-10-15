@@ -17,7 +17,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiProduces, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { env } from '../config/env';
@@ -58,6 +58,10 @@ export const verifyRateLimitMap = new Map<string, RateLimitBucket>();
 
 export function checkVerifyRateLimit(key: string, limit: number, windowMs = 60_000): { remaining: number; resetAt: number } {
   const now = Date.now();
+  // One bucket per IP: drop expired ones so a flood of addresses cannot grow the map forever.
+  if (verifyRateLimitMap.size > 10_000) {
+    for (const [k, b] of verifyRateLimitMap) if (b.resetAt <= now) verifyRateLimitMap.delete(k);
+  }
   const bucket = verifyRateLimitMap.get(key);
   if (!bucket || bucket.resetAt <= now) {
     verifyRateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
@@ -79,12 +83,9 @@ export function checkVerifyRateLimit(key: string, limit: number, windowMs = 60_0
 
 export function validateVerifyApiKey(key?: string): boolean {
   if (!key) return false;
-  const configured = env().CERT_VERIFY_API_KEYS;
-  if (configured) {
-    const keys = configured.split(',').map((k) => k.trim()).filter(Boolean);
-    return keys.includes(key);
-  }
-  return key.startsWith('bn_live_') || key.startsWith('bn_test_') || key === 'test-partner-key-123';
+  // Only keys we handed out; with none configured, every key is refused.
+  const keys = env().CERT_VERIFY_API_KEYS.split(',').map((k) => k.trim()).filter(Boolean);
+  return keys.includes(key);
 }
 
 @ApiTags('public · certificates')
@@ -96,7 +97,8 @@ export class PublicCertificatesController {
     private readonly pdfService: CertificatePdfService,
   ) {}
 
-  @Throttle(VERIFY_LIMIT)
+  // No @Throttle here: it would cap partner keys at 30/min too. checkVerifyRateLimit handles both tiers.
+  @SkipThrottle()
   @ApiHeader({ name: 'X-API-Key', required: false, description: 'Optional partner API key for higher rate limits' })
   @ApiQuery({ name: 'apiKey', required: false, description: 'Optional partner API key (can also be passed as X-API-Key header)' })
   @ApiZodResponse('CertificateVerifyResult', certificateVerifyResultSchema)
@@ -148,10 +150,12 @@ export class PublicCertificatesController {
     return this.certs.searchByOrganization(String(organization).slice(0, 100), meta(req));
   }
 
+  @Throttle(VERIFY_LIMIT)
   @Get(':id/download')
   @ApiProduces('application/pdf')
   @Header('X-Content-Type-Options', 'nosniff')
-  @Header('Cache-Control', 'public, max-age=3600')
+  // Short cache: withdrawing a certificate or turning public download off must take effect quickly.
+  @Header('Cache-Control', 'public, max-age=300')
   @Header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox")
   async downloadPublic(
     @Param('id') id: string,

@@ -289,29 +289,18 @@ export class CertificatesService {
   }
 
   async listForCustomer(user: AuthUser) {
-    const isStaff =
-      user.permissions.includes(PERMS.CERTIFICATES_MANAGE) ||
-      user.permissions.includes(PERMS.ADMIN_ACCESS) ||
-      user.permissions.includes(PERMS.APPLICATIONS_VIEW_ALL);
+    // ADMIN_ACCESS only means "may open the admin portal" (every staff role has it) — not a permission.
+    const isStaff = user.permissions.includes(PERMS.CERTIFICATES_MANAGE);
 
     let where: Prisma.CertificateWhereInput;
 
     if (isStaff) {
       where = {};
     } else {
-      const entities = await this.prisma.businessEntity.findMany({
-        where: { ownerId: user.id },
-        select: { id: true, legalName: true },
-      });
-      const entityIds = entities.map((e) => e.id);
-      const entityNames = entities.map((e) => e.legalName.trim()).filter(Boolean);
-
+      // Only certificates linked to the customer's own entity or application. Never match on organisation
+      // name: anyone can create a business entity called "Acme Pvt Ltd" and would then see Acme's certificates.
       where = {
-        OR: [
-          ...(entityIds.length ? [{ businessEntityId: { in: entityIds } }] : []),
-          { application: { customerId: user.id } },
-          ...(entityNames.length ? [{ organizationName: { in: entityNames, mode: 'insensitive' as const } }] : []),
-        ],
+        OR: [{ businessEntity: { ownerId: user.id } }, { application: { customerId: user.id } }],
       };
     }
 
@@ -359,10 +348,8 @@ export class CertificatesService {
   }
 
   async getForCustomer(id: string, user: AuthUser) {
-    const isStaff =
-      user.permissions.includes(PERMS.CERTIFICATES_MANAGE) ||
-      user.permissions.includes(PERMS.ADMIN_ACCESS) ||
-      user.permissions.includes(PERMS.APPLICATIONS_VIEW_ALL);
+    // ADMIN_ACCESS only means "may open the admin portal" (every staff role has it) — not a permission.
+    const isStaff = user.permissions.includes(PERMS.CERTIFICATES_MANAGE);
 
     const cert = await this.prisma.certificate.findUnique({
       where: { id },
@@ -375,19 +362,8 @@ export class CertificatesService {
 
     if (!cert) throw new NotFoundException('Certificate not found');
 
-    if (!isStaff) {
-      let isOwner =
-        cert.businessEntity?.ownerId === user.id ||
-        cert.application?.customerId === user.id;
-
-      if (!isOwner) {
-        const matchingEntity = await this.prisma.businessEntity.findFirst({
-          where: { ownerId: user.id, legalName: { equals: cert.organizationName, mode: 'insensitive' } },
-        });
-        if (matchingEntity) isOwner = true;
-      }
-
-      if (!isOwner) throw new NotFoundException('Certificate not found');
+    if (!isStaff && cert.businessEntity?.ownerId !== user.id && cert.application?.customerId !== user.id) {
+      throw new NotFoundException('Certificate not found');
     }
 
     const qrUrl = this.qrUrl(cert.verificationId);

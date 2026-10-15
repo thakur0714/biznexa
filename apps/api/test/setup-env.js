@@ -9,3 +9,5 @@ process.env.QUEUE_PREFIX = `bn-test-${worker}`;
 process.env.UPLOAD_DIR = require('node:path').join(require('node:os').tmpdir(), `bn-test-uploads-${worker}`);
 process.env.EMAIL_PROVIDER = 'console';
 process.env.FCM_PROVIDER = 'fake';
+// Partner keys for the public verify API tests; any other key is refused.
+process.env.CERT_VERIFY_API_KEYS = 'bn_live_partner_acme999,bn_test_partner_key';

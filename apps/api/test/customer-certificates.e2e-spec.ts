@@ -180,6 +180,18 @@ describe('customer certificates page API (M7.6)', () => {
     expect(resB.status).toBe(404);
   });
 
+  it('naming a business entity like someone else\'s company does not reveal their certificates', async () => {
+    await prisma.businessEntity.create({
+      data: { ownerId: userB.id, legalName: `${prefix} Acme Pvt Ltd`, entityType: 'PRIVATE_LIMITED' },
+    });
+
+    const list = await http.get('/api/certificates').set(as(userB.token)).expect(200);
+    const ids = (list.body.items as { id: string }[]).map((c) => c.id);
+    expect(ids).not.toContain(certA1.id);
+    await http.get(`/api/certificates/${certA1.id}`).set(as(userB.token)).expect(404);
+    await http.post(`/api/certificates/${certA1.id}/link`).set(as(userB.token)).expect(404);
+  });
+
   it('GET /api/certificates requires authentication (401 without token)', async () => {
     const res = await http.get('/api/certificates');
     expect(res.status).toBe(401);
