@@ -10,6 +10,7 @@ import {
   type StoredFileResult,
 } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { applicationScope } from '../applications/application-access';
 import type { AuthUser } from '../common/auth.decorators';
 import { env } from '../config/env';
 import { StorageService } from './storage.service';
@@ -100,8 +101,20 @@ export class FilesService {
    * Who may read a file: its uploader, or staff who can see every application.
    * M4 adds operations staff assigned to the application the file belongs to.
    */
-  private canRead(user: AuthUser, file: StoredFile) {
-    return file.ownerId === user.id || user.permissions.includes(PERMS.APPLICATIONS_VIEW_ALL);
+  private async canRead(user: AuthUser, file: StoredFile) {
+    if (file.ownerId === user.id || user.permissions.includes(PERMS.APPLICATIONS_VIEW_ALL)) return true;
+
+    if (user.permissions.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED)) {
+      const doc = await this.prisma.applicationDocument.findFirst({
+        where: {
+          fileKey: file.fileKey,
+          application: applicationScope(user),
+        },
+      });
+      if (doc) return true;
+    }
+
+    return false;
   }
 
   /** A file's details, including its scan status (clients poll this after uploading). */
@@ -112,7 +125,7 @@ export class FilesService {
   /** No access looks the same as no file. */
   private async findReadable(id: string, user: AuthUser) {
     const file = await this.prisma.storedFile.findUnique({ where: { id } });
-    if (!file || !this.canRead(user, file)) throw new NotFoundException('File not found');
+    if (!file || !(await this.canRead(user, file))) throw new NotFoundException('File not found');
     return file;
   }
 
