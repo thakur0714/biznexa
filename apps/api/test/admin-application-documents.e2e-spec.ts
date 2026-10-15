@@ -27,9 +27,6 @@ describe('Admin Application Documents (M4.8)', () => {
   const run = Date.now().toString().slice(-7) + Math.floor(Math.random() * 900 + 100);
   const P = `BNDOC${run}`;
 
-  let createdService = false;
-  let createdPackage = false;
-
   beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleFixture.createNestApplication<NestExpressApplication>();
@@ -64,41 +61,14 @@ describe('Admin Application Documents (M4.8)', () => {
     customerToken = customerLogin.body.accessToken;
     customerId = customerLogin.body.user.id;
 
-    const existingPkg = await prisma.servicePackage.findFirst({
-      include: { service: { select: { id: true, categoryId: true } } },
-    });
-
-    if (existingPkg) {
-      serviceId = existingPkg.serviceId;
-      packageId = existingPkg.id;
-    } else {
-      let category = await prisma.category.findFirst();
-      if (!category) {
-        category = await prisma.category.create({ data: { name: 'Test Category', slug: 'test-cat-' + run } });
-      }
-
-      const srv = await prisma.service.create({
-        data: {
-          name: 'M4.8 Test Service',
-          slug: 'm48-test-service-' + run,
-          categoryId: category.id,
-          shortDescription: 'desc',
-        }
-      });
-      serviceId = srv.id;
-      createdService = true;
-
-      const pkg = await prisma.servicePackage.create({
-        data: {
-          serviceId,
-          name: 'Basic',
-          professionalFee: 1000,
-          governmentFee: 0,
-        }
-      });
-      packageId = pkg.id;
-      createdPackage = true;
-    }
+    // Own service + package: a seeded service has its own mandatory documents, and other suites use it.
+    const category = await prisma.category.findFirstOrThrow();
+    serviceId = (await prisma.service.create({
+      data: { name: `M4.8 Test Service ${run}`, slug: `m48-test-service-${run}`, categoryId: category.id, shortDescription: 'desc', isActive: false },
+    })).id;
+    packageId = (await prisma.servicePackage.create({
+      data: { serviceId, name: 'Basic', professionalFee: 1000, governmentFee: 0 },
+    })).id;
 
     const req = await prisma.serviceDocumentRequirement.create({
       data: {
@@ -118,14 +88,9 @@ describe('Admin Application Documents (M4.8)', () => {
     await prisma.application.deleteMany({ where: { id: { in: apps } } });
 
     await prisma.storedFile.deleteMany({ where: { ownerId: customerId } });
-    await prisma.serviceDocumentRequirement.deleteMany({ where: { id: requirementId } });
-
-    if (createdPackage) {
-      await prisma.servicePackage.deleteMany({ where: { id: packageId } });
-    }
-    if (createdService) {
-      await prisma.service.deleteMany({ where: { id: serviceId } });
-    }
+    await prisma.serviceDocumentRequirement.deleteMany({ where: { serviceId } });
+    await prisma.servicePackage.deleteMany({ where: { id: packageId } });
+    await prisma.service.deleteMany({ where: { id: serviceId } });
 
     await prisma.user.deleteMany({ where: { email: { contains: `-${run}@example.com` } } });
 
@@ -274,5 +239,53 @@ describe('Admin Application Documents (M4.8)', () => {
     // Because a document is REQUIRED, application should move to DOCUMENTS_PENDING
     const updatedApp = await prisma.application.findUnique({ where: { id: a.id } });
     expect(updatedApp?.status).toBe('DOCUMENTS_PENDING');
+  });
+
+  it('approve with another mandatory requirement still missing keeps DOCUMENTS_UNDER_REVIEW', async () => {
+    const other = await prisma.serviceDocumentRequirement.create({ data: { serviceId, name: 'Second Doc', isMandatory: true, sortOrder: 2 } });
+    try {
+      const a = await createTestApp(8, 'DOCUMENTS_UNDER_REVIEW');
+      const d = await createTestDoc(a.id);
+      await http.post(`/api/admin/documents/${d.id}/approve`).set('Authorization', `Bearer ${adminToken}`).expect(201);
+      expect((await prisma.application.findUnique({ where: { id: a.id } }))?.status).toBe('DOCUMENTS_UNDER_REVIEW');
+    } finally {
+      await prisma.serviceDocumentRequirement.delete({ where: { id: other.id } });
+    }
+  });
+
+  it('approving the re-upload of a DOCUMENTS_PENDING application moves it to DOCUMENTS_APPROVED', async () => {
+    const a = await createTestApp(9, 'DOCUMENTS_PENDING');
+    const d = await createTestDoc(a.id);
+    await http.post(`/api/admin/documents/${d.id}/approve`).set('Authorization', `Bearer ${adminToken}`).expect(201);
+    expect((await prisma.application.findUnique({ where: { id: a.id } }))?.status).toBe('DOCUMENTS_APPROVED');
+    const history = await prisma.applicationStageHistory.findMany({ where: { applicationId: a.id }, orderBy: { changedAt: 'asc' } });
+    expect(history.map((h) => h.status)).toEqual(['DOCUMENTS_UNDER_REVIEW', 'DOCUMENTS_APPROVED']);
+  });
+
+  it('reviewing a document of a DRAFT application leaves the application status alone', async () => {
+    const a = await createTestApp(10, 'DRAFT');
+    const d = await createTestDoc(a.id);
+    await http.post(`/api/admin/documents/${d.id}/reject`).set('Authorization', `Bearer ${adminToken}`).send({ reason: 'Blurry' }).expect(201);
+    expect((await prisma.application.findUnique({ where: { id: a.id } }))?.status).toBe('DRAFT');
+  });
+
+  it('assigned ops can review; unassigned ops gets 404 on approve', async () => {
+    const mine = await createTestApp(11, 'DOCUMENTS_UNDER_REVIEW', opsId);
+    const theirs = await createTestApp(12, 'DOCUMENTS_UNDER_REVIEW', adminId);
+    const dMine = await createTestDoc(mine.id);
+    const dTheirs = await createTestDoc(theirs.id);
+
+    const queue = await http.get('/api/admin/documents/review-queue').set('Authorization', `Bearer ${opsToken}`).expect(200);
+    expect(queue.body.items.some((d: any) => d.id === dMine.id)).toBe(true);
+    expect(queue.body.items.find((d: any) => d.id === dMine.id).application.customer.email).toBe(`customer-${run}@example.com`);
+
+    await http.post(`/api/admin/documents/${dTheirs.id}/approve`).set('Authorization', `Bearer ${opsToken}`).expect(404);
+    await http.post(`/api/admin/documents/${dMine.id}/approve`).set('Authorization', `Bearer ${opsToken}`).expect(201);
+  });
+
+  it('requesting a document on an IN_PROGRESS application moves it to DOCUMENTS_PENDING', async () => {
+    const a = await createTestApp(13, 'IN_PROGRESS');
+    await http.post(`/api/admin/applications/${a.id}/documents`).set('Authorization', `Bearer ${adminToken}`).send({ name: 'Extra ID' }).expect(201);
+    expect((await prisma.application.findUnique({ where: { id: a.id } }))?.status).toBe('DOCUMENTS_PENDING');
   });
 });

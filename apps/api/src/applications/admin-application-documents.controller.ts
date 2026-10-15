@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { AuthUser, CurrentUser, RequireAnyPermission, RequirePermissions } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery, ZodBody } from '../common/openapi';
 import { AdminApplicationDocumentsService } from './admin-application-documents.service';
 import {
@@ -22,7 +22,7 @@ const uuid = new ParseUUIDPipe();
 export class AdminApplicationDocumentsController {
   constructor(private readonly docs: AdminApplicationDocumentsService) {}
 
-  @RequireAnyPermission(PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED)
+  @RequirePermissions(PERMS.DOCUMENTS_REVIEW)
   @ApiZodResponse('AdminDocumentReviewQueuePage', adminDocumentReviewQueuePageSchema)
   @Get('documents/review-queue')
   getReviewQueue(
@@ -32,7 +32,7 @@ export class AdminApplicationDocumentsController {
     return this.docs.getReviewQueue(u, query);
   }
 
-  @RequirePermissions(PERMS.APPLICATIONS_UPDATE)
+  @RequirePermissions(PERMS.DOCUMENTS_REVIEW)
   @Post('documents/:id/approve')
   approveDocument(
     @Param('id', uuid) id: string,
@@ -41,7 +41,7 @@ export class AdminApplicationDocumentsController {
     return this.docs.approveDocument(id, u);
   }
 
-  @RequirePermissions(PERMS.APPLICATIONS_UPDATE)
+  @RequirePermissions(PERMS.DOCUMENTS_REVIEW)
   @Post('documents/:id/reject')
   rejectDocument(
     @Param('id', uuid) id: string,
@@ -51,7 +51,7 @@ export class AdminApplicationDocumentsController {
     return this.docs.rejectDocument(id, body.reason, u);
   }
 
-  @RequirePermissions(PERMS.APPLICATIONS_UPDATE)
+  @RequirePermissions(PERMS.DOCUMENTS_REVIEW)
   @Post('applications/:applicationId/documents')
   requestAdditionalDocument(
     @Param('applicationId', uuid) applicationId: string,
