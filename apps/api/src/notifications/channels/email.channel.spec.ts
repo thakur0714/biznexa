@@ -1,5 +1,5 @@
 import { EmailChannel } from './email.channel';
-import { FakeEmailProvider, SendGridEmailProvider, SesEmailProvider, SmtpEmailProvider } from '../providers/email.provider';
+import { FakeEmailProvider, SendGridEmailProvider, SmtpEmailProvider } from '../providers/email.provider';
 import type { TemplateEngineService } from '../template-engine.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 
@@ -93,7 +93,7 @@ describe('EmailChannel (M6.4)', () => {
     expect(fakeProvider.sentEmails).toHaveLength(0);
   });
 
-  it('includes signed invoice link and no attachments for invoice.issued', async () => {
+  it('links to the dashboard (not a 5-minute signed link) and sends no attachments for invoice.issued', async () => {
     mockTemplateEngine.renderTemplate.mockResolvedValueOnce({
       subject: 'Tax Invoice #BN/2627/000001 Issued',
       body: '<p>Hello Alice, your invoice #BN/2627/000001 has been issued.</p>',
@@ -116,7 +116,7 @@ describe('EmailChannel (M6.4)', () => {
     expect(res.success).toBe(true);
     expect(fakeProvider.sentEmails).toHaveLength(1);
     const sent = fakeProvider.sentEmails[0];
-    expect(sent.html).toContain('/api/invoices/f0000000-0000-4000-8000-000000000001/download?');
+    expect(sent.html).toContain('/dashboard');
     expect(sent.html).toContain('Download Invoice');
     // Ensure no big attachments are sent (SendEmailOptions has no attachments array)
     expect((sent as unknown as Record<string, unknown>).attachments).toBeUndefined();
@@ -162,21 +162,6 @@ describe('EmailChannel (M6.4)', () => {
       const res = await sg.sendEmail({ to: 'customer@example.com', subject: 'Hi', html: '<b>Hello</b>' });
       expect(res.messageId).toBe('sg-msg-123');
       expect(global.fetch).toHaveBeenCalledTimes(1);
-
-      global.fetch = originalFetch;
-    });
-
-    it('SesEmailProvider sends via fetch and returns messageId', async () => {
-      const ses = new SesEmailProvider({ region: 'ap-south-1', defaultFrom: 'noreply@biznexa.com' });
-      const originalFetch = global.fetch;
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ MessageId: 'ses-msg-456' }),
-      } as Response);
-
-      const res = await ses.sendEmail({ to: 'customer@example.com', subject: 'Hi', html: '<b>Hello</b>' });
-      expect(res.messageId).toBe('ses-msg-456');
 
       global.fetch = originalFetch;
     });

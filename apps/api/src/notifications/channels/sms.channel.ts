@@ -45,7 +45,8 @@ export class SmsChannel implements NotificationChannel {
 
       let dltTemplateId = template?.dltTemplateId;
       if (!dltTemplateId && input.event === 'auth.otp') {
-        dltTemplateId = env().MSG91_OTP_TEMPLATE_ID || '1207161796443214567';
+        // Console provider needs no real DLT id; msg91 refuses to start without one (env.ts).
+        dltTemplateId = env().MSG91_OTP_TEMPLATE_ID || (env().SMS_PROVIDER === 'console' ? 'console' : undefined);
       }
 
       // Refuse to send without DLT template ID (logged without mobile number)

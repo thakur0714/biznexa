@@ -4,7 +4,6 @@ import type { NotificationChannel } from '../notification-channel.interface';
 import { EmailProvider } from '../providers/email.provider';
 import { TemplateEngineService, TemplateNotFoundError } from '../template-engine.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { signedLink } from '../../files/files.service';
 import { env } from '../../config/env';
 
 @Injectable()
@@ -39,20 +38,20 @@ export class EmailChannel implements NotificationChannel {
         };
       }
 
-      // 2. Prepare variables and invoice link (signed link, no big attachments)
+      // 2. Prepare variables and invoice link. Signed file links last 5 minutes, so the email links to the
+      // dashboard, where the customer downloads the PDF after logging in (payments page: M5.10).
       const variables: Record<string, unknown> = {
         ...(input.payload ?? {}),
       };
 
       const invoiceId =
         input.payload?.invoiceId ?? (input.event === 'invoice.issued' ? input.payload?.id : undefined);
-      let signedInvoiceUrl: string | undefined;
+      let invoiceUrl: string | undefined;
 
       if (invoiceId) {
-        const linkResult = signedLink('invoices', String(invoiceId), 'attachment');
-        signedInvoiceUrl = `${env().PUBLIC_WEB_URL}${linkResult.url}`;
+        invoiceUrl = `${env().PUBLIC_WEB_URL}/dashboard`;
         if (!variables.invoiceLink) {
-          variables.invoiceLink = signedInvoiceUrl;
+          variables.invoiceLink = invoiceUrl;
         }
       }
 
@@ -72,8 +71,8 @@ export class EmailChannel implements NotificationChannel {
       }
 
       // Append invoice link if invoice was issued and link is not already in HTML
-      if (signedInvoiceUrl && !html.includes(signedInvoiceUrl)) {
-        html += `<p><a href="${signedInvoiceUrl}" target="_blank" rel="noopener noreferrer">Download Invoice</a></p>`;
+      if (invoiceUrl && !html.includes(invoiceUrl)) {
+        html += `<p><a href="${invoiceUrl}" target="_blank" rel="noopener noreferrer">Download Invoice</a></p>`;
       }
 
       // 4. Send via EmailProvider (never log email addresses!)

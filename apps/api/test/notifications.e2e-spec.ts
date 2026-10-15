@@ -436,13 +436,20 @@ describe('In-app inbox (M6.7)', () => {
       expect(dbToken?.platform).toBe('web');
     });
 
-    it('prevents registering a token already owned by another user (owner only)', async () => {
-      // Bob tries to register Alice's tokenA
+    it('moves a token to the user who registers it on the same device', async () => {
       await http
         .post('/api/notifications/devices/register')
         .set(as(bobToken))
         .send({ token: tokenA, platform: 'android' })
-        .expect(403);
+        .expect(200);
+      expect((await prisma.deviceToken.findUnique({ where: { token: tokenA } }))?.userId).toBe(bobId);
+
+      // Back to Alice for the tests below
+      await http
+        .post('/api/notifications/devices/register')
+        .set(as(aliceToken))
+        .send({ token: tokenA, platform: 'web' })
+        .expect(200);
     });
 
     it('prevents unregistering a token owned by another user (owner only)', async () => {

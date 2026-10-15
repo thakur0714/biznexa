@@ -1,4 +1,5 @@
 import { PushChannel } from './push.channel';
+import { GoogleAuth } from 'google-auth-library';
 import { FakeFcmProvider, RealFcmProvider } from '../providers/fcm.provider';
 import type { TemplateEngineService } from '../template-engine.service';
 import type { PrismaService } from '../../prisma/prisma.service';
@@ -144,13 +145,19 @@ describe('PushChannel & FCM Provider (M6.6)', () => {
 
   describe('RealFcmProvider', () => {
     const originalFetch = global.fetch;
+    const serviceAccount = JSON.stringify({ client_email: 'fcm@test-project-123.iam.gserviceaccount.com', private_key: 'key' });
+
+    beforeEach(() => {
+      jest.spyOn(GoogleAuth.prototype, 'getAccessToken').mockResolvedValue('ya29.test-access-token');
+    });
 
     afterEach(() => {
       global.fetch = originalFetch;
+      jest.restoreAllMocks();
     });
 
     it('sends HTTP v1 request and returns messageId on success', async () => {
-      const provider = new RealFcmProvider('test-project-123', 'fake-jwt-token');
+      const provider = new RealFcmProvider('test-project-123', serviceAccount);
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: true,
         json: async () => ({ name: 'projects/test-project-123/messages/msg-789' }),
@@ -165,10 +172,13 @@ describe('PushChannel & FCM Provider (M6.6)', () => {
 
       expect(res.success).toBe(true);
       expect(res.messageId).toBe('projects/test-project-123/messages/msg-789');
+      // OAuth access token from the service account, never the raw key
+      const init = (global.fetch as jest.Mock).mock.calls[0][1] as RequestInit;
+      expect((init.headers as Record<string, string>).Authorization).toBe('Bearer ya29.test-access-token');
     });
 
     it('detects unregistered token on 404 UNREGISTERED response', async () => {
-      const provider = new RealFcmProvider('test-project-123', 'fake-jwt-token');
+      const provider = new RealFcmProvider('test-project-123', serviceAccount);
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: false,
         status: 404,
@@ -190,6 +200,19 @@ describe('PushChannel & FCM Provider (M6.6)', () => {
 
       expect(res.success).toBe(false);
       expect(res.unregistered).toBe(true);
+    });
+
+    it('does not treat a bare 404 (e.g. wrong project id) as an unregistered token', async () => {
+      const provider = new RealFcmProvider('wrong-project', serviceAccount);
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        text: async () => JSON.stringify({ error: { code: 404, message: 'Requested entity was not found.', status: 'NOT_FOUND' } }),
+      });
+
+      const res = await provider.send({ token: 'good-token', title: 'Hello', body: 'World' });
+      expect(res.success).toBe(false);
+      expect(res.unregistered).toBeFalsy();
     });
   });
 });

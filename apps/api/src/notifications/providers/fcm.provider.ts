@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { GoogleAuth } from 'google-auth-library';
 import { env } from '../../config/env';
 
 export interface FcmNotificationPayload {
@@ -61,11 +62,18 @@ export class FakeFcmProvider extends FcmProvider {
 export class RealFcmProvider extends FcmProvider {
   private readonly logger = new Logger(RealFcmProvider.name);
 
+  private readonly auth: GoogleAuth;
+
+  /** `serviceAccountKey` is the service account JSON; it is exchanged for short-lived OAuth tokens. */
   constructor(
     private readonly projectId: string,
-    private readonly serviceAccountKey?: string,
+    serviceAccountKey: string,
   ) {
     super();
+    this.auth = new GoogleAuth({
+      credentials: JSON.parse(serviceAccountKey) as Record<string, string>,
+      scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
+    });
   }
 
   async send(payload: FcmNotificationPayload): Promise<FcmSendResult> {
@@ -83,19 +91,20 @@ export class RealFcmProvider extends FcmProvider {
         },
       };
 
+      const accessToken = await this.auth.getAccessToken();
       const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(this.serviceAccountKey ? { Authorization: `Bearer ${this.serviceAccountKey}` } : {}),
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(body),
       });
 
       if (!res.ok) {
         const text = await res.text();
+        // Only FCM's own "token is dead" answers; a bare 404 (e.g. wrong project id) must not wipe every token.
         const isUnregistered =
-          res.status === 404 ||
           text.includes('UNREGISTERED') ||
           text.includes('registration-token-not-registered') ||
           text.includes('invalid-registration-token');
@@ -135,7 +144,7 @@ export const fcmProviderFactory = {
   provide: FcmProvider,
   useFactory: (): FcmProvider => {
     const config = env();
-    if (config.FCM_PROVIDER === 'firebase' && config.FIREBASE_PROJECT_ID) {
+    if (config.FCM_PROVIDER === 'firebase' && config.FIREBASE_PROJECT_ID && config.FIREBASE_SERVICE_ACCOUNT_KEY) {
       return new RealFcmProvider(config.FIREBASE_PROJECT_ID, config.FIREBASE_SERVICE_ACCOUNT_KEY);
     }
     return new FakeFcmProvider();

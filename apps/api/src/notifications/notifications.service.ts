@@ -171,20 +171,14 @@ export class NotificationsService {
   }
 
   /**
-   * Registers a device token for push notifications. Owner only.
+   * Registers a device token for push notifications (moves it to this user if it was someone else's).
    */
   async registerDeviceToken(
     userId: string,
     input: RegisterDeviceTokenInput,
   ): Promise<DeviceTokenActionResponse> {
-    const existing = await this.prisma.deviceToken.findUnique({
-      where: { token: input.token },
-    });
-
-    if (existing && existing.userId !== userId) {
-      throw new ForbiddenException('Device token belongs to another user');
-    }
-
+    // A token identifies an app install, not a person: when someone else logs in on the same device the
+    // token moves to them, so the previous user's pushes stop going to a phone they no longer use.
     await this.prisma.deviceToken.upsert({
       where: { token: input.token },
       create: {

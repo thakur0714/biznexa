@@ -14,7 +14,7 @@ export interface SendEmailResult {
 }
 
 /**
- * Provider interface for email delivery (SES, SendGrid, SMTP/Mailpit, Fake).
+ * Provider interface for email delivery (SendGrid, SMTP/Mailpit, Fake).
  * Implementations must never log email addresses (PII protection).
  */
 export abstract class EmailProvider {
@@ -118,59 +118,6 @@ export class SendGridEmailProvider extends EmailProvider {
   }
 }
 
-/**
- * AWS SES v2 REST API provider.
- */
-export class SesEmailProvider extends EmailProvider {
-  private readonly defaultFrom: string;
-
-  constructor(
-    private readonly config: {
-      region: string;
-      accessKeyId?: string;
-      secretAccessKey?: string;
-      defaultFrom?: string;
-    },
-  ) {
-    super();
-    this.defaultFrom = config.defaultFrom ?? 'no-reply@biznexa.com';
-  }
-
-  async sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
-    const from = options.from || this.defaultFrom;
-    const sesUrl = `https://email.${this.config.region}.amazonaws.com/v2/email/outbound-emails`;
-    const res = await fetch(sesUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.config.accessKeyId ? { 'x-amz-access-token': this.config.accessKeyId } : {}),
-      },
-      body: JSON.stringify({
-        FromEmailAddress: from,
-        Destination: {
-          ToAddresses: [options.to],
-        },
-        Content: {
-          Simple: {
-            Subject: { Data: options.subject, Charset: 'UTF-8' },
-            Body: {
-              Html: { Data: options.html, Charset: 'UTF-8' },
-            },
-          },
-        },
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text().catch(() => '');
-      throw new Error(`SES delivery failed (${res.status}): ${err}`);
-    }
-
-    const data = (await res.json().catch(() => ({}))) as { MessageId?: string };
-    return { messageId: data.MessageId };
-  }
-}
-
 export const emailProviderFactory = {
   provide: EmailProvider,
   useFactory: () => {
@@ -179,13 +126,6 @@ export const emailProviderFactory = {
       return new FakeEmailProvider();
     }
     switch (e.EMAIL_PROVIDER) {
-      case 'ses':
-        return new SesEmailProvider({
-          region: e.AWS_REGION || 'ap-south-1',
-          accessKeyId: e.AWS_ACCESS_KEY_ID,
-          secretAccessKey: e.AWS_SECRET_ACCESS_KEY,
-          defaultFrom: e.EMAIL_FROM,
-        });
       case 'sendgrid':
         return new SendGridEmailProvider({
           apiKey: e.SENDGRID_API_KEY || '',
