@@ -60,6 +60,8 @@ export const statusInput = z.object({
 export interface LookupMeta {
   ip?: string;
   userAgent?: string;
+  apiKey?: string;
+  isPartnerApi?: boolean;
 }
 
 @Injectable()
@@ -87,7 +89,8 @@ export class CertificatesService {
   async verify(params: { number?: string; id?: string; t?: string }, meta: LookupMeta) {
     const number = params.number?.trim();
     const id = params.id?.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const method = id ? (params.t ? 'QR' : 'VERIFICATION_ID') : 'NUMBER';
+    const defaultMethod = id ? (params.t ? 'QR' : 'VERIFICATION_ID') : 'NUMBER';
+    const method = meta.isPartnerApi ? 'API' : defaultMethod;
 
     const cert = await this.prisma.certificate.findFirst({
       where: id ? { verificationId: id } : { certificateNumber: { equals: number, mode: 'insensitive' } },

@@ -6009,6 +6009,35 @@
               "maxLength": 32
             },
             "description": "QR signature"
+          },
+          {
+            "name": "apiKey",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Optional API key"
+          },
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "Optional API key alias"
+          },
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "description": "Optional partner API key for higher rate limits",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {

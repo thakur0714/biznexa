@@ -6238,8 +6238,15 @@ export interface operations {
                 id?: string;
                 /** @description QR signature */
                 t?: string;
+                /** @description Optional API key */
+                apiKey?: string;
+                /** @description Optional API key alias */
+                key?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Optional partner API key for higher rate limits */
+                "X-API-Key"?: string;
+            };
             path?: never;
             cookie?: never;
         };

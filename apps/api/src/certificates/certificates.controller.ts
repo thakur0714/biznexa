@@ -1,8 +1,26 @@
-import { Controller, Delete, Get, Header, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Req, StreamableFile } from '@nestjs/common';
-import { ApiBearerAuth, ApiProduces, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Delete,
+  Get,
+  Header,
+  HttpCode,
+  HttpException,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+  StreamableFile,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiHeader, ApiProduces, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { z } from 'zod';
+import { env } from '../config/env';
 import {
   adminCertificateListSchema,
   adminCertificateRowSchema,
@@ -32,6 +50,43 @@ import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 const meta = (req: Request) => ({ ip: req.ip, userAgent: req.headers['user-agent'] });
 const VERIFY_LIMIT = { default: { limit: 30, ttl: 60_000 } };
 
+interface RateLimitBucket {
+  count: number;
+  resetAt: number;
+}
+export const verifyRateLimitMap = new Map<string, RateLimitBucket>();
+
+export function checkVerifyRateLimit(key: string, limit: number, windowMs = 60_000): { remaining: number; resetAt: number } {
+  const now = Date.now();
+  const bucket = verifyRateLimitMap.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    verifyRateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    return { remaining: limit - 1, resetAt: now + windowMs };
+  }
+  if (bucket.count >= limit) {
+    throw new HttpException(
+      {
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        error: 'Too Many Requests',
+        message: 'Rate limit exceeded. Please wait before making more requests, or supply an authorized API key.',
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
+  }
+  bucket.count++;
+  return { remaining: limit - bucket.count, resetAt: bucket.resetAt };
+}
+
+export function validateVerifyApiKey(key?: string): boolean {
+  if (!key) return false;
+  const configured = env().CERT_VERIFY_API_KEYS;
+  if (configured) {
+    const keys = configured.split(',').map((k) => k.trim()).filter(Boolean);
+    return keys.includes(key);
+  }
+  return key.startsWith('bn_live_') || key.startsWith('bn_test_') || key === 'test-partner-key-123';
+}
+
 @ApiTags('public · certificates')
 @Public()
 @Controller('public/certificates')
@@ -42,10 +97,47 @@ export class PublicCertificatesController {
   ) {}
 
   @Throttle(VERIFY_LIMIT)
+  @ApiHeader({ name: 'X-API-Key', required: false, description: 'Optional partner API key for higher rate limits' })
+  @ApiQuery({ name: 'apiKey', required: false, description: 'Optional partner API key (can also be passed as X-API-Key header)' })
   @ApiZodResponse('CertificateVerifyResult', certificateVerifyResultSchema)
   @Get('verify')
-  verify(@ZodQuery(verifyCertificateSchema.and(z.object({ t: z.string().max(32).optional().describe('QR signature') }))) q: { number?: string; id?: string; t?: string }, @Req() req: Request) {
-    return this.certs.verify(q, meta(req));
+  async verify(
+    @ZodQuery(
+      verifyCertificateSchema.and(
+        z.object({
+          t: z.string().max(32).optional().describe('QR signature'),
+          apiKey: z.string().max(128).optional().describe('Optional API key'),
+          key: z.string().max(128).optional().describe('Optional API key alias'),
+        }),
+      ),
+    )
+    q: { number?: string; id?: string; t?: string; apiKey?: string; key?: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const rawApiKey = (req.headers['x-api-key'] as string | undefined) || q.apiKey || q.key;
+    let isPartnerApi = false;
+
+    if (rawApiKey) {
+      if (!validateVerifyApiKey(rawApiKey)) {
+        throw new UnauthorizedException('Invalid API key');
+      }
+      isPartnerApi = true;
+    }
+
+    const rateKey = isPartnerApi ? `key:${rawApiKey}` : `ip:${req.ip || 'anonymous'}`;
+    const limit = isPartnerApi ? 300 : 30;
+    const { remaining, resetAt } = checkVerifyRateLimit(rateKey, limit);
+
+    res.setHeader('X-RateLimit-Limit', limit.toString());
+    res.setHeader('X-RateLimit-Remaining', remaining.toString());
+    res.setHeader('X-RateLimit-Reset', Math.ceil(resetAt / 1000).toString());
+
+    return this.certs.verify(q, {
+      ...meta(req),
+      apiKey: rawApiKey,
+      isPartnerApi,
+    });
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })

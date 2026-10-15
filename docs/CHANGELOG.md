@@ -59,3 +59,34 @@
 
 ### Next: Milestone 4 — Fulfilment (Admin / Ops)
 Admin applications list and detail, assignment, status updates and the document review queue. Rejection presets, internal notes, the audit log viewer and document state tests are already done (13-Oct-2026).
+
+## Milestone 7 — Certificates (15-Oct-2026)
+
+### Built and tested
+
+**PDF Generation & Uploads (M7.3)**
+- A4 landscape official certificate PDF template with embedded Noto Sans font, official double border, seal, and inline QR code data URL.
+- Integrates with M3.22 PDF queue (`pdf.render`) on `certificate.issued` domain event.
+- Custom PDF attachment option using M2.5.6 upload service with mime-type and virus scan checks.
+- Per-certificate "allow public PDF download" toggle for public verification page.
+- Owner and staff signed download link generation with tamper detection and expiration.
+
+**CSV Bulk Import (M7.4)**
+- Batch certificate import supporting flexible CSV headers and RFC 4180 parsing with CSV injection protection.
+- Row-by-row validation with duplicate checking against both the CSV and existing database records.
+- Downloadable sample CSV template and CSV error report with detailed row and field messages.
+- Atomic import executed within a single database transaction (`prisma.$transaction`), emitting domain events and audit log entries.
+- Admin portal Bulk Import interface (`/certificates/import`) with upload dropzone, validation summary, preview table, and error report download.
+
+**Customer Certificates Portal (M7.6)**
+- Customer portal certificates page (`/dashboard/certificates`) displaying all issued certificates linked via business entity ownership or application.
+- Status badges (Active, Suspended, Withdrawn, Expired) and 30-day expiry warning alerts.
+- One-click official PDF download via secure signed links.
+- Copy/share verification URL and interactive QR code preview modal with downloadable QR image.
+- "Renew Certificate" CTA displayed for expiring or expired credentials deep-linking to renewal services.
+- Updated customer dashboard sidebar navigation.
+
+**Public Verify API (M7.7)**
+- Public certificate verification endpoint `GET /api/public/certificates/verify?number=` with rate limiting and rate limit response headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`).
+- Optional partner API key support via `X-API-Key` header or `apiKey` query parameter granting elevated rate limits (300 req/min).
+- Lookup logging recording verification method (`NUMBER`, `VERIFICATION_ID`, `QR`, or `API`) and partner attribution.
