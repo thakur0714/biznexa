@@ -6248,6 +6248,10 @@
                     "type": "string",
                     "format": "uuid"
                   },
+                  "entityId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "fileId": {
                     "type": "string",
                     "format": "uuid"
@@ -6255,7 +6259,6 @@
                 },
                 "required": [
                   "type",
-                  "organizationName",
                   "issueDate",
                   "validFrom",
                   "validUntil",
@@ -6268,7 +6271,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCertificateRow"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -8216,6 +8226,116 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AdminApplicationDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · applications"
+        ]
+      }
+    },
+    "/api/admin/applications/{id}/certificate": {
+      "post": {
+        "operationId": "AdminApplicationsController_createCertificate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "certificateNumber": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 64
+                  },
+                  "type": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "organizationName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "scope": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "address": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "issueDate": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "validFrom": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "validUntil": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "certificationBodyId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "showPdfPublicly": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "businessEntityId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "entityId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "fileId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "type",
+                  "issueDate",
+                  "validFrom",
+                  "validUntil",
+                  "certificationBodyId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCertificateRow"
                 }
               }
             }
@@ -14734,6 +14854,11 @@
                 "createdAt": {
                   "type": "string",
                   "format": "date-time"
+                },
+                "applicationId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
                 }
               },
               "required": [
@@ -14866,6 +14991,11 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "applicationId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "required": [
@@ -19454,6 +19584,9 @@
               "id": {
                 "type": "string",
                 "format": "uuid"
+              },
+              "legalName": {
+                "type": "string"
               },
               "maskedPan": {
                 "type": "string",

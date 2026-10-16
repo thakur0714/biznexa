@@ -270,6 +270,7 @@ export class AdminCertificatesController {
     return this.certs.get(id);
   }
 
+  @ApiZodResponse('AdminCertificateRow', adminCertificateRowSchema, 201)
   @Post()
   create(@ZodBody(createCertificateInput) body: z.infer<typeof createCertificateInput>, @CurrentUser() u: AuthUser) {
     return this.certs.create(body, u.id);

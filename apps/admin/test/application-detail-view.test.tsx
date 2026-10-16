@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ApplicationDetailView } from '../src/app/(portal)/applications/[id]/application-detail-view';
 
@@ -6,13 +6,18 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() })
 }));
 
+import type { ApplicationStatus } from '@biznexa/types';
+
+let mockPermissions = ['applications.view_all', 'documents.review'];
+let mockAppStatus: ApplicationStatus = 'DRAFT';
+
 // Mock auth
 vi.mock('@/lib/auth', () => ({
   useAuth: () => ({
     user: {
-      permissions: ['applications.view_all', 'documents.review']
-    }
-  })
+      permissions: mockPermissions,
+    },
+  }),
 }));
 
 vi.mock('@biznexa/api-client/react', () => {
@@ -23,8 +28,9 @@ vi.mock('@biznexa/api-client/react', () => {
           return Promise.resolve({
             id: 'app1',
             code: 'APP-1',
-            status: 'draft',
+            status: mockAppStatus,
             customer: { name: 'John', email: 'john@example.com', mobile: '9999999999' },
+            businessEntity: { id: 'ent-1', legalName: 'Acme Pvt Ltd', maskedPan: 'ABCDE****F' },
             service: { name: 'Service' },
             package: { name: 'Package' },
             priority: 'normal',
@@ -43,6 +49,11 @@ vi.mock('@biznexa/api-client/react', () => {
 
 
 describe('Admin Application Detail UI', () => {
+  beforeEach(() => {
+    mockPermissions = ['applications.view_all', 'documents.review'];
+    mockAppStatus = 'DRAFT';
+  });
+
   it('request-document form validation', async () => {
     render(<ApplicationDetailView id="app1" />);
 
@@ -63,5 +74,44 @@ describe('Admin Application Detail UI', () => {
     fireEvent.change(nameInput, { target: { value: 'Proof of address' } });
 
     expect(submitBtn).not.toBeDisabled();
+  });
+
+  it('does not show "Issue certificate" button when application is DRAFT', async () => {
+    mockPermissions = ['applications.view_all', 'certificates.manage'];
+    mockAppStatus = 'DRAFT';
+    render(<ApplicationDetailView id="app1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Application APP-1')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Issue certificate')).not.toBeInTheDocument();
+  });
+
+  it('shows "Issue certificate" button when application is COMPLETED and user has certificates.manage', async () => {
+    mockPermissions = ['applications.view_all', 'certificates.manage'];
+    mockAppStatus = 'COMPLETED';
+    render(<ApplicationDetailView id="app1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Issue certificate')).toBeInTheDocument();
+    });
+
+    const link = screen.getByText('Issue certificate').closest('a');
+    expect(link).toHaveAttribute('href', expect.stringContaining('/certificates/new?applicationId=app1'));
+    expect(link).toHaveAttribute('href', expect.stringContaining('organizationName=Acme%20Pvt%20Ltd'));
+    expect(link).toHaveAttribute('href', expect.stringContaining('entityId=ent-1'));
+  });
+
+  it('does not show "Issue certificate" button when user lacks certificates.manage permission', async () => {
+    mockPermissions = ['applications.view_all'];
+    mockAppStatus = 'COMPLETED';
+    render(<ApplicationDetailView id="app1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Application APP-1')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Issue certificate')).not.toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { CertificationBodyRow } from '@biznexa/types';
 import { Button, Field, Notice, Select } from '@biznexa/ui';
@@ -30,6 +30,8 @@ export type CertificateCreateDraft = {
   certificationBodyId: string;
   showPdfPublicly: boolean;
   fileId?: string;
+  applicationId?: string;
+  businessEntityId?: string;
 };
 
 export function validateCertificateCreate(draft: CertificateCreateDraft): Record<string, string> {
@@ -49,6 +51,11 @@ export function validateCertificateCreate(draft: CertificateCreateDraft): Record
 function CertificateForm() {
   const api = useApi();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const applicationIdParam = searchParams?.get('applicationId') || '';
+  const organizationNameParam = searchParams?.get('organizationName') || '';
+  const entityIdParam = searchParams?.get('entityId') || searchParams?.get('businessEntityId') || '';
+
   const [bodies, setBodies] = useState<CertificationBodyRow[]>([]);
   const [loadError, setLoadError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -66,7 +73,7 @@ function CertificateForm() {
   const [draft, setDraft] = useState<CertificateCreateDraft>({
     certificateNumber: '',
     type: 'ISO 9001:2015 — Quality Management System',
-    organizationName: '',
+    organizationName: organizationNameParam,
     scope: '',
     address: '',
     issueDate: todayStr,
@@ -75,6 +82,8 @@ function CertificateForm() {
     certificationBodyId: '',
     showPdfPublicly: false,
     fileId: undefined,
+    applicationId: applicationIdParam || undefined,
+    businessEntityId: entityIdParam || undefined,
   });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,6 +130,29 @@ function CertificateForm() {
     };
   }, [api]);
 
+  useEffect(() => {
+    if (!applicationIdParam) return;
+    let cancelled = false;
+    api
+      .call((c) => c.GET('/api/admin/applications/{id}', { params: { path: { id: applicationIdParam } } }))
+      .then((app) => {
+        if (cancelled || !app) return;
+        const appDetail = app as import('@biznexa/types').AdminApplicationDetail;
+        const orgName = appDetail.businessEntity?.legalName || appDetail.customer?.name || '';
+        const bId = appDetail.businessEntity?.id || undefined;
+        setDraft((d) => ({
+          ...d,
+          organizationName: d.organizationName || orgName,
+          businessEntityId: d.businessEntityId || bId,
+          applicationId: applicationIdParam,
+        }));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [api, applicationIdParam]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError('');
@@ -143,6 +175,8 @@ function CertificateForm() {
             certificationBodyId: draft.certificationBodyId,
             showPdfPublicly: draft.showPdfPublicly,
             fileId: draft.fileId || undefined,
+            applicationId: draft.applicationId || undefined,
+            businessEntityId: draft.businessEntityId || undefined,
           },
         }),
       );
@@ -173,6 +207,14 @@ function CertificateForm() {
 
       <h1 className="mt-2 text-2xl font-bold tracking-[-0.02em]">Issue new certificate</h1>
       <p className="mt-1 text-muted">Record an issued certificate to enable online QR and number verification.</p>
+
+      {draft.applicationId && (
+        <div className="mt-4">
+          <Notice tone="info">
+            Issuing certificate for application <strong>{draft.applicationId}</strong>.
+          </Notice>
+        </div>
+      )}
 
       {loadError && (
         <div className="mt-4">

@@ -105,6 +105,7 @@ export const adminApplicationDetailSchema = z.object({
 
   businessEntity: z.object({
     id: z.string().uuid(),
+    legalName: z.string().optional(),
     maskedPan: z.string().nullable(),
   }).nullable(),
 

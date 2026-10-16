@@ -30,6 +30,16 @@ describe('validateCertificateCreate (M7.1)', () => {
     expect(Object.keys(errs)).toHaveLength(0);
   });
 
+  it('accepts optional applicationId and businessEntityId when issuing from application', () => {
+    const draftFromApp: CertificateCreateDraft = {
+      ...validDraft,
+      applicationId: '33333333-4444-5555-6666-777777777777',
+      businessEntityId: '44444444-5555-6666-7777-888888888888',
+    };
+    const errs = validateCertificateCreate(draftFromApp);
+    expect(Object.keys(errs)).toHaveLength(0);
+  });
+
   it('requires type, organisation, dates, and certification body', () => {
     const emptyDraft: CertificateCreateDraft = {
       certificateNumber: '',
