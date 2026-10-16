@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { ApplicationDetailView } from './application-detail-view';
 
 export const metadata: Metadata = {
@@ -12,5 +13,15 @@ export default async function ApplicationDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ApplicationDetailView applicationId={id} />;
+  return (
+    <Suspense
+      fallback={
+        <div className="rounded-lg border border-rule bg-white p-10 text-center text-sm text-muted" role="status">
+          Loading application details…
+        </div>
+      }
+    >
+      <ApplicationDetailView applicationId={id} />
+    </Suspense>
+  );
 }

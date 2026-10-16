@@ -1,18 +1,44 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
+  conditionMet,
   formatDate,
+  formatINR,
+  isEmptyValue,
+  type ApplicationDetail,
   type CustomerApplicationTimeline,
   type CustomerStageState,
   type CustomerTimelineStage,
+  type DeliverableList,
+  type DocumentChecklist,
+  type FormAddress,
+  type FormField,
+  type FormLeafField,
+  type InvoiceSummary,
+  type PaymentStatusView,
 } from '@biznexa/types';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
-import { Badge, EmptyState, LinkButton, Notice, type Tone } from '@biznexa/ui';
+import { Badge, Button, EmptyState, LinkButton, Notice, type Tone } from '@biznexa/ui';
+import { DocumentRow } from '@/components/document-row';
 import { Icon } from '@/components/icons';
 import { applicationStatusTone } from '../../services/services-view';
+
+type DetailTab = 'documents' | 'form' | 'payments' | 'deliverables';
+
+const DETAIL_TABS: readonly { key: DetailTab; label: string }[] = [
+  { key: 'documents', label: 'Documents' },
+  { key: 'form', label: 'Form' },
+  { key: 'payments', label: 'Payments' },
+  { key: 'deliverables', label: 'Deliverables' },
+];
+
+function isDetailTab(value: string | null): value is DetailTab {
+  return value === 'documents' || value === 'form' || value === 'payments' || value === 'deliverables';
+}
 
 function stageStateBadge(state: CustomerStageState): { label: string; tone: Tone } {
   switch (state) {
@@ -56,30 +82,113 @@ function StageStepIcon({ stage, index }: { stage: CustomerTimelineStage; index: 
   );
 }
 
+function formatAddressValue(val: unknown): string {
+  if (!val || typeof val !== 'object') return '—';
+  const addr = val as Partial<FormAddress>;
+  const parts = [addr.line1, addr.line2, addr.city, addr.state, addr.pincode]
+    .map((p) => (typeof p === 'string' ? p.trim() : ''))
+    .filter(Boolean);
+  return parts.length > 0 ? parts.join(', ') : '—';
+}
+
+function ReadOnlyLeafAnswer({
+  field,
+  value,
+  onOpenFile,
+}: {
+  field: FormLeafField;
+  value: unknown;
+  onOpenFile: (fileId: string) => void;
+}) {
+  if (isEmptyValue(value)) {
+    return <span className="text-muted">—</span>;
+  }
+
+  if (field.type === 'address') {
+    return <span className="text-night">{formatAddressValue(value)}</span>;
+  }
+
+  if (field.type === 'multi-select' && Array.isArray(value)) {
+    return <span className="text-night">{value.map(String).join(', ')}</span>;
+  }
+
+  if (field.type === 'file') {
+    const ids = Array.isArray(value) ? value.filter((x): x is string => typeof x === 'string') : typeof value === 'string' ? [value] : [];
+    if (ids.length === 0) return <span className="text-muted">—</span>;
+    return (
+      <div className="flex flex-wrap gap-2">
+        {ids.map((id, i) => (
+          <Button key={id} type="button" variant="outline" size="sm" onClick={() => onOpenFile(id)}>
+            View file {ids.length > 1 ? i + 1 : ''}
+          </Button>
+        ))}
+      </div>
+    );
+  }
+
+  return <span className="whitespace-pre-wrap text-night">{String(value)}</span>;
+}
+
 export function ApplicationDetailView({ applicationId }: { applicationId: string }) {
   const api = useApi();
+  const searchParams = useSearchParams();
+  const queryTab = searchParams.get('tab');
+
+  const [activeTab, setActiveTab] = useState<DetailTab>(() => (isDetailTab(queryTab) ? queryTab : 'documents'));
+  const [lastQueryTab, setLastQueryTab] = useState<string | null>(queryTab);
+
+  if (queryTab !== lastQueryTab) {
+    setLastQueryTab(queryTab);
+    if (isDetailTab(queryTab)) {
+      setActiveTab(queryTab);
+    }
+  }
+
   const [loadedForId, setLoadedForId] = useState<string>(applicationId);
   const [timeline, setTimeline] = useState<CustomerApplicationTimeline | null>(null);
+  const [formDetail, setFormDetail] = useState<ApplicationDetail | null>(null);
+  const [checklist, setChecklist] = useState<DocumentChecklist | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatusView | null>(null);
+  const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
+  const [deliverables, setDeliverables] = useState<DeliverableList>([]);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   if (loadedForId !== applicationId) {
     setLoadedForId(applicationId);
     setTimeline(null);
+    setFormDetail(null);
+    setChecklist(null);
+    setPaymentStatus(null);
+    setInvoices([]);
+    setDeliverables([]);
     setError(null);
+    setActionError(null);
   }
 
   useEffect(() => {
     let cancelled = false;
+    const path = { params: { path: { id: applicationId } } };
 
-    api
-      .call<CustomerApplicationTimeline>((c) =>
-        c.GET('/api/applications/{id}/timeline', {
-          params: { path: { id: applicationId } },
-        }),
-      )
-      .then((res) => {
+    Promise.all([
+      api.call<CustomerApplicationTimeline>((c) => c.GET('/api/applications/{id}/timeline', path)),
+      api.call<ApplicationDetail>((c) => c.GET('/api/applications/{id}', path)).catch(() => null),
+      api.call<DocumentChecklist>((c) => c.GET('/api/applications/{id}/documents', path)).catch(() => null),
+      api.call<PaymentStatusView>((c) => c.GET('/api/applications/{id}/payment', path)).catch(() => null),
+      api
+        .call<InvoiceSummary[]>((c) => c.GET('/api/invoices', { params: { query: { applicationId } } }))
+        .catch(() => []),
+      api.call<DeliverableList>((c) => c.GET('/api/applications/{id}/deliverables', path)).catch(() => []),
+    ])
+      .then(([tl, fd, docs, pay, invs, delivs]) => {
         if (!cancelled) {
-          setTimeline(res);
+          setTimeline(tl);
+          setFormDetail(fd);
+          setChecklist(docs);
+          setPaymentStatus(pay);
+          setInvoices(invs);
+          setDeliverables(delivs);
           setError(null);
         }
       })
@@ -93,6 +202,54 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
       cancelled = true;
     };
   }, [api, applicationId]);
+
+  async function openFileLink(fileId: string, disposition: 'inline' | 'attachment') {
+    setActionError(null);
+    setDownloadingId(fileId);
+    const tab = window.open('', '_blank');
+    try {
+      const link = await api.call<{ url: string }>((c) =>
+        c.POST('/api/files/{id}/link', {
+          params: { path: { id: fileId }, query: { disposition } },
+        }),
+      );
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = link.url;
+      } else {
+        window.location.assign(link.url);
+      }
+    } catch (err: unknown) {
+      tab?.close();
+      setActionError(err instanceof ClientApiError ? err.message : 'Could not open file.');
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+  async function downloadInvoice(invoiceId: string) {
+    setActionError(null);
+    setDownloadingId(invoiceId);
+    const tab = window.open('', '_blank');
+    try {
+      const link = await api.call<{ url: string }>((c) =>
+        c.POST('/api/invoices/{id}/link', {
+          params: { path: { id: invoiceId } },
+        }),
+      );
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = link.url;
+      } else {
+        window.location.assign(link.url);
+      }
+    } catch (err: unknown) {
+      tab?.close();
+      setActionError(err instanceof ClientApiError ? err.message : 'Could not download invoice.');
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   const loading = timeline === null && !error;
 
@@ -114,6 +271,8 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
       </div>
     );
   }
+
+  const pendingMandatory = checklist?.pendingMandatory ?? 0;
 
   return (
     <div className="min-w-0 space-y-6">
@@ -147,7 +306,10 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
             </p>
           </div>
           {timeline.assignedExpert && (
-            <div className="shrink-0 rounded-md border border-rule bg-paper px-3.5 py-2 text-xs">
+            <div
+              className="shrink-0 rounded-md border border-rule bg-paper px-3.5 py-2 text-xs"
+              data-testid="assigned-expert"
+            >
               <p className="font-semibold uppercase tracking-[0.06em] text-muted">Assigned expert</p>
               <p className="mt-0.5 text-sm font-semibold text-night">{timeline.assignedExpert.name}</p>
             </div>
@@ -247,9 +409,7 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-night">{item.statusLabel}</span>
-                      {item.stageName && (
-                        <span className="text-muted">· {item.stageName}</span>
-                      )}
+                      {item.stageName && <span className="text-muted">· {item.stageName}</span>}
                     </div>
                     {item.note && <p className="text-ink">{item.note}</p>}
                   </div>
@@ -260,6 +420,357 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
           </div>
         )}
       </section>
+
+      {actionError && <Notice tone="error">{actionError}</Notice>}
+
+      {/* Detail Tabs (M5.5) */}
+      <div className="space-y-4">
+        <div
+          role="tablist"
+          aria-label="Application sections"
+          className="flex gap-1 overflow-x-auto border-b border-rule"
+        >
+          {DETAIL_TABS.map((t) => {
+            const selected = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setActiveTab(t.key)}
+                className={` inline-flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  selected
+                    ? 'border-ink text-ink'
+                    : 'border-transparent text-muted hover:border-rule hover:text-night'
+                }`}
+              >
+                <span>{t.label}</span>
+                {t.key === 'documents' && pendingMandatory > 0 && (
+                  <Badge tone="warning">{pendingMandatory}</Badge>
+                )}
+                {t.key === 'deliverables' && deliverables.length > 0 && (
+                  <Badge tone="success">{deliverables.length}</Badge>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tab: Documents */}
+        {activeTab === 'documents' && (
+          <section aria-label="Documents" className="space-y-5">
+            {!checklist ? (
+              <div className="rounded-lg border border-rule bg-white p-6 text-sm text-muted">
+                No document checklist available for this application.
+              </div>
+            ) : (
+              <>
+                {!checklist.canUpload && (
+                  <Notice tone="info">
+                    This application is past the document upload stage, so documents are read-only.
+                  </Notice>
+                )}
+
+                {checklist.additional.length > 0 && (
+                  <div className="space-y-3" aria-labelledby="requested-by-team-heading">
+                    <div>
+                      <h2 id="requested-by-team-heading" className="text-base font-bold text-night">
+                        Requested by our team
+                      </h2>
+                      <p className="text-xs text-muted">
+                        Our team requested these additional documents to continue processing your application.
+                      </p>
+                    </div>
+                    <ul className="space-y-3">
+                      {checklist.additional.map((item) => (
+                        <DocumentRow
+                          key={item.request.id}
+                          target={{ kind: 'additional', item }}
+                          applicationId={applicationId}
+                          canUpload={checklist.canUpload}
+                          onChange={setChecklist}
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {checklist.items.length === 0 ? (
+                  checklist.additional.length === 0 && (
+                    <EmptyState
+                      className="rounded-lg border border-rule bg-white p-8"
+                      title="No documents required"
+                      description="This service does not require any document uploads."
+                    />
+                  )
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h2 className="text-base font-bold text-night">Document Checklist</h2>
+                      {pendingMandatory > 0 && (
+                        <span className="text-xs font-semibold text-amber-700">
+                          {pendingMandatory === 1
+                            ? '1 required document pending'
+                            : `${pendingMandatory} required documents pending`}
+                        </span>
+                      )}
+                    </div>
+                    <ul className="space-y-3">
+                      {checklist.items.map((item) => (
+                        <DocumentRow
+                          key={item.requirement.id}
+                          target={{ kind: 'requirement', item }}
+                          applicationId={applicationId}
+                          canUpload={checklist.canUpload}
+                          onChange={setChecklist}
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        )}
+
+        {/* Tab: Form (read-only answers) */}
+        {activeTab === 'form' && (
+          <section aria-label="Form answers" className="space-y-4">
+            {!formDetail ? (
+              <div className="rounded-lg border border-rule bg-white p-6 text-sm text-muted">
+                No form answers available for this application.
+              </div>
+            ) : (
+              formDetail.formSchema.steps.map((step, stepIdx) => {
+                const formData = formDetail.formData ?? {};
+                const visibleFields = step.fields.filter(
+                  (f: FormField) => !f.showIf || conditionMet(f.showIf, formData),
+                );
+                return (
+                  <div
+                    key={`${step.title}-${stepIdx}`}
+                    className="rounded-lg border border-rule bg-white p-5 sm:p-6"
+                  >
+                    <h2 className="border-b border-rule pb-3 text-base font-bold text-night">{step.title}</h2>
+                    {step.description && <p className="mt-1 text-xs text-muted">{step.description}</p>}
+                    {visibleFields.length === 0 ? (
+                      <p className="mt-3 text-sm text-muted">No fields in this section.</p>
+                    ) : (
+                      <dl className="mt-4 divide-y divide-rule text-sm">
+                        {visibleFields.map((field: FormField) => {
+                          const rawVal = formData[field.name];
+                          if (field.type === 'repeater') {
+                            const rows = Array.isArray(rawVal)
+                              ? rawVal.filter((r): r is Record<string, unknown> => typeof r === 'object' && r !== null)
+                              : [];
+                            return (
+                              <div key={field.name} className="py-3 first:pt-0 last:pb-0">
+                                <dt className="font-semibold text-muted">{field.label}</dt>
+                                <dd className="mt-2 space-y-3">
+                                  {rows.length === 0 ? (
+                                    <span className="text-muted">—</span>
+                                  ) : (
+                                    rows.map((row, rowIdx) => (
+                                      <div
+                                        key={rowIdx}
+                                        className="rounded-md border border-rule bg-paper/60 p-3 text-xs"
+                                      >
+                                        <p className="mb-2 font-bold text-ink">
+                                          {field.itemLabel} {rowIdx + 1}
+                                        </p>
+                                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                          {field.fields
+                                            .filter((sub) => !sub.showIf || conditionMet(sub.showIf, row))
+                                            .map((sub) => (
+                                              <div key={sub.name}>
+                                                <span className="text-muted">{sub.label}: </span>
+                                                <ReadOnlyLeafAnswer
+                                                  field={sub}
+                                                  value={row[sub.name]}
+                                                  onOpenFile={(fid) => void openFileLink(fid, 'inline')}
+                                                />
+                                              </div>
+                                            ))}
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </dd>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div
+                              key={field.name}
+                              className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:justify-between sm:gap-4"
+                            >
+                              <dt className="font-medium text-muted">{field.label}</dt>
+                              <dd className="sm:text-right">
+                                <ReadOnlyLeafAnswer
+                                  field={field}
+                                  value={rawVal}
+                                  onOpenFile={(fid) => void openFileLink(fid, 'inline')}
+                                />
+                              </dd>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </section>
+        )}
+
+        {/* Tab: Payments */}
+        {activeTab === 'payments' && (
+          <section aria-label="Payments and invoices" className="space-y-5">
+            {!paymentStatus ? (
+              <div className="rounded-lg border border-rule bg-white p-6 text-sm text-muted">
+                Payment details are not available for this application yet.
+              </div>
+            ) : (
+              <div className="rounded-lg border border-rule bg-white p-5 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-rule pb-4">
+                  <div>
+                    <h2 className="text-base font-bold text-night">Order Summary</h2>
+                    <p className="mt-0.5 text-xs text-muted">
+                      Order <span className="num font-mono font-semibold text-ink">{paymentStatus.orderCode}</span> ·{' '}
+                      {paymentStatus.orderStatus}
+                    </p>
+                  </div>
+                  {paymentStatus.balance > 0 && timeline.status !== 'CANCELLED' && (
+                    <LinkButton
+                      href={`/apply/${timeline.serviceSlug}/${applicationId}/payment`}
+                      variant="primary"
+                      size="sm"
+                    >
+                      Pay balance ({formatINR(paymentStatus.balance)})
+                    </LinkButton>
+                  )}
+                </div>
+
+                <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="rounded-md border border-rule bg-paper/50 p-3.5">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Order total</dt>
+                    <dd className="num mt-1 text-lg font-bold text-night">{formatINR(paymentStatus.total)}</dd>
+                  </div>
+                  <div className="rounded-md border border-rule bg-paper/50 p-3.5">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Paid</dt>
+                    <dd className="num mt-1 text-lg font-bold text-emerald-700">
+                      {formatINR(paymentStatus.amountPaid)}
+                    </dd>
+                  </div>
+                  <div className="rounded-md border border-rule bg-paper/50 p-3.5">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.06em] text-muted">Balance</dt>
+                    <dd
+                      className={`num mt-1 text-lg font-bold ${
+                        paymentStatus.balance > 0 ? 'text-amber-700' : 'text-night'
+                      }`}
+                    >
+                      {formatINR(paymentStatus.balance)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            )}
+
+            <div className="rounded-lg border border-rule bg-white p-5 sm:p-6">
+              <h2 className="text-base font-bold text-night">GST Invoices</h2>
+              <p className="mt-0.5 text-xs text-muted">
+                Official tax invoices issued for completed payments on this application.
+              </p>
+
+              {invoices.length === 0 ? (
+                <p className="mt-4 text-sm text-muted">No invoices issued yet.</p>
+              ) : (
+                <ul className="mt-4 divide-y divide-rule">
+                  {invoices.map((inv) => (
+                    <li
+                      key={inv.id}
+                      className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="num font-mono text-sm font-bold text-night">{inv.number}</p>
+                        <p className="text-xs text-muted">
+                          Issued {formatDate(inv.issuedAt)} · {formatINR(inv.total)}
+                        </p>
+                      </div>
+                      <div>
+                        {inv.pdfReady ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={downloadingId === inv.id}
+                            onClick={() => void downloadInvoice(inv.id)}
+                          >
+                            <Icon name="download" size={15} />
+                            <span>{downloadingId === inv.id ? 'Opening…' : 'Download invoice'}</span>
+                          </Button>
+                        ) : (
+                          <Badge tone="neutral">Generating PDF…</Badge>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Tab: Deliverables */}
+        {activeTab === 'deliverables' && (
+          <section aria-label="Deliverables" className="rounded-lg border border-rule bg-white p-5 sm:p-6">
+            <h2 className="text-base font-bold text-night">Final Deliverables</h2>
+            <p className="mt-0.5 text-xs text-muted">
+              Official certificates, registrations, and filings uploaded by our team upon completion.
+            </p>
+
+            {deliverables.length === 0 ? (
+              <EmptyState
+                className="mt-4 py-8"
+                icon={<Icon name="download" size={32} className="text-ink/40" />}
+                title="No deliverables yet"
+                description="Once our team completes your application, your final documents will be ready to download here."
+              />
+            ) : (
+              <ul className="mt-4 divide-y divide-rule">
+                {deliverables.map((d) => (
+                  <li
+                    key={d.id}
+                    className="flex flex-col gap-3 py-3.5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-night">{d.title}</p>
+                      <p className="truncate text-xs text-muted">
+                        {d.fileName} · Uploaded {formatDate(d.createdAt)}
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      <Button
+                        type="button"
+                        variant="ink"
+                        size="sm"
+                        disabled={downloadingId === d.fileId}
+                        onClick={() => void openFileLink(d.fileId, 'attachment')}
+                      >
+                        <Icon name="download" size={15} />
+                        <span>{downloadingId === d.fileId ? 'Opening…' : 'Download'}</span>
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   );
 }
