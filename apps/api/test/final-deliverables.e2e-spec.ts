@@ -1,6 +1,7 @@
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import { type ApplicationStatus } from '@biznexa/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -11,7 +12,7 @@ describe('Final Deliverables API', () => {
   let prisma: PrismaService;
   let http: ReturnType<typeof request>;
 
-  const run = Date.now();
+  const run = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
   let adminId: string, adminToken: string;
   let opsId: string, opsToken: string;
   let supportId: string, supportToken: string;
@@ -48,11 +49,13 @@ describe('Final Deliverables API', () => {
       return { token: res.body.accessToken, id: user.id };
     }
 
-    const c1 = await doRegister('C1', `deliverables-c1-${run}@example.com`, `9911${run.toString().slice(-6)}`);
+    const mobileSuffix = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0');
+    const c1 = await doRegister('C1', `deliverables-c1-${run}@example.com`, `9911${mobileSuffix}`);
     customerToken = c1.token;
     customerId = c1.id;
 
-    const c2 = await doRegister('C2', `deliverables-c2-${run}@example.com`, `9922${run.toString().slice(-6)}`);
+    const otherMobileSuffix = String((Number(mobileSuffix) + 1) % 1_000_000).padStart(6, '0');
+    const c2 = await doRegister('C2', `deliverables-c2-${run}@example.com`, `9922${otherMobileSuffix}`);
     otherCustomerToken = c2.token;
     otherCustomerId = c2.id;
   });
@@ -72,7 +75,7 @@ describe('Final Deliverables API', () => {
     }
   });
 
-  async function createTestApp(status: any, assignedToId: string | null = null, codeStr: string) {
+  async function createTestApp(status: ApplicationStatus, assignedToId: string | null = null, codeStr: string) {
     const s = await prisma.service.findFirstOrThrow({ where: { isActive: true } });
     const p = await prisma.servicePackage.findFirstOrThrow({ where: { serviceId: s.id } });
 
@@ -226,5 +229,26 @@ describe('Final Deliverables API', () => {
     });
     expect(logs).toHaveLength(1);
     expect((logs[0].after as any).fileId).toBe(fileId);
+  });
+
+  it('refuses DELIVERED without a final deliverable and accepts it once one exists', async () => {
+    const without = await createTestApp('COMPLETED', null, 'delivered-without');
+    await http.post(`/api/admin/applications/${without.id}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ to: 'DELIVERED' })
+      .expect(409);
+    expect((await prisma.application.findUniqueOrThrow({ where: { id: without.id } })).status).toBe('COMPLETED');
+
+    const withDeliverable = await createTestApp('COMPLETED', null, 'delivered-with');
+    const fileId = await uploadFile(adminToken);
+    await http.post(`/api/admin/applications/${withDeliverable.id}/deliverables`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ title: 'Final report', fileId })
+      .expect(201);
+    await http.post(`/api/admin/applications/${withDeliverable.id}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ to: 'DELIVERED' })
+      .expect(201);
+    expect((await prisma.application.findUniqueOrThrow({ where: { id: withDeliverable.id } })).status).toBe('DELIVERED');
   });
 });

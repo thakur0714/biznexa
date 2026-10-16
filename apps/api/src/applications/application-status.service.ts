@@ -57,6 +57,13 @@ export class ApplicationStatusService {
       throw new ConflictException(`An application that is “${APPLICATION_STATUS_LABEL[from]}” cannot be moved to “${APPLICATION_STATUS_LABEL[to]}”`);
     }
 
+    if (to === 'DELIVERED') {
+      const deliverables = await tx.finalDeliverable.count({ where: { applicationId } });
+      if (deliverables === 0) {
+        throw new ConflictException('Add at least one final deliverable before marking this application as delivered');
+      }
+    }
+
     const updated = await tx.application.updateMany({
       where: { id: applicationId, status: from },
       data: { status: to, ...(to === 'COMPLETED' ? { completedAt: new Date() } : {}), ...(stageId !== undefined ? { currentStageId: stageId } : {}) },
