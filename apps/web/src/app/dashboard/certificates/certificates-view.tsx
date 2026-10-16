@@ -189,7 +189,7 @@ export function CustomerCertificatesView() {
   }
 
   return (
-    <div className="mx-auto max-w-[1000px] min-w-0 px-4 py-8 sm:px-6">
+    <div className="min-w-0">
       <div className="mb-6">
         <Link
           href="/dashboard"

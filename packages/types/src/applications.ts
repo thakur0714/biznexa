@@ -8,8 +8,9 @@
  */
 import { z } from 'zod';
 import type { BusinessEntity } from './business-entities';
+import { canUploadDocuments } from './application-documents';
 import { fieldOptions, formSchema, type FormSchema } from './form-schema';
-import { APPLICATION_STATUSES } from './status';
+import { APPLICATION_STATUSES, type ApplicationStatus } from './status';
 
 /** First application number, so the first code is BN10001. */
 export const FIRST_APPLICATION_NUMBER = 10001;
@@ -162,3 +163,101 @@ export type CreateInternalNoteInput = z.infer<typeof createInternalNoteInput>;
 export const updateInternalNoteInput = createInternalNoteInput;
 export type UpdateInternalNoteInput = z.infer<typeof updateInternalNoteInput>;
 
+/** Customer My Services list (M5.3). */
+export const CUSTOMER_APPLICATION_TABS = ['active', 'completed', 'cancelled'] as const;
+export type CustomerApplicationTab = (typeof CUSTOMER_APPLICATION_TABS)[number];
+
+export const CUSTOMER_APPLICATION_NEXT_ACTIONS = ['upload_documents', 'pay_balance', 'download', 'view'] as const;
+export type CustomerApplicationNextAction = (typeof CUSTOMER_APPLICATION_NEXT_ACTIONS)[number];
+
+export const customerApplicationListQuery = z.object({
+  tab: z.enum(CUSTOMER_APPLICATION_TABS).default('active'),
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type CustomerApplicationListQuery = z.output<typeof customerApplicationListQuery>;
+
+export const customerApplicationRowSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string().regex(APPLICATION_CODE_PATTERN),
+  status: z.enum(APPLICATION_STATUSES),
+  statusLabel: z.string(),
+  serviceName: z.string(),
+  serviceSlug: z.string(),
+  packageName: z.string(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  nextAction: z.enum(CUSTOMER_APPLICATION_NEXT_ACTIONS),
+});
+export type CustomerApplicationRow = z.infer<typeof customerApplicationRowSchema>;
+
+export const customerApplicationListSchema = z.object({
+  items: z.array(customerApplicationRowSchema),
+  total: z.number().int().min(0),
+  page: z.number().int().min(1),
+  limit: z.number().int().min(1),
+});
+export type CustomerApplicationList = z.infer<typeof customerApplicationListSchema>;
+
+/** Context-aware action for a customer application row (M5.3). */
+export function customerNextAction(input: {
+  status: ApplicationStatus;
+  pendingMandatory: number;
+  orderBalance: number;
+}): CustomerApplicationNextAction {
+  const { status, pendingMandatory, orderBalance } = input;
+  if (status === 'COMPLETED' || status === 'DELIVERED') return 'download';
+  if (status === 'CANCELLED' || status === 'DRAFT') return 'view';
+  if (status === 'PAYMENT_PENDING') return 'pay_balance';
+  if (status === 'DOCUMENTS_PENDING' || (canUploadDocuments(status) && pendingMandatory > 0)) {
+    return 'upload_documents';
+  }
+  if (orderBalance > 0) return 'pay_balance';
+  return 'view';
+}
+
+/** Customer application timeline (M5.4). */
+export const CUSTOMER_STAGE_STATES = ['done', 'current', 'upcoming'] as const;
+export type CustomerStageState = (typeof CUSTOMER_STAGE_STATES)[number];
+
+export const customerTimelineStageSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable(),
+  sortOrder: z.number().int(),
+  state: z.enum(CUSTOMER_STAGE_STATES),
+  reachedAt: z.string().datetime().nullable(),
+});
+export type CustomerTimelineStage = z.infer<typeof customerTimelineStageSchema>;
+
+export const customerTimelineHistoryItemSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(APPLICATION_STATUSES),
+  statusLabel: z.string(),
+  stageId: z.string().uuid().nullable(),
+  stageName: z.string().nullable(),
+  note: z.string().nullable(),
+  changedAt: z.string().datetime(),
+});
+export type CustomerTimelineHistoryItem = z.infer<typeof customerTimelineHistoryItemSchema>;
+
+export const customerApplicationTimelineSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string().regex(APPLICATION_CODE_PATTERN),
+  status: z.enum(APPLICATION_STATUSES),
+  statusLabel: z.string(),
+  serviceId: z.string().uuid(),
+  serviceName: z.string(),
+  serviceSlug: z.string(),
+  packageId: z.string().uuid(),
+  packageName: z.string(),
+  currentStageId: z.string().uuid().nullable(),
+  assignedExpert: z.object({ name: z.string() }).nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  submittedAt: z.string().datetime().nullable(),
+  completedAt: z.string().datetime().nullable(),
+  stages: z.array(customerTimelineStageSchema),
+  history: z.array(customerTimelineHistoryItemSchema),
+});
+export type CustomerApplicationTimeline = z.infer<typeof customerApplicationTimelineSchema>;

@@ -1,17 +1,25 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  APPLICATION_STATUS_LABEL,
   calculatePrice,
+  customerNextAction,
   formatApplicationCode,
   formatOrderCode,
   formDataValidator,
   formFileIds,
   type ApplicationDetail,
+  type ApplicationStatus,
   type CreateApplicationData,
+  type CustomerApplicationList,
+  type CustomerApplicationListQuery,
+  type CustomerApplicationTimeline,
+  type CustomerStageState,
   type DraftApplication,
   type FormSchema,
 } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
+import { ApplicationDocumentsService } from './application-documents.service';
 
 const draftSelect = {
   id: true,
@@ -45,7 +53,210 @@ type DetailRow = Prisma.ApplicationGetPayload<{ select: typeof detailSelect }>;
  */
 @Injectable()
 export class ApplicationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly documents: ApplicationDocumentsService,
+  ) {}
+
+  /** Customer My Services list (M5.3): own applications filtered by tab, with context-aware nextAction. */
+  async list(customerId: string, q: CustomerApplicationListQuery): Promise<CustomerApplicationList> {
+    const statusFilter: Prisma.EnumApplicationStatusFilter | ApplicationStatus =
+      q.tab === 'completed'
+        ? { in: ['COMPLETED', 'DELIVERED'] }
+        : q.tab === 'cancelled'
+          ? 'CANCELLED'
+          : { notIn: ['DRAFT', 'COMPLETED', 'DELIVERED', 'CANCELLED'] };
+
+    const where: Prisma.ApplicationWhereInput = {
+      customerId,
+      status: statusFilter,
+    };
+
+    const [total, rows] = await Promise.all([
+      this.prisma.application.count({ where }),
+      this.prisma.application.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (q.page - 1) * q.limit,
+        take: q.limit,
+        select: {
+          id: true,
+          code: true,
+          status: true,
+          serviceId: true,
+          packageId: true,
+          createdAt: true,
+          updatedAt: true,
+          service: { select: { name: true, slug: true } },
+          package: { select: { name: true } },
+          order: { select: { total: true, amountPaid: true } },
+        },
+      }),
+    ]);
+
+    const items = await Promise.all(
+      rows.map(async (r) => {
+        const pendingMandatory = await this.documents.pendingMandatory({
+          id: r.id,
+          status: r.status,
+          serviceId: r.serviceId,
+          packageId: r.packageId,
+        });
+        const orderBalance = r.order ? Math.max(0, r.order.total - r.order.amountPaid) : 0;
+        return {
+          id: r.id,
+          code: r.code,
+          status: r.status,
+          statusLabel: APPLICATION_STATUS_LABEL[r.status],
+          serviceName: r.service.name,
+          serviceSlug: r.service.slug,
+          packageName: r.package.name,
+          createdAt: r.createdAt.toISOString(),
+          updatedAt: r.updatedAt.toISOString(),
+          nextAction: customerNextAction({
+            status: r.status,
+            pendingMandatory,
+            orderBalance,
+          }),
+        };
+      }),
+    );
+
+    return {
+      items,
+      total,
+      page: q.page,
+      limit: q.limit,
+    };
+  }
+
+  /**
+   * Customer application timeline (M5.4): header, service stages with done/current/upcoming states
+   * and dates, and ONLY history rows where visibleToCustomer = true (never internal notes or hidden history).
+   */
+  async timeline(customerId: string, id: string): Promise<CustomerApplicationTimeline> {
+    const app = await this.prisma.application.findFirst({
+      where: { id, customerId },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        currentStageId: true,
+        createdAt: true,
+        updatedAt: true,
+        submittedAt: true,
+        completedAt: true,
+        service: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            stages: {
+              select: { id: true, name: true, description: true, sortOrder: true },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        },
+        package: { select: { id: true, name: true } },
+        assignedTo: { select: { name: true } },
+        history: {
+          where: { visibleToCustomer: true },
+          select: {
+            id: true,
+            status: true,
+            stageId: true,
+            note: true,
+            changedAt: true,
+            stage: { select: { id: true, name: true, sortOrder: true } },
+          },
+          orderBy: [{ changedAt: 'asc' }, { id: 'asc' }],
+        },
+      },
+    });
+    if (!app) throw new NotFoundException('Application not found');
+
+    const stages = app.service.stages;
+    const stageReachedAt = new Map<string, Date>();
+    for (const h of app.history) {
+      if (h.stageId) {
+        stageReachedAt.set(h.stageId, h.changedAt);
+      }
+    }
+
+    const isDoneAll = app.status === 'COMPLETED' || app.status === 'DELIVERED';
+    let currentIndex = -1;
+    if (!isDoneAll) {
+      if (app.currentStageId) {
+        currentIndex = stages.findIndex((s) => s.id === app.currentStageId);
+      }
+      if (currentIndex === -1) {
+        stages.forEach((s, idx) => {
+          if (stageReachedAt.has(s.id)) currentIndex = idx;
+        });
+      }
+      if (currentIndex === -1 && app.status !== 'DRAFT' && app.status !== 'CANCELLED' && stages.length > 0) {
+        currentIndex = 0;
+      }
+    }
+
+    const stageItems = stages.map((s, idx) => {
+      let state: CustomerStageState = 'upcoming';
+      if (isDoneAll) {
+        state = 'done';
+      } else if (currentIndex !== -1) {
+        if (idx < currentIndex) state = 'done';
+        else if (idx === currentIndex) state = 'current';
+        else state = 'upcoming';
+      }
+
+      const directDate = stageReachedAt.get(s.id);
+      let reachedAt: string | null = null;
+      if (directDate) {
+        reachedAt = directDate.toISOString();
+      } else if (idx === 0 && state !== 'upcoming') {
+        reachedAt = (app.submittedAt ?? app.history[0]?.changedAt ?? app.createdAt).toISOString();
+      } else if (idx === stages.length - 1 && isDoneAll && app.completedAt) {
+        reachedAt = app.completedAt.toISOString();
+      }
+
+      return {
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        sortOrder: s.sortOrder,
+        state,
+        reachedAt,
+      };
+    });
+
+    return {
+      id: app.id,
+      code: app.code,
+      status: app.status,
+      statusLabel: APPLICATION_STATUS_LABEL[app.status],
+      serviceId: app.service.id,
+      serviceName: app.service.name,
+      serviceSlug: app.service.slug,
+      packageId: app.package.id,
+      packageName: app.package.name,
+      currentStageId: app.currentStageId,
+      assignedExpert: app.assignedTo ? { name: app.assignedTo.name } : null,
+      createdAt: app.createdAt.toISOString(),
+      updatedAt: app.updatedAt.toISOString(),
+      submittedAt: app.submittedAt ? app.submittedAt.toISOString() : null,
+      completedAt: app.completedAt ? app.completedAt.toISOString() : null,
+      stages: stageItems,
+      history: app.history.map((h) => ({
+        id: h.id,
+        status: h.status,
+        statusLabel: APPLICATION_STATUS_LABEL[h.status],
+        stageId: h.stageId,
+        stageName: h.stage?.name ?? null,
+        note: h.note ?? null,
+        changedAt: h.changedAt.toISOString(),
+      })),
+    };
+  }
 
   /**
    * Starts an application for a package, or returns the customer's unpaid draft for the same package and
