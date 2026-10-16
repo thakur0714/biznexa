@@ -6,6 +6,8 @@ const baseSchema = z
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().default(4000),
     PUBLIC_WEB_URL: z.string().url().default('http://localhost:3000'),
+    /** Admin panel origin, for links in notifications sent to staff. */
+    PUBLIC_ADMIN_URL: z.string().url().default('http://localhost:3001'),
     CORS_ORIGINS: z.string().default('http://localhost:3000'),
     DATABASE_URL: z.string().min(1),
     JWT_ACCESS_SECRET: z.string().min(16),
