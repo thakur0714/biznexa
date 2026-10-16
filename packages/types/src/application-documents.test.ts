@@ -63,6 +63,8 @@ describe('document checklist helpers (M3.10)', () => {
     ];
     expect(pendingMandatoryCount(items)).toBe(2);
     expect(pendingMandatoryCount([])).toBe(0);
+    // Documents staff asked for are always needed.
+    expect(pendingMandatoryCount(items, [{ current: null }, { current: doc() }, { current: doc({ status: 'REJECTED' }) }])).toBe(4);
   });
 
   it('accepts only a file id in the attach body', () => {

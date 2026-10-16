@@ -581,7 +581,10 @@ model ApplicationDocument {
   id              String                      @id @default(uuid())
   applicationId   String
   requirementId   String?
+  /// An additional document staff asked for (no requirement, M4.8): every version shares the first row's id here.
+  requestId       String?
   name            String
+  description     String? // what staff asked for, shown to the customer (additional documents only)
   fileKey         String?                     @unique // the StoredFile behind this version; one file backs one document
   fileName        String?
   mimeType        String?
@@ -599,6 +602,7 @@ model ApplicationDocument {
   file            StoredFile?                 @relation(fields: [fileKey], references: [fileKey], onDelete: Restrict) // keep every version's file
 
   @@unique([applicationId, requirementId, version]) // a replacement is version N+1, never a second N (M3.10)
+  @@unique([requestId, version]) // the same for additional documents, whose requirementId is null
   @@index([applicationId])
   @@index([status])
 }

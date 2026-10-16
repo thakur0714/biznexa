@@ -1380,6 +1380,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/applications/{id}/documents/additional/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ApplicationDocumentsController_attachAdditional"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/applications/{id}/documents/{requirementId}": {
         parameters: {
             query?: never;
@@ -2852,6 +2868,57 @@ export interface components {
                     isMandatory: boolean;
                     acceptedTypes: string[];
                     maxSizeMb: number;
+                };
+                current: {
+                    /** Format: uuid */
+                    id: string;
+                    version: number;
+                    /** @enum {string} */
+                    status: "REQUIRED" | "UPLOADED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+                    rejectionReason: string | null;
+                    /** Format: uuid */
+                    fileId: string;
+                    fileName: string;
+                    mimeType: string;
+                    sizeBytes: number;
+                    /**
+                     * @description INFECTED means the file was removed: upload a clean copy
+                     * @enum {string}
+                     */
+                    scanStatus: "PENDING" | "CLEAN" | "INFECTED";
+                    /** Format: date-time */
+                    uploadedAt: string;
+                } | null;
+                previous: {
+                    /** Format: uuid */
+                    id: string;
+                    version: number;
+                    /** @enum {string} */
+                    status: "REQUIRED" | "UPLOADED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+                    rejectionReason: string | null;
+                    /** Format: uuid */
+                    fileId: string;
+                    fileName: string;
+                    mimeType: string;
+                    sizeBytes: number;
+                    /**
+                     * @description INFECTED means the file was removed: upload a clean copy
+                     * @enum {string}
+                     */
+                    scanStatus: "PENDING" | "CLEAN" | "INFECTED";
+                    /** Format: date-time */
+                    uploadedAt: string;
+                }[];
+                canReplace: boolean;
+            }[];
+            additional: {
+                request: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                    description: string | null;
+                    /** Format: date-time */
+                    requestedAt: string;
                 };
                 current: {
                     /** Format: uuid */
@@ -7509,6 +7576,56 @@ export interface operations {
             };
             /** @description No such application among yours (another customer’s application looks the same) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ApplicationDocumentsController_attachAdditional: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    fileId: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentChecklist"];
+                };
+            };
+            /** @description The file is not yours, was uploaded for a checklist document, is already attached, or had a virus (`errors[].field` is `fileId`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such application among yours, or no such request on it */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The application is past the document step, or this document is under review or approved */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
