@@ -178,44 +178,15 @@ export class AdminCustomersService {
   }
 
   async changeStatus(id: string, input: AdminCustomerStatusInput, actorId: string): Promise<AdminCustomerRow> {
-    const user = await this.prisma.user.findFirst({
-      where: { id, roles: { some: { role: { key: 'CUSTOMER' } } } },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        mobile: true,
-        status: true,
-        createdAt: true,
-      },
-    });
-
-    if (!user) {
-      throw new NotFoundException('Customer not found');
-    }
-
-    if (user.status === 'PENDING_DELETION') {
-      throw new ConflictException('Cannot change status of a customer pending deletion');
-    }
-
-    if (user.status === input.status) {
-      throw new ConflictException(`Customer is already ${input.status}`);
-    }
-
+    const select = { id: true, name: true, email: true, mobile: true, status: true, createdAt: true } as const;
     const updatedUser = await this.prisma.$transaction(async (tx) => {
-      const u = await tx.user.update({
-        where: { id },
-        data: { status: input.status },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          mobile: true,
-          status: true,
-          createdAt: true,
-        },
-      });
+      // Read and write in one transaction, so two staff changing the status at once can't both pass the checks.
+      const user = await tx.user.findFirst({ where: { id, roles: { some: { role: { key: 'CUSTOMER' } } } }, select });
+      if (!user) throw new NotFoundException('Customer not found');
+      if (user.status === 'PENDING_DELETION') throw new ConflictException('Cannot change status of a customer pending deletion');
+      if (user.status === input.status) throw new ConflictException(`Customer is already ${input.status}`);
 
+      const u = await tx.user.update({ where: { id, status: user.status }, data: { status: input.status }, select });
       await this.audit.log(
         {
           actorId,
@@ -225,9 +196,8 @@ export class AdminCustomersService {
           before: { status: user.status },
           after: { status: input.status, reason: input.reason },
         },
-        tx
+        tx,
       );
-
       return u;
     });
 
