@@ -27,7 +27,7 @@ import {
 } from '@biznexa/types';
 import { AuditService } from '../audit/audit.service';
 import { EventBus } from '../events/event-bus';
-import type { Prisma } from '../generated/prisma/client';
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -229,8 +229,8 @@ export class TicketsService {
         });
 
         return this.toSummaryDto(ticket);
-      } catch (e: any) {
-        if (e.code === 'P2002' && attempts < 9) {
+      } catch (e: unknown) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002' && attempts < 9) {
           attempts++;
           await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 25) + 5));
           continue;
@@ -300,10 +300,11 @@ export class TicketsService {
 
     const { msg, updatedTicket } = await this.prisma.$transaction(async (tx) => {
       let t = ticket;
-      if (ticket.status === 'RESOLVED') {
+      // The customer answered: back to the team (RESOLVED → reopened, WAITING_FOR_CUSTOMER → their turn again).
+      if (ticket.status === 'RESOLVED' || ticket.status === 'WAITING_FOR_CUSTOMER') {
         t = await tx.ticket.update({
           where: { id: ticket.id },
-          data: { status: 'OPEN', resolvedAt: null },
+          data: { status: 'IN_PROGRESS', resolvedAt: null },
         });
       }
 

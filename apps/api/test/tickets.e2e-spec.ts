@@ -412,7 +412,7 @@ describe('M9.1 Ticket API and State Machine (e2e)', () => {
       expect(res.body.resolvedAt).not.toBeNull();
     });
 
-    it('customer reply on RESOLVED ticket reopens it to OPEN', async () => {
+    it('customer reply on RESOLVED ticket reopens it to IN_PROGRESS', async () => {
       await http
         .post(`/api/tickets/${ticketAId}/messages`)
         .set(as(userA.token))
@@ -420,8 +420,14 @@ describe('M9.1 Ticket API and State Machine (e2e)', () => {
         .expect(201);
 
       const ticket = await prisma.ticket.findUniqueOrThrow({ where: { id: ticketAId } });
-      expect(ticket.status).toBe('OPEN');
+      expect(ticket.status).toBe('IN_PROGRESS');
       expect(ticket.resolvedAt).toBeNull();
+    });
+
+    it('customer reply while WAITING_FOR_CUSTOMER hands it back to the team (IN_PROGRESS)', async () => {
+      await prisma.ticket.update({ where: { id: ticketAId }, data: { status: 'WAITING_FOR_CUSTOMER' } });
+      await http.post(`/api/tickets/${ticketAId}/messages`).set(as(userA.token)).send({ body: 'Here is the info.' }).expect(201);
+      expect((await prisma.ticket.findUniqueOrThrow({ where: { id: ticketAId } })).status).toBe('IN_PROGRESS');
     });
 
     it('staff closes ticket (OPEN -> CLOSED)', async () => {
