@@ -318,6 +318,59 @@ describe('Admin Application Documents (M4.8)', () => {
       .expect(404);
   });
 
+  it('a requested document: the customer sees it, uploads, re-uploads after a rejection, and approval completes the documents', async () => {
+    const PDF = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(2048, 0x20)]);
+    const upload = async (query = '') =>
+      (await http.post(`/api/files${query}`).set('Authorization', `Bearer ${customerToken}`).attach('file', PDF, 'proof.pdf').expect(201)).body.id as string;
+    const checklist = (id: string) => http.get(`/api/applications/${id}/documents`).set('Authorization', `Bearer ${customerToken}`);
+    const attach = (id: string, requestId: string, fileId: string) =>
+      http.post(`/api/applications/${id}/documents/additional/${requestId}`).set('Authorization', `Bearer ${customerToken}`).send({ fileId });
+
+    const a = await createTestApp(16, 'DOCUMENTS_UNDER_REVIEW');
+    const { doc: mandatory } = await createTestDoc(a.id);
+    await http.post(`/api/admin/documents/${mandatory.id}/approve`).set('Authorization', `Bearer ${adminToken}`).expect(201);
+    await http.post(`/api/admin/applications/${a.id}/documents`).set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Address proof', description: 'A utility bill from the last 3 months' }).expect(201);
+    expect((await prisma.application.findUniqueOrThrow({ where: { id: a.id } })).status).toBe('DOCUMENTS_PENDING');
+
+    let list = (await checklist(a.id).expect(200)).body;
+    expect(list.additional).toHaveLength(1);
+    const item = list.additional[0];
+    expect(item.request).toMatchObject({ name: 'Address proof', description: 'A utility bill from the last 3 months' });
+    expect(item.current).toBeNull();
+    expect(list.pendingMandatory).toBe(1);
+    const requestId: string = item.request.id;
+
+    // A file uploaded for a checklist requirement can't be used here; nor can another application's request.
+    expect((await attach(a.id, requestId, await upload(`?requirementId=${requirementId}`)).expect(400)).body.errors[0].field).toBe('fileId');
+    const other = await createTestApp(17, 'DOCUMENTS_PENDING');
+    await attach(other.id, requestId, await upload()).expect(404);
+
+    list = (await attach(a.id, requestId, await upload()).expect(201)).body;
+    expect(list.additional[0].current).toMatchObject({ version: 1, status: 'UPLOADED', fileName: 'proof.pdf' });
+    expect(list.pendingMandatory).toBe(0);
+
+    const queue = (await http.get('/api/admin/documents/review-queue?limit=100').set('Authorization', `Bearer ${adminToken}`).expect(200)).body;
+    const queued = queue.items.find((d: any) => d.application.id === a.id);
+    expect(queued).toMatchObject({ requirementId: null, name: 'Address proof', fileName: 'proof.pdf' });
+
+    await http.post(`/api/admin/documents/${queued.id}/reject`).set('Authorization', `Bearer ${adminToken}`).send({ reason: 'Older than 3 months' }).expect(201);
+    list = (await checklist(a.id).expect(200)).body;
+    expect(list.additional[0].current).toMatchObject({ status: 'REJECTED', rejectionReason: 'Older than 3 months' });
+    expect(list.pendingMandatory).toBe(1);
+
+    list = (await attach(a.id, requestId, await upload()).expect(201)).body;
+    expect(list.additional[0].current).toMatchObject({ version: 2, status: 'UPLOADED' });
+    expect(list.additional[0].previous).toHaveLength(1);
+
+    const latest = await prisma.applicationDocument.findFirstOrThrow({ where: { requestId, isLatest: true } });
+    await http.post(`/api/admin/documents/${latest.id}/approve`).set('Authorization', `Bearer ${adminToken}`).expect(201);
+    expect((await prisma.application.findUniqueOrThrow({ where: { id: a.id } })).status).toBe('DOCUMENTS_APPROVED');
+
+    // Approved documents can't be replaced.
+    await attach(a.id, requestId, await upload()).expect(409);
+  });
+
   it('requesting a document on an IN_PROGRESS application moves it to DOCUMENTS_PENDING', async () => {
     const a = await createTestApp(13, 'IN_PROGRESS');
     await http.post(`/api/admin/applications/${a.id}/documents`).set('Authorization', `Bearer ${adminToken}`).send({ name: 'Extra ID' }).expect(201);

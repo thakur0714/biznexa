@@ -55,17 +55,41 @@ export const documentChecklistItemSchema = z.object({
 });
 export type DocumentChecklistItem = z.infer<typeof documentChecklistItemSchema>;
 
+/**
+ * A document staff asked for on this application (M4.8), outside the service's checklist. Always needed;
+ * uploaded with `POST /api/files` (no `requirementId`, so the default types and size limit apply) and
+ * attached with `POST /api/applications/{id}/documents/additional/{requestId}`.
+ */
+export const additionalDocumentItemSchema = z.object({
+  request: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    description: z.string().nullable(),
+    requestedAt: z.string().datetime(),
+  }),
+  /** The newest upload, or null while nothing is uploaded yet. */
+  current: applicationDocumentSchema.nullable(),
+  previous: z.array(applicationDocumentSchema),
+  canReplace: z.boolean(),
+});
+export type AdditionalDocumentItem = z.infer<typeof additionalDocumentItemSchema>;
+
 export const documentChecklistSchema = z.object({
   applicationId: z.string().uuid(),
   /** Whether the customer can upload now (application not yet past document collection). */
   canUpload: z.boolean(),
   items: z.array(documentChecklistItemSchema),
-  /** Mandatory documents with no usable upload yet; > 0 means "Documents Pending". */
+  /** Documents staff asked for after submitting, oldest request first. */
+  additional: z.array(additionalDocumentItemSchema),
+  /** Mandatory and requested documents with no usable upload yet; > 0 means "Documents Pending". */
   pendingMandatory: z.number().int(),
 });
 export type DocumentChecklist = z.infer<typeof documentChecklistSchema>;
 
-/** Body of `POST /api/applications/{id}/documents/{requirementId}`: a file uploaded with `POST /api/files?requirementId=`. */
+/**
+ * Body of `POST /api/applications/{id}/documents/{requirementId}` (a file uploaded with `POST /api/files?requirementId=`)
+ * and of `POST /api/applications/{id}/documents/additional/{requestId}` (a file uploaded without `requirementId`).
+ */
 export const attachDocumentInput = z.object({ fileId: z.string({ required_error: 'Upload a file first' }).uuid('Upload a file first') }).strict();
 export type AttachDocumentInput = z.infer<typeof attachDocumentInput>;
 
@@ -76,11 +100,13 @@ export const canReplaceDocument = (status: (typeof DOCUMENT_STATUSES)[number]): 
  * Whether an item still needs the customer: nothing uploaded, the upload was rejected, or the virus
  * scan removed it. A file still being scanned counts as uploaded.
  */
-export function needsUpload(item: Pick<DocumentChecklistItem, 'current'>): boolean {
+export function needsUpload(item: Pick<DocumentChecklistItem | AdditionalDocumentItem, 'current'>): boolean {
   const c = item.current;
   return !c || c.status === 'REJECTED' || c.scanStatus === 'INFECTED';
 }
 
 /** Mandatory items that still need an upload — what "Documents Pending" means. */
-export const pendingMandatoryCount = (items: Pick<DocumentChecklistItem, 'current' | 'requirement'>[]): number =>
-  items.filter((i) => i.requirement.isMandatory && needsUpload(i)).length;
+export const pendingMandatoryCount = (
+  items: Pick<DocumentChecklistItem, 'current' | 'requirement'>[],
+  additional: Pick<AdditionalDocumentItem, 'current'>[] = [],
+): number => items.filter((i) => i.requirement.isMandatory && needsUpload(i)).length + additional.filter(needsUpload).length;

@@ -32,11 +32,15 @@ export interface DomainEventPayloads {
     actorId: string | null;
     reason?: string;
   };
-  /** A customer added or replaced a document on an application (M3.10); `version` > 1 is a replacement. */
+  /**
+   * A customer added or replaced a document on an application (M3.10); `version` > 1 is a replacement.
+   * An additional document staff asked for (M4.8) has no `requirementId` and a `requestId` instead.
+   */
   'document.uploaded': {
     documentId: string;
     applicationId: string;
-    requirementId: string;
+    requirementId: string | null;
+    requestId?: string;
     version: number;
     actorId: string;
   };

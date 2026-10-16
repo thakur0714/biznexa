@@ -4,12 +4,15 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   acceptAttribute,
+  DEFAULT_ACCEPTED_TYPES,
+  DEFAULT_MAX_UPLOAD_MB,
   describeFileTypes,
   fileTypeFromName,
   formatDate,
   isKnownFileType,
   needsUpload,
   requirementFileTypes,
+  type AdditionalDocumentItem,
   type ApplicationDetail,
   type DocumentChecklist,
   type DocumentChecklistItem,
@@ -19,10 +22,22 @@ import { useApi } from '@biznexa/api-client/react';
 import { Badge, Breadcrumbs, Button, LinkButton, Notice, type Tone } from '@biznexa/ui';
 import type { ServiceDetail } from '@/lib/api';
 
+/** A checklist document, or one staff asked for later (M4.8: no requirement, so the default upload rules apply). */
+type RowTarget = { kind: 'requirement'; item: DocumentChecklistItem } | { kind: 'additional'; item: AdditionalDocumentItem };
+
+function describeTarget(t: RowTarget) {
+  if (t.kind === 'requirement') {
+    const r = t.item.requirement;
+    return { id: r.id, name: r.name, description: r.description, isMandatory: r.isMandatory, types: requirementFileTypes(r.acceptedTypes), maxSizeMb: r.maxSizeMb };
+  }
+  const r = t.item.request;
+  return { id: r.id, name: r.name, description: r.description, isMandatory: true, types: DEFAULT_ACCEPTED_TYPES, maxSizeMb: DEFAULT_MAX_UPLOAD_MB };
+}
+
 /** What the customer sees for an item's newest upload. */
-function statusOf(item: DocumentChecklistItem): { label: string; tone: Tone } {
+function statusOf(item: Pick<DocumentChecklistItem, 'current'>, isMandatory: boolean): { label: string; tone: Tone } {
   const c = item.current;
-  if (!c) return item.requirement.isMandatory ? { label: 'Required', tone: 'warning' } : { label: 'Optional', tone: 'neutral' };
+  if (!c) return isMandatory ? { label: 'Required', tone: 'warning' } : { label: 'Optional', tone: 'neutral' };
   if (c.scanStatus === 'INFECTED') return { label: 'Virus found', tone: 'danger' };
   if (c.status === 'REJECTED') return { label: 'Rejected', tone: 'danger' };
   if (c.status === 'APPROVED') return { label: 'Approved', tone: 'success' };
@@ -99,14 +114,25 @@ export function DocumentsStep({ service, applicationId }: { service: ServiceDeta
               <Notice tone="info">This application is past the document step, so its documents can’t be changed here.</Notice>
             </div>
           )}
+          {list.additional.length > 0 && (
+            <section className="mt-6" aria-labelledby="requested-docs">
+              <h2 id="requested-docs" className="text-lg font-semibold">Requested by our team</h2>
+              <p className="mt-1 text-sm text-muted">We need these to continue with your application.</p>
+              <ul className="mt-4 space-y-4">
+                {list.additional.map((item) => (
+                  <DocumentRow key={item.request.id} target={{ kind: 'additional', item }} applicationId={applicationId} canUpload={list.canUpload} onChange={setList} />
+                ))}
+              </ul>
+            </section>
+          )}
           {list.items.length === 0 ? (
-            <p className="mt-6 text-muted">This service needs no documents from you. Continue to the next step.</p>
+            list.additional.length === 0 && <p className="mt-6 text-muted">This service needs no documents from you. Continue to the next step.</p>
           ) : (
             <>
               <p className="mt-4 text-muted">Upload clear scans or photos. You can skip any document now and upload it later from your dashboard.</p>
               <ul className="mt-6 space-y-4">
                 {list.items.map((item) => (
-                  <DocumentRow key={item.requirement.id} item={item} applicationId={applicationId} canUpload={list.canUpload} onChange={setList} />
+                  <DocumentRow key={item.requirement.id} target={{ kind: 'requirement', item }} applicationId={applicationId} canUpload={list.canUpload} onChange={setList} />
                 ))}
               </ul>
             </>
@@ -135,12 +161,12 @@ export function DocumentsStep({ service, applicationId }: { service: ServiceDeta
 
 /** One checklist item: status, the current file, and upload / replace. */
 function DocumentRow({
-  item,
+  target,
   applicationId,
   canUpload,
   onChange,
 }: {
-  item: DocumentChecklistItem;
+  target: RowTarget;
   applicationId: string;
   canUpload: boolean;
   onChange: (list: DocumentChecklist) => void;
@@ -148,9 +174,11 @@ function DocumentRow({
   const api = useApi();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
-  const { requirement: r, current: c } = item;
-  const types = requirementFileTypes(r.acceptedTypes);
-  const status = statusOf(item);
+  const { item } = target;
+  const c = item.current;
+  const r = describeTarget(target);
+  const types = r.types;
+  const status = statusOf(item, r.isMandatory);
   const inputId = `doc-${r.id}`;
   const headingId = `doc-${r.id}-name`;
   const helpId = `doc-${r.id}-help`;
@@ -167,14 +195,20 @@ function DocumentRow({
     try {
       const body = new FormData();
       body.append('file', file);
+      const query = target.kind === 'requirement' ? { requirementId: r.id } : {};
       const stored = await api.call<{ id: string }>((cl) =>
-        cl.POST('/api/files', { params: { query: { requirementId: r.id } }, body: body as unknown as { file: string } }),
+        cl.POST('/api/files', { params: { query }, body: body as unknown as { file: string } }),
       );
       const list = await api.call<DocumentChecklist>((cl) =>
-        cl.POST('/api/applications/{id}/documents/{requirementId}', {
-          params: { path: { id: applicationId, requirementId: r.id } },
-          body: { fileId: stored.id },
-        }),
+        target.kind === 'requirement'
+          ? cl.POST('/api/applications/{id}/documents/{requirementId}', {
+              params: { path: { id: applicationId, requirementId: r.id } },
+              body: { fileId: stored.id },
+            })
+          : cl.POST('/api/applications/{id}/documents/additional/{requestId}', {
+              params: { path: { id: applicationId, requestId: r.id } },
+              body: { fileId: stored.id },
+            }),
       );
       onChange(list);
     } catch (e) {

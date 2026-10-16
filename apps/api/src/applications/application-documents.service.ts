@@ -5,6 +5,7 @@ import {
   canUploadDocuments,
   pendingMandatoryCount,
   requirementApplies,
+  type AdditionalDocumentItem,
   type ApplicationDocumentResult,
   type DocumentChecklist,
   type DocumentChecklistItem,
@@ -26,6 +27,7 @@ const requirementSelect = {
 const documentSelect = {
   id: true,
   requirementId: true,
+  requestId: true,
   version: true,
   isLatest: true,
   status: true,
@@ -45,8 +47,10 @@ interface AppRow {
 
 /**
  * The document step (M3.10, D37). The checklist is computed from the service's requirements for the
- * application's package; there are no REQUIRED rows. Every upload is a new `ApplicationDocument` version
- * for its requirement: the previous one stays, with `isLatest` false. Customers only — staff review is M4.
+ * application's package; there are no REQUIRED rows for them. Every upload is a new `ApplicationDocument`
+ * version for its requirement: the previous one stays, with `isLatest` false. Documents staff ask for later
+ * (M4.8) start as a REQUIRED row with no requirement; its first upload fills that row, later ones are new
+ * versions sharing its `requestId`. Customers only — staff review is in AdminApplicationDocumentsService.
  */
 @Injectable()
 export class ApplicationDocumentsService {
@@ -83,15 +87,7 @@ export class ApplicationDocumentsService {
       const req = await tx.serviceDocumentRequirement.findFirst({ where: { id: requirementId, serviceId: app.serviceId }, select: requirementSelect });
       if (!req || !requirementApplies(req, app.packageId)) throw new NotFoundException('This document is not on this application’s checklist');
 
-      const file = await tx.storedFile.findFirst({
-        where: { id: fileId, ownerId: customerId },
-        select: { fileKey: true, originalName: true, mimeType: true, sizeBytes: true, requirementId: true, scanStatus: true, document: { select: { id: true } } },
-      });
-      if (!file) throw fileProblem('The file could not be found. Upload it again.');
-      // The upload checked this requirement's types and size limit only if it was made for it.
-      if (file.requirementId !== req.id) throw fileProblem(`This file was not uploaded for “${req.name}”. Upload it again here.`);
-      if (file.document) throw fileProblem('This file is already attached. Upload it again to use it here.');
-      if (file.scanStatus === 'INFECTED') throw fileProblem('A virus was found in this file. Upload a clean copy.');
+      const file = await usableFile(tx, customerId, fileId, req.id, req.name);
 
       const latest = await tx.applicationDocument.findFirst({
         where: { applicationId: app.id, requirementId: req.id },
@@ -129,23 +125,90 @@ export class ApplicationDocumentsService {
     return this.build(app);
   }
 
+  /**
+   * Attach a file uploaded without a requirement (`POST /api/files`) to a document staff asked for (M4.8).
+   * The first upload fills the REQUIRED row; a replacement (while waiting or after a rejection) is the
+   * next version. Locked like `attach`; the `[requestId, version]` unique index is the backstop.
+   */
+  async attachAdditional(customerId: string, applicationId: string, requestId: string, fileId: string): Promise<DocumentChecklist> {
+    const { app, doc } = await this.prisma.$transaction(async (tx) => {
+      const [app] = await tx.$queryRaw<AppRow[]>`
+        SELECT id, status::text AS status, "serviceId", "packageId" FROM "Application"
+        WHERE id = ${applicationId} AND "customerId" = ${customerId} FOR UPDATE`;
+      if (!app) throw new NotFoundException('Application not found');
+      if (!canUploadDocuments(app.status)) {
+        throw new ConflictException('This application is past the document step, so documents can’t be changed here.');
+      }
+
+      const latest = await tx.applicationDocument.findFirst({
+        where: { applicationId: app.id, requirementId: null, requestId },
+        orderBy: { version: 'desc' },
+        select: { id: true, name: true, description: true, status: true, version: true, fileKey: true },
+      });
+      if (!latest) throw new NotFoundException('This document was not requested on this application');
+
+      const file = await usableFile(tx, customerId, fileId, null, latest.name);
+      if (latest.status !== 'REQUIRED' && !canReplaceDocument(latest.status)) {
+        throw new ConflictException(
+          latest.status === 'APPROVED' ? `“${latest.name}” is already approved and can’t be replaced.` : `“${latest.name}” is being reviewed and can’t be replaced right now.`,
+        );
+      }
+      assertTransition('document', latest.status, 'UPLOADED');
+
+      const upload = {
+        fileKey: file.fileKey,
+        fileName: file.originalName,
+        mimeType: file.mimeType,
+        sizeBytes: file.sizeBytes,
+        status: 'UPLOADED' as const,
+        rejectionReason: null,
+        reviewedById: null,
+        reviewedAt: null,
+        uploadedAt: new Date(),
+      };
+      if (!latest.fileKey) {
+        const doc = await tx.applicationDocument.update({ where: { id: latest.id }, data: upload, select: { id: true, version: true } });
+        return { app, doc };
+      }
+      await tx.applicationDocument.updateMany({ where: { applicationId: app.id, requestId, isLatest: true }, data: { isLatest: false } });
+      const doc = await tx.applicationDocument.create({
+        data: { applicationId: app.id, requestId, name: latest.name, description: latest.description, version: latest.version + 1, isLatest: true, ...upload },
+        select: { id: true, version: true },
+      });
+      return { app, doc };
+    });
+
+    await this.events.emit('document.uploaded', { documentId: doc.id, applicationId: app.id, requirementId: null, requestId, version: doc.version, actorId: customerId });
+    return this.build(app);
+  }
+
   /** Mandatory checklist items still needing an upload; pass `db` to count inside a transaction (payment webhook, M3.17). */
   async pendingMandatory(app: AppRow, db: Prisma.TransactionClient = this.prisma): Promise<number> {
     return (await this.build(app, db)).pendingMandatory;
   }
 
   private async build(app: AppRow, db: Prisma.TransactionClient = this.prisma): Promise<DocumentChecklist> {
-    const [requirements, documents] = await Promise.all([
+    const [requirements, documents, requests] = await Promise.all([
       db.serviceDocumentRequirement.findMany({ where: { serviceId: app.serviceId }, orderBy: { sortOrder: 'asc' }, select: requirementSelect }),
       db.applicationDocument.findMany({
-        where: { applicationId: app.id, requirementId: { not: null }, fileKey: { not: null } },
+        where: { applicationId: app.id, fileKey: { not: null } },
         orderBy: { version: 'desc' },
         select: documentSelect,
+      }),
+      // The first row of each additional document: what staff asked for, and when.
+      db.applicationDocument.findMany({
+        where: { applicationId: app.id, requirementId: null, requestId: { not: null }, version: 1 },
+        orderBy: { createdAt: 'asc' },
+        select: { requestId: true, name: true, description: true, createdAt: true },
       }),
     ]);
 
     const byRequirement = new Map<string, DocumentRow[]>();
-    for (const d of documents) byRequirement.set(d.requirementId!, [...(byRequirement.get(d.requirementId!) ?? []), d]);
+    const byRequest = new Map<string, DocumentRow[]>();
+    for (const d of documents) {
+      if (d.requirementId) byRequirement.set(d.requirementId, [...(byRequirement.get(d.requirementId) ?? []), d]);
+      else if (d.requestId) byRequest.set(d.requestId, [...(byRequest.get(d.requestId) ?? []), d]);
+    }
 
     const items: DocumentChecklistItem[] = requirements
       // A requirement later narrowed to other packages still shows here if something was uploaded for it.
@@ -156,8 +219,41 @@ export class ApplicationDocumentsService {
         return { requirement, current, previous, canReplace: !current || canReplaceDocument(current.status) };
       });
 
-    return { applicationId: app.id, canUpload: canUploadDocuments(app.status), items, pendingMandatory: pendingMandatoryCount(items) };
+    const additional: AdditionalDocumentItem[] = requests.map((r) => {
+      const [current = null, ...previous] = (byRequest.get(r.requestId!) ?? []).map(toDocumentDto);
+      return {
+        request: { id: r.requestId!, name: r.name, description: r.description, requestedAt: r.createdAt.toISOString() },
+        current,
+        previous,
+        canReplace: !current || canReplaceDocument(current.status),
+      };
+    });
+
+    return {
+      applicationId: app.id,
+      canUpload: canUploadDocuments(app.status),
+      items,
+      additional,
+      pendingMandatory: pendingMandatoryCount(items, additional),
+    };
   }
+}
+
+/**
+ * The customer's own uploaded file, made for this requirement (or for none, for an additional document),
+ * not attached anywhere yet and not infected.
+ */
+async function usableFile(tx: Prisma.TransactionClient, customerId: string, fileId: string, requirementId: string | null, documentName: string) {
+  const file = await tx.storedFile.findFirst({
+    where: { id: fileId, ownerId: customerId },
+    select: { fileKey: true, originalName: true, mimeType: true, sizeBytes: true, requirementId: true, scanStatus: true, document: { select: { id: true } } },
+  });
+  if (!file) throw fileProblem('The file could not be found. Upload it again.');
+  // The upload checked a requirement's types and size limit only if it was made for it.
+  if (file.requirementId !== requirementId) throw fileProblem(`This file was not uploaded for “${documentName}”. Upload it again here.`);
+  if (file.document) throw fileProblem('This file is already attached. Upload it again to use it here.');
+  if (file.scanStatus === 'INFECTED') throw fileProblem('A virus was found in this file. Upload a clean copy.');
+  return file;
 }
 
 function fileProblem(message: string) {
