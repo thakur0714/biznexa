@@ -493,18 +493,16 @@ export class NotificationEventsListener implements OnModuleInit {
           return;
         }
 
-        // Staff open the application in the admin panel, not on the customer site.
-        const staffLink = `${env().PUBLIC_ADMIN_URL}/applications/${app.id}`;
         const variables: Record<string, unknown> = {
           recipientName: staff.name,
           applicationCode: app.code,
           serviceName: app.service.name,
           senderName: message.sender.name,
           messageExcerpt,
-          link: staffLink,
+          link,
         };
 
-        await this.dispatchForEvent('message.received', staff, variables, staffLink, ['IN_APP']);
+        await this.dispatchForEvent('message.received', staff, variables, link, ['IN_APP']);
       }
     } catch (err) {
       this.logger.error(`Error handling message.created: ${err instanceof Error ? err.message : String(err)}`);
