@@ -125,7 +125,9 @@ describe('staff two-factor authentication', () => {
     await http.get(ADMIN_ROUTE).set('authorization', bearer(first.body.accessToken)).expect(403);
 
     // the code already used to turn 2FA on, and an older one, are refused even though still in the time window
-    for (const step of [enabledStep, enabledStep - 1]) {
+    // Only steps still inside the ±1 window: on a slow run the clock may have moved on a step since 2FA was
+    // enabled, and an older code is then simply "not right" instead of a replay.
+    for (const step of [enabledStep, enabledStep - 1].filter((s) => s >= timeStep() - 1)) {
       const replay = await http.post('/api/auth/2fa/verify').set('authorization', bearer(first.body.accessToken)).send({ code: totpCode(secret, step) }).expect(400);
       expect(replay.body.message).toBe('This code has already been used. Wait for the next code in your app.');
     }
