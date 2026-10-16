@@ -585,6 +585,36 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     channel: 'WHATSAPP',
     body: 'Hello {{customerName}}, your ticket #{{ticketCode}} has been resolved.',
   },
+
+  // ────────────────── message.received ──────────────────
+  {
+    event: 'message.received',
+    channel: 'EMAIL',
+    subject: 'New message on application {{applicationCode}}',
+    body: '<p>Hello {{recipientName}},</p><p><strong>{{senderName}}</strong> sent a new message regarding your application <strong>{{applicationCode}}</strong> for {{serviceName}}.</p><p><em>"{{messageExcerpt}}"</em></p><p><a href="{{link}}">View conversation</a></p>',
+  },
+  {
+    event: 'message.received',
+    channel: 'PUSH',
+    subject: 'New message received',
+    body: 'New message from {{senderName}} on {{applicationCode}}.',
+  },
+  {
+    event: 'message.received',
+    channel: 'IN_APP',
+    subject: 'New message received',
+    body: 'New message from {{senderName}} on application {{applicationCode}}: "{{messageExcerpt}}".',
+  },
+  {
+    event: 'message.received',
+    channel: 'SMS',
+    body: 'New message from {{senderName}} on application {{applicationCode}}.',
+  },
+  {
+    event: 'message.received',
+    channel: 'WHATSAPP',
+    body: 'Hello {{recipientName}}, you have a new message from {{senderName}} on application {{applicationCode}}.',
+  },
 ];
 
 export async function seedNotificationTemplates(prisma: PrismaClient): Promise<{ count: number }> {
