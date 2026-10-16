@@ -26,7 +26,10 @@ export class DashboardService {
         select: { id: true, status: true, serviceId: true, packageId: true, order: { select: { total: true, amountPaid: true } } },
       }),
       this.prisma.certificate.findMany({
-        where: { application: { customerId }, validUntil: { gte: now, lte: dueBy } },
+        where: {
+          validUntil: { gte: now, lte: dueBy },
+          OR: [{ application: { customerId } }, { businessEntity: { ownerId: customerId } }],
+        },
         orderBy: { validUntil: 'asc' },
         select: { id: true, certificateNumber: true, type: true, validUntil: true },
       }),

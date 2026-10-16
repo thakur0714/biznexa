@@ -21,7 +21,7 @@ interface NavSection {
 export const DASHBOARD_NAV: readonly NavSection[] = [
   { label: 'Dashboard', icon: 'clipboard', href: '/dashboard', ready: true },
   { label: 'My Services', icon: 'file', href: '/dashboard/services', ready: true },
-  { label: 'Documents', icon: 'upload', ready: false },
+  { label: 'Documents', icon: 'upload', href: '/dashboard/documents', ready: true },
   { label: 'Payments', icon: 'rupee', ready: false },
   { label: 'Messages', icon: 'message', ready: false },
   { label: 'Certificates', icon: 'badge', href: '/dashboard/certificates', ready: true },

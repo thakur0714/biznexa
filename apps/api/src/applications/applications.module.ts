@@ -18,6 +18,7 @@ import { DeliverablesController } from './deliverables.controller';
 import { DeliverablesService } from './deliverables.service';
 import { MessagesController } from './messages.controller';
 import { MessagesService } from './messages.service';
+import { CustomerDocumentsController } from './customer-documents.controller';
 
 @Module({
   imports: [CouponsModule, CertificatesModule],
@@ -30,6 +31,7 @@ import { MessagesService } from './messages.service';
     InternalNotesController,
     DeliverablesController,
     MessagesController,
+    CustomerDocumentsController,
   ],
   providers: [
     AdminApplicationDocumentsService,

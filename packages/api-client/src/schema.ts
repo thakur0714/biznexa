@@ -1636,6 +1636,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomerDocumentsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/coupons": {
         parameters: {
             query?: never;
@@ -4624,6 +4640,121 @@ export interface components {
         MessageUnreadCount: {
             count: number;
         };
+        CustomerDocuments: {
+            /** Format: uuid */
+            applicationId: string;
+            applicationCode: string;
+            serviceName: string;
+            checklist: {
+                /** Format: uuid */
+                applicationId: string;
+                canUpload: boolean;
+                items: {
+                    requirement: {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        description: string | null;
+                        isMandatory: boolean;
+                        acceptedTypes: string[];
+                        maxSizeMb: number;
+                    };
+                    current: {
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        /** @enum {string} */
+                        status: "REQUIRED" | "UPLOADED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+                        rejectionReason: string | null;
+                        /** Format: uuid */
+                        fileId: string;
+                        fileName: string;
+                        mimeType: string;
+                        sizeBytes: number;
+                        /**
+                         * @description INFECTED means the file was removed: upload a clean copy
+                         * @enum {string}
+                         */
+                        scanStatus: "PENDING" | "CLEAN" | "INFECTED";
+                        /** Format: date-time */
+                        uploadedAt: string;
+                    } | null;
+                    previous: {
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        /** @enum {string} */
+                        status: "REQUIRED" | "UPLOADED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+                        rejectionReason: string | null;
+                        /** Format: uuid */
+                        fileId: string;
+                        fileName: string;
+                        mimeType: string;
+                        sizeBytes: number;
+                        /**
+                         * @description INFECTED means the file was removed: upload a clean copy
+                         * @enum {string}
+                         */
+                        scanStatus: "PENDING" | "CLEAN" | "INFECTED";
+                        /** Format: date-time */
+                        uploadedAt: string;
+                    }[];
+                    canReplace: boolean;
+                }[];
+                additional: {
+                    request: {
+                        /** Format: uuid */
+                        id: string;
+                        name: string;
+                        description: string | null;
+                        /** Format: date-time */
+                        requestedAt: string;
+                    };
+                    current: {
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        /** @enum {string} */
+                        status: "REQUIRED" | "UPLOADED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+                        rejectionReason: string | null;
+                        /** Format: uuid */
+                        fileId: string;
+                        fileName: string;
+                        mimeType: string;
+                        sizeBytes: number;
+                        /**
+                         * @description INFECTED means the file was removed: upload a clean copy
+                         * @enum {string}
+                         */
+                        scanStatus: "PENDING" | "CLEAN" | "INFECTED";
+                        /** Format: date-time */
+                        uploadedAt: string;
+                    } | null;
+                    previous: {
+                        /** Format: uuid */
+                        id: string;
+                        version: number;
+                        /** @enum {string} */
+                        status: "REQUIRED" | "UPLOADED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+                        rejectionReason: string | null;
+                        /** Format: uuid */
+                        fileId: string;
+                        fileName: string;
+                        mimeType: string;
+                        sizeBytes: number;
+                        /**
+                         * @description INFECTED means the file was removed: upload a clean copy
+                         * @enum {string}
+                         */
+                        scanStatus: "PENDING" | "CLEAN" | "INFECTED";
+                        /** Format: date-time */
+                        uploadedAt: string;
+                    }[];
+                    canReplace: boolean;
+                }[];
+                pendingMandatory: number;
+            };
+        }[];
         SellerSettings: {
             name: string | null;
             legalName: string | null;
@@ -8718,6 +8849,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageUnreadCount"];
+                };
+            };
+        };
+    };
+    CustomerDocumentsController_list: {
+        parameters: {
+            query?: {
+                status?: "needs_action" | "all";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDocuments"];
                 };
             };
         };

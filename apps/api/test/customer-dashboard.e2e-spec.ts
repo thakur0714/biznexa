@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { dashboardSummarySchema, formatApplicationCode, formatOrderCode } from '@biznexa/types';
+import { customerDocumentsSchema, dashboardSummarySchema, formatApplicationCode, formatOrderCode } from '@biznexa/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -144,5 +144,33 @@ describe('Customer dashboard API (M5.2)', () => {
     const summary = dashboardSummarySchema.parse(await request(app.getHttpServer()).get('/api/dashboard/summary')
       .set('Authorization', `Bearer ${newCustomerToken}`).expect(200).then((res) => res.body));
     expect(summary).toEqual({ activeApplications: 0, pendingActions: 0, unpaidBalance: 0, upcomingDueDates: [], recentActivity: [] });
+  });
+
+  it('requires a signed-in customer for the documents collection', async () => {
+    await request(app.getHttpServer()).get('/api/documents').expect(401);
+  });
+
+  it('lists owned applications with document checklists and filters needs action', async () => {
+    const allResponse = await request(app.getHttpServer()).get('/api/documents?status=all')
+      .set('Authorization', `Bearer ${aliceToken}`).expect(200);
+    const all = customerDocumentsSchema.parse(allResponse.body);
+    expect(all).toHaveLength(1);
+    expect(all[0].applicationId).toBe(aliceApplicationId);
+    expect(all[0].checklist.items).toHaveLength(1);
+    expect(all[0].checklist.items[0].current).toBeNull();
+
+    const actionResponse = await request(app.getHttpServer()).get('/api/documents?status=needs_action')
+      .set('Authorization', `Bearer ${aliceToken}`).expect(200);
+    const needsAction = customerDocumentsSchema.parse(actionResponse.body);
+    expect(needsAction.map((group) => group.applicationId)).toEqual([aliceApplicationId]);
+    expect(JSON.stringify(all)).not.toContain('Bob');
+
+    const empty = await request(app.getHttpServer()).get('/api/documents')
+      .set('Authorization', `Bearer ${newCustomerToken}`).expect(200);
+    expect(customerDocumentsSchema.parse(empty.body)).toEqual([]);
+    const bob = await request(app.getHttpServer()).get('/api/documents?status=all')
+      .set('Authorization', `Bearer ${bobToken}`).expect(200);
+    expect(customerDocumentsSchema.parse(bob.body)).toHaveLength(1);
+    expect(JSON.stringify(customerDocumentsSchema.parse(bob.body))).not.toContain(aliceApplicationId);
   });
 });
