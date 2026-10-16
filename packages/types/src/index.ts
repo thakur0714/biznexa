@@ -30,3 +30,4 @@ export * from './deliverables';
 export * from './admin-customers';
 export * from './messages';
 export * from './dashboard';
+export * from './reminders';

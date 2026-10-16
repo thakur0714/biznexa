@@ -11369,6 +11369,20 @@
           "dashboard"
         ]
       }
+    },
+    "/api/reminders": {
+      "get": {
+        "operationId": "RemindersController_listReminders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of scheduled reminders for the authenticated customer."
+          }
+        },
+        "tags": [
+          "reminders"
+        ]
+      }
     }
   },
   "info": {
