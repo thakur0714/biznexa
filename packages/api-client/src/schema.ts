@@ -1780,6 +1780,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/customers/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminCustomersController_changeStatus"];
+        trace?: never;
+    };
     "/api/leads": {
         parameters: {
             query?: never;
@@ -4574,6 +4590,18 @@ export interface components {
                 /** Format: date-time */
                 createdAt: string;
             }[];
+        };
+        AdminCustomerRow: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            email: string | null;
+            mobile: string | null;
+            /** @enum {string} */
+            status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+            /** Format: date-time */
+            createdAt: string;
+            applicationCount: number;
         };
     };
     responses: never;
@@ -8831,6 +8859,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminCustomerDetail"];
+                };
+            };
+        };
+    };
+    AdminCustomersController_changeStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "ACTIVE" | "BLOCKED" | "DEACTIVATED";
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerRow"];
                 };
             };
         };

@@ -1,11 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import type { AdminCustomerDetail, AdminCustomerListQuery, AdminCustomerRow } from '@biznexa/types';
+import type { AdminCustomerDetail, AdminCustomerListQuery, AdminCustomerRow, AdminCustomerStatusInput } from '@biznexa/types';
+import { AuditService } from '../audit/audit.service';
+import { TokenService } from '../auth/token.service';
 
 @Injectable()
 export class AdminCustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+    private readonly tokens: TokenService,
+  ) {}
 
   private async buildWhere(params: AdminCustomerListQuery): Promise<Prisma.UserWhereInput> {
     const where: Prisma.UserWhereInput = {
@@ -168,6 +174,79 @@ export class AdminCustomersService {
         status: p.status as AdminCustomerDetail['payments'][number]['status'],
         createdAt: p.createdAt.toISOString(),
       })),
+    };
+  }
+
+  async changeStatus(id: string, input: AdminCustomerStatusInput, actorId: string): Promise<AdminCustomerRow> {
+    const user = await this.prisma.user.findFirst({
+      where: { id, roles: { some: { role: { key: 'CUSTOMER' } } } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        mobile: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    if (user.status === 'PENDING_DELETION') {
+      throw new ConflictException('Cannot change status of a customer pending deletion');
+    }
+
+    if (user.status === input.status) {
+      throw new ConflictException(`Customer is already ${input.status}`);
+    }
+
+    const updatedUser = await this.prisma.$transaction(async (tx) => {
+      const u = await tx.user.update({
+        where: { id },
+        data: { status: input.status },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          mobile: true,
+          status: true,
+          createdAt: true,
+        },
+      });
+
+      await this.audit.log(
+        {
+          actorId,
+          action: 'customer.status',
+          entityType: 'User',
+          entityId: id,
+          before: { status: user.status },
+          after: { status: input.status, reason: input.reason },
+        },
+        tx
+      );
+
+      return u;
+    });
+
+    if (input.status === 'BLOCKED' || input.status === 'DEACTIVATED') {
+      await this.tokens.revokeAll(id);
+    }
+
+    const applicationCount = await this.prisma.application.count({
+      where: { customerId: id },
+    });
+
+    return {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      mobile: updatedUser.mobile,
+      status: updatedUser.status as AdminCustomerRow['status'],
+      createdAt: updatedUser.createdAt.toISOString(),
+      applicationCount,
     };
   }
 }
