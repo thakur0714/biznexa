@@ -1,10 +1,27 @@
 import { Controller, Get, Post, Patch, Param, ParseUUIDPipe, Res, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { adminApplicationListQuery, adminApplicationPageSchema, adminApplicationDetailSchema, PERMS, type AdminApplicationListQuery, assigneeInputSchema, type AssigneeInput, bulkAssignInputSchema, type BulkAssignInput, eligibleStaffListSchema, applicationTransitionSchema, type ApplicationTransitionInput } from '@biznexa/types';
+import {
+  adminApplicationListQuery,
+  adminApplicationPageSchema,
+  adminApplicationDetailSchema,
+  adminCertificateRowSchema,
+  createCertificateFromApplicationInputSchema,
+  type CreateCertificateFromApplicationInput,
+  PERMS,
+  type AdminApplicationListQuery,
+  assigneeInputSchema,
+  type AssigneeInput,
+  bulkAssignInputSchema,
+  type BulkAssignInput,
+  eligibleStaffListSchema,
+  applicationTransitionSchema,
+  type ApplicationTransitionInput,
+} from '@biznexa/types';
 import { AuthUser, CurrentUser, RequireAnyPermission } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery, ZodBody } from '../common/openapi';
 import { RequirePermissions } from '../common/auth.decorators';
 import { AdminApplicationsService } from './admin-applications.service';
+import { CertificatesService } from '../certificates/certificates.service';
 import type { Response } from 'express';
 
 /** Staff applications list (M4.2): `applications.view_all` sees every application, `applications.view_assigned` only their own. */
@@ -12,7 +29,10 @@ import type { Response } from 'express';
 @ApiBearerAuth()
 @Controller('admin/applications')
 export class AdminApplicationsController {
-  constructor(private readonly applications: AdminApplicationsService) {}
+  constructor(
+    private readonly applications: AdminApplicationsService,
+    private readonly certificates: CertificatesService,
+  ) {}
 
   @RequireAnyPermission(PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED)
   @Get('export')
@@ -67,4 +87,14 @@ export class AdminApplicationsController {
     return this.applications.get(u, id);
   }
 
+  @RequirePermissions(PERMS.CERTIFICATES_MANAGE)
+  @ApiZodResponse('AdminCertificateRow', adminCertificateRowSchema, 201)
+  @Post(':id/certificate')
+  createCertificate(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ZodBody(createCertificateFromApplicationInputSchema) body: CreateCertificateFromApplicationInput,
+    @CurrentUser() u: AuthUser,
+  ) {
+    return this.certificates.createFromApplication(id, body, u.id);
+  }
 }

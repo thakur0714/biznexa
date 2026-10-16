@@ -139,6 +139,8 @@ export class AdminApplicationDocumentsService {
     const scope = applicationScope(u);
     let events: StatusChanged[] = [];
     let docId = '';
+    let docAppId = '';
+    let docName = '';
 
     await this.prisma.$transaction(async (tx) => {
       const doc = await tx.applicationDocument.findFirst({
@@ -147,6 +149,8 @@ export class AdminApplicationDocumentsService {
       });
       if (!doc) throw new NotFoundException('Document not found or access denied');
       docId = doc.id;
+      docAppId = doc.applicationId;
+      docName = doc.name;
 
       assertTransition('document', doc.status, 'APPROVED');
 
@@ -171,6 +175,12 @@ export class AdminApplicationDocumentsService {
       events = await this.updateApplicationStatusIfNeeded(tx, doc.applicationId, u);
     });
 
+    await this.events.emit('document.approved', {
+      documentId: docId,
+      applicationId: docAppId,
+      name: docName,
+      actorId: u.id,
+    });
     for (const event of events) await this.events.emit('application.status_changed', event);
 
     return { id: docId, status: 'APPROVED' };
@@ -180,6 +190,8 @@ export class AdminApplicationDocumentsService {
     const scope = applicationScope(u);
     let events: StatusChanged[] = [];
     let docId = '';
+    let docAppId = '';
+    let docName = '';
 
     await this.prisma.$transaction(async (tx) => {
       const doc = await tx.applicationDocument.findFirst({
@@ -188,6 +200,8 @@ export class AdminApplicationDocumentsService {
       });
       if (!doc) throw new NotFoundException('Document not found or access denied');
       docId = doc.id;
+      docAppId = doc.applicationId;
+      docName = doc.name;
 
       assertTransition('document', doc.status, 'REJECTED');
 
@@ -213,6 +227,13 @@ export class AdminApplicationDocumentsService {
       events = await this.updateApplicationStatusIfNeeded(tx, doc.applicationId, u);
     });
 
+    await this.events.emit('document.rejected', {
+      documentId: docId,
+      applicationId: docAppId,
+      name: docName,
+      reason,
+      actorId: u.id,
+    });
     for (const event of events) await this.events.emit('application.status_changed', event);
 
     return { id: docId, status: 'REJECTED' };
@@ -256,6 +277,13 @@ export class AdminApplicationDocumentsService {
       events = await this.updateApplicationStatusIfNeeded(tx, applicationId, u);
     });
 
+    await this.events.emit('document.requested', {
+      documentId: docId,
+      applicationId,
+      name: input.name,
+      reason: input.description,
+      actorId: u.id,
+    });
     for (const event of events) await this.events.emit('application.status_changed', event);
 
     return { id: docId, status: 'REQUIRED' };

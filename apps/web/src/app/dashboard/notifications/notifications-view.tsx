@@ -36,7 +36,7 @@ export function NotificationsView() {
   useEffect(() => {
     let live = true;
 
-    (async () => {
+    void (async () => {
       try {
         const [pageData, countData] = await Promise.all([
           api.call<NotificationListPage>((c) =>
@@ -94,7 +94,7 @@ export function NotificationsView() {
     }
   }
 
-  async function handleItemClick(item: NotificationItem) {
+  function handleItemClick(item: NotificationItem) {
     if (!item.readAt) {
       // Optimistic update in UI
       const now = new Date().toISOString();
@@ -109,7 +109,7 @@ export function NotificationsView() {
       );
 
       // Call API in background and notify bell
-      api
+      void api
         .call((c) =>
           c.POST('/api/notifications/{id}/read', {
             params: { path: { id: item.id } },
@@ -133,6 +133,97 @@ export function NotificationsView() {
   const unreadCount = data?.unreadCount ?? 0;
   const pages = data?.pages ?? 1;
   const total = data?.total ?? 0;
+
+  let content: React.ReactNode;
+  if (loading) {
+    content = (
+      <div className="space-y-3" aria-busy="true" aria-label="Loading notifications">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="animate-pulse rounded-lg border border-rule bg-white p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="h-5 w-48 rounded bg-paper" />
+              <div className="h-4 w-24 rounded bg-paper" />
+            </div>
+            <div className="mt-3 h-4 w-full rounded bg-paper" />
+            <div className="mt-2 h-4 w-2/3 rounded bg-paper" />
+          </div>
+        ))}
+      </div>
+    );
+  } else if (items.length === 0) {
+    content = (
+      <EmptyState
+        icon={<Icon name="bell" size={40} className="text-muted" />}
+        title="No notifications yet"
+        description="When you receive updates on your applications, filings, or certificates, they will appear here."
+        action={
+          <LinkButton href="/dashboard" variant="outline">
+            Back to dashboard
+          </LinkButton>
+        }
+      />
+    );
+  } else {
+    content = (
+      <div className="space-y-3" role="feed" aria-label="Notifications list">
+        {items.map((item) => {
+          const isUnread = !item.readAt;
+          return (
+            <button
+              type="button"
+              key={item.id}
+              onClick={() => handleItemClick(item)}
+              className={`w-full text-left group relative cursor-pointer rounded-lg border p-4 sm:p-5 transition-all outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 ${
+                isUnread
+                  ? 'border-l-4 border-rule border-l-ink bg-sky-050/30 hover:bg-sky-050/60 shadow-xs'
+                  : 'border-rule border-l-4 border-l-transparent bg-white hover:bg-paper/50'
+              }`}
+              aria-label={`${item.title}, ${formatDate(item.createdAt)}${isUnread ? ', unread' : ''}`}
+            >
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2
+                      className={`text-base tracking-[-0.01em] ${
+                        isUnread ? 'font-bold text-night' : 'font-medium text-ink'
+                      }`}
+                    >
+                      {item.title}
+                    </h2>
+                    {isUnread && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink">
+                        <span className="h-2 w-2 rounded-full bg-ink" aria-hidden="true" />
+                        <span>New</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Notification body rendered as plain text (React escaping, no dangerouslySetInnerHTML) */}
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink/80 whitespace-pre-wrap break-words">
+                    {item.body}
+                  </p>
+
+                  {isInternalLink(item.link) && (
+                    <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-ink group-hover:underline">
+                      <span>View details</span>
+                      <Icon name="chevronRight" size={14} />
+                    </div>
+                  )}
+                </div>
+
+                <time
+                  dateTime={item.createdAt}
+                  className="shrink-0 text-xs font-medium text-muted pt-0.5"
+                >
+                  {formatDate(item.createdAt)}
+                </time>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-[800px] min-w-0 px-4 py-8 sm:px-6">
@@ -184,96 +275,7 @@ export function NotificationsView() {
         </div>
       )}
 
-      {loading ? (
-        <div className="space-y-3" aria-busy="true" aria-label="Loading notifications">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse rounded-lg border border-rule bg-white p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div className="h-5 w-48 rounded bg-paper" />
-                <div className="h-4 w-24 rounded bg-paper" />
-              </div>
-              <div className="mt-3 h-4 w-full rounded bg-paper" />
-              <div className="mt-2 h-4 w-2/3 rounded bg-paper" />
-            </div>
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={<Icon name="bell" size={40} className="text-muted" />}
-          title="No notifications yet"
-          description="When you receive updates on your applications, filings, or certificates, they will appear here."
-          action={
-            <LinkButton href="/dashboard" variant="outline">
-              Back to dashboard
-            </LinkButton>
-          }
-        />
-      ) : (
-        <div className="space-y-3" role="feed" aria-label="Notifications list">
-          {items.map((item) => {
-            const isUnread = !item.readAt;
-            return (
-              <article
-                key={item.id}
-                tabIndex={0}
-                role="button"
-                onClick={() => handleItemClick(item)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleItemClick(item);
-                  }
-                }}
-                className={`group relative cursor-pointer rounded-lg border p-4 sm:p-5 transition-all outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 ${
-                  isUnread
-                    ? 'border-l-4 border-rule border-l-ink bg-sky-050/30 hover:bg-sky-050/60 shadow-xs'
-                    : 'border-rule border-l-4 border-l-transparent bg-white hover:bg-paper/50'
-                }`}
-                aria-label={`${item.title}, ${formatDate(item.createdAt)}${isUnread ? ', unread' : ''}`}
-              >
-                <div className="flex items-start justify-between gap-2 sm:gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2
-                        className={`text-base tracking-[-0.01em] ${
-                          isUnread ? 'font-bold text-night' : 'font-medium text-ink'
-                        }`}
-                      >
-                        {item.title}
-                      </h2>
-                      {isUnread && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-ink">
-                          <span className="h-2 w-2 rounded-full bg-ink" aria-hidden="true" />
-                          New
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Notification body rendered as plain text (React escaping, no dangerouslySetInnerHTML) */}
-                    <p className="mt-1.5 text-sm leading-relaxed text-ink/80 whitespace-pre-wrap break-words">
-                      {item.body}
-                    </p>
-
-                    {isInternalLink(item.link) && (
-                      <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-ink group-hover:underline">
-                        <span>View details</span>
-                        <Icon name="chevronRight" size={14} />
-                      </div>
-                    )}
-                  </div>
-
-                  <time
-                    dateTime={item.createdAt}
-                    className="shrink-0 text-xs font-medium text-muted pt-0.5"
-                  >
-                    {formatDate(item.createdAt)}
-                  </time>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+      {content}
 
       {!loading && pages > 1 && (
         <nav aria-label="Notifications pagination" className="mt-8 flex items-center justify-between gap-4 border-t border-rule pt-4">

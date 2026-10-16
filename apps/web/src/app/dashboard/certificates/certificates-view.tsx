@@ -130,6 +130,64 @@ export function CustomerCertificatesView() {
     }
   };
 
+  let content: React.ReactNode;
+  if (loading) {
+    content = (
+      <div className="rounded-lg border border-rule bg-white p-12 text-center text-muted">
+        <p className="text-sm">Loading your certificates…</p>
+      </div>
+    );
+  } else if (filtered.length === 0) {
+    const hasCerts = Boolean(certs && certs.length > 0);
+    content = (
+      <EmptyState
+        className="p-10 border border-rule bg-white rounded-lg"
+        icon={<Icon name="badge" size={40} className="text-ink/40" />}
+        title={hasCerts ? 'No matching certificates' : 'No certificates issued yet'}
+        description={
+          hasCerts
+            ? 'Try adjusting your search query or status filter.'
+            : 'Once your ISO certifications or statutory registrations are approved, your official certificates with embedded QR and PDF verification will appear here.'
+        }
+        action={
+          hasCerts ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStatusFilter('ALL');
+                setQuery('');
+              }}
+            >
+              Clear filters
+            </Button>
+          ) : (
+            <LinkButton href="/services" variant="primary">
+              Explore Certifications
+            </LinkButton>
+          )
+        }
+      />
+    );
+  } else {
+    content = (
+      <div className="space-y-4">
+        {filtered.map((cert) => (
+          <CertificateCard
+            key={cert.id}
+            cert={cert}
+            downloadingId={downloadingId}
+            copiedId={copiedId}
+            downloadError={downloadError}
+            onOpenQr={setActiveQrModal}
+            onDownloadPdf={handleDownloadPdf}
+            onCopyLink={handleCopyLink}
+            onShare={handleShare}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-[1000px] min-w-0 px-4 py-8 sm:px-6">
       <div className="mb-6">
@@ -226,209 +284,26 @@ export function CustomerCertificatesView() {
       </div>
 
       {/* Content list */}
-      {loading ? (
-        <div className="rounded-lg border border-rule bg-white p-12 text-center text-muted">
-          <p className="text-sm">Loading your certificates…</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          className="p-10 border border-rule bg-white rounded-lg"
-          icon={<Icon name="badge" size={40} className="text-ink/40" />}
-          title={certs && certs.length > 0 ? 'No matching certificates' : 'No certificates issued yet'}
-          description={
-            certs && certs.length > 0
-              ? 'Try adjusting your search query or status filter.'
-              : 'Once your ISO certifications or statutory registrations are approved, your official certificates with embedded QR and PDF verification will appear here.'
-          }
-          action={
-            certs && certs.length > 0 ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setStatusFilter('ALL');
-                  setQuery('');
-                }}
-              >
-                Clear filters
-              </Button>
-            ) : (
-              <LinkButton href="/services" variant="primary">
-                Explore Certifications
-              </LinkButton>
-            )
-          }
-        />
-      ) : (
-        <div className="space-y-4">
-          {filtered.map((cert) => {
-            const statusCfg = STATUS_CONFIG[cert.effectiveStatus] || STATUS_CONFIG.ACTIVE;
-            const needsRenewal = cert.isExpiringSoon || cert.effectiveStatus === 'EXPIRED' || cert.daysUntilExpiry <= 30;
-
-            return (
-              <div
-                key={cert.id}
-                className="overflow-hidden rounded-lg border border-rule bg-white shadow-xs transition hover:border-ink/30"
-              >
-                {/* Expiring alert banner if needed */}
-                {needsRenewal && (
-                  <div
-                    className={`flex items-center justify-between gap-3 px-5 py-2 text-xs font-medium ${
-                      cert.effectiveStatus === 'EXPIRED'
-                        ? 'bg-red-50 text-red-800 border-b border-red-200'
-                        : 'bg-amber-50 text-amber-900 border-b border-amber-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Icon name="alert" size={16} />
-                      <span>
-                        {cert.effectiveStatus === 'EXPIRED'
-                          ? 'This certificate has expired. Renew now to maintain valid compliance credentials.'
-                          : `Expires in ${cert.daysUntilExpiry} day${cert.daysUntilExpiry === 1 ? '' : 's'} (${formatDate(cert.validUntil)}).`}
-                      </span>
-                    </div>
-                    <Link
-                      href={`/services?renew=certificate&type=${encodeURIComponent(cert.type)}&org=${encodeURIComponent(cert.organizationName)}`}
-                      className="inline-flex items-center gap-1 rounded bg-amber-800 px-2.5 py-1 text-white hover:bg-amber-900 transition font-semibold"
-                    >
-                      <Icon name="refresh" size={12} />
-                      Renew Now
-                    </Link>
-                  </div>
-                )}
-
-                <div className="p-6">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm font-bold text-night">
-                          {cert.certificateNumber}
-                        </span>
-                        <Badge tone={statusCfg.tone}>{statusCfg.label}</Badge>
-                      </div>
-                      <h2 className="mt-1 text-lg font-bold text-night">{cert.organizationName}</h2>
-                      <p className="text-sm font-medium text-ink">{cert.type}</p>
-                    </div>
-
-                    {/* QR Code thumbnail */}
-                    {cert.qrDataUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveQrModal(cert)}
-                        title="Click to expand QR Code"
-                        className="group flex flex-col items-center rounded-md border border-rule bg-paper p-1.5 hover:border-ink/50 transition cursor-pointer"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={cert.qrDataUrl}
-                          alt={`QR Code for ${cert.certificateNumber}`}
-                          className="h-16 w-16"
-                        />
-                        <span className="mt-1 text-[10px] font-medium text-muted group-hover:text-ink">
-                          View QR
-                        </span>
-                      </button>
-                    )}
-                  </div>
-
-                  {cert.scope && (
-                    <div className="mt-3 text-xs text-muted">
-                      <strong className="text-night font-medium">Scope:</strong> {cert.scope}
-                    </div>
-                  )}
-
-                  <div className="mt-4 grid grid-cols-1 gap-2 border-t border-rule/60 pt-4 text-xs text-muted sm:grid-cols-3">
-                    <div>
-                      <p className="font-medium text-night">Certification Body</p>
-                      <p className="mt-0.5">{cert.certificationBody.name}</p>
-                      {cert.certificationBody.accreditation && (
-                        <p className="text-[11px] text-muted">{cert.certificationBody.accreditation}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="font-medium text-night">Validity Period</p>
-                      <p className="mt-0.5">
-                        {formatDate(cert.validFrom)} – {formatDate(cert.validUntil)}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="font-medium text-night">Public Verification ID</p>
-                      <p className="mt-0.5 font-mono">{cert.verificationId}</p>
-                    </div>
-                  </div>
-
-                  {downloadError?.id === cert.id && (
-                    <div className="mt-3">
-                      <Notice tone="error">{downloadError.message}</Notice>
-                    </div>
-                  )}
-
-                  {/* Actions bar */}
-                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-rule/60 pt-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="primary"
-                        onClick={() => handleDownloadPdf(cert)}
-                        disabled={downloadingId === cert.id}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <Icon name="download" size={16} />
-                          {downloadingId === cert.id ? 'Preparing PDF…' : 'Download PDF'}
-                        </span>
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        onClick={() => handleCopyLink(cert)}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <Icon name={copiedId === cert.id ? 'check' : 'copy'} size={15} />
-                          {copiedId === cert.id ? 'Link Copied!' : 'Copy Verification Link'}
-                        </span>
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        onClick={() => handleShare(cert)}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <Icon name="share" size={15} />
-                          Share
-                        </span>
-                      </Button>
-                    </div>
-
-                    {needsRenewal && (
-                      <Link
-                        href={`/services?renew=certificate&type=${encodeURIComponent(cert.type)}&org=${encodeURIComponent(cert.organizationName)}`}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition"
-                      >
-                        <Icon name="refresh" size={15} />
-                        Renew Certificate
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {content}
 
       {/* QR Code Modal */}
       {activeQrModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          onClick={() => setActiveQrModal(null)}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="fixed inset-0 bg-black/50 cursor-default border-none"
+            onClick={() => setActiveQrModal(null)}
+            aria-label="Close modal backdrop"
+          />
           <div
-            className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="qr-modal-title"
+            className="relative z-10 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
           >
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-base font-bold text-night">Official QR Code</h3>
+                <h3 id="qr-modal-title" className="text-base font-bold text-night">Official QR Code</h3>
                 <p className="text-xs text-muted">{activeQrModal.certificateNumber}</p>
               </div>
               <button
@@ -485,6 +360,178 @@ export function CustomerCertificatesView() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+interface CertificateCardProps {
+  readonly cert: CustomerCertificateRow;
+  readonly downloadingId: string | null;
+  readonly copiedId: string | null;
+  readonly downloadError: { id: string; message: string } | null;
+  readonly onOpenQr: (cert: CustomerCertificateRow) => void;
+  readonly onDownloadPdf: (cert: CustomerCertificateRow) => void;
+  readonly onCopyLink: (cert: CustomerCertificateRow) => void;
+  readonly onShare: (cert: CustomerCertificateRow) => void;
+}
+
+function CertificateCard({
+  cert,
+  downloadingId,
+  copiedId,
+  downloadError,
+  onOpenQr,
+  onDownloadPdf,
+  onCopyLink,
+  onShare,
+}: CertificateCardProps) {
+  const statusCfg = STATUS_CONFIG[cert.effectiveStatus] || STATUS_CONFIG.ACTIVE;
+  const needsRenewal = cert.isExpiringSoon || cert.effectiveStatus === 'EXPIRED' || cert.daysUntilExpiry <= 30;
+
+  const daySuffix = cert.daysUntilExpiry === 1 ? 'day' : 'days';
+  let bannerMessage: string;
+  if (cert.effectiveStatus === 'EXPIRED') {
+    bannerMessage = 'This certificate has expired. Renew now to maintain valid compliance credentials.';
+  } else {
+    bannerMessage = `Expires in ${cert.daysUntilExpiry} ${daySuffix} (${formatDate(cert.validUntil)}).`;
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-rule bg-white shadow-xs transition hover:border-ink/30">
+      {needsRenewal && (
+        <div
+          className={`flex items-center justify-between gap-3 px-5 py-2 text-xs font-medium ${
+            cert.effectiveStatus === 'EXPIRED'
+              ? 'bg-red-50 text-red-800 border-b border-red-200'
+              : 'bg-amber-50 text-amber-900 border-b border-amber-200'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Icon name="alert" size={16} />
+            <span>{bannerMessage}</span>
+          </div>
+          <Link
+            href={`/services?renew=certificate&type=${encodeURIComponent(cert.type)}&org=${encodeURIComponent(cert.organizationName)}`}
+            className="inline-flex items-center gap-1 rounded bg-amber-800 px-2.5 py-1 text-white hover:bg-amber-900 transition font-semibold"
+          >
+            <Icon name="refresh" size={12} />
+            Renew Now
+          </Link>
+        </div>
+      )}
+
+      <div className="p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-sm font-bold text-night">
+                {cert.certificateNumber}
+              </span>
+              <Badge tone={statusCfg.tone}>{statusCfg.label}</Badge>
+            </div>
+            <h2 className="mt-1 text-lg font-bold text-night">{cert.organizationName}</h2>
+            <p className="text-sm font-medium text-ink">{cert.type}</p>
+          </div>
+
+          {cert.qrDataUrl && (
+            <button
+              type="button"
+              onClick={() => onOpenQr(cert)}
+              title="Click to expand QR Code"
+              className="group flex flex-col items-center rounded-md border border-rule bg-paper p-1.5 hover:border-ink/50 transition cursor-pointer"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={cert.qrDataUrl}
+                alt={`QR Code for ${cert.certificateNumber}`}
+                className="h-16 w-16"
+              />
+              <span className="mt-1 text-[10px] font-medium text-muted group-hover:text-ink">
+                View QR
+              </span>
+            </button>
+          )}
+        </div>
+
+        {cert.scope && (
+          <div className="mt-3 text-xs text-muted">
+            <strong className="text-night font-medium">Scope:</strong> {cert.scope}
+          </div>
+        )}
+
+        <div className="mt-4 grid grid-cols-1 gap-2 border-t border-rule/60 pt-4 text-xs text-muted sm:grid-cols-3">
+          <div>
+            <p className="font-medium text-night">Certification Body</p>
+            <p className="mt-0.5">{cert.certificationBody.name}</p>
+            {cert.certificationBody.accreditation && (
+              <p className="text-[11px] text-muted">{cert.certificationBody.accreditation}</p>
+            )}
+          </div>
+
+          <div>
+            <p className="font-medium text-night">Validity Period</p>
+            <p className="mt-0.5">
+              {formatDate(cert.validFrom)} – {formatDate(cert.validUntil)}
+            </p>
+          </div>
+
+          <div>
+            <p className="font-medium text-night">Public Verification ID</p>
+            <p className="mt-0.5 font-mono">{cert.verificationId}</p>
+          </div>
+        </div>
+
+        {downloadError?.id === cert.id && (
+          <div className="mt-3">
+            <Notice tone="error">{downloadError.message}</Notice>
+          </div>
+        )}
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-rule/60 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="primary"
+              onClick={() => onDownloadPdf(cert)}
+              disabled={downloadingId === cert.id}
+            >
+              <span className="flex items-center gap-1.5">
+                <Icon name="download" size={16} />
+                {downloadingId === cert.id ? 'Preparing PDF…' : 'Download PDF'}
+              </span>
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => onCopyLink(cert)}
+            >
+              <span className="flex items-center gap-1.5">
+                <Icon name={copiedId === cert.id ? 'check' : 'copy'} size={15} />
+                {copiedId === cert.id ? 'Link Copied!' : 'Copy Verification Link'}
+              </span>
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => onShare(cert)}
+            >
+              <span className="flex items-center gap-1.5">
+                <Icon name="share" size={15} />
+                Share
+              </span>
+            </Button>
+          </div>
+
+          {needsRenewal && (
+            <Link
+              href={`/services?renew=certificate&type=${encodeURIComponent(cert.type)}&org=${encodeURIComponent(cert.organizationName)}`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition"
+            >
+              <Icon name="refresh" size={15} />
+              Renew Certificate
+            </Link>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

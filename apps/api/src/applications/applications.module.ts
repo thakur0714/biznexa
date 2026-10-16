@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CouponsModule } from '../coupons/coupons.module';
+import { CertificatesModule } from '../certificates/certificates.module';
 import { ApplicationDocumentsController } from './application-documents.controller';
 import { ApplicationDocumentsService } from './application-documents.service';
 import { ApplicationsController } from './applications.controller';
@@ -17,7 +18,7 @@ import { DeliverablesController } from './deliverables.controller';
 import { DeliverablesService } from './deliverables.service';
 
 @Module({
-  imports: [CouponsModule],
+  imports: [CouponsModule, CertificatesModule],
   controllers: [
     AdminApplicationDocumentsController,
     AdminApplicationsController,

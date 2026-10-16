@@ -36,11 +36,11 @@ export class FakeSmsProvider extends SmsProvider {
   private readonly logger = new Logger(FakeSmsProvider.name);
   readonly sentSms: SendSmsOptions[] = [];
 
-  async sendSms(options: SendSmsOptions): Promise<SendSmsResult> {
+  sendSms(options: SendSmsOptions): Promise<SendSmsResult> {
     this.sentSms.push({ ...options });
     // Log only masked mobile in dev/test!
     this.logger.log(`[FakeSmsProvider] Sent SMS to ${maskMobile(options.to)} template=${options.dltTemplateId}`);
-    return { messageId: `fake-sms-${Date.now()}-${this.sentSms.length}` };
+    return Promise.resolve({ messageId: `fake-sms-${Date.now()}-${this.sentSms.length}` });
   }
 
   clear(): void {
@@ -102,7 +102,7 @@ export class Msg91SmsProvider extends SmsProvider {
         recipients: [
           {
             mobiles: mobileNumber,
-            ...(options.variables ?? {}),
+            ...options.variables,
           },
         ],
       }),

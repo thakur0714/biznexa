@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Validated environment. The app refuses to start with missing or weak secrets in production. */
-const schema = z
+const baseSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().default(4000),
@@ -54,38 +54,62 @@ const schema = z
     QUEUE_PREFIX: z.string().min(1).default('bn'),
     /** Comma-separated list of approved partner API keys for public certificate verification */
     CERT_VERIFY_API_KEYS: z.string().optional().default(''),
-  })
-  .superRefine((v, ctx) => {
-    if (v.PAYMENT_GATEWAY === 'razorpay') {
-      for (const k of ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'] as const) {
-        if (!v[k]) ctx.addIssue({ code: 'custom', path: [k], message: 'Required when PAYMENT_GATEWAY=razorpay' });
-      }
-    }
-    if (v.NODE_ENV === 'production') {
-      for (const k of ['JWT_ACCESS_SECRET', 'OTP_PEPPER', 'CERT_QR_SECRET', 'FILE_LINK_SECRET', 'DATA_ENCRYPTION_KEY'] as const) {
-        if (v[k].startsWith('change-me') || v[k].length < 32)
-          ctx.addIssue({ code: 'custom', path: [k], message: 'Use a strong random secret (32+ chars) in production' });
-      }
-      if (v.SMS_PROVIDER === 'console')
-        ctx.addIssue({ code: 'custom', path: ['SMS_PROVIDER'], message: 'Console SMS provider is not allowed in production' });
-      if (v.SMS_PROVIDER === 'msg91' && (!v.MSG91_AUTH_KEY || !v.MSG91_OTP_TEMPLATE_ID))
-        ctx.addIssue({ code: 'custom', path: ['MSG91_OTP_TEMPLATE_ID'], message: 'MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID are required when SMS_PROVIDER=msg91' });
-      if (v.EMAIL_PROVIDER !== 'sendgrid')
-        ctx.addIssue({ code: 'custom', path: ['EMAIL_PROVIDER'], message: 'EMAIL_PROVIDER must be sendgrid in production' });
-      if (v.EMAIL_PROVIDER === 'sendgrid' && !v.SENDGRID_API_KEY)
-        ctx.addIssue({ code: 'custom', path: ['SENDGRID_API_KEY'], message: 'Required when EMAIL_PROVIDER=sendgrid' });
-      if (v.FCM_PROVIDER === 'fake')
-        ctx.addIssue({ code: 'custom', path: ['FCM_PROVIDER'], message: 'Fake FCM provider is not allowed in production' });
-      if (v.FCM_PROVIDER === 'firebase' && (!v.FIREBASE_PROJECT_ID || !v.FIREBASE_SERVICE_ACCOUNT_KEY))
-        ctx.addIssue({ code: 'custom', path: ['FIREBASE_SERVICE_ACCOUNT_KEY'], message: 'FIREBASE_PROJECT_ID and FIREBASE_SERVICE_ACCOUNT_KEY are required when FCM_PROVIDER=firebase' });
-      if (v.VIRUS_SCANNER === 'stub')
-        ctx.addIssue({ code: 'custom', path: ['VIRUS_SCANNER'], message: 'Stub virus scanner is not allowed in production' });
-      if (v.PDF_RENDERER === 'stub')
-        ctx.addIssue({ code: 'custom', path: ['PDF_RENDERER'], message: 'Stub PDF renderer is not allowed in production' });
-      if (v.PAYMENT_GATEWAY === 'mock')
-        ctx.addIssue({ code: 'custom', path: ['PAYMENT_GATEWAY'], message: 'Mock payment gateway is not allowed in production' });
-    }
   });
+
+type RawEnv = z.infer<typeof baseSchema>;
+
+function validateRazorpay(v: RawEnv, ctx: z.RefinementCtx): void {
+  if (v.PAYMENT_GATEWAY !== 'razorpay') return;
+  for (const k of ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'] as const) {
+    if (!v[k]) ctx.addIssue({ code: 'custom', path: [k], message: 'Required when PAYMENT_GATEWAY=razorpay' });
+  }
+}
+
+function validateProductionSecrets(v: RawEnv, ctx: z.RefinementCtx): void {
+  for (const k of ['JWT_ACCESS_SECRET', 'OTP_PEPPER', 'CERT_QR_SECRET', 'FILE_LINK_SECRET', 'DATA_ENCRYPTION_KEY'] as const) {
+    if (v[k].startsWith('change-me') || v[k].length < 32) {
+      ctx.addIssue({ code: 'custom', path: [k], message: 'Use a strong random secret (32+ chars) in production' });
+    }
+  }
+}
+
+function validateProductionProviders(v: RawEnv, ctx: z.RefinementCtx): void {
+  if (v.SMS_PROVIDER === 'console') {
+    ctx.addIssue({ code: 'custom', path: ['SMS_PROVIDER'], message: 'Console SMS provider is not allowed in production' });
+  }
+  if (v.SMS_PROVIDER === 'msg91' && (!v.MSG91_AUTH_KEY || !v.MSG91_OTP_TEMPLATE_ID)) {
+    ctx.addIssue({ code: 'custom', path: ['MSG91_OTP_TEMPLATE_ID'], message: 'MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID are required when SMS_PROVIDER=msg91' });
+  }
+  if (v.EMAIL_PROVIDER !== 'sendgrid') {
+    ctx.addIssue({ code: 'custom', path: ['EMAIL_PROVIDER'], message: 'EMAIL_PROVIDER must be sendgrid in production' });
+  }
+  if (v.EMAIL_PROVIDER === 'sendgrid' && !v.SENDGRID_API_KEY) {
+    ctx.addIssue({ code: 'custom', path: ['SENDGRID_API_KEY'], message: 'Required when EMAIL_PROVIDER=sendgrid' });
+  }
+  if (v.FCM_PROVIDER === 'fake') {
+    ctx.addIssue({ code: 'custom', path: ['FCM_PROVIDER'], message: 'Fake FCM provider is not allowed in production' });
+  }
+  if (v.FCM_PROVIDER === 'firebase' && (!v.FIREBASE_PROJECT_ID || !v.FIREBASE_SERVICE_ACCOUNT_KEY)) {
+    ctx.addIssue({ code: 'custom', path: ['FIREBASE_SERVICE_ACCOUNT_KEY'], message: 'FIREBASE_PROJECT_ID and FIREBASE_SERVICE_ACCOUNT_KEY are required when FCM_PROVIDER=firebase' });
+  }
+  if (v.VIRUS_SCANNER === 'stub') {
+    ctx.addIssue({ code: 'custom', path: ['VIRUS_SCANNER'], message: 'Stub virus scanner is not allowed in production' });
+  }
+  if (v.PDF_RENDERER === 'stub') {
+    ctx.addIssue({ code: 'custom', path: ['PDF_RENDERER'], message: 'Stub PDF renderer is not allowed in production' });
+  }
+  if (v.PAYMENT_GATEWAY === 'mock') {
+    ctx.addIssue({ code: 'custom', path: ['PAYMENT_GATEWAY'], message: 'Mock payment gateway is not allowed in production' });
+  }
+}
+
+const schema = baseSchema.superRefine((v, ctx) => {
+  validateRazorpay(v, ctx);
+  if (v.NODE_ENV === 'production') {
+    validateProductionSecrets(v, ctx);
+    validateProductionProviders(v, ctx);
+  }
+});
 
 export type Env = z.infer<typeof schema>;
 

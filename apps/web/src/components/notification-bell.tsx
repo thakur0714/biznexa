@@ -58,10 +58,13 @@ export function NotificationBell() {
 
   if (!user) return null;
 
+  const notificationSuffix = unreadCount === 1 ? '' : 's';
+  const ariaLabel = unreadCount > 0 ? `${unreadCount} unread notification${notificationSuffix}` : 'Notifications';
+
   return (
     <Link
       href="/dashboard/notifications"
-      aria-label={unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : 'Notifications'}
+      aria-label={ariaLabel}
       className="relative flex h-9 w-9 items-center justify-center rounded-md text-ink hover:bg-ink-050 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink transition-colors"
     >
       <Icon name="bell" size={20} />

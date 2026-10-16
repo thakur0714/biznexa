@@ -186,7 +186,7 @@ export class AdminApplicationsService {
       service: { select: { id: true, name: true, stages: { select: { id: true, name: true, sortOrder: true }, orderBy: { sortOrder: 'asc' } } } },
       package: { select: { id: true, name: true } },
       
-      businessEntity: { select: { id: true, pan: true } },
+      businessEntity: { select: { id: true, pan: true, legalName: true } },
       
       order: {
         select: {
@@ -257,6 +257,7 @@ export class AdminApplicationsService {
       
       businessEntity: app.businessEntity ? {
         id: app.businessEntity.id,
+        legalName: app.businessEntity.legalName,
         maskedPan: app.businessEntity.pan ? maskPan(decryptField(app.businessEntity.pan)) : null
       } : null,
       

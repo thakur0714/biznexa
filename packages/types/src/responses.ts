@@ -164,6 +164,7 @@ export const customerCertificateRowSchema = z.object({
   daysUntilExpiry: z.number().int(),
   isExpiringSoon: z.boolean(),
   createdAt: isoDate,
+  applicationId: z.string().uuid().nullable().optional(),
 });
 export type CustomerCertificateRow = z.infer<typeof customerCertificateRowSchema>;
 
@@ -172,4 +173,47 @@ export const customerCertificateListSchema = z.object({
   total: z.number().int(),
 });
 export type CustomerCertificateList = z.infer<typeof customerCertificateListSchema>;
+
+export const createCertificateInputSchema = z
+  .object({
+    certificateNumber: z.string().trim().min(3).max(64).optional(),
+    type: z.string().trim().min(2).max(120),
+    organizationName: z.string().trim().min(2).max(200).optional(),
+    scope: z.string().max(1000).optional(),
+    address: z.string().max(500).optional(),
+    issueDate: z.coerce.date(),
+    validFrom: z.coerce.date(),
+    validUntil: z.coerce.date(),
+    certificationBodyId: z.string().uuid(),
+    showPdfPublicly: z.boolean().default(false),
+    applicationId: z.string().uuid().optional(),
+    businessEntityId: z.string().uuid().optional(),
+    entityId: z.string().uuid().optional(),
+    fileId: z.string().uuid().optional(),
+  })
+  .refine((v) => v.validUntil > v.validFrom, { message: 'Valid until must be after valid from', path: ['validUntil'] })
+  .refine((v) => Boolean(v.organizationName || v.applicationId), {
+    message: 'Enter organisation name or supply an applicationId to prefill from',
+    path: ['organizationName'],
+  });
+export type CreateCertificateInput = z.infer<typeof createCertificateInputSchema>;
+
+export const createCertificateFromApplicationInputSchema = z
+  .object({
+    certificateNumber: z.string().trim().min(3).max(64).optional(),
+    type: z.string().trim().min(2).max(120),
+    organizationName: z.string().trim().min(2).max(200).optional(),
+    scope: z.string().max(1000).optional(),
+    address: z.string().max(500).optional(),
+    issueDate: z.coerce.date(),
+    validFrom: z.coerce.date(),
+    validUntil: z.coerce.date(),
+    certificationBodyId: z.string().uuid(),
+    showPdfPublicly: z.boolean().default(false),
+    businessEntityId: z.string().uuid().optional(),
+    entityId: z.string().uuid().optional(),
+    fileId: z.string().uuid().optional(),
+  })
+  .refine((v) => v.validUntil > v.validFrom, { message: 'Valid until must be after valid from', path: ['validUntil'] });
+export type CreateCertificateFromApplicationInput = z.infer<typeof createCertificateFromApplicationInputSchema>;
 
