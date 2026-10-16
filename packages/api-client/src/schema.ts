@@ -1476,6 +1476,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/applications/{applicationId}/deliverables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DeliverablesController_listDeliverablesAdmin"];
+        put?: never;
+        post: operations["DeliverablesController_addDeliverable"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/applications/{id}/deliverables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DeliverablesController_listDeliverablesCustomer"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/coupons": {
         parameters: {
             query?: never;
@@ -4260,6 +4292,26 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        Deliverable: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: uuid */
+            fileId: string;
+            fileName: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        DeliverableList: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: uuid */
+            fileId: string;
+            fileName: string;
+            /** Format: date-time */
+            createdAt: string;
+        }[];
         SellerSettings: {
             name: string | null;
             legalName: string | null;
@@ -7894,6 +7946,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    DeliverablesController_listDeliverablesAdmin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliverableList"];
+                };
+            };
+        };
+    };
+    DeliverablesController_addDeliverable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    /** Format: uuid */
+                    fileId: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deliverable"];
+                };
+            };
+        };
+    };
+    DeliverablesController_listDeliverablesCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliverableList"];
+                };
             };
         };
     };
