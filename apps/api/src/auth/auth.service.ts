@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { OtpService } from './otp.service';
@@ -204,16 +205,24 @@ export class AuthService {
 
     const emailChanged = body.email && body.email.toLowerCase() !== currentUser.email?.toLowerCase();
 
-    const updated = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.email !== undefined && {
-          email: body.email.toLowerCase(),
-          ...(emailChanged ? { emailVerified: false } : {}),
-        }),
-      },
-    });
+    const updated = await this.prisma.user
+      .update({
+        where: { id: userId },
+        data: {
+          ...(body.name !== undefined && { name: body.name }),
+          ...(body.email !== undefined && {
+            email: body.email.toLowerCase(),
+            ...(emailChanged ? { emailVerified: false } : {}),
+          }),
+        },
+      })
+      .catch((e: unknown) => {
+        // Two accounts claiming the same email at once: the unique index decides.
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+          throw new ConflictException('An account with this email already exists');
+        }
+        throw e;
+      });
 
     await this.audit.log({ actorId: userId, action: 'user.profile_update', entityType: 'User', entityId: userId });
     const { roles, permissions } = await this.tokens.rolesAndPermissions(userId);

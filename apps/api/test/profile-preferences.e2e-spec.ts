@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
@@ -12,7 +13,8 @@ let prisma: PrismaService;
 let userA: { token: string; id: string; email: string };
 let userB: { token: string; id: string; email: string };
 
-const run = Date.now().toString().slice(-7);
+// Random part: suites run in parallel and register customers, so a time-only id can repeat across files.
+const run = `${Date.now().toString().slice(-4)}${randomInt(100, 1000)}`;
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
 
 async function registerUser(n: number) {

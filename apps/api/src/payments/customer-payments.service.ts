@@ -78,7 +78,8 @@ export class CustomerPaymentsService {
 
     for (const o of orders) {
       totalPaid += o.amountPaid;
-      if (o.status !== 'CANCELLED' && o.status !== 'REFUNDED') {
+      // Only an advance-paid order has a balance due (same rule as the dashboard); unpaid carts are not owed.
+      if (o.status === 'PARTIALLY_PAID') {
         const bal = o.total - o.amountPaid;
         if (bal > 0) outstandingBalance += bal;
       }
