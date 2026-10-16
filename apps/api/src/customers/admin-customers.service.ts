@@ -7,7 +7,7 @@ import type { AdminCustomerDetail, AdminCustomerListQuery, AdminCustomerRow } fr
 export class AdminCustomersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private buildWhere(params: AdminCustomerListQuery): Prisma.UserWhereInput {
+  private async buildWhere(params: AdminCustomerListQuery): Promise<Prisma.UserWhereInput> {
     const where: Prisma.UserWhereInput = {
       roles: { some: { role: { key: 'CUSTOMER' } } },
     };
@@ -18,13 +18,13 @@ export class AdminCustomersService {
 
     if (params.q) {
       const q = params.q.trim();
-      // Since User does not have an explicitly named inverse relation for Application.customerId,
-      // but applications belong to orders, and users own orders:
+      // Application has no relation to User (only customerId), and a draft has no order yet: look the code up directly.
+      const app = await this.prisma.application.findUnique({ where: { code: q.toUpperCase() }, select: { customerId: true } });
       where.OR = [
         { name: { contains: q, mode: 'insensitive' } },
         { email: { contains: q, mode: 'insensitive' } },
         { mobile: { contains: q, mode: 'insensitive' } },
-        { orders: { some: { applications: { some: { code: q } } } } },
+        ...(app ? [{ id: app.customerId }] : []),
       ];
     }
 
@@ -32,7 +32,7 @@ export class AdminCustomersService {
   }
 
   async list(params: AdminCustomerListQuery) {
-    const where = this.buildWhere(params);
+    const where = await this.buildWhere(params);
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,

@@ -79,6 +79,11 @@ beforeAll(async () => {
     },
   });
 
+  // A draft has no order yet.
+  await prisma.application.create({
+    data: { code: `APP-${run}-D1`, customerId: customer2Id, serviceId: service.id, packageId: pkg.id },
+  });
+
   staffUserId = await createStaff(prisma, 'OPERATIONS', email('staff-target'));
 });
 
@@ -131,6 +136,11 @@ describe('GET /api/admin/customers', () => {
     const res = await http.get(`/api/admin/customers?q=APP-${run}-C1`).set(as(admin)).expect(200);
     expect(res.body.items).toHaveLength(1);
     expect(res.body.items[0].id).toBe(customerId);
+  });
+
+  it('finds the customer of a draft application (no order yet) by its code', async () => {
+    const res = await http.get(`/api/admin/customers?q=APP-${run}-D1`).set(as(admin)).expect(200);
+    expect(res.body.items.map((i: any) => i.id)).toEqual([customer2Id]);
   });
 
   it('filters by status', async () => {
