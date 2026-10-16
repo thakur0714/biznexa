@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { adminPaymentListQuerySchema, attemptPlan, currentAttempt, paymentCallbackInput, paymentCheckoutSchema, paymentOutcome, startPaymentInput } from './payments';
+import {
+  adminPaymentListQuerySchema,
+  attemptPlan,
+  currentAttempt,
+  customerPaymentListQuerySchema,
+  customerPaymentListResponseSchema,
+  customerPaymentRowSchema,
+  paymentCallbackInput,
+  paymentCheckoutSchema,
+  paymentOutcome,
+  startPaymentInput,
+} from './payments';
 
 describe('startPaymentInput', () => {
   it('accepts no body or an empty one', () => {
@@ -130,3 +141,48 @@ describe('adminPaymentListQuerySchema dates (M4.15)', () => {
     }
   });
 });
+
+describe('customer payments schemas (M5.10)', () => {
+  it('validates query params and sets defaults', () => {
+    expect(customerPaymentListQuerySchema.parse({})).toEqual({ page: 1, limit: 25 });
+    expect(customerPaymentListQuerySchema.parse({ page: '2', limit: '10' })).toEqual({ page: 2, limit: 10 });
+    expect(customerPaymentListQuerySchema.safeParse({ page: '0' }).success).toBe(false);
+    expect(customerPaymentListQuerySchema.safeParse({ limit: '101' }).success).toBe(false);
+  });
+
+  it('validates customer payment row and list response', () => {
+    const validRow = {
+      id: 'a0000000-0000-0000-0000-000000000001',
+      amount: 50000,
+      status: 'SUCCESS',
+      method: 'upi',
+      gateway: 'RAZORPAY',
+      createdAt: '2026-10-16T12:00:00.000Z',
+      order: {
+        id: 'b0000000-0000-0000-0000-000000000001',
+        code: 'ORD-2026-000001',
+        total: 100000,
+        amountPaid: 50000,
+        balance: 50000,
+        applicationId: 'c0000000-0000-0000-0000-000000000001',
+        serviceSlug: 'gst-registration',
+      },
+      invoice: {
+        id: 'd0000000-0000-0000-0000-000000000001',
+        number: 'BN/2627/000001',
+      },
+    };
+    expect(customerPaymentRowSchema.safeParse(validRow).success).toBe(true);
+    expect(
+      customerPaymentListResponseSchema.safeParse({
+        items: [validRow],
+        total: 1,
+        page: 1,
+        limit: 25,
+        totalPaid: 50000,
+        outstandingBalance: 50000,
+      }).success,
+    ).toBe(true);
+  });
+});
+

@@ -11,6 +11,8 @@ import {
   istDay,
   financialYear,
   registerSchema,
+  updateProfileSchema,
+  changePasswordSchema,
 } from './index';
 
 describe('calculatePrice', () => {
@@ -140,3 +142,23 @@ describe('registerSchema', () => {
     expect(bad.success).toBe(false);
   });
 });
+
+describe('profile & password change schemas (M5.11)', () => {
+  it('validates update profile input', () => {
+    expect(updateProfileSchema.safeParse({ name: 'Rohit Sharma' }).success).toBe(true);
+    expect(updateProfileSchema.safeParse({ email: 'rohit@example.com' }).success).toBe(true);
+    expect(updateProfileSchema.safeParse({ name: 'Rohit Sharma', email: 'rohit@example.com' }).success).toBe(true);
+    expect(updateProfileSchema.safeParse({}).success).toBe(false);
+    expect(updateProfileSchema.safeParse({ name: 'R' }).success).toBe(false);
+    expect(updateProfileSchema.safeParse({ email: 'not-an-email' }).success).toBe(false);
+  });
+
+  it('validates change password input with standard password rules', () => {
+    expect(changePasswordSchema.safeParse({ currentPassword: 'oldPass123', newPassword: 'newSecretPass1' }).success).toBe(true);
+    expect(changePasswordSchema.safeParse({ currentPassword: '', newPassword: 'newSecretPass1' }).success).toBe(false);
+    expect(changePasswordSchema.safeParse({ currentPassword: 'oldPass123', newPassword: 'short' }).success).toBe(false);
+    expect(changePasswordSchema.safeParse({ currentPassword: 'oldPass123', newPassword: 'letters_only' }).success).toBe(false);
+    expect(changePasswordSchema.safeParse({ currentPassword: 'oldPass123', newPassword: '12345678' }).success).toBe(false);
+  });
+});
+
