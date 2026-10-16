@@ -93,5 +93,5 @@ test('wrong password shows a clear error', async ({ page }) => {
   await page.getByLabel('Email').fill('customer@biznexa.local');
   await page.getByLabel('Password').fill('nope-nope1');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByRole('alert').filter({ hasText: 'Incorrect' })).toHaveText('Incorrect email or password');
+  await expect(page.getByRole('alert').filter({ hasText: 'Incorrect' }).first()).toHaveText('Incorrect email or password');
 });
