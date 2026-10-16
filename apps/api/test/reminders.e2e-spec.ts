@@ -13,13 +13,14 @@ describe('Reminders (e2e)', () => {
   let app: NestExpressApplication;
   let http: ReturnType<typeof request>;
   let prisma: PrismaService;
-  let runStr = Date.now().toString(36);
-  let runNum = Date.now().toString().slice(-7);
-  let prefix = `rem-${runStr}`;
+  const runStr = `${Date.now().toString(36)}${Math.floor(Math.random() * 1_000_000).toString(36)}`;
+  const runNum = String(Math.floor(1_000_000 + Math.random() * 9_000_000));
+  const prefix = `rem-${runStr}`;
 
   let userA: { id: string; token: string; name: string };
   let userB: { id: string; token: string; name: string };
   let admin: string;
+  let customerIds: string[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -48,6 +49,7 @@ describe('Reminders (e2e)', () => {
       consent: true,
     }).expect(201);
     userB = { id: resB.body.user.id, token: resB.body.accessToken, name: resB.body.user.name };
+    customerIds = [userA.id, userB.id];
   });
 
   afterAll(async () => {
@@ -55,8 +57,9 @@ describe('Reminders (e2e)', () => {
       await prisma.application.deleteMany({ where: { code: { startsWith: prefix } } });
       await prisma.businessEntity.deleteMany({ where: { legalName: { startsWith: prefix } } });
       await prisma.service.deleteMany({ where: { slug: { startsWith: prefix } } });
-      await prisma.user.deleteMany({ where: { email: { startsWith: prefix } } });
-      await prisma.user.deleteMany({ where: { name: { startsWith: `Customer ` } } });
+      await prisma.storedFile.deleteMany({ where: { ownerId: { in: customerIds } } });
+      await prisma.user.deleteMany({ where: { id: { in: customerIds } } });
+      await prisma.user.deleteMany({ where: { email: `admin-${runStr}@example.com` } });
     } finally {
       await app.close();
     }

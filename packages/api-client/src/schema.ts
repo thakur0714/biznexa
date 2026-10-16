@@ -1684,6 +1684,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pending-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PendingActionsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/coupons": {
         parameters: {
             query?: never;
@@ -4848,6 +4864,18 @@ export interface components {
                 pendingMandatory: number;
             };
         }[];
+        PendingActionsResponse: {
+            items: {
+                /** @enum {string} */
+                kind: "upload_document" | "reupload_document" | "pay_balance" | "read_message";
+                /** Format: uuid */
+                applicationId: string;
+                applicationCode: string;
+                serviceName: string;
+                title: string;
+                href: string;
+            }[];
+        };
         SellerSettings: {
             name: string | null;
             legalName: string | null;
@@ -8240,7 +8268,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Status updated; DELIVERED requires at least one final deliverable */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid transition or missing final deliverables */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9111,6 +9147,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerDocuments"];
+                };
+            };
+        };
+    };
+    PendingActionsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingActionsResponse"];
                 };
             };
         };
