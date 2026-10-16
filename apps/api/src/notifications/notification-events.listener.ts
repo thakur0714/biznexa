@@ -32,6 +32,7 @@ export class NotificationEventsListener implements OnModuleInit {
     this.events.on('document.rejected', (e) => this.handleDocumentRejected(e.payload));
     this.events.on('application.status_changed', (e) => this.handleApplicationStatusChanged(e.payload));
     this.events.on('certificate.issued', (e) => this.handleCertificateIssued(e.payload));
+    this.events.on('message.created', (e) => this.handleMessageCreated(e.payload));
   }
 
   async handlePaymentSucceeded(payload: DomainEventPayloads['payment.succeeded']): Promise<void> {
@@ -386,22 +387,27 @@ export class NotificationEventsListener implements OnModuleInit {
 
   private async dispatchForEvent(
     event: NotificationEvent,
-    customer: { id: string; name: string; email?: string | null; mobile?: string | null },
+    recipient: { id: string; name: string; email?: string | null; mobile?: string | null },
     variables: Record<string, unknown>,
     link?: string,
+    allowedChannels?: string[],
   ): Promise<void> {
-    const templates = await this.prisma.notificationTemplate.findMany({
+    let templates = await this.prisma.notificationTemplate.findMany({
       where: {
         event,
         isActive: true,
       },
     });
 
+    if (allowedChannels) {
+      templates = templates.filter(t => allowedChannels.includes(t.channel));
+    }
+
     for (const template of templates) {
       try {
         const rendered = this.templateEngine.render(template, variables);
         await this.dispatcher.dispatch({
-          userId: customer.id,
+          userId: recipient.id,
           channel: template.channel,
           event,
           title: rendered.subject,
@@ -409,17 +415,97 @@ export class NotificationEventsListener implements OnModuleInit {
           payload: variables,
           link,
           recipient: {
-            email: customer.email ?? undefined,
-            mobile: customer.mobile ?? undefined,
+            email: recipient.email ?? undefined,
+            mobile: recipient.mobile ?? undefined,
           },
         });
       } catch (err) {
         this.logger.error(
-          `Failed to dispatch notification for event "${event}" on channel "${template.channel}" to user "${customer.id}": ${
+          `Failed to dispatch notification for event "${event}" on channel "${template.channel}" to user "${recipient.id}": ${
             err instanceof Error ? err.message : String(err)
           }`,
         );
       }
+    }
+  }
+
+  async handleMessageCreated(payload: DomainEventPayloads['message.created']): Promise<void> {
+    try {
+      const app = await this.prisma.application.findUnique({
+        where: { id: payload.applicationId },
+        select: {
+          id: true,
+          code: true,
+          customerId: true,
+          assignedToId: true,
+          service: { select: { id: true, name: true } },
+        },
+      });
+      if (!app) {
+        this.logger.warn(`Application not found for message.created (${payload.applicationId})`);
+        return;
+      }
+
+      const message = await this.prisma.message.findUnique({
+        where: { id: payload.messageId },
+        select: { body: true, sender: { select: { id: true, name: true } } },
+      });
+      if (!message) {
+        this.logger.warn(`Message not found for message.created (${payload.messageId})`);
+        return;
+      }
+
+      const bodyText = message.body || '';
+      const link = `${env().PUBLIC_WEB_URL}/dashboard/applications/${app.id}`;
+      const messageExcerpt = bodyText.length > 120 ? bodyText.substring(0, 120) + '...' : bodyText;
+
+      if (payload.fromStaff) {
+        // Notify customer on all channels
+        const customer = await this.prisma.user.findUnique({
+          where: { id: app.customerId },
+          select: { id: true, name: true, email: true, mobile: true },
+        });
+        if (!customer) {
+          this.logger.warn(`Customer ${app.customerId} not found for message.created`);
+          return;
+        }
+
+        const variables: Record<string, unknown> = {
+          recipientName: customer.name,
+          applicationCode: app.code,
+          serviceName: app.service.name,
+          senderName: message.sender.name,
+          messageExcerpt,
+          link,
+        };
+
+        await this.dispatchForEvent('message.received', customer, variables, link);
+      } else {
+        // Notify assigned staff on IN_APP only
+        if (!app.assignedToId) return;
+
+        const staff = await this.prisma.user.findUnique({
+          where: { id: app.assignedToId },
+          select: { id: true, name: true, email: true, mobile: true },
+        });
+        if (!staff) {
+          this.logger.warn(`Staff ${app.assignedToId} not found for message.created`);
+          return;
+        }
+
+        const variables: Record<string, unknown> = {
+          recipientName: staff.name,
+          applicationCode: app.code,
+          serviceName: app.service.name,
+          senderName: message.sender.name,
+          messageExcerpt,
+          link,
+        };
+
+        await this.dispatchForEvent('message.received', staff, variables, link, ['IN_APP']);
+      }
+    } catch (err) {
+      this.logger.error(`Error handling message.created: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 }
