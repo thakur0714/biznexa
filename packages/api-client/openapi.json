@@ -11051,6 +11051,32 @@
           "cms"
         ]
       }
+    },
+    "/api/dashboard/summary": {
+      "get": {
+        "operationId": "DashboardController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "dashboard"
+        ]
+      }
     }
   },
   "info": {
@@ -25347,6 +25373,111 @@
           "status",
           "createdAt",
           "applicationCount"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardSummary": {
+        "type": "object",
+        "properties": {
+          "activeApplications": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pendingActions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unpaidBalance": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "upcomingDueDates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "number": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "validUntil": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "type",
+                "validUntil"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "recentActivity": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "applicationId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "applicationCode": {
+                  "type": "string"
+                },
+                "serviceName": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "DRAFT",
+                    "PAYMENT_PENDING",
+                    "SUBMITTED",
+                    "DOCUMENTS_UNDER_REVIEW",
+                    "DOCUMENTS_PENDING",
+                    "DOCUMENTS_APPROVED",
+                    "ASSIGNED",
+                    "IN_PROGRESS",
+                    "ON_HOLD",
+                    "COMPLETED",
+                    "DELIVERED",
+                    "CANCELLED"
+                  ]
+                },
+                "statusLabel": {
+                  "type": "string"
+                },
+                "changedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "applicationId",
+                "applicationCode",
+                "serviceName",
+                "status",
+                "statusLabel",
+                "changedAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "activeApplications",
+          "pendingActions",
+          "unpaidBalance",
+          "upcomingDueDates",
+          "recentActivity"
         ],
         "additionalProperties": false
       }
