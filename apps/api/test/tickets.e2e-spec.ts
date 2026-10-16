@@ -37,7 +37,6 @@ async function registerCustomer(n: number) {
   return { token: res.body.accessToken as string, id: res.body.user.id as string };
 }
 
-let catId: string;
 let svcId: string;
 let pkgId: string;
 let appAId: string;
@@ -65,17 +64,15 @@ beforeAll(async () => {
   const opsStaff = await staffSession(http, prisma, 'OPERATIONS', `ops-tkt-${run}@example.com`);
   opsToken = opsStaff.accessToken;
 
-  // Create service and packages for application linking tests
-  const cat = await prisma.category.create({
-    data: { name: `${prefix}-Cat`, slug: `${prefix.toLowerCase()}-cat` },
-  });
-  catId = cat.id;
+  // Clean up any previous test categories and use existing active category
+  await prisma.category.deleteMany({ where: { slug: { contains: 'tkt' } } });
+  const existingCat = await prisma.category.findFirstOrThrow({ where: { isActive: true } });
 
   const svc = await prisma.service.create({
     data: {
       name: `${prefix}-Svc`,
       slug: `${prefix.toLowerCase()}-svc`,
-      categoryId: cat.id,
+      categoryId: existingCat.id,
       shortDescription: 'test svc',
     },
   });
@@ -145,7 +142,6 @@ afterAll(async () => {
     }
     if (pkgId) await prisma.servicePackage.deleteMany({ where: { id: pkgId } });
     if (svcId) await prisma.service.deleteMany({ where: { id: svcId } });
-    if (catId) await prisma.category.deleteMany({ where: { id: catId } });
 
     await prisma.user.deleteMany({
       where: {
