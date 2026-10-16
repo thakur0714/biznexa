@@ -92,6 +92,19 @@ export class TokenService {
     await this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
   }
 
+  async revokeOthers(userId: string, currentRawToken?: string) {
+    if (!currentRawToken) {
+      await this.revokeAll(userId);
+      return;
+    }
+    const currentHash = sha256(currentRawToken);
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, tokenHash: { not: currentHash }, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+
   /** One-time token allowing a password change after an OTP check. */
   resetToken(userId: string) {
     return this.jwt.signAsync({ sub: userId, typ: 'reset' }, { expiresIn: '10m' });
