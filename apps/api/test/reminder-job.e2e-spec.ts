@@ -165,8 +165,10 @@ describe('Reminder Job (e2e)', () => {
     expect(dispatchSpy).toHaveBeenCalled();
     const emailCall = dispatchSpy.mock.calls.find(c => c[0].channel === 'EMAIL');
     expect(emailCall).toBeDefined();
+    // One notification for the missed 7-day and the due 1-day offset, telling the real days left.
+    expect(dispatchSpy.mock.calls.filter(c => c[0].channel === 'EMAIL')).toHaveLength(1);
     if (emailCall) {
-       expect(emailCall[0].payload.daysLeft).toBe(7);
+       expect(emailCall[0].payload.daysLeft).toBe(1);
     }
 
     // Should also mark as SENT since all offsets are now done

@@ -4,7 +4,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
 import { TemplateEngineService } from '../notifications/template-engine.service';
 import { env } from '../config/env';
-import { NotificationEvent } from '@biznexa/types';
+import { istDay, type NotificationEvent } from '@biznexa/types';
+import type { Prisma } from '../generated/prisma/client';
+
+type ReminderWithEntity = Prisma.ReminderGetPayload<{ include: { businessEntity: true } }>;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const addDays = (d: Date, days: number) => new Date(d.getTime() + days * DAY_MS);
+/** Whole days from one IST calendar day (YYYY-MM-DD) to another. */
+const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS);
 
 @Injectable()
 export class ReminderJobService {
@@ -18,6 +26,7 @@ export class ReminderJobService {
 
   @Cron('0 8 * * *', { timeZone: 'Asia/Kolkata' })
   async runDue(now: Date = new Date()) {
+    const today = istDay(now);
     const reminders = await this.prisma.reminder.findMany({
       where: { status: 'SCHEDULED' },
       include: { businessEntity: true },
@@ -25,54 +34,36 @@ export class ReminderJobService {
 
     for (const reminder of reminders) {
       try {
-        const sortedOffsets = [...reminder.offsets].sort((a, b) => b - a);
-        let dueOffset: number | null = null;
-        const missedOffsets: number[] = [];
-
-        for (const offset of sortedOffsets) {
-          if (reminder.sentOffsets.includes(offset)) continue;
-
-          const threshold = new Date(reminder.dueDate);
-          threshold.setUTCDate(threshold.getUTCDate() - offset);
-
-          if (now >= threshold) {
-            if (dueOffset === null) {
-              dueOffset = offset;
-            } else {
-              missedOffsets.push(offset);
-            }
-          }
-        }
-
-        if (dueOffset === null) {
-          const allSent = sortedOffsets.every(o => reminder.sentOffsets.includes(o));
-          if (allSent) {
-            await this.prisma.reminder.update({
-              where: { id: reminder.id },
-              data: { status: 'SENT' },
-            });
+        // Every unsent offset whose day (in India) has come; after downtime several are due at once.
+        const dueOffsets = reminder.offsets.filter(
+          (o) => !reminder.sentOffsets.includes(o) && today >= istDay(addDays(reminder.dueDate, -o)),
+        );
+        if (dueOffsets.length === 0) {
+          if (reminder.offsets.every((o) => reminder.sentOffsets.includes(o))) {
+            await this.prisma.reminder.update({ where: { id: reminder.id }, data: { status: 'SENT' } });
           }
           continue;
         }
 
+        // Claim all of them in one atomic update; a parallel run that claimed any of them wins and we send nothing.
         const claimed = await this.prisma.reminder.updateMany({
-          where: {
-            id: reminder.id,
-            NOT: { sentOffsets: { has: dueOffset } },
-          },
-          data: { sentOffsets: { push: dueOffset } },
+          where: { id: reminder.id, status: 'SCHEDULED', NOT: { sentOffsets: { hasSome: dueOffsets } } },
+          data: { sentOffsets: { push: dueOffsets } },
         });
+        if (claimed.count === 0) continue;
 
-        if (claimed.count > 0) {
-          await this.processDispatch(reminder, dueOffset, missedOffsets);
+        const sent = [...reminder.sentOffsets, ...dueOffsets];
+        if (reminder.offsets.every((o) => sent.includes(o))) {
+          await this.prisma.reminder.update({ where: { id: reminder.id }, data: { status: 'SENT' } });
         }
+        await this.processDispatch(reminder, daysBetween(today, istDay(reminder.dueDate)));
       } catch (err) {
         this.logger.error(`Error processing reminder ${reminder.id}: ${err instanceof Error ? err.message : err}`);
       }
     }
   }
 
-  private async processDispatch(reminder: any, dueOffset: number, missedOffsets: number[]) {
+  private async processDispatch(reminder: ReminderWithEntity, daysLeft: number) {
     let link = `${env().PUBLIC_WEB_URL}/dashboard`;
 
     if (reminder.renewServiceSlug) {
@@ -109,7 +100,7 @@ export class ReminderJobService {
         customerName: user.name,
         certificateNumber,
         entityName: reminder.businessEntity?.legalName || 'your business',
-        daysLeft: dueOffset,
+        daysLeft,
       };
     } else if (reminder.type === 'SERVICE_RENEWAL') {
       event = 'compliance.reminder';
@@ -150,25 +141,6 @@ export class ReminderJobService {
       } catch (err) {
         this.logger.error(`Failed to dispatch reminder notification: ${err instanceof Error ? err.message : String(err)}`);
       }
-    }
-
-    const updatedSentOffsets = [...reminder.sentOffsets, dueOffset, ...missedOffsets];
-    const sortedOffsets = [...reminder.offsets].sort((a, b) => b - a);
-    const allSent = sortedOffsets.every(o => updatedSentOffsets.includes(o));
-
-    const updateData: any = {};
-    if (missedOffsets.length > 0) {
-      updateData.sentOffsets = { push: missedOffsets };
-    }
-    if (allSent) {
-      updateData.status = 'SENT';
-    }
-
-    if (Object.keys(updateData).length > 0) {
-      await this.prisma.reminder.update({
-        where: { id: reminder.id },
-        data: updateData,
-      });
     }
   }
 }
