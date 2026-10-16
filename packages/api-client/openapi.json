@@ -8396,8 +8396,11 @@
           }
         },
         "responses": {
-          "201": {
-            "description": ""
+          "200": {
+            "description": "Status updated; DELIVERED requires at least one final deliverable"
+          },
+          "409": {
+            "description": "Invalid transition or missing final deliverables"
           }
         },
         "security": [

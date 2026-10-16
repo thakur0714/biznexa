@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Patch, Param, ParseUUIDPipe, Res, BadRequestException } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   adminApplicationListQuery,
   adminApplicationPageSchema,
@@ -75,8 +75,11 @@ export class AdminApplicationsController {
 
 
   @RequirePermissions(PERMS.APPLICATIONS_UPDATE)
+  @ApiResponse({ status: 200, description: 'Status updated; DELIVERED requires at least one final deliverable' })
+  @ApiResponse({ status: 409, description: 'Invalid transition or missing final deliverables' })
   @Post(':id/status')
-  status(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(applicationTransitionSchema) body: ApplicationTransitionInput, @CurrentUser() u: AuthUser) {
+  status(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(applicationTransitionSchema) body: ApplicationTransitionInput, @CurrentUser() u: AuthUser, @Res({ passthrough: true }) res: Response) {
+    if (body.to === 'DELIVERED') res.status(200);
     return this.applications.updateStatus(id, body, u);
   }
 

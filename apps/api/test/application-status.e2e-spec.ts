@@ -44,6 +44,9 @@ beforeAll(async () => {
   staffId = await createStaff(prisma, 'OPERATIONS', `e2e-status-${run}-staff@example.com`);
   customerId = (await prisma.user.create({ data: { name: 'Status Test', email: `e2e-status-${run}-cust@example.com`, consentAt: new Date() } })).id;
   appId = await newApplication('DRAFT');
+  await prisma.finalDeliverable.create({
+    data: { applicationId: appId, title: 'Status matrix fixture', fileKey: `status-matrix-${run}`, fileName: 'status.pdf', uploadedById: staffId },
+  });
 });
 
 beforeEach(() => {

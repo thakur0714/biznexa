@@ -8240,7 +8240,15 @@ export interface operations {
             };
         };
         responses: {
-            201: {
+            /** @description Status updated; DELIVERED requires at least one final deliverable */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid transition or missing final deliverables */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

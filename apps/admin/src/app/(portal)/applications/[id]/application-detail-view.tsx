@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { StatusForm } from './status-form';
 import { MessagesPanel } from './messages-panel';
+import { DeliverablesPanel } from './deliverables-panel';
 import { useEffect, useState } from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { Notice, Button, Dialog, Field } from '@biznexa/ui';
@@ -242,6 +243,8 @@ export function ApplicationDetailView({ id }: { id: string }) {
       </section>
 
       <MessagesPanel applicationId={id} />
+
+      <DeliverablesPanel applicationId={id} status={data.status as import('@biznexa/types').ApplicationStatus} />
 
       <section className="p-4 bg-white border border-rule rounded-md">
         <h2 className="font-semibold text-lg mb-4">History</h2>
