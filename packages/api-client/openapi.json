@@ -9823,6 +9823,46 @@
         ]
       }
     },
+    "/api/documents": {
+      "get": {
+        "operationId": "CustomerDocumentsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "needs_action",
+                "all"
+              ],
+              "default": "needs_action"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDocuments"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/admin/coupons": {
       "get": {
         "operationId": "AdminCouponsController_list",
@@ -11301,6 +11341,32 @@
         },
         "tags": [
           "cms"
+        ]
+      }
+    },
+    "/api/dashboard/summary": {
+      "get": {
+        "operationId": "DashboardController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummary"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "dashboard"
         ]
       }
     }
@@ -24788,6 +24854,430 @@
         ],
         "additionalProperties": false
       },
+      "CustomerDocuments": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "applicationId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "applicationCode": {
+              "type": "string"
+            },
+            "serviceName": {
+              "type": "string"
+            },
+            "checklist": {
+              "type": "object",
+              "properties": {
+                "applicationId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "canUpload": {
+                  "type": "boolean"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "requirement": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "isMandatory": {
+                            "type": "boolean"
+                          },
+                          "acceptedTypes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "maxSizeMb": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "description",
+                          "isMandatory",
+                          "acceptedTypes",
+                          "maxSizeMb"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "current": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "exclusiveMinimum": true,
+                            "minimum": 0
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "REQUIRED",
+                              "UPLOADED",
+                              "UNDER_REVIEW",
+                              "APPROVED",
+                              "REJECTED"
+                            ]
+                          },
+                          "rejectionReason": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "fileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mimeType": {
+                            "type": "string"
+                          },
+                          "sizeBytes": {
+                            "type": "integer"
+                          },
+                          "scanStatus": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING",
+                              "CLEAN",
+                              "INFECTED"
+                            ],
+                            "description": "INFECTED means the file was removed: upload a clean copy"
+                          },
+                          "uploadedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version",
+                          "status",
+                          "rejectionReason",
+                          "fileId",
+                          "fileName",
+                          "mimeType",
+                          "sizeBytes",
+                          "scanStatus",
+                          "uploadedAt"
+                        ],
+                        "additionalProperties": false,
+                        "nullable": true
+                      },
+                      "previous": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": true,
+                              "minimum": 0
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "REQUIRED",
+                                "UPLOADED",
+                                "UNDER_REVIEW",
+                                "APPROVED",
+                                "REJECTED"
+                              ]
+                            },
+                            "rejectionReason": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "fileId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fileName": {
+                              "type": "string"
+                            },
+                            "mimeType": {
+                              "type": "string"
+                            },
+                            "sizeBytes": {
+                              "type": "integer"
+                            },
+                            "scanStatus": {
+                              "type": "string",
+                              "enum": [
+                                "PENDING",
+                                "CLEAN",
+                                "INFECTED"
+                              ],
+                              "description": "INFECTED means the file was removed: upload a clean copy"
+                            },
+                            "uploadedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "version",
+                            "status",
+                            "rejectionReason",
+                            "fileId",
+                            "fileName",
+                            "mimeType",
+                            "sizeBytes",
+                            "scanStatus",
+                            "uploadedAt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "canReplace": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "requirement",
+                      "current",
+                      "previous",
+                      "canReplace"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "additional": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "requestedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "description",
+                          "requestedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "current": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "exclusiveMinimum": true,
+                            "minimum": 0
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "REQUIRED",
+                              "UPLOADED",
+                              "UNDER_REVIEW",
+                              "APPROVED",
+                              "REJECTED"
+                            ]
+                          },
+                          "rejectionReason": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "fileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mimeType": {
+                            "type": "string"
+                          },
+                          "sizeBytes": {
+                            "type": "integer"
+                          },
+                          "scanStatus": {
+                            "type": "string",
+                            "enum": [
+                              "PENDING",
+                              "CLEAN",
+                              "INFECTED"
+                            ],
+                            "description": "INFECTED means the file was removed: upload a clean copy"
+                          },
+                          "uploadedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version",
+                          "status",
+                          "rejectionReason",
+                          "fileId",
+                          "fileName",
+                          "mimeType",
+                          "sizeBytes",
+                          "scanStatus",
+                          "uploadedAt"
+                        ],
+                        "additionalProperties": false,
+                        "nullable": true
+                      },
+                      "previous": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "exclusiveMinimum": true,
+                              "minimum": 0
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "REQUIRED",
+                                "UPLOADED",
+                                "UNDER_REVIEW",
+                                "APPROVED",
+                                "REJECTED"
+                              ]
+                            },
+                            "rejectionReason": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "fileId": {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            "fileName": {
+                              "type": "string"
+                            },
+                            "mimeType": {
+                              "type": "string"
+                            },
+                            "sizeBytes": {
+                              "type": "integer"
+                            },
+                            "scanStatus": {
+                              "type": "string",
+                              "enum": [
+                                "PENDING",
+                                "CLEAN",
+                                "INFECTED"
+                              ],
+                              "description": "INFECTED means the file was removed: upload a clean copy"
+                            },
+                            "uploadedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "version",
+                            "status",
+                            "rejectionReason",
+                            "fileId",
+                            "fileName",
+                            "mimeType",
+                            "sizeBytes",
+                            "scanStatus",
+                            "uploadedAt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "canReplace": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "request",
+                      "current",
+                      "previous",
+                      "canReplace"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "pendingMandatory": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "applicationId",
+                "canUpload",
+                "items",
+                "additional",
+                "pendingMandatory"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "applicationId",
+            "applicationCode",
+            "serviceName",
+            "checklist"
+          ],
+          "additionalProperties": false
+        }
+      },
       "SellerSettings": {
         "type": "object",
         "properties": {
@@ -25847,6 +26337,111 @@
           "status",
           "createdAt",
           "applicationCount"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardSummary": {
+        "type": "object",
+        "properties": {
+          "activeApplications": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pendingActions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unpaidBalance": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "upcomingDueDates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "number": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "validUntil": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "type",
+                "validUntil"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "recentActivity": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "applicationId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "applicationCode": {
+                  "type": "string"
+                },
+                "serviceName": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "DRAFT",
+                    "PAYMENT_PENDING",
+                    "SUBMITTED",
+                    "DOCUMENTS_UNDER_REVIEW",
+                    "DOCUMENTS_PENDING",
+                    "DOCUMENTS_APPROVED",
+                    "ASSIGNED",
+                    "IN_PROGRESS",
+                    "ON_HOLD",
+                    "COMPLETED",
+                    "DELIVERED",
+                    "CANCELLED"
+                  ]
+                },
+                "statusLabel": {
+                  "type": "string"
+                },
+                "changedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "applicationId",
+                "applicationCode",
+                "serviceName",
+                "status",
+                "statusLabel",
+                "changedAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "activeApplications",
+          "pendingActions",
+          "unpaidBalance",
+          "upcomingDueDates",
+          "recentActivity"
         ],
         "additionalProperties": false
       }

@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from '@/components/icons';
 import { OtpStep, type OtpIssued } from '@/components/otp-step';
 import { Button, EmptyState, LinkButton, Notice } from '@biznexa/ui';
 import { useAuth, type SessionUser } from '@/lib/auth';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
+import { formatDate, formatINR, type DashboardSummary } from '@biznexa/types';
 
 export function DashboardHome() {
   const { user, signIn, signOut } = useAuth();
@@ -17,6 +18,19 @@ export function DashboardHome() {
   const [verifying, setVerifying] = useState<OtpIssued | null>(null);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [summaryError, setSummaryError] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    api.call<DashboardSummary>((c) => c.GET('/api/dashboard/summary'))
+      .then((result) => { if (!cancelled) setSummary(result); })
+      .catch(() => { if (!cancelled) setSummaryError('We couldn’t load your dashboard. Please try again.'); })
+      .finally(() => { if (!cancelled) setSummaryLoading(false); });
+    return () => { cancelled = true; };
+  }, [api, user]);
+
   if (!user) return null;
 
   async function startVerify() {
@@ -40,6 +54,70 @@ export function DashboardHome() {
         <h1 className="text-3xl font-bold tracking-[-0.025em]">Hello, {user.name.split(' ')[0]}</h1>
         <p className="mt-1 text-muted">Your applications, documents and certificates will appear here.</p>
       </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          ['Active applications', summary?.activeApplications.toString()],
+          ['Pending actions', summary?.pendingActions.toString()],
+          ['Upcoming due dates', summary?.upcomingDueDates.length.toString()],
+          ['Unpaid balance', summary ? formatINR(summary.unpaidBalance) : undefined],
+        ].map(([label, value]) => (
+          <section key={label} className="min-w-0 rounded-lg border border-rule bg-white p-4 sm:p-5">
+            <p className="text-xs font-medium text-muted sm:text-sm">{label}</p>
+            <p className="mt-2 truncate text-xl font-bold text-night sm:text-2xl" aria-live="polite">
+              {summaryLoading ? '—' : value ?? '—'}
+            </p>
+          </section>
+        ))}
+      </div>
+      {summaryError && <Notice tone="error">{summaryError}</Notice>}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold">Recent activity</h2>
+        <LinkButton href="/services">Buy a new service</LinkButton>
+      </div>
+      {!summaryLoading && summary && summary.activeApplications === 0 && summary.recentActivity.length === 0 ? (
+        <EmptyState
+          className="p-8"
+          icon={<Icon name="file" size={32} className="text-ink/40" />}
+          titleAs="h3"
+          title="You haven’t started a service yet"
+          description="Choose a service and package to get started. Your applications and updates will appear here."
+          action={<LinkButton href="/services">Browse services</LinkButton>}
+        />
+      ) : (
+        <section aria-label="Recent activity" className="overflow-hidden rounded-lg border border-rule bg-white">
+          {summary?.recentActivity.length ? (
+            <ul className="divide-y divide-rule">
+              {summary.recentActivity.map((row) => (
+                <li key={`${row.applicationId}-${row.changedAt}`}>
+                  <Link href={`/dashboard/applications/${row.applicationId}`} className="flex flex-wrap items-center justify-between gap-2 p-4 hover:bg-paper">
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold">{row.serviceName}</span>
+                      <span className="text-sm text-muted">{row.applicationCode} · {row.statusLabel}</span>
+                    </span>
+                    <time className="text-sm text-muted" dateTime={row.changedAt}>{formatDate(row.changedAt)}</time>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="p-5 text-sm text-muted">No recent activity yet.</p>}
+        </section>
+      )}
+
+      {summary?.upcomingDueDates.length ? (
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold">Upcoming compliance due dates</h2>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {summary.upcomingDueDates.map((certificate) => (
+              <li key={certificate.id} className="rounded-lg border border-rule bg-white p-4">
+                <p className="font-semibold">{certificate.type}</p>
+                <p className="text-sm text-muted">{certificate.number} · Valid until {formatDate(certificate.validUntil)}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {!user.mobileVerified && user.mobile && (
         <section className="rounded-lg border border-amber/40 bg-amber-050 p-5">
