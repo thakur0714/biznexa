@@ -248,7 +248,7 @@ describe('Final Deliverables API', () => {
     await http.post(`/api/admin/applications/${withDeliverable.id}/status`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ to: 'DELIVERED' })
-      .expect(200);
+      .expect(201);
     expect((await prisma.application.findUniqueOrThrow({ where: { id: withDeliverable.id } })).status).toBe('DELIVERED');
   });
 });

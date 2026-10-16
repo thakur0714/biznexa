@@ -75,11 +75,10 @@ export class AdminApplicationsController {
 
 
   @RequirePermissions(PERMS.APPLICATIONS_UPDATE)
-  @ApiResponse({ status: 200, description: 'Status updated; DELIVERED requires at least one final deliverable' })
+  @ApiResponse({ status: 201, description: 'Status updated; DELIVERED requires at least one final deliverable' })
   @ApiResponse({ status: 409, description: 'Invalid transition or missing final deliverables' })
   @Post(':id/status')
-  status(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(applicationTransitionSchema) body: ApplicationTransitionInput, @CurrentUser() u: AuthUser, @Res({ passthrough: true }) res: Response) {
-    if (body.to === 'DELIVERED') res.status(200);
+  status(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(applicationTransitionSchema) body: ApplicationTransitionInput, @CurrentUser() u: AuthUser) {
     return this.applications.updateStatus(id, body, u);
   }
 
