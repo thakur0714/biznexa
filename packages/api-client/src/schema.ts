@@ -1355,7 +1355,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["ApplicationsController_list"];
         put?: never;
         post: operations["ApplicationsController_start"];
         delete?: never;
@@ -3159,6 +3159,28 @@ export interface components {
                 canReplace: boolean;
             }[];
             pendingMandatory: number;
+        };
+        CustomerApplicationList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                code: string;
+                /** @enum {string} */
+                status: "DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED";
+                statusLabel: string;
+                serviceName: string;
+                serviceSlug: string;
+                packageName: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** @enum {string} */
+                nextAction: "upload_documents" | "pay_balance" | "download" | "view";
+            }[];
+            total: number;
+            page: number;
+            limit: number;
         };
         DraftApplication: {
             /** Format: uuid */
@@ -7810,6 +7832,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminCertificateRow"];
+                };
+            };
+        };
+    };
+    ApplicationsController_list: {
+        parameters: {
+            query?: {
+                tab?: "active" | "completed" | "cancelled";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerApplicationList"];
                 };
             };
         };

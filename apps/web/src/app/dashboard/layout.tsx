@@ -20,7 +20,7 @@ interface NavSection {
 /** Customer portal sections (PRD §7.3, M5.1). Pages not yet built show "Soon". */
 export const DASHBOARD_NAV: readonly NavSection[] = [
   { label: 'Dashboard', icon: 'clipboard', href: '/dashboard', ready: true },
-  { label: 'My Services', icon: 'file', ready: false },
+  { label: 'My Services', icon: 'file', href: '/dashboard/services', ready: true },
   { label: 'Documents', icon: 'upload', ready: false },
   { label: 'Payments', icon: 'rupee', ready: false },
   { label: 'Messages', icon: 'message', ready: false },

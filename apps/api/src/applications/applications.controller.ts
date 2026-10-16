@@ -1,9 +1,19 @@
 import { Controller, Get, Param, ParseUUIDPipe, Patch, Post, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
-import { applicationDetailSchema, createApplicationInput, draftApplicationSchema, updateApplicationFormInput, type CreateApplicationData, type UpdateApplicationFormInput } from '@biznexa/types';
+import {
+  applicationDetailSchema,
+  createApplicationInput,
+  customerApplicationListQuery,
+  customerApplicationListSchema,
+  draftApplicationSchema,
+  updateApplicationFormInput,
+  type CreateApplicationData,
+  type CustomerApplicationListQuery,
+  type UpdateApplicationFormInput,
+} from '@biznexa/types';
 import { AuthUser, CurrentUser } from '../common/auth.decorators';
-import { ApiZodResponse, ZodBody } from '../common/openapi';
+import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 import { ApplicationsService } from './applications.service';
 
 const uuid = new ParseUUIDPipe();
@@ -15,6 +25,13 @@ const NotFound = () => ApiResponse({ status: 404, description: 'No such applicat
 @Controller('applications')
 export class ApplicationsController {
   constructor(private readonly applications: ApplicationsService) {}
+
+  /** Customer My Services list (M5.3): the signed-in customer's own applications by tab. */
+  @ApiZodResponse('CustomerApplicationList', customerApplicationListSchema)
+  @Get()
+  list(@ZodQuery(customerApplicationListQuery) q: CustomerApplicationListQuery, @CurrentUser() u: AuthUser) {
+    return this.applications.list(u.id, q);
+  }
 
   /** "Continue to your details": a draft order + DRAFT application for a package (or the unpaid draft already started). */
   @ApiZodResponse('DraftApplication', draftApplicationSchema, 201)
