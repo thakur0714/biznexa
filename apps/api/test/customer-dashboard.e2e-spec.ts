@@ -84,6 +84,10 @@ describe('Customer dashboard API (M5.2)', () => {
     }
 
     const aliceApplication = await makeApp(alice.id, 1, 118000, 59000);
+    // An abandoned checkout is not a balance due.
+    orderIds.push((await prisma.order.create({ data: {
+      code: formatOrderCode(baseSeq + 9), customerId: alice.id, subtotal: 30000, total: 30000, amountPaid: 0, status: 'CREATED',
+    } })).id);
     aliceApplicationId = aliceApplication.id;
     aliceCode = aliceApplication.code;
     await prisma.applicationStageHistory.createMany({ data: [

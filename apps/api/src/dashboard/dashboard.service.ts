@@ -20,7 +20,8 @@ export class DashboardService {
       this.prisma.application.count({
         where: { customerId, status: { notIn: ['DRAFT', 'COMPLETED', 'DELIVERED', 'CANCELLED'] } },
       }),
-      this.prisma.order.findMany({ where: { customerId }, select: { total: true, amountPaid: true } }),
+      // Only an advance-paid order has a balance due; unpaid carts and cancelled orders are not owed.
+      this.prisma.order.findMany({ where: { customerId, status: 'PARTIALLY_PAID' }, select: { total: true, amountPaid: true } }),
       this.prisma.application.findMany({
         where: { customerId, status: { in: ['DRAFT', 'PAYMENT_PENDING', 'SUBMITTED', 'DOCUMENTS_UNDER_REVIEW', 'DOCUMENTS_PENDING'] } },
         select: { id: true, status: true, serviceId: true, packageId: true, order: { select: { total: true, amountPaid: true } } },
