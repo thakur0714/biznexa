@@ -27,9 +27,9 @@ export abstract class EmailProvider {
 export class FakeEmailProvider extends EmailProvider {
   readonly sentEmails: SendEmailOptions[] = [];
 
-  async sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
+  sendEmail(options: SendEmailOptions): Promise<SendEmailResult> {
     this.sentEmails.push({ ...options });
-    return { messageId: `fake-${Date.now()}-${this.sentEmails.length}` };
+    return Promise.resolve({ messageId: `fake-${Date.now()}-${this.sentEmails.length}` });
   }
 
   clear(): void {

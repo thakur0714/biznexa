@@ -9,7 +9,7 @@
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -168,20 +168,20 @@ describe('In-app inbox (M6.7)', () => {
   });
 
   describe('Authentication (401 without login)', () => {
-    it('returns 401 on GET /api/notifications without login', async () => {
-      await http.get('/api/notifications').expect(401);
+    it('returns 401 on GET /api/notifications without login', () => {
+      return http.get('/api/notifications').expect(401);
     });
 
-    it('returns 401 on GET /api/notifications/unread-count without login', async () => {
-      await http.get('/api/notifications/unread-count').expect(401);
+    it('returns 401 on GET /api/notifications/unread-count without login', () => {
+      return http.get('/api/notifications/unread-count').expect(401);
     });
 
-    it('returns 401 on POST /api/notifications/read-all without login', async () => {
-      await http.post('/api/notifications/read-all').expect(401);
+    it('returns 401 on POST /api/notifications/read-all without login', () => {
+      return http.post('/api/notifications/read-all').expect(401);
     });
 
-    it('returns 401 on POST /api/notifications/:id/read without login', async () => {
-      await http.post(`/api/notifications/${aliceNotif1Id}/read`).expect(401);
+    it('returns 401 on POST /api/notifications/:id/read without login', () => {
+      return http.post(`/api/notifications/${aliceNotif1Id}/read`).expect(401);
     });
   });
 
