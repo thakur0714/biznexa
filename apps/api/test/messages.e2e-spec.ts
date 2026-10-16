@@ -368,6 +368,16 @@ describe('MessagesController (e2e, M4.11)', () => {
       .expect(403);
   });
 
+  it('page 1 is the newest messages, each page oldest → newest', async () => {
+    for (const body of ['paging 1', 'paging 2', 'paging 3']) {
+      await http.post(`/api/applications/${app1Id}/messages`).set(auth(customer1Token)).send({ body }).expect(201);
+    }
+    const page1 = await http.get(`/api/applications/${app1Id}/messages?limit=2`).set(auth(customer1Token)).expect(200);
+    expect(page1.body.items.map((m: { body: string }) => m.body)).toEqual(['paging 2', 'paging 3']);
+    const page2 = await http.get(`/api/applications/${app1Id}/messages?limit=2&page=2`).set(auth(customer1Token)).expect(200);
+    expect(page2.body.items.at(-1).body).toBe('paging 1');
+  });
+
   it('returns 400 for empty or too-long message body', async () => {
     await http
       .post(`/api/applications/${app1Id}/messages`)

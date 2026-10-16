@@ -44,7 +44,7 @@ export const messageListQuery = z.object({
 export const messageListQuerySchema = messageListQuery;
 export type MessageListQuery = z.output<typeof messageListQuery>;
 
-/** Thread page returned oldest → newest for display. */
+/** Page 1 = the newest messages; each page is ordered oldest → newest for display. */
 export const messageThreadPageSchema = z.object({
   items: z.array(messageSchema),
   total: z.number().int().min(0),

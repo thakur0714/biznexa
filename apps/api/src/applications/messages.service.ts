@@ -33,16 +33,16 @@ export class MessagesService {
     return app;
   }
 
+  /**
+   * The application's conversation, created on the first message. `skipDuplicates` (ON CONFLICT DO NOTHING)
+   * keeps two first messages at once from failing on the unique applicationId, also inside a transaction.
+   */
   private async ensureConversation(
     db: Prisma.TransactionClient,
     applicationId: string,
   ): Promise<{ id: string }> {
-    return db.conversation.upsert({
-      where: { applicationId },
-      update: {},
-      create: { applicationId },
-      select: { id: true },
-    });
+    await db.conversation.createMany({ data: [{ applicationId }], skipDuplicates: true });
+    return db.conversation.findUniqueOrThrow({ where: { applicationId }, select: { id: true } });
   }
 
   private toMessageDto(
@@ -73,16 +73,14 @@ export class MessagesService {
     app: { id: string; customerId: string },
     q: MessageListQuery,
   ): Promise<MessageThreadPage> {
-    const conv = await this.ensureConversation(this.prisma, app.id);
-    const where: Prisma.MessageWhereInput = {
-      conversationId: conv.id,
-      conversation: { applicationId: app.id },
-    };
+    // Reading never creates the conversation; no conversation yet = no messages.
+    const where: Prisma.MessageWhereInput = { conversation: { applicationId: app.id } };
 
-    const [rows, total] = await Promise.all([
+    // Page 1 is the newest messages (what a thread shows first); each page is returned oldest → newest.
+    const [newestFirst, total] = await Promise.all([
       this.prisma.message.findMany({
         where,
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (q.page - 1) * q.limit,
         take: q.limit,
         include: { sender: { select: { id: true, name: true } } },
@@ -91,7 +89,7 @@ export class MessagesService {
     ]);
 
     return {
-      items: rows.map((r) => this.toMessageDto(r, app.customerId)),
+      items: newestFirst.reverse().map((r) => this.toMessageDto(r, app.customerId)),
       total,
       page: q.page,
       limit: q.limit,
@@ -188,10 +186,8 @@ export class MessagesService {
       id: true,
       customerId: true,
     });
-    const conv = await this.ensureConversation(this.prisma, app.id);
     const { count } = await this.prisma.message.updateMany({
       where: {
-        conversationId: conv.id,
         conversation: { applicationId: app.id },
         senderId: app.customerId,
         readAt: null,
@@ -206,10 +202,8 @@ export class MessagesService {
     u: AuthUser,
   ): Promise<MarkMessagesReadResponse> {
     const app = await this.findCustomerApplication(this.prisma, u.id, applicationId);
-    const conv = await this.ensureConversation(this.prisma, app.id);
     const { count } = await this.prisma.message.updateMany({
       where: {
-        conversationId: conv.id,
         conversation: { applicationId: app.id },
         senderId: { not: app.customerId },
         readAt: null,
