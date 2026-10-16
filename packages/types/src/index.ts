@@ -28,3 +28,4 @@ export * from './notifications';
 export * from './certificate-import';
 export * from './deliverables';
 export * from './admin-customers';
+export * from './messages';

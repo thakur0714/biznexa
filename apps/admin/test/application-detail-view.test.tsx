@@ -36,6 +36,9 @@ vi.mock('@biznexa/api-client/react', () => {
             priority: 'normal',
           });
         }
+        if (path === '/api/admin/applications/{applicationId}/messages') {
+          return Promise.resolve({ items: [], page: 1, limit: 50, total: 0 });
+        }
         return Promise.resolve([]);
       }),
       POST: vi.fn(() => Promise.resolve({})),

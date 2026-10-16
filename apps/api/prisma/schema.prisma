@@ -553,7 +553,7 @@ model Application {
   deliverables   FinalDeliverable[]
   notes          InternalNote[]
   certificates   Certificate[]
-  conversations  Conversation[]
+  conversation   Conversation?
   tickets        Ticket[]
 
   @@index([customerId])
@@ -995,7 +995,7 @@ model Ticket {
 
 model Conversation {
   id            String       @id @default(uuid())
-  applicationId String?
+  applicationId String?      @unique
   bookingId     String?
   ticketId      String?
   createdAt     DateTime     @default(now())
