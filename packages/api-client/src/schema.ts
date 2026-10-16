@@ -1364,6 +1364,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/applications/{id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ApplicationsController_timeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/applications/{id}": {
         parameters: {
             query?: never;
@@ -3205,6 +3221,58 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             resumed: boolean;
+        };
+        CustomerApplicationTimeline: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            /** @enum {string} */
+            status: "DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED";
+            statusLabel: string;
+            /** Format: uuid */
+            serviceId: string;
+            serviceName: string;
+            serviceSlug: string;
+            /** Format: uuid */
+            packageId: string;
+            packageName: string;
+            /** Format: uuid */
+            currentStageId: string | null;
+            assignedExpert: {
+                name: string;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            stages: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                description: string | null;
+                sortOrder: number;
+                /** @enum {string} */
+                state: "done" | "current" | "upcoming";
+                /** Format: date-time */
+                reachedAt: string | null;
+            }[];
+            history: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                status: "DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED";
+                statusLabel: string;
+                /** Format: uuid */
+                stageId: string | null;
+                stageName: string | null;
+                note: string | null;
+                /** Format: date-time */
+                changedAt: string;
+            }[];
         };
         ApplicationDetail: {
             /** Format: uuid */
@@ -7901,6 +7969,34 @@ export interface operations {
             };
             /** @description The service has no application form yet */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ApplicationsController_timeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerApplicationTimeline"];
+                };
+            };
+            /** @description No such application among yours (another customer’s application looks the same) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -8472,6 +8472,44 @@
         ]
       }
     },
+    "/api/applications/{id}/timeline": {
+      "get": {
+        "operationId": "ApplicationsController_timeline",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerApplicationTimeline"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such application among yours (another customer’s application looks the same)"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "applications"
+        ]
+      }
+    },
     "/api/applications/{id}": {
       "get": {
         "operationId": "ApplicationsController_get",
@@ -16926,6 +16964,215 @@
           "order",
           "createdAt",
           "resumed"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerApplicationTimeline": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^BN\\d{5,}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PAYMENT_PENDING",
+              "SUBMITTED",
+              "DOCUMENTS_UNDER_REVIEW",
+              "DOCUMENTS_PENDING",
+              "DOCUMENTS_APPROVED",
+              "ASSIGNED",
+              "IN_PROGRESS",
+              "ON_HOLD",
+              "COMPLETED",
+              "DELIVERED",
+              "CANCELLED"
+            ]
+          },
+          "statusLabel": {
+            "type": "string"
+          },
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serviceName": {
+            "type": "string"
+          },
+          "serviceSlug": {
+            "type": "string"
+          },
+          "packageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "packageName": {
+            "type": "string"
+          },
+          "currentStageId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "assignedExpert": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "sortOrder": {
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "done",
+                    "current",
+                    "upcoming"
+                  ]
+                },
+                "reachedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "description",
+                "sortOrder",
+                "state",
+                "reachedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "DRAFT",
+                    "PAYMENT_PENDING",
+                    "SUBMITTED",
+                    "DOCUMENTS_UNDER_REVIEW",
+                    "DOCUMENTS_PENDING",
+                    "DOCUMENTS_APPROVED",
+                    "ASSIGNED",
+                    "IN_PROGRESS",
+                    "ON_HOLD",
+                    "COMPLETED",
+                    "DELIVERED",
+                    "CANCELLED"
+                  ]
+                },
+                "statusLabel": {
+                  "type": "string"
+                },
+                "stageId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "stageName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "note": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "changedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "status",
+                "statusLabel",
+                "stageId",
+                "stageName",
+                "note",
+                "changedAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "status",
+          "statusLabel",
+          "serviceId",
+          "serviceName",
+          "serviceSlug",
+          "packageId",
+          "packageName",
+          "currentStageId",
+          "assignedExpert",
+          "createdAt",
+          "updatedAt",
+          "submittedAt",
+          "completedAt",
+          "stages",
+          "history"
         ],
         "additionalProperties": false
       },

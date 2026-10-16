@@ -216,4 +216,48 @@ export function customerNextAction(input: {
   return 'view';
 }
 
+/** Customer application timeline (M5.4). */
+export const CUSTOMER_STAGE_STATES = ['done', 'current', 'upcoming'] as const;
+export type CustomerStageState = (typeof CUSTOMER_STAGE_STATES)[number];
 
+export const customerTimelineStageSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable(),
+  sortOrder: z.number().int(),
+  state: z.enum(CUSTOMER_STAGE_STATES),
+  reachedAt: z.string().datetime().nullable(),
+});
+export type CustomerTimelineStage = z.infer<typeof customerTimelineStageSchema>;
+
+export const customerTimelineHistoryItemSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(APPLICATION_STATUSES),
+  statusLabel: z.string(),
+  stageId: z.string().uuid().nullable(),
+  stageName: z.string().nullable(),
+  note: z.string().nullable(),
+  changedAt: z.string().datetime(),
+});
+export type CustomerTimelineHistoryItem = z.infer<typeof customerTimelineHistoryItemSchema>;
+
+export const customerApplicationTimelineSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string().regex(APPLICATION_CODE_PATTERN),
+  status: z.enum(APPLICATION_STATUSES),
+  statusLabel: z.string(),
+  serviceId: z.string().uuid(),
+  serviceName: z.string(),
+  serviceSlug: z.string(),
+  packageId: z.string().uuid(),
+  packageName: z.string(),
+  currentStageId: z.string().uuid().nullable(),
+  assignedExpert: z.object({ name: z.string() }).nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  submittedAt: z.string().datetime().nullable(),
+  completedAt: z.string().datetime().nullable(),
+  stages: z.array(customerTimelineStageSchema),
+  history: z.array(customerTimelineHistoryItemSchema),
+});
+export type CustomerApplicationTimeline = z.infer<typeof customerApplicationTimelineSchema>;

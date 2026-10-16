@@ -12,6 +12,8 @@ import {
   type CreateApplicationData,
   type CustomerApplicationList,
   type CustomerApplicationListQuery,
+  type CustomerApplicationTimeline,
+  type CustomerStageState,
   type DraftApplication,
   type FormSchema,
 } from '@biznexa/types';
@@ -125,6 +127,134 @@ export class ApplicationsService {
       total,
       page: q.page,
       limit: q.limit,
+    };
+  }
+
+  /**
+   * Customer application timeline (M5.4): header, service stages with done/current/upcoming states
+   * and dates, and ONLY history rows where visibleToCustomer = true (never internal notes or hidden history).
+   */
+  async timeline(customerId: string, id: string): Promise<CustomerApplicationTimeline> {
+    const app = await this.prisma.application.findFirst({
+      where: { id, customerId },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        currentStageId: true,
+        createdAt: true,
+        updatedAt: true,
+        submittedAt: true,
+        completedAt: true,
+        service: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            stages: {
+              select: { id: true, name: true, description: true, sortOrder: true },
+              orderBy: { sortOrder: 'asc' },
+            },
+          },
+        },
+        package: { select: { id: true, name: true } },
+        assignedTo: { select: { name: true } },
+        history: {
+          where: { visibleToCustomer: true },
+          select: {
+            id: true,
+            status: true,
+            stageId: true,
+            note: true,
+            changedAt: true,
+            stage: { select: { id: true, name: true, sortOrder: true } },
+          },
+          orderBy: [{ changedAt: 'asc' }, { id: 'asc' }],
+        },
+      },
+    });
+    if (!app) throw new NotFoundException('Application not found');
+
+    const stages = app.service.stages;
+    const stageReachedAt = new Map<string, Date>();
+    for (const h of app.history) {
+      if (h.stageId) {
+        stageReachedAt.set(h.stageId, h.changedAt);
+      }
+    }
+
+    const isDoneAll = app.status === 'COMPLETED' || app.status === 'DELIVERED';
+    let currentIndex = -1;
+    if (!isDoneAll) {
+      if (app.currentStageId) {
+        currentIndex = stages.findIndex((s) => s.id === app.currentStageId);
+      }
+      if (currentIndex === -1) {
+        stages.forEach((s, idx) => {
+          if (stageReachedAt.has(s.id)) currentIndex = idx;
+        });
+      }
+      if (currentIndex === -1 && app.status !== 'DRAFT' && app.status !== 'CANCELLED' && stages.length > 0) {
+        currentIndex = 0;
+      }
+    }
+
+    const stageItems = stages.map((s, idx) => {
+      let state: CustomerStageState = 'upcoming';
+      if (isDoneAll) {
+        state = 'done';
+      } else if (currentIndex !== -1) {
+        if (idx < currentIndex) state = 'done';
+        else if (idx === currentIndex) state = 'current';
+        else state = 'upcoming';
+      }
+
+      const directDate = stageReachedAt.get(s.id);
+      let reachedAt: string | null = null;
+      if (directDate) {
+        reachedAt = directDate.toISOString();
+      } else if (idx === 0 && state !== 'upcoming') {
+        reachedAt = (app.submittedAt ?? app.history[0]?.changedAt ?? app.createdAt).toISOString();
+      } else if (idx === stages.length - 1 && isDoneAll && app.completedAt) {
+        reachedAt = app.completedAt.toISOString();
+      }
+
+      return {
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        sortOrder: s.sortOrder,
+        state,
+        reachedAt,
+      };
+    });
+
+    return {
+      id: app.id,
+      code: app.code,
+      status: app.status,
+      statusLabel: APPLICATION_STATUS_LABEL[app.status],
+      serviceId: app.service.id,
+      serviceName: app.service.name,
+      serviceSlug: app.service.slug,
+      packageId: app.package.id,
+      packageName: app.package.name,
+      currentStageId: app.currentStageId,
+      assignedExpert: app.assignedTo ? { name: app.assignedTo.name } : null,
+      createdAt: app.createdAt.toISOString(),
+      updatedAt: app.updatedAt.toISOString(),
+      submittedAt: app.submittedAt ? app.submittedAt.toISOString() : null,
+      completedAt: app.completedAt ? app.completedAt.toISOString() : null,
+      stages: stageItems,
+      history: app.history.map((h) => ({
+        id: h.id,
+        status: h.status,
+        statusLabel: APPLICATION_STATUS_LABEL[h.status],
+        stageId: h.stageId,
+        stageName: h.stage?.name ?? null,
+        note: h.note ?? null,
+        changedAt: h.changedAt.toISOString(),
+      })),
     };
   }
 

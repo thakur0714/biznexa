@@ -6,6 +6,7 @@ import {
   createApplicationInput,
   customerApplicationListQuery,
   customerApplicationListSchema,
+  customerApplicationTimelineSchema,
   draftApplicationSchema,
   updateApplicationFormInput,
   type CreateApplicationData,
@@ -43,6 +44,14 @@ export class ApplicationsController {
     const draft = await this.applications.startDraft(u.id, body);
     if (draft.resumed) res.status(200);
     return draft;
+  }
+
+  /** Customer application timeline (M5.4): header, service stage stepper, and customer-visible history only. */
+  @ApiZodResponse('CustomerApplicationTimeline', customerApplicationTimelineSchema)
+  @NotFound()
+  @Get(':id/timeline')
+  timeline(@Param('id', uuid) id: string, @CurrentUser() u: AuthUser) {
+    return this.applications.timeline(u.id, id);
   }
 
   /** The form page (M3.9): loads the application to render and resume its form. */

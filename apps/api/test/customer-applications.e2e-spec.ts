@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import {
   customerApplicationListSchema,
+  customerApplicationTimelineSchema,
   formatApplicationCode,
   formatOrderCode,
   GENERIC_SERVICE_FORM,
@@ -12,7 +13,7 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 
-describe('Customer My Services API (M5.3)', () => {
+describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
   let app: NestExpressApplication;
   let prisma: PrismaService;
 
@@ -27,6 +28,8 @@ describe('Customer My Services API (M5.3)', () => {
   let serviceId: string;
   let packageId: string;
   let requirementId: string;
+  let stageIds: string[] = [];
+  let aliceInProgressAppId: string;
 
   const createdAppIds: string[] = [];
   const createdOrderIds: string[] = [];
@@ -79,6 +82,13 @@ describe('Customer My Services API (M5.3)', () => {
         documents: {
           create: [{ name: 'PAN Card', isMandatory: true, sortOrder: 1 }],
         },
+        stages: {
+          create: [
+            { name: 'Document Verification', description: 'Checking uploaded documents', sortOrder: 1 },
+            { name: 'Application Filing', description: 'Filing with authority', sortOrder: 2 },
+            { name: 'Certificate Delivery', description: 'Delivering final certificate', sortOrder: 3 },
+          ],
+        },
         formSchemas: {
           create: [{ version: 1, schema: JSON.parse(JSON.stringify(GENERIC_SERVICE_FORM)), isCurrent: true }],
         },
@@ -87,11 +97,13 @@ describe('Customer My Services API (M5.3)', () => {
         id: true,
         packages: { select: { id: true } },
         documents: { select: { id: true } },
+        stages: { select: { id: true, sortOrder: true }, orderBy: { sortOrder: 'asc' } },
       },
     });
     serviceId = svc.id;
     packageId = svc.packages[0].id;
     requirementId = svc.documents[0].id;
+    stageIds = svc.stages.map((s) => s.id);
 
     const baseSeq = (parseInt(runId, 16) % 800000) + 100000;
 
@@ -109,6 +121,7 @@ describe('Customer My Services API (M5.3)', () => {
       total: number;
       amountPaid: number;
       withUploadedDoc?: boolean;
+      currentStageId?: string;
     }) {
       const order = await prisma.order.create({
         data: {
@@ -131,6 +144,7 @@ describe('Customer My Services API (M5.3)', () => {
           packageId,
           formSchemaVersion: 1,
           status: opts.status,
+          currentStageId: opts.currentStageId,
         },
       });
       createdAppIds.push(createdApp.id);
@@ -197,14 +211,54 @@ describe('Customer My Services API (M5.3)', () => {
       withUploadedDoc: true,
     });
 
-    // 4. Alice IN_PROGRESS fully paid -> nextAction: 'view'
-    await seedApp({
+    // 4. Alice IN_PROGRESS fully paid -> nextAction: 'view', at stage 2 (index 1)
+    const app4 = await seedApp({
       customerId: aliceId,
       seqOffset: 4,
       status: 'IN_PROGRESS',
       total: 118000,
       amountPaid: 118000,
       withUploadedDoc: true,
+      currentStageId: stageIds[1],
+    });
+    aliceInProgressAppId = app4.id;
+
+    // Seed visible and hidden history rows + an internal note on app4
+    await prisma.applicationStageHistory.createMany({
+      data: [
+        {
+          applicationId: app4.id,
+          stageId: stageIds[0],
+          status: 'DOCUMENTS_APPROVED',
+          note: 'Customer visible: documents verified',
+          visibleToCustomer: true,
+          changedAt: new Date(Date.now() - 60_000),
+        },
+        {
+          applicationId: app4.id,
+          stageId: stageIds[1],
+          status: 'IN_PROGRESS',
+          note: 'SECRET STAFF HISTORY NOTE',
+          visibleToCustomer: false,
+          changedAt: new Date(Date.now() - 30_000),
+        },
+        {
+          applicationId: app4.id,
+          stageId: stageIds[1],
+          status: 'IN_PROGRESS',
+          note: 'Customer visible: filing started with portal',
+          visibleToCustomer: true,
+          changedAt: new Date(),
+        },
+      ],
+    });
+
+    await prisma.internalNote.create({
+      data: {
+        applicationId: app4.id,
+        authorId: aliceId,
+        body: 'TOP SECRET INTERNAL NOTE',
+      },
     });
 
     // 5. Alice COMPLETED -> tab=completed, nextAction: 'download'
@@ -239,6 +293,12 @@ describe('Customer My Services API (M5.3)', () => {
   afterAll(async () => {
     try {
       if (prisma) {
+        await prisma.internalNote.deleteMany({
+          where: { applicationId: { in: createdAppIds } },
+        });
+        await prisma.applicationStageHistory.deleteMany({
+          where: { applicationId: { in: createdAppIds } },
+        });
         await prisma.applicationDocument.deleteMany({
           where: { applicationId: { in: createdAppIds } },
         });
@@ -279,7 +339,6 @@ describe('Customer My Services API (M5.3)', () => {
     expect(parsed.total).toBe(3);
     expect(parsed.items).toHaveLength(3);
 
-    // Ensure DRAFT, COMPLETED, CANCELLED, and Bob's application are not present
     const statuses = parsed.items.map((i) => i.status);
     expect(statuses).not.toContain('DRAFT');
     expect(statuses).not.toContain('COMPLETED');
@@ -323,5 +382,50 @@ describe('Customer My Services API (M5.3)', () => {
     expect(parsed.total).toBe(1);
     expect(parsed.items[0].status).toBe('SUBMITTED');
     expect(parsed.items[0].nextAction).toBe('upload_documents');
+  });
+
+  describe('GET /api/applications/:id/timeline (M5.4)', () => {
+    it('rejects unauthenticated requests with 401', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/applications/${aliceInProgressAppId}/timeline`)
+        .expect(401);
+    });
+
+    it('returns 404 when another customer requests the timeline', async () => {
+      await request(app.getHttpServer())
+        .get(`/api/applications/${aliceInProgressAppId}/timeline`)
+        .set('Authorization', `Bearer ${bobToken}`)
+        .expect(404);
+    });
+
+    it('returns header, stage stepper (done/current/upcoming), and ONLY visibleToCustomer=true history rows', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/applications/${aliceInProgressAppId}/timeline`)
+        .set('Authorization', `Bearer ${aliceToken}`)
+        .expect(200);
+
+      const parsed = customerApplicationTimelineSchema.parse(res.body);
+      expect(parsed.id).toBe(aliceInProgressAppId);
+      expect(parsed.serviceName).toBe(`My Services Test ${runId}`);
+      expect(parsed.packageName).toBe('Standard');
+      expect(parsed.status).toBe('IN_PROGRESS');
+
+      expect(parsed.stages).toHaveLength(3);
+      expect(parsed.stages[0].state).toBe('done');
+      expect(parsed.stages[0].reachedAt).not.toBeNull();
+      expect(parsed.stages[1].state).toBe('current');
+      expect(parsed.stages[1].reachedAt).not.toBeNull();
+      expect(parsed.stages[2].state).toBe('upcoming');
+      expect(parsed.stages[2].reachedAt).toBeNull();
+
+      // Only visibleToCustomer = true rows returned; hidden note and internal notes never present
+      expect(parsed.history).toHaveLength(2);
+      const notes = parsed.history.map((h) => h.note);
+      expect(notes).toContain('Customer visible: documents verified');
+      expect(notes).toContain('Customer visible: filing started with portal');
+      expect(notes).not.toContain('SECRET STAFF HISTORY NOTE');
+      expect(JSON.stringify(res.body)).not.toContain('SECRET STAFF HISTORY NOTE');
+      expect(JSON.stringify(res.body)).not.toContain('TOP SECRET INTERNAL NOTE');
+    });
   });
 });
