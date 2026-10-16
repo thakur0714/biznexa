@@ -56,7 +56,11 @@ describe('Reminders (e2e)', () => {
     try {
       await prisma.application.deleteMany({ where: { code: { startsWith: prefix } } });
       await prisma.businessEntity.deleteMany({ where: { legalName: { startsWith: prefix } } });
+      await prisma.reminder.deleteMany({ where: { userId: { in: customerIds } } });
+      await prisma.servicePackage.deleteMany({ where: { service: { slug: { startsWith: prefix } } } });
       await prisma.service.deleteMany({ where: { slug: { startsWith: prefix } } });
+      // Left-over categories with no services sorted first and broke the catalogue test.
+      await prisma.category.deleteMany({ where: { slug: { startsWith: prefix } } });
       await prisma.storedFile.deleteMany({ where: { ownerId: { in: customerIds } } });
       await prisma.user.deleteMany({ where: { id: { in: customerIds } } });
       await prisma.user.deleteMany({ where: { email: `admin-${runStr}@example.com` } });
