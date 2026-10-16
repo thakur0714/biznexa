@@ -286,6 +286,11 @@ export class CertificatesService {
     input: z.infer<typeof createCertificateFromApplicationInput>,
     actorId: string,
   ) {
+    const app = await this.prisma.application.findUnique({ where: { id: applicationId }, select: { status: true } });
+    if (!app) throw new NotFoundException('Application not found');
+    if (app.status !== 'COMPLETED' && app.status !== 'DELIVERED') {
+      throw new ConflictException('A certificate can be issued only for a completed or delivered application.');
+    }
     return this.create({ ...input, applicationId }, actorId);
   }
 

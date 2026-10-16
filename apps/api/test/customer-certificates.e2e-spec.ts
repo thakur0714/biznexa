@@ -296,6 +296,17 @@ describe('customer certificates page API (M7.6)', () => {
         .expect(403);
     });
 
+    it('refuses an application that is not completed or delivered (409)', async () => {
+      const draft = await prisma.application.create({
+        data: { code: `${prefix}-APP-WIP`, customerId: userA.id, serviceId, packageId: servicePackageId, status: 'IN_PROGRESS' },
+      });
+      await http
+        .post(`/api/admin/applications/${draft.id}/certificate`)
+        .set(as(admin))
+        .send({ type: 'ISO 9001', certificationBodyId: testBody.id, issueDate: '2026-01-01T00:00:00.000Z', validFrom: '2026-01-01T00:00:00.000Z', validUntil: '2029-01-01T00:00:00.000Z' })
+        .expect(409);
+    });
+
     it('admin creates certificate from application with prefilled org name and business entity', async () => {
       const res = await http
         .post(`/api/admin/applications/${appWithEntity.id}/certificate`)
