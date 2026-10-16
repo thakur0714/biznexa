@@ -250,6 +250,19 @@ describe('MessagesController (e2e, M4.11)', () => {
         fromStaff: true,
       });
 
+      // Notification is saved for the customer
+      // Since it runs in the background, we need to poll or wait for a bit
+      let notifications: any[] = [];
+      for (let i = 0; i < 20; i++) {
+        notifications = await prisma.notification.findMany({
+          where: { userId: customer1Id, event: 'message.received', channel: 'IN_APP' },
+        });
+        if (notifications.length > 0) break;
+        await new Promise(r => setTimeout(r, 50));
+      }
+      expect(notifications.length).toBeGreaterThan(0);
+      expect(notifications[0].title).toBe('New message received');
+
       // Customer unread count goes up to 1; staff unread count stays 0
       const custUnreadAfterStaff = await http
         .get(`/api/applications/${app1Id}/messages/unread-count`)

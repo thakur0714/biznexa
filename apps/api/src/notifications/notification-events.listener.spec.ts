@@ -54,6 +54,9 @@ describe('NotificationEventsListener (M6.8)', () => {
       certificate: {
         findUnique: jest.fn(),
       } as any,
+      message: {
+        findUnique: jest.fn(),
+      } as any,
       notificationTemplate: {
         findMany: jest.fn().mockResolvedValue(mockTemplates),
       } as any,
@@ -450,6 +453,144 @@ describe('NotificationEventsListener (M6.8)', () => {
           amount: 1000,
           gateway: 'MOCK',
           gatewayPaymentId: 'mock-1',
+        }),
+      ).resolves.not.toThrow();
+    });
+  });
+
+  describe('message.created', () => {
+    it('notifies customer on all channels when message is from staff', async () => {
+      (prisma.application!.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+        code: 'APP-100',
+        customerId: 'cust-1',
+        service: { id: 'srv-1', name: 'GST Filing' },
+      });
+      (prisma.message!.findUnique as jest.Mock).mockResolvedValue({
+        body: 'Please submit your PAN card copy.',
+        sender: { id: 'staff-1', name: 'Alice Staff' },
+      });
+      (prisma.user!.findUnique as jest.Mock).mockResolvedValue({
+        id: 'cust-1',
+        name: 'Bob Customer',
+        email: 'bob@example.com',
+      });
+      (prisma.notificationTemplate!.findMany as jest.Mock).mockResolvedValue([
+        { channel: 'EMAIL', isActive: true, event: 'message.received' },
+        { channel: 'IN_APP', isActive: true, event: 'message.received' },
+      ]);
+
+      await listener.handleMessageCreated({
+        messageId: 'msg-1',
+        applicationId: 'app-1',
+        senderId: 'staff-1',
+        fromStaff: true,
+      });
+
+      expect(templateEngine.render).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          recipientName: 'Bob Customer',
+          applicationCode: 'APP-100',
+          serviceName: 'GST Filing',
+          senderName: 'Alice Staff',
+          messageExcerpt: 'Please submit your PAN card copy.',
+        }),
+      );
+      expect(dispatcher.dispatch).toHaveBeenCalledTimes(2); // EMAIL and IN_APP
+    });
+
+    it('notifies assigned staff on IN_APP only when message is from customer', async () => {
+      (prisma.application!.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+        code: 'APP-100',
+        customerId: 'cust-1',
+        assignedToId: 'staff-1',
+        service: { id: 'srv-1', name: 'GST Filing' },
+      });
+      (prisma.message!.findUnique as jest.Mock).mockResolvedValue({
+        body: 'Here is the copy.',
+        sender: { id: 'cust-1', name: 'Bob Customer' },
+      });
+      (prisma.user!.findUnique as jest.Mock).mockResolvedValue({
+        id: 'staff-1',
+        name: 'Alice Staff',
+      });
+      (prisma.notificationTemplate!.findMany as jest.Mock).mockResolvedValue([
+        { channel: 'EMAIL', isActive: true, event: 'message.received' },
+        { channel: 'IN_APP', isActive: true, event: 'message.received' },
+      ]);
+
+      await listener.handleMessageCreated({
+        messageId: 'msg-1',
+        applicationId: 'app-1',
+        senderId: 'cust-1',
+        fromStaff: false,
+      });
+
+      expect(templateEngine.render).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          recipientName: 'Alice Staff',
+          senderName: 'Bob Customer',
+          messageExcerpt: 'Here is the copy.',
+        }),
+      );
+      expect(dispatcher.dispatch).toHaveBeenCalledTimes(1);
+      expect(dispatcher.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ channel: 'IN_APP', userId: 'staff-1' }),
+      );
+    });
+
+    it('notifies nobody if unassigned and from customer', async () => {
+      (prisma.application!.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+        code: 'APP-100',
+        customerId: 'cust-1',
+        assignedToId: null, // No assigned staff
+        service: { id: 'srv-1', name: 'GST Filing' },
+      });
+      (prisma.message!.findUnique as jest.Mock).mockResolvedValue({
+        body: 'Hello?',
+        sender: { id: 'cust-1', name: 'Bob Customer' },
+      });
+
+      await listener.handleMessageCreated({
+        messageId: 'msg-1',
+        applicationId: 'app-1',
+        senderId: 'cust-1',
+        fromStaff: false,
+      });
+
+      expect(dispatcher.dispatch).not.toHaveBeenCalled();
+    });
+
+    it('swallows dispatcher error without throwing', async () => {
+      (prisma.application!.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+        code: 'APP-100',
+        customerId: 'cust-1',
+        service: { id: 'srv-1', name: 'GST Filing' },
+      });
+      (prisma.message!.findUnique as jest.Mock).mockResolvedValue({
+        body: 'Please submit your PAN card copy.',
+        sender: { id: 'staff-1', name: 'Alice Staff' },
+      });
+      (prisma.user!.findUnique as jest.Mock).mockResolvedValue({
+        id: 'cust-1',
+        name: 'Bob Customer',
+      });
+      (prisma.notificationTemplate!.findMany as jest.Mock).mockResolvedValue([
+        { channel: 'EMAIL', isActive: true, event: 'message.received' },
+      ]);
+      (dispatcher.dispatch as jest.Mock).mockRejectedValue(new Error('Network failure'));
+
+      await expect(
+        listener.handleMessageCreated({
+          messageId: 'msg-1',
+          applicationId: 'app-1',
+          senderId: 'staff-1',
+          fromStaff: true,
         }),
       ).resolves.not.toThrow();
     });
