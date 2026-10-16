@@ -19,6 +19,8 @@ import { DeliverablesService } from './deliverables.service';
 import { MessagesController } from './messages.controller';
 import { MessagesService } from './messages.service';
 import { CustomerDocumentsController } from './customer-documents.controller';
+import { PendingActionsController } from './pending-actions.controller';
+import { PendingActionsService } from './pending-actions.service';
 
 @Module({
   imports: [CouponsModule, CertificatesModule],
@@ -32,6 +34,7 @@ import { CustomerDocumentsController } from './customer-documents.controller';
     DeliverablesController,
     MessagesController,
     CustomerDocumentsController,
+    PendingActionsController,
   ],
   providers: [
     AdminApplicationDocumentsService,
@@ -43,6 +46,7 @@ import { CustomerDocumentsController } from './customer-documents.controller';
     InternalNotesService,
     DeliverablesService,
     MessagesService,
+    PendingActionsService,
   ],
   exports: [ApplicationsService, ApplicationStatusService, ApplicationDocumentsService, OrderSummaryService],
 })

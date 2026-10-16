@@ -8396,7 +8396,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "Status updated; DELIVERED requires at least one final deliverable"
           },
           "409": {
@@ -9863,6 +9863,32 @@
         ],
         "tags": [
           "documents"
+        ]
+      }
+    },
+    "/api/pending-actions": {
+      "get": {
+        "operationId": "PendingActionsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "pending actions"
         ]
       }
     },
@@ -25294,6 +25320,57 @@
           ],
           "additionalProperties": false
         }
+      },
+      "PendingActionsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "upload_document",
+                    "reupload_document",
+                    "pay_balance",
+                    "read_message"
+                  ]
+                },
+                "applicationId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "applicationCode": {
+                  "type": "string"
+                },
+                "serviceName": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "href": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "applicationId",
+                "applicationCode",
+                "serviceName",
+                "title",
+                "href"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
       },
       "SellerSettings": {
         "type": "object",

@@ -62,14 +62,21 @@ export function DashboardHome() {
           ['Pending actions', summary?.pendingActions.toString()],
           ['Upcoming due dates', summary?.upcomingDueDates.length.toString()],
           ['Unpaid balance', summary ? formatINR(summary.unpaidBalance) : undefined],
-        ].map(([label, value]) => (
-          <section key={label} className="min-w-0 rounded-lg border border-rule bg-white p-4 sm:p-5">
-            <p className="text-xs font-medium text-muted sm:text-sm">{label}</p>
-            <p className="mt-2 truncate text-xl font-bold text-night sm:text-2xl" aria-live="polite">
-              {summaryLoading ? '—' : value ?? '—'}
-            </p>
-          </section>
-        ))}
+        ].map(([label, value]) => {
+          const card = (
+            <section key={label} className="min-w-0 rounded-lg border border-rule bg-white p-4 sm:p-5">
+              <p className="text-xs font-medium text-muted sm:text-sm">{label}</p>
+              <p className="mt-2 truncate text-xl font-bold text-night sm:text-2xl" aria-live="polite">
+                {summaryLoading ? '—' : value ?? '—'}
+              </p>
+            </section>
+          );
+          return label === 'Pending actions' ? (
+            <Link key={label} href="/dashboard/pending" className="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink" aria-label="View pending actions">
+              {card}
+            </Link>
+          ) : card;
+        })}
       </div>
       {summaryError && <Notice tone="error">{summaryError}</Notice>}
 
