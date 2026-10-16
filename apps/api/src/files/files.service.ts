@@ -112,7 +112,23 @@ export class FilesService {
         },
       });
       if (doc) return true;
+
+      const deliverable = await this.prisma.finalDeliverable.findFirst({
+        where: {
+          fileKey: file.fileKey,
+          application: applicationScope(user),
+        },
+      });
+      if (deliverable) return true;
     }
+
+    const customerDeliverable = await this.prisma.finalDeliverable.findFirst({
+      where: {
+        fileKey: file.fileKey,
+        application: { customerId: user.id },
+      },
+    });
+    if (customerDeliverable) return true;
 
     return false;
   }
