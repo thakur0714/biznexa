@@ -58,10 +58,18 @@ describe('Final Deliverables API', () => {
   });
 
   afterAll(async () => {
-    await prisma.finalDeliverable.deleteMany({ where: { applicationId: { contains: `deliv-` } } });
-    await prisma.application.deleteMany({ where: { code: { contains: `deliv-` } } });
-    await prisma.user.deleteMany({ where: { email: { contains: `deliverables-` } } });
-    await app.close();
+    try {
+      const prefix = `deliv-${run}-`;
+      await prisma.finalDeliverable.deleteMany({ where: { application: { code: { startsWith: prefix } } } });
+      await prisma.applicationStageHistory.deleteMany({ where: { application: { code: { startsWith: prefix } } } });
+      await prisma.application.deleteMany({ where: { code: { startsWith: prefix } } });
+      const users = { email: { contains: `${run}@` } };
+      const ids = (await prisma.user.findMany({ where: users, select: { id: true } })).map((u) => u.id);
+      await prisma.storedFile.deleteMany({ where: { ownerId: { in: ids } } });
+      await prisma.user.deleteMany({ where: users });
+    } finally {
+      await app.close(); // always, or Jest never exits
+    }
   });
 
   async function createTestApp(status: any, assignedToId: string | null = null, codeStr: string) {
@@ -70,7 +78,7 @@ describe('Final Deliverables API', () => {
 
     const a = await prisma.application.create({
       data: {
-        code: `deliv-${codeStr}`,
+        code: `deliv-${run}-${codeStr}`,
         customerId,
         serviceId: s.id,
         packageId: p.id,
