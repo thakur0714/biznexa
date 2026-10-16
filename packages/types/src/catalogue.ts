@@ -201,3 +201,9 @@ export const adminServiceDetailSchema = z.object({
   relatedServiceIds: z.array(uuid),
 });
 export type AdminServiceDetail = z.infer<typeof adminServiceDetailSchema>;
+
+/** The category segment needed to build a public service URL from a service slug. */
+export const serviceCategoryLookupSchema = z.object({
+  category: z.object({ slug: z.string() }),
+});
+export type ServiceCategoryLookup = z.infer<typeof serviceCategoryLookupSchema>;

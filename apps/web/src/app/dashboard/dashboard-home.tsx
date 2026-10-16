@@ -10,6 +10,7 @@ import { useAuth, type SessionUser } from '@/lib/auth';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { formatDate, formatINR, type DashboardSummary } from '@biznexa/types';
+import { UpcomingDueDates } from './upcoming-due-dates';
 
 export function DashboardHome() {
   const { user, signIn, signOut } = useAuth();
@@ -118,6 +119,8 @@ export function DashboardHome() {
           </ul>
         </section>
       ) : null}
+
+      <UpcomingDueDates />
 
       {!user.mobileVerified && user.mobile && (
         <section className="rounded-lg border border-amber/40 bg-amber-050 p-5">
