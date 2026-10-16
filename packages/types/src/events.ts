@@ -120,6 +120,12 @@ export interface DomainEventPayloads {
     /** What the scanner found, when INFECTED. */
     signature: string | null;
   };
+  'message.created': {
+    messageId: string;
+    applicationId: string;
+    senderId: string;
+    fromStaff: boolean;
+  };
 }
 
 export type DomainEventName = keyof DomainEventPayloads;
