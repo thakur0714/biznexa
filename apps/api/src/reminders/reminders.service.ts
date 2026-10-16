@@ -118,8 +118,7 @@ export class RemindersService implements OnModuleInit {
     const monthsToAdd = recurrenceMap[application.service.recurrence];
     if (!monthsToAdd) return;
 
-    const dueDate = new Date(completionTime);
-    dueDate.setMonth(dueDate.getMonth() + monthsToAdd);
+    const dueDate = addMonthsClamped(completionTime, monthsToAdd);
 
     if (dueDate < new Date()) return;
 
@@ -148,4 +147,15 @@ export class RemindersService implements OnModuleInit {
       },
     });
   }
+}
+
+/** Adds months, staying on the last day of a shorter month (31 Jan + 1 month = 28/29 Feb, not 3 Mar). */
+export function addMonthsClamped(from: Date, months: number): Date {
+  const d = new Date(from);
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(day, lastDay));
+  return d;
 }
