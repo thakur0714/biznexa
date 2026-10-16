@@ -23,6 +23,7 @@ import { SettingsModule } from './settings/settings.module';
 import { PaymentsModule } from './payments/payments.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { CustomersModule } from './customers/customers.module';
 import { AuthGuard } from './common/auth.guard';
 import { Public } from './common/auth.decorators';
 import { PrismaExceptionFilter } from './common/prisma-exception.filter';
@@ -71,6 +72,7 @@ class HealthController {
     PaymentsModule,
     InvoicesModule,
     NotificationsModule,
+    CustomersModule,
     LeadsModule,
     CmsModule,
   ],
