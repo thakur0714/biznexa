@@ -4,23 +4,15 @@ import { useState, useEffect } from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { Notice, Button, EmptyState, Dialog, Field, useToast } from '@biznexa/ui';
 import { DataTable } from '@/components/data-table';
-import { formatDate } from '@biznexa/types';
+import { formatDate, type AdminDocumentReviewQueuePage, type AdminDocumentReviewQueueRow, type RejectionPresets } from '@biznexa/types';
 import Link from 'next/link';
 
-type DocumentItem = {
-  id: string;
-  name: string;
-  application: { id: string; code: string; customerName: string; customerEmail: string };
-  fileName: string;
-  size: number;
-  uploadedAt: string;
-  fileId?: string;
-};
+type DocumentItem = AdminDocumentReviewQueueRow;
 
 export function DocumentsView() {
   const api = useApi();
   const toast = useToast();
-  const [data, setData] = useState<{ items: DocumentItem[]; total: number } | null>(null);
+  const [data, setData] = useState<AdminDocumentReviewQueuePage | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [reload, setReload] = useState(0);
@@ -36,9 +28,9 @@ export function DocumentsView() {
   useEffect(() => {
     let cancelled = false;
     if (rejectDialog) {
-      api.call(c => c.GET('/api/admin/settings/rejection-presets'))
+      api.call<RejectionPresets>(c => c.GET('/api/admin/settings/rejection-presets'))
         .then(d => {
-          if (!cancelled) setRejectPresets(d as unknown as string[]);
+          if (!cancelled) setRejectPresets(d.presets);
         })
         .catch(() => {});
     }
@@ -86,15 +78,14 @@ export function DocumentsView() {
   };
 
 
-  const handlePreview = async (fileId: string) => {
+  const handlePreview = async (doc: DocumentItem) => {
+    const fileId = doc.fileId!;
     setPreviewFile({ id: fileId });
     try {
-      const result = await api.call(c => c.POST('/api/files/{id}/link', {
+      const result = await api.call<{ url: string; expiresAt: string }>(c => c.POST('/api/files/{id}/link', {
         params: { path: { id: fileId }, query: { disposition: 'inline' } }
-      })) as { url: string; expiresAt: string };
-      const doc = data?.items.find(i => i.fileId === fileId);
-      const isImg = doc?.fileName.match(/\.(jpeg|jpg|png|webp|gif)$/i);
-      setPreviewFile({ id: fileId, url: result.url, type: isImg ? 'image/jpeg' : 'application/pdf' });
+      }));
+      setPreviewFile({ id: fileId, url: result.url, type: doc.mimeType ?? undefined });
     } catch (e: unknown) {
       const err = e as { status?: number; message?: string };
       if (err.status === 409) {
@@ -109,14 +100,14 @@ export function DocumentsView() {
 
   useEffect(() => {
     let cancelled = false;
-    api.call((c) =>
+    api.call<AdminDocumentReviewQueuePage>((c) =>
       c.GET('/api/admin/documents/review-queue', {
         params: { query: { page, limit: 25 } },
       })
     )
       .then((d) => {
         if (!cancelled) {
-          setData(d as unknown as { items: DocumentItem[]; total: number });
+          setData(d);
           setLoadError(null);
         }
       })
@@ -148,8 +139,10 @@ export function DocumentsView() {
       accessorKey: 'customer',
       cell: ({ row }: { row: { original: DocumentItem } }) => (
         <div>
-          <div>{row.original.application.customerName}</div>
-          <div className="text-xs text-muted">{row.original.application.customerEmail}</div>
+          <div>{row.original.application.customer?.name ?? '—'}</div>
+          {row.original.application.customer?.email && (
+            <div className="text-xs text-muted">{row.original.application.customer.email}</div>
+          )}
         </div>
       ),
     },
@@ -158,17 +151,19 @@ export function DocumentsView() {
       accessorKey: 'fileInfo',
       cell: ({ row }: { row: { original: DocumentItem } }) => (
         <div>
-          <div>{row.original.fileName}</div>
-          <div className="text-xs text-muted">
-            {(row.original.size / 1024).toFixed(1)} KB
-          </div>
+          <div>{row.original.fileName ?? '—'}</div>
+          {row.original.sizeBytes != null && (
+            <div className="text-xs text-muted">
+              {(row.original.sizeBytes / 1024).toFixed(1)} KB
+            </div>
+          )}
         </div>
       ),
     },
     {
       header: 'Uploaded Time (IST)',
       accessorKey: 'uploadedAt',
-      cell: ({ row }: { row: { original: DocumentItem } }) => formatDate(row.original.uploadedAt),
+      cell: ({ row }: { row: { original: DocumentItem } }) => (row.original.uploadedAt ? formatDate(row.original.uploadedAt) : '—'),
     },
     {
       header: 'Actions',
@@ -176,7 +171,7 @@ export function DocumentsView() {
       cell: ({ row }: { row: { original: DocumentItem } }) => (
         <div className="flex gap-2 flex-wrap items-center">
           {row.original.fileId && (
-            <Button variant="outline" size="sm" onClick={() => handlePreview(row.original.fileId!)}>
+            <Button variant="outline" size="sm" onClick={() => handlePreview(row.original)}>
               Preview
             </Button>
           )}

@@ -13,19 +13,24 @@ vi.mock('@biznexa/api-client/react', () => {
             items: [
               {
                 id: 'doc1',
+                requirementId: null,
                 name: 'Test Document',
-                application: { id: 'app1', code: 'APP-1', customerName: 'John', customerEmail: 'john@example.com' },
-                fileName: 'test.pdf',
-                size: 1024,
-                uploadedAt: new Date().toISOString(),
+                status: 'UPLOADED',
+                version: 1,
+                application: { id: 'app1', code: 'APP-1', customer: { name: 'John', email: 'john@example.com' } },
                 fileId: 'file1',
+                fileKey: 'k',
+                fileName: 'test.pdf',
+                sizeBytes: 1024,
+                mimeType: 'application/pdf',
+                uploadedAt: new Date().toISOString(),
               },
             ],
             total: 1,
           });
         }
         if (path === '/api/admin/settings/rejection-presets') {
-          return Promise.resolve(['Blurry image', 'Missing signature']);
+          return Promise.resolve({ presets: ['Blurry image', 'Missing signature'], updatedAt: null });
         }
         return Promise.resolve({});
       }),
@@ -50,6 +55,8 @@ describe('Admin Document Review UI', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Reject').length).toBeGreaterThan(0);
     });
+    expect(screen.getByText('John')).toBeInTheDocument();
+    expect(screen.getByText('1.0 KB')).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByText('Reject')[0]);
 
