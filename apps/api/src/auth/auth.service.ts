@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
@@ -6,7 +6,8 @@ import { AuditService } from '../audit/audit.service';
 import { OtpService } from './otp.service';
 import { SessionMeta, TokenService } from './token.service';
 import { env } from '../config/env';
-import { requiresTwoFactor, type TwoFactorState } from '@biznexa/types';
+import { requiresTwoFactor, type ChangePasswordInput, type TwoFactorState, type UpdateProfileInput } from '@biznexa/types';
+
 import type { User } from '../generated/prisma/client';
 import type { OtpChannel, OtpPurpose } from '../generated/prisma/enums';
 
@@ -183,4 +184,60 @@ export class AuthService {
     const { roles, permissions } = await this.tokens.rolesAndPermissions(userId);
     return this.publicUser(user, roles, permissions, twoFactorPending && requiresTwoFactor(permissions));
   }
+
+  async updateProfile(userId: string, body: UpdateProfileInput, twoFactorPending: boolean) {
+    if (body.email) {
+      const email = body.email.toLowerCase();
+      const existing = await this.prisma.user.findFirst({
+        where: {
+          email,
+          id: { not: userId },
+        },
+      });
+      if (existing) {
+        throw new ConflictException('An account with this email already exists');
+      }
+    }
+
+    const currentUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!currentUser) throw new UnauthorizedException();
+
+    const emailChanged = body.email && body.email.toLowerCase() !== currentUser.email?.toLowerCase();
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.email !== undefined && {
+          email: body.email.toLowerCase(),
+          ...(emailChanged ? { emailVerified: false } : {}),
+        }),
+      },
+    });
+
+    await this.audit.log({ actorId: userId, action: 'user.profile_update', entityType: 'User', entityId: userId });
+    const { roles, permissions } = await this.tokens.rolesAndPermissions(userId);
+    return this.publicUser(updated, roles, permissions, twoFactorPending && requiresTwoFactor(permissions));
+  }
+
+  async changePassword(userId: string, body: ChangePasswordInput, currentRefreshToken?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException();
+
+    const ok = user.passwordHash ? await bcrypt.compare(body.currentPassword, user.passwordHash) : false;
+    if (!ok) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const passwordHash = await bcrypt.hash(body.newPassword, BCRYPT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    await this.tokens.revokeOthers(userId, currentRefreshToken);
+    await this.audit.log({ actorId: userId, action: 'user.password_change', entityType: 'User', entityId: userId });
+    return { message: 'Password changed successfully' };
+  }
 }
+

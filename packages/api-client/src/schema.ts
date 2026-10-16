@@ -257,6 +257,22 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        patch: operations["AuthController_updateMe"];
+        trace?: never;
+    };
+    "/api/auth/password/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AuthController_changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -302,6 +318,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AuthController_verifyTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationsController_getPreferences"];
+        put: operations["NotificationsController_updatePreferences"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2019,6 +2051,18 @@ export interface components {
             limit: number;
             pages: number;
         };
+        UserNotificationPreferences: {
+            /** @default false */
+            marketingOptOut: boolean;
+            /** @default {} */
+            channelPreferences: {
+                EMAIL: boolean;
+                SMS: boolean;
+                PUSH: boolean;
+                IN_APP: boolean;
+                WHATSAPP: boolean;
+            };
+        };
         NotificationListPage: {
             items: {
                 /** Format: uuid */
@@ -2060,6 +2104,23 @@ export interface components {
         DeviceTokenActionResponse: {
             success: boolean;
             token?: string;
+        };
+        AuthMeResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            email: string | null;
+            mobile: string | null;
+            avatarUrl: string | null;
+            emailVerified: boolean;
+            mobileVerified: boolean;
+            roles: string[];
+            permissions: string[];
+            twoFactor: {
+                required: boolean;
+                enabled: boolean;
+                verified: boolean;
+            };
         };
         TwoFactorSetup: {
             secret: string;
@@ -5287,6 +5348,67 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["AuthMeResponse"];
+                };
+            };
+        };
+    };
+    AuthController_updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** Format: email */
+                    email?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthMeResponse"];
+                };
+            };
+            /** @description Email already in use */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    currentPassword: string;
+                    newPassword: string & (unknown & unknown);
+                };
+            };
+        };
+        responses: {
+            /** @description Incorrect current password or invalid new password */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
             };
         };
@@ -5357,6 +5479,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    NotificationsController_getPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserNotificationPreferences"];
+                };
+            };
+        };
+    };
+    NotificationsController_updatePreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default false */
+                    marketingOptOut?: boolean;
+                    /** @default {} */
+                    channelPreferences?: {
+                        EMAIL: boolean;
+                        SMS: boolean;
+                        PUSH: boolean;
+                        IN_APP: boolean;
+                        WHATSAPP: boolean;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserNotificationPreferences"];
+                };
             };
         };
     };

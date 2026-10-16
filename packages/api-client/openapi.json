@@ -686,7 +686,115 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "auth"
+        ]
+      },
+      "patch": {
+        "operationId": "AuthController_updateMe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMeResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already in use"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/password/change": {
+      "post": {
+        "operationId": "AuthController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 8,
+                    "allOf": [
+                      {
+                        "pattern": "[A-Za-z]"
+                      },
+                      {
+                        "pattern": "\\d"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Incorrect current password or invalid new password"
           }
         },
         "security": [
@@ -822,6 +930,102 @@
         ],
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/notifications/preferences": {
+      "get": {
+        "operationId": "NotificationsController_getPreferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserNotificationPreferences"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      },
+      "put": {
+        "operationId": "NotificationsController_updatePreferences",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "marketingOptOut": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "channelPreferences": {
+                    "type": "object",
+                    "required": [
+                      "EMAIL",
+                      "SMS",
+                      "PUSH",
+                      "IN_APP",
+                      "WHATSAPP"
+                    ],
+                    "properties": {
+                      "EMAIL": {
+                        "type": "boolean"
+                      },
+                      "SMS": {
+                        "type": "boolean"
+                      },
+                      "PUSH": {
+                        "type": "boolean"
+                      },
+                      "IN_APP": {
+                        "type": "boolean"
+                      },
+                      "WHATSAPP": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "default": {}
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserNotificationPreferences"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
         ]
       }
     },
@@ -11210,6 +11414,45 @@
         ],
         "additionalProperties": false
       },
+      "UserNotificationPreferences": {
+        "type": "object",
+        "properties": {
+          "marketingOptOut": {
+            "type": "boolean",
+            "default": false
+          },
+          "channelPreferences": {
+            "type": "object",
+            "required": [
+              "EMAIL",
+              "SMS",
+              "PUSH",
+              "IN_APP",
+              "WHATSAPP"
+            ],
+            "properties": {
+              "EMAIL": {
+                "type": "boolean"
+              },
+              "SMS": {
+                "type": "boolean"
+              },
+              "PUSH": {
+                "type": "boolean"
+              },
+              "IN_APP": {
+                "type": "boolean"
+              },
+              "WHATSAPP": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false,
+            "default": {}
+          }
+        },
+        "additionalProperties": false
+      },
       "NotificationListPage": {
         "type": "object",
         "properties": {
@@ -11363,6 +11606,81 @@
         },
         "required": [
           "success"
+        ],
+        "additionalProperties": false
+      },
+      "AuthMeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "mobileVerified": {
+            "type": "boolean"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "twoFactor": {
+            "type": "object",
+            "properties": {
+              "required": {
+                "type": "boolean"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "verified": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "required",
+              "enabled",
+              "verified"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "mobile",
+          "avatarUrl",
+          "emailVerified",
+          "mobileVerified",
+          "roles",
+          "permissions",
+          "twoFactor"
         ],
         "additionalProperties": false
       },
