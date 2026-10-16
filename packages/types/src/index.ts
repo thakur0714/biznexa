@@ -31,3 +31,4 @@ export * from './admin-customers';
 export * from './messages';
 export * from './dashboard';
 export * from './reminders';
+export * from './tickets';
