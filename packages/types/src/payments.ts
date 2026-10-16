@@ -229,3 +229,45 @@ export const adminPaymentDetailSchema = z.object({
     .nullable(),
 });
 export type AdminPaymentDetail = z.infer<typeof adminPaymentDetailSchema>;
+
+export const customerPaymentListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type CustomerPaymentListQuery = z.infer<typeof customerPaymentListQuerySchema>;
+
+export const customerPaymentRowSchema = z.object({
+  id: z.string().uuid(),
+  amount: z.number().int(),
+  status: z.enum(PAYMENT_STATUSES),
+  method: z.string().nullable(),
+  gateway: z.string(),
+  createdAt: isoDate,
+  order: z.object({
+    id: z.string().uuid(),
+    code: z.string(),
+    total: z.number().int(),
+    amountPaid: z.number().int(),
+    balance: z.number().int(),
+    applicationId: z.string().uuid().nullable().optional(),
+    serviceSlug: z.string().nullable().optional(),
+  }),
+  invoice: z
+    .object({
+      id: z.string().uuid(),
+      number: z.string(),
+    })
+    .nullable(),
+});
+export type CustomerPaymentRow = z.infer<typeof customerPaymentRowSchema>;
+
+export const customerPaymentListResponseSchema = z.object({
+  items: z.array(customerPaymentRowSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+  totalPaid: z.number().int(),
+  outstandingBalance: z.number().int(),
+});
+export type CustomerPaymentListResponse = z.infer<typeof customerPaymentListResponseSchema>;
+

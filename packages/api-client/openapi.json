@@ -10162,6 +10162,54 @@
         ]
       }
     },
+    "/api/payments": {
+      "get": {
+        "operationId": "PaymentsController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerPaymentList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payments"
+        ]
+      }
+    },
     "/api/applications/{id}/payment": {
       "post": {
         "operationId": "CheckoutController_start",
@@ -24985,6 +25033,140 @@
           "amountPaid",
           "balance",
           "payment"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerPaymentList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "amount": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "CREATED",
+                    "PENDING",
+                    "SUCCESS",
+                    "FAILED",
+                    "REFUND_INITIATED",
+                    "REFUNDED",
+                    "PARTIALLY_REFUNDED"
+                  ]
+                },
+                "method": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "gateway": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "order": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "amountPaid": {
+                      "type": "integer"
+                    },
+                    "balance": {
+                      "type": "integer"
+                    },
+                    "applicationId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "nullable": true
+                    },
+                    "serviceSlug": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "total",
+                    "amountPaid",
+                    "balance"
+                  ],
+                  "additionalProperties": false
+                },
+                "invoice": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "number": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "amount",
+                "status",
+                "method",
+                "gateway",
+                "createdAt",
+                "order",
+                "invoice"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "totalPaid": {
+            "type": "integer"
+          },
+          "outstandingBalance": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "totalPaid",
+          "outstandingBalance"
         ],
         "additionalProperties": false
       },

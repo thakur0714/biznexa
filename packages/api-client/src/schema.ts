@@ -1716,6 +1716,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/applications/{id}/payment": {
         parameters: {
             query?: never;
@@ -4741,6 +4757,40 @@ export interface components {
                 /** @enum {string|null} */
                 plan: "FULL" | "ADVANCE" | "BALANCE" | null;
             } | null;
+        };
+        CustomerPaymentList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                amount: number;
+                /** @enum {string} */
+                status: "CREATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUND_INITIATED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+                method: string | null;
+                gateway: string;
+                /** Format: date-time */
+                createdAt: string;
+                order: {
+                    /** Format: uuid */
+                    id: string;
+                    code: string;
+                    total: number;
+                    amountPaid: number;
+                    balance: number;
+                    /** Format: uuid */
+                    applicationId?: string | null;
+                    serviceSlug?: string | null;
+                };
+                invoice: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                } | null;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+            totalPaid: number;
+            outstandingBalance: number;
         };
         InvoiceList: {
             /** Format: uuid */
@@ -8956,6 +9006,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RejectionPresets"];
+                };
+            };
+        };
+    };
+    PaymentsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerPaymentList"];
                 };
             };
         };
