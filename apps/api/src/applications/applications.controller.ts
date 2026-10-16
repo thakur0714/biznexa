@@ -1,9 +1,20 @@
 import { Controller, Get, Param, ParseUUIDPipe, Patch, Post, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
-import { applicationDetailSchema, createApplicationInput, draftApplicationSchema, updateApplicationFormInput, type CreateApplicationData, type UpdateApplicationFormInput } from '@biznexa/types';
+import {
+  applicationDetailSchema,
+  createApplicationInput,
+  customerApplicationListQuery,
+  customerApplicationListSchema,
+  customerApplicationTimelineSchema,
+  draftApplicationSchema,
+  updateApplicationFormInput,
+  type CreateApplicationData,
+  type CustomerApplicationListQuery,
+  type UpdateApplicationFormInput,
+} from '@biznexa/types';
 import { AuthUser, CurrentUser } from '../common/auth.decorators';
-import { ApiZodResponse, ZodBody } from '../common/openapi';
+import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 import { ApplicationsService } from './applications.service';
 
 const uuid = new ParseUUIDPipe();
@@ -16,6 +27,13 @@ const NotFound = () => ApiResponse({ status: 404, description: 'No such applicat
 export class ApplicationsController {
   constructor(private readonly applications: ApplicationsService) {}
 
+  /** Customer My Services list (M5.3): the signed-in customer's own applications by tab. */
+  @ApiZodResponse('CustomerApplicationList', customerApplicationListSchema)
+  @Get()
+  list(@ZodQuery(customerApplicationListQuery) q: CustomerApplicationListQuery, @CurrentUser() u: AuthUser) {
+    return this.applications.list(u.id, q);
+  }
+
   /** "Continue to your details": a draft order + DRAFT application for a package (or the unpaid draft already started). */
   @ApiZodResponse('DraftApplication', draftApplicationSchema, 201)
   @ApiResponse({ status: 200, description: 'An unpaid draft for this package and business already existed and is returned (`resumed: true`)' })
@@ -26,6 +44,14 @@ export class ApplicationsController {
     const draft = await this.applications.startDraft(u.id, body);
     if (draft.resumed) res.status(200);
     return draft;
+  }
+
+  /** Customer application timeline (M5.4): header, service stage stepper, and customer-visible history only. */
+  @ApiZodResponse('CustomerApplicationTimeline', customerApplicationTimelineSchema)
+  @NotFound()
+  @Get(':id/timeline')
+  timeline(@Param('id', uuid) id: string, @CurrentUser() u: AuthUser) {
+    return this.applications.timeline(u.id, id);
   }
 
   /** The form page (M3.9): loads the application to render and resume its form. */
