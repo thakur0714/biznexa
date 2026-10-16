@@ -222,13 +222,20 @@ Gaps found while planning are moved into Milestone 2.5 below.
 
 ## Milestone 5 — Customer Dashboard (§7.3)
 
-- [ ] **M5.1 — Dashboard layout.** `[Sonnet]` Sidebar (all 10 sections), mobile drawer, active state, auth guard, unread badges placeholder.
+- [x] **M5.1 — Dashboard layout.** `[Sonnet]` Sidebar (all 10 sections), mobile drawer, active state, auth guard, unread badges placeholder.
+  - *Done 16-Oct-2026 (Antigravity/Argon, reviewed by Claude):* `apps/web/src/app/dashboard/layout.tsx` shared by every dashboard page: sidebar with all sections ("Soon" for missing ones), mobile drawer, active state, auth guard, notifications unread badge.
 - [ ] **M5.2 — Dashboard home.** `[Sonnet]` Summary cards (active apps, pending actions, upcoming due dates, unpaid balance), recent activity, "Buy a new service". One aggregated API call.
-- [ ] **M5.3 — My Services.** `[Sonnet]` Tabs Active/Completed/Cancelled; context-aware action (View/Upload/Pay/Download).
-- [ ] **M5.4 — Application detail: timeline.** `[Sonnet]` Vertical stepper from service stages (done/current/upcoming), dates, customer-visible notes only.
-- [ ] **M5.5 — Application detail: form, documents, payments, deliverables, assigned expert.** `[Sonnet]` Form read-only unless returned for correction.
+- [x] **M5.3 — My Services.** `[Sonnet]` Tabs Active/Completed/Cancelled; context-aware action (View/Upload/Pay/Download).
+  - *Done 16-Oct-2026 (Argon, reviewed by Claude):* `GET /api/applications?tab=active|completed|cancelled` (own applications only, `nextAction` upload_documents/pay_balance/download/view from status, pending documents and order balance); `/dashboard/services` with tabs and the context action.
+  - *Follow-ups:* the list runs `pendingMandatory` per row (N+1) — batch it if lists grow.
+- [x] **M5.4 — Application detail: timeline.** `[Sonnet]` Vertical stepper from service stages (done/current/upcoming), dates, customer-visible notes only.
+  - *Done 16-Oct-2026 (Argon, reviewed by Claude):* `GET /api/applications/:id/timeline` (owner only; only history with `visibleToCustomer`); `/dashboard/applications/[id]` header + stage stepper (done/current/upcoming, dates).
+- [x] **M5.5 — Application detail: form, documents, payments, deliverables, assigned expert.** `[Sonnet]` Form read-only unless returned for correction.
+  - *Done 16-Oct-2026 (Argon, reviewed by Claude):* detail tabs Form (read-only), Documents (shared `components/document-row.tsx`, also used by the apply documents step; includes "Requested by our team"), Payments (total/paid/balance, invoice link), Deliverables (signed link), assigned expert.
+  - *Follow-ups:* "form read-only unless returned for correction" — there is no correction flow yet. No Playwright test for the dashboard yet.
 - [ ] **M5.6 — Re-upload rejected documents.** `[Sonnet]` Rejection reason shown prominently; re-upload creates new version → back to review. **Done when:** acceptance criterion "rejects → re-upload → back to review" passes end-to-end.
-- [ ] **M5.7 — Application message thread (customer side).** `[Sonnet]`
+- [x] **M5.7 — Application message thread (customer side).** `[Sonnet]`
+  - *Done 16-Oct-2026 (Argon, finished by Claude):* Messages tab on the application detail: thread (page 1 = newest, "Load older"), send, marks staff messages read when opened, unread count. Text only — attachments come with M4.11 part 2.
 - [ ] **M5.8 — Pending Actions.** `[Sonnet]` One list: docs to upload/re-upload, balances due, info requested; each links to the action.
 - [ ] **M5.9 — Documents page.** `[Sonnet]` All docs across applications, filters, view/download/replace.
 - [ ] **M5.10 — Payments page.** `[Sonnet]` History, receipts, invoice PDF download, pay balance.
