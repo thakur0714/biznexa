@@ -32,3 +32,4 @@ export * from './messages';
 export * from './dashboard';
 export * from './pending-actions';
 export * from './reminders';
+export * from './tickets';

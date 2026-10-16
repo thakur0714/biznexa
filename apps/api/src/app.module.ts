@@ -29,6 +29,7 @@ import { Public } from './common/auth.decorators';
 import { PrismaExceptionFilter } from './common/prisma-exception.filter';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { RemindersModule } from './reminders/reminders.module';
+import { TicketsModule } from './tickets/tickets.module';
 
 @ApiTags('health')
 @Controller('health')
@@ -79,6 +80,7 @@ class HealthController {
     CmsModule,
     DashboardModule,
     RemindersModule,
+    TicketsModule,
   ],
   controllers: [HealthController],
   providers: [
