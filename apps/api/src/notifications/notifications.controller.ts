@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
@@ -17,20 +18,50 @@ import {
   notificationUnreadCountSchema,
   registerDeviceTokenInputSchema,
   unregisterDeviceTokenInputSchema,
+  userNotificationPreferencesSchema,
   type NotificationListQuery,
   type RegisterDeviceTokenInput,
   type UnregisterDeviceTokenInput,
+  type UserNotificationPreferences,
 } from '@biznexa/types';
 import { AuthUser, CurrentUser } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 import { NotificationsService } from './notifications.service';
+import { NotificationPreferencesService } from './notification-preferences.service';
 
 const uuid = new ParseUUIDPipe();
 
 @ApiTags('notifications')
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notifications: NotificationsService) {}
+  constructor(
+    private readonly notifications: NotificationsService,
+    private readonly preferences: NotificationPreferencesService,
+  ) {}
+
+  /**
+   * The logged-in user's notification preferences (M5.11).
+   */
+  @ApiBearerAuth()
+  @ApiZodResponse('UserNotificationPreferences', userNotificationPreferencesSchema)
+  @Get('preferences')
+  getPreferences(@CurrentUser() user: AuthUser) {
+    return this.preferences.getPreferences(user.id);
+  }
+
+  /**
+   * Update the logged-in user's notification preferences (M5.11).
+   */
+  @ApiBearerAuth()
+  @ApiZodResponse('UserNotificationPreferences', userNotificationPreferencesSchema)
+  @HttpCode(200)
+  @Put('preferences')
+  updatePreferences(
+    @ZodBody(userNotificationPreferencesSchema.partial()) body: Partial<UserNotificationPreferences>,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.preferences.updatePreferences(user.id, body);
+  }
 
   /**
    * The logged-in user's IN_APP notifications only, newest first,
@@ -42,6 +73,7 @@ export class NotificationsController {
   list(@ZodQuery(notificationListQuerySchema) q: NotificationListQuery, @CurrentUser() user: AuthUser) {
     return this.notifications.list(user.id, q);
   }
+
 
   /**
    * Unread notification count for the logged-in user.

@@ -257,6 +257,22 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        patch: operations["AuthController_updateMe"];
+        trace?: never;
+    };
+    "/api/auth/password/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AuthController_changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -302,6 +318,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AuthController_verifyTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationsController_getPreferences"];
+        put: operations["NotificationsController_updatePreferences"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1732,6 +1764,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/applications/{id}/payment": {
         parameters: {
             query?: never;
@@ -2035,6 +2083,18 @@ export interface components {
             limit: number;
             pages: number;
         };
+        UserNotificationPreferences: {
+            /** @default false */
+            marketingOptOut: boolean;
+            /** @default {} */
+            channelPreferences: {
+                EMAIL: boolean;
+                SMS: boolean;
+                PUSH: boolean;
+                IN_APP: boolean;
+                WHATSAPP: boolean;
+            };
+        };
         NotificationListPage: {
             items: {
                 /** Format: uuid */
@@ -2076,6 +2136,23 @@ export interface components {
         DeviceTokenActionResponse: {
             success: boolean;
             token?: string;
+        };
+        AuthMeResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            email: string | null;
+            mobile: string | null;
+            avatarUrl: string | null;
+            emailVerified: boolean;
+            mobileVerified: boolean;
+            roles: string[];
+            permissions: string[];
+            twoFactor: {
+                required: boolean;
+                enabled: boolean;
+                verified: boolean;
+            };
         };
         TwoFactorSetup: {
             secret: string;
@@ -4889,6 +4966,40 @@ export interface components {
                 plan: "FULL" | "ADVANCE" | "BALANCE" | null;
             } | null;
         };
+        CustomerPaymentList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                amount: number;
+                /** @enum {string} */
+                status: "CREATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUND_INITIATED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+                method: string | null;
+                gateway: string;
+                /** Format: date-time */
+                createdAt: string;
+                order: {
+                    /** Format: uuid */
+                    id: string;
+                    code: string;
+                    total: number;
+                    amountPaid: number;
+                    balance: number;
+                    /** Format: uuid */
+                    applicationId?: string | null;
+                    serviceSlug?: string | null;
+                };
+                invoice: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                } | null;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+            totalPaid: number;
+            outstandingBalance: number;
+        };
         InvoiceList: {
             /** Format: uuid */
             id: string;
@@ -5408,6 +5519,67 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["AuthMeResponse"];
+                };
+            };
+        };
+    };
+    AuthController_updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** Format: email */
+                    email?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthMeResponse"];
+                };
+            };
+            /** @description Email already in use */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    currentPassword: string;
+                    newPassword: string & (unknown & unknown);
+                };
+            };
+        };
+        responses: {
+            /** @description Incorrect current password or invalid new password */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
             };
         };
@@ -5478,6 +5650,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    NotificationsController_getPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserNotificationPreferences"];
+                };
+            };
+        };
+    };
+    NotificationsController_updatePreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default false */
+                    marketingOptOut?: boolean;
+                    /** @default {} */
+                    channelPreferences?: {
+                        EMAIL: boolean;
+                        SMS: boolean;
+                        PUSH: boolean;
+                        IN_APP: boolean;
+                        WHATSAPP: boolean;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserNotificationPreferences"];
+                };
             };
         };
     };
@@ -9148,6 +9373,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RejectionPresets"];
+                };
+            };
+        };
+    };
+    PaymentsController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerPaymentList"];
                 };
             };
         };

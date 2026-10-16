@@ -22,12 +22,12 @@ export const DASHBOARD_NAV: readonly NavSection[] = [
   { label: 'Dashboard', icon: 'clipboard', href: '/dashboard', ready: true },
   { label: 'My Services', icon: 'file', href: '/dashboard/services', ready: true },
   { label: 'Documents', icon: 'upload', href: '/dashboard/documents', ready: true },
-  { label: 'Payments', icon: 'rupee', ready: false },
+  { label: 'Payments', icon: 'rupee', href: '/dashboard/payments', ready: true },
   { label: 'Messages', icon: 'message', ready: false },
   { label: 'Certificates', icon: 'badge', href: '/dashboard/certificates', ready: true },
   { label: 'Notifications', icon: 'bell', href: '/dashboard/notifications', ready: true },
-  { label: 'Profile', icon: 'people', ready: false },
-  { label: 'Businesses', icon: 'building', ready: false },
+  { label: 'Profile', icon: 'people', href: '/dashboard/profile', ready: true },
+  { label: 'Businesses', icon: 'building', href: '/dashboard/businesses', ready: true },
   { label: 'Support', icon: 'phone', ready: false },
 ];
 

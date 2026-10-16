@@ -1,9 +1,23 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, Patch, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import { loginSchema, otpRequestSchema, otpVerifySchema, passwordSchema, registerSchema, totpCodeSchema, twoFactorSetupSchema } from '@biznexa/types';
+import {
+  authMeResponseSchema,
+  changePasswordSchema,
+  loginSchema,
+  otpRequestSchema,
+  otpVerifySchema,
+  passwordSchema,
+  registerSchema,
+  totpCodeSchema,
+  twoFactorSetupSchema,
+  updateProfileSchema,
+  type ChangePasswordInput,
+  type UpdateProfileInput,
+} from '@biznexa/types';
+
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
 import { TwoFactorService } from './two-factor.service';
@@ -124,10 +138,36 @@ export class AuthController {
   }
 
   @ApiBearerAuth()
+  @ApiZodResponse('AuthMeResponse', authMeResponseSchema)
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user.id, user.twoFactorPending);
   }
+
+  @ApiBearerAuth()
+  @ApiZodResponse('AuthMeResponse', authMeResponseSchema)
+  @ApiResponse({ status: 409, description: 'Email already in use' })
+  @Patch('me')
+  updateMe(
+    @ZodBody(updateProfileSchema) body: UpdateProfileInput,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.auth.updateProfile(user.id, body, user.twoFactorPending);
+  }
+
+  @ApiBearerAuth()
+  @HttpCode(200)
+  @ApiResponse({ status: 400, description: 'Incorrect current password or invalid new password' })
+  @Post('password/change')
+  async changePassword(
+    @ZodBody(changePasswordSchema) body: ChangePasswordInput,
+    @CurrentUser() user: AuthUser,
+    @Req() req: Request,
+  ) {
+    const rawRefresh = isMobile(req) ? (req.body as { refreshToken?: string })?.refreshToken : req.cookies?.[REFRESH_COOKIE];
+    return this.auth.changePassword(user.id, body, rawRefresh);
+  }
+
 
   /** Staff only: authenticator-app secret + QR code. Repeating it before confirming returns the same secret. */
   @ApiBearerAuth()

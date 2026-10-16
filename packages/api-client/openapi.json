@@ -686,7 +686,115 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "auth"
+        ]
+      },
+      "patch": {
+        "operationId": "AuthController_updateMe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMeResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already in use"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/password/change": {
+      "post": {
+        "operationId": "AuthController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 8,
+                    "allOf": [
+                      {
+                        "pattern": "[A-Za-z]"
+                      },
+                      {
+                        "pattern": "\\d"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Incorrect current password or invalid new password"
           }
         },
         "security": [
@@ -822,6 +930,102 @@
         ],
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/notifications/preferences": {
+      "get": {
+        "operationId": "NotificationsController_getPreferences",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserNotificationPreferences"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      },
+      "put": {
+        "operationId": "NotificationsController_updatePreferences",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "marketingOptOut": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "channelPreferences": {
+                    "type": "object",
+                    "required": [
+                      "EMAIL",
+                      "SMS",
+                      "PUSH",
+                      "IN_APP",
+                      "WHATSAPP"
+                    ],
+                    "properties": {
+                      "EMAIL": {
+                        "type": "boolean"
+                      },
+                      "SMS": {
+                        "type": "boolean"
+                      },
+                      "PUSH": {
+                        "type": "boolean"
+                      },
+                      "IN_APP": {
+                        "type": "boolean"
+                      },
+                      "WHATSAPP": {
+                        "type": "boolean"
+                      }
+                    },
+                    "additionalProperties": false,
+                    "default": {}
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserNotificationPreferences"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
         ]
       }
     },
@@ -10202,6 +10406,54 @@
         ]
       }
     },
+    "/api/payments": {
+      "get": {
+        "operationId": "PaymentsController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerPaymentList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payments"
+        ]
+      }
+    },
     "/api/applications/{id}/payment": {
       "post": {
         "operationId": "CheckoutController_start",
@@ -11228,6 +11480,45 @@
         ],
         "additionalProperties": false
       },
+      "UserNotificationPreferences": {
+        "type": "object",
+        "properties": {
+          "marketingOptOut": {
+            "type": "boolean",
+            "default": false
+          },
+          "channelPreferences": {
+            "type": "object",
+            "required": [
+              "EMAIL",
+              "SMS",
+              "PUSH",
+              "IN_APP",
+              "WHATSAPP"
+            ],
+            "properties": {
+              "EMAIL": {
+                "type": "boolean"
+              },
+              "SMS": {
+                "type": "boolean"
+              },
+              "PUSH": {
+                "type": "boolean"
+              },
+              "IN_APP": {
+                "type": "boolean"
+              },
+              "WHATSAPP": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false,
+            "default": {}
+          }
+        },
+        "additionalProperties": false
+      },
       "NotificationListPage": {
         "type": "object",
         "properties": {
@@ -11381,6 +11672,81 @@
         },
         "required": [
           "success"
+        ],
+        "additionalProperties": false
+      },
+      "AuthMeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobile": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "mobileVerified": {
+            "type": "boolean"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "twoFactor": {
+            "type": "object",
+            "properties": {
+              "required": {
+                "type": "boolean"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "verified": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "required",
+              "enabled",
+              "verified"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "mobile",
+          "avatarUrl",
+          "emailVerified",
+          "mobileVerified",
+          "roles",
+          "permissions",
+          "twoFactor"
         ],
         "additionalProperties": false
       },
@@ -25475,6 +25841,140 @@
           "amountPaid",
           "balance",
           "payment"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerPaymentList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "amount": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "CREATED",
+                    "PENDING",
+                    "SUCCESS",
+                    "FAILED",
+                    "REFUND_INITIATED",
+                    "REFUNDED",
+                    "PARTIALLY_REFUNDED"
+                  ]
+                },
+                "method": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "gateway": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "order": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "amountPaid": {
+                      "type": "integer"
+                    },
+                    "balance": {
+                      "type": "integer"
+                    },
+                    "applicationId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "nullable": true
+                    },
+                    "serviceSlug": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "total",
+                    "amountPaid",
+                    "balance"
+                  ],
+                  "additionalProperties": false
+                },
+                "invoice": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "number": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "amount",
+                "status",
+                "method",
+                "gateway",
+                "createdAt",
+                "order",
+                "invoice"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "totalPaid": {
+            "type": "integer"
+          },
+          "outstandingBalance": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "totalPaid",
+          "outstandingBalance"
         ],
         "additionalProperties": false
       },

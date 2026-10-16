@@ -46,3 +46,38 @@ export const verifyCertificateSchema = z
     id: z.string().trim().max(64).optional().describe('Verification ID (printed on the certificate / in the QR code)'),
   })
   .refine((v) => !!(v.number || v.id), 'Enter a certificate number or verification ID');
+
+export const updateProfileSchema = z
+  .object({
+    name: z.string().trim().min(2, 'Enter your full name').max(100).optional(),
+    email: z.string().trim().toLowerCase().email('Enter a valid email').optional(),
+  })
+  .refine((v) => v.name !== undefined || v.email !== undefined, {
+    message: 'Provide at least name or email',
+  });
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Enter your current password'),
+  newPassword: passwordSchema,
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+export const authMeResponseSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  email: z.string().nullable(),
+  mobile: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
+  emailVerified: z.boolean(),
+  mobileVerified: z.boolean(),
+  roles: z.array(z.string()),
+  permissions: z.array(z.string()),
+  twoFactor: z.object({
+    required: z.boolean(),
+    enabled: z.boolean(),
+    verified: z.boolean(),
+  }),
+});
+export type AuthMeResponse = z.infer<typeof authMeResponseSchema>;
+
