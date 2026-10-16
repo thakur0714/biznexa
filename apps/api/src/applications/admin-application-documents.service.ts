@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -228,10 +229,14 @@ export class AdminApplicationDocumentsService {
       });
       if (!app) throw new NotFoundException('Application not found or access denied');
 
+      const requestId = randomUUID(); // also the row's id: later uploads are versions sharing it
       const doc = await tx.applicationDocument.create({
         data: {
+          id: requestId,
+          requestId,
           applicationId,
           name: input.name,
+          description: input.description ?? null,
           version: 1,
           isLatest: true,
           status: 'REQUIRED',

@@ -8432,6 +8432,78 @@
         ]
       }
     },
+    "/api/applications/{id}/documents/additional/{requestId}": {
+      "post": {
+        "operationId": "ApplicationDocumentsController_attachAdditional",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requestId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "fileId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentChecklist"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The file is not yours, was uploaded for a checklist document, is already attached, or had a virus (`errors[].field` is `fileId`)"
+          },
+          "404": {
+            "description": "No such application among yours, or no such request on it"
+          },
+          "409": {
+            "description": "The application is past the document step, or this document is under review or approved"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "applications"
+        ]
+      }
+    },
     "/api/applications/{id}/documents/{requirementId}": {
       "post": {
         "operationId": "ApplicationDocumentsController_attach",
@@ -15615,6 +15687,189 @@
               "additionalProperties": false
             }
           },
+          "additional": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "request": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "requestedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "description",
+                    "requestedAt"
+                  ],
+                  "additionalProperties": false
+                },
+                "current": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "REQUIRED",
+                        "UPLOADED",
+                        "UNDER_REVIEW",
+                        "APPROVED",
+                        "REJECTED"
+                      ]
+                    },
+                    "rejectionReason": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "fileId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "fileName": {
+                      "type": "string"
+                    },
+                    "mimeType": {
+                      "type": "string"
+                    },
+                    "sizeBytes": {
+                      "type": "integer"
+                    },
+                    "scanStatus": {
+                      "type": "string",
+                      "enum": [
+                        "PENDING",
+                        "CLEAN",
+                        "INFECTED"
+                      ],
+                      "description": "INFECTED means the file was removed: upload a clean copy"
+                    },
+                    "uploadedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "version",
+                    "status",
+                    "rejectionReason",
+                    "fileId",
+                    "fileName",
+                    "mimeType",
+                    "sizeBytes",
+                    "scanStatus",
+                    "uploadedAt"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true
+                },
+                "previous": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "version": {
+                        "type": "integer",
+                        "exclusiveMinimum": true,
+                        "minimum": 0
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "REQUIRED",
+                          "UPLOADED",
+                          "UNDER_REVIEW",
+                          "APPROVED",
+                          "REJECTED"
+                        ]
+                      },
+                      "rejectionReason": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "fileId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "fileName": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "sizeBytes": {
+                        "type": "integer"
+                      },
+                      "scanStatus": {
+                        "type": "string",
+                        "enum": [
+                          "PENDING",
+                          "CLEAN",
+                          "INFECTED"
+                        ],
+                        "description": "INFECTED means the file was removed: upload a clean copy"
+                      },
+                      "uploadedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "version",
+                      "status",
+                      "rejectionReason",
+                      "fileId",
+                      "fileName",
+                      "mimeType",
+                      "sizeBytes",
+                      "scanStatus",
+                      "uploadedAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "canReplace": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "request",
+                "current",
+                "previous",
+                "canReplace"
+              ],
+              "additionalProperties": false
+            }
+          },
           "pendingMandatory": {
             "type": "integer"
           }
@@ -15623,6 +15878,7 @@
           "applicationId",
           "canUpload",
           "items",
+          "additional",
           "pendingMandatory"
         ],
         "additionalProperties": false

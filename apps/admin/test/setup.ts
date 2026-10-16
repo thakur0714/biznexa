@@ -11,3 +11,4 @@ HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
   this.open = false;
   this.dispatchEvent(new Event('close'));
 };
+import '@testing-library/jest-dom/vitest';
