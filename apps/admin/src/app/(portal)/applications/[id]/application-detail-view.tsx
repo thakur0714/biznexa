@@ -1,11 +1,12 @@
 'use client';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { StatusForm } from './status-form';
 
 import { useEffect, useState } from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { Notice, Button, Dialog, Field } from '@biznexa/ui';
-import { APPLICATION_STATUS_LABEL, formatDate, formatINR } from '@biznexa/types';
+import { APPLICATION_STATUS_LABEL, formatDate, formatINR, PERMS } from '@biznexa/types';
 
 export function ApplicationDetailView({ id }: { id: string }) {
   const api = useApi();
@@ -17,6 +18,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
 
   const canAssign = user?.permissions?.includes('applications.view_all') && user?.permissions?.includes('applications.update');
   const canRequestDocument = user?.permissions?.includes('documents.review') ?? false;
+  const canIssueCertificate = (user?.permissions?.includes(PERMS.CERTIFICATES_MANAGE) ?? false) && (data?.status === 'COMPLETED' || data?.status === 'DELIVERED');
   const [requestDocDialog, setRequestDocDialog] = useState(false);
   const [docName, setDocName] = useState('');
   const [docDescription, setDocDescription] = useState('');
@@ -88,9 +90,20 @@ export function ApplicationDetailView({ id }: { id: string }) {
     <div className="space-y-8 max-w-4xl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Application {data.code}</h1>
-        <span className="bg-sky-100 text-sky-800 px-3 py-1 rounded-full text-sm font-medium">
-          {APPLICATION_STATUS_LABEL[data.status as keyof typeof APPLICATION_STATUS_LABEL] || data.status}
-        </span>
+        <div className="flex items-center gap-3">
+          {canIssueCertificate && (
+            <Link
+              href={`/certificates/new?applicationId=${encodeURIComponent(data.id)}&organizationName=${encodeURIComponent(data.businessEntity?.legalName || data.customer?.name || '')}${data.businessEntity?.id ? `&entityId=${encodeURIComponent(data.businessEntity.id)}` : ''}`}
+            >
+              <Button variant="outline" size="sm">
+                Issue certificate
+              </Button>
+            </Link>
+          )}
+          <span className="bg-sky-100 text-sky-800 px-3 py-1 rounded-full text-sm font-medium">
+            {APPLICATION_STATUS_LABEL[data.status as keyof typeof APPLICATION_STATUS_LABEL] || data.status}
+          </span>
+        </div>
       </div>
 
       <StatusForm id={id} current={data.status as import('@biznexa/types').ApplicationStatus} stages={data.stages || []} />

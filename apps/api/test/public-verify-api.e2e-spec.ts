@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
@@ -10,7 +11,7 @@ let app: NestExpressApplication;
 let http: ReturnType<typeof request>;
 let prisma: PrismaService;
 
-const run = `${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`;
+const run = `${Date.now().toString().slice(-6)}${randomInt(0, 100)}`;
 const prefix = `VERIFY-${run}`;
 
 let testBody: { id: string; name: string };
@@ -93,7 +94,7 @@ describe('Public verify API GET /api/public/certificates/verify (M7.7)', () => {
   });
 
   it('verifies active certificate by number with rate limit headers and logs lookup', async () => {
-    const res = await http.get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}`);
+    const res = await Promise.resolve(http.get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}`));
     expect(res.status).toBe(200);
     expect(res.headers['x-ratelimit-limit']).toBe('30');
     expect(res.headers['x-ratelimit-remaining']).toBe('29');
@@ -119,7 +120,7 @@ describe('Public verify API GET /api/public/certificates/verify (M7.7)', () => {
   });
 
   it('verifies certificate by verification ID and indicates suspended status note', async () => {
-    const res = await http.get(`/api/public/certificates/verify?id=${suspendedCert.verificationId}`);
+    const res = await Promise.resolve(http.get(`/api/public/certificates/verify?id=${suspendedCert.verificationId}`));
     expect(res.status).toBe(200);
     expect(res.body.found).toBe(true);
     expect(res.body.certificate.certificateNumber).toBe(suspendedCert.certificateNumber);
@@ -135,7 +136,7 @@ describe('Public verify API GET /api/public/certificates/verify (M7.7)', () => {
   });
 
   it('returns found: false for unknown certificate number', async () => {
-    const res = await http.get('/api/public/certificates/verify?number=NON-EXISTENT-999');
+    const res = await Promise.resolve(http.get('/api/public/certificates/verify?number=NON-EXISTENT-999'));
     expect(res.status).toBe(200);
     expect(res.body.found).toBe(false);
     expect(res.body.verifiedAt).toBeDefined();
@@ -150,9 +151,11 @@ describe('Public verify API GET /api/public/certificates/verify (M7.7)', () => {
   });
 
   it('accepts optional valid partner API key via X-API-Key header with higher rate limits (300) and logs API method', async () => {
-    const res = await http
-      .get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}`)
-      .set('X-API-Key', 'bn_live_partner_acme999');
+    const res = await Promise.resolve(
+      http
+        .get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}`)
+        .set('X-API-Key', 'bn_live_partner_acme999'),
+    );
 
     expect(res.status).toBe(200);
     expect(res.headers['x-ratelimit-limit']).toBe('300');
@@ -167,8 +170,10 @@ describe('Public verify API GET /api/public/certificates/verify (M7.7)', () => {
   });
 
   it('accepts optional valid partner API key via apiKey query param', async () => {
-    const res = await http.get(
-      `/api/public/certificates/verify?number=${activeCert.certificateNumber}&apiKey=bn_test_partner_key`,
+    const res = await Promise.resolve(
+      http.get(
+        `/api/public/certificates/verify?number=${activeCert.certificateNumber}&apiKey=bn_test_partner_key`,
+      ),
     );
 
     expect(res.status).toBe(200);
@@ -177,9 +182,11 @@ describe('Public verify API GET /api/public/certificates/verify (M7.7)', () => {
   });
 
   it('rejects invalid API key with 401 Unauthorized', async () => {
-    const res = await http
-      .get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}`)
-      .set('X-API-Key', 'invalid_partner_key');
+    const res = await Promise.resolve(
+      http
+        .get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}`)
+        .set('X-API-Key', 'invalid_partner_key'),
+    );
 
     expect(res.status).toBe(401);
     expect(res.body.message).toContain('Invalid API key');
@@ -190,7 +197,7 @@ describe('Public verify API GET /api/public/certificates/verify (M7.7)', () => {
     verifyRateLimitMap.set('ip:127.0.0.1', { count: 30, resetAt: Date.now() + 60_000 });
     verifyRateLimitMap.set('ip:::ffff:127.0.0.1', { count: 30, resetAt: Date.now() + 60_000 });
 
-    const res = await http.get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}`);
+    const res = await Promise.resolve(http.get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}`));
     expect(res.status).toBe(429);
     expect(res.body.message).toContain('Rate limit exceeded');
   });

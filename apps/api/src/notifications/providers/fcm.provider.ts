@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { GoogleAuth } from 'google-auth-library';
 import { env } from '../../config/env';
@@ -30,7 +31,7 @@ export class FakeFcmProvider extends FcmProvider {
     this.unregisteredTokens.add(token);
   }
 
-  async send(payload: FcmNotificationPayload): Promise<FcmSendResult> {
+  send(payload: FcmNotificationPayload): Promise<FcmSendResult> {
     this.sentMessages.push(payload);
     this.logger.log(
       `[FakeFcmProvider] Push to token=${payload.token.slice(0, 8)}... title="${payload.title}" link="${payload.data?.link ?? ''}"`,
@@ -40,17 +41,17 @@ export class FakeFcmProvider extends FcmProvider {
       this.unregisteredTokens.has(payload.token) ||
       payload.token.toLowerCase().includes('unregistered')
     ) {
-      return {
+      return Promise.resolve({
         success: false,
         unregistered: true,
         error: 'messaging/registration-token-not-registered',
-      };
+      });
     }
 
-    return {
+    return Promise.resolve({
       success: true,
-      messageId: `fake-fcm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    };
+      messageId: `fake-fcm-${Date.now()}-${randomBytes(4).toString('hex')}`,
+    });
   }
 
   clear(): void {

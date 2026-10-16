@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Logo } from '@biznexa/ui';
+import { buttonClass, Logo } from '@biznexa/ui';
 import { Icon } from './icons';
-import { buttonClass } from '@biznexa/ui';
 import { useAuth } from '@/lib/auth';
 import type { CategorySummary } from '@/lib/api';
 import { NotificationBell } from './notification-bell';
@@ -18,7 +17,7 @@ const NAV = [
   { href: '/contact', label: 'Contact' },
 ];
 
-export function SiteHeader({ categories }: { categories: CategorySummary[] }) {
+export function SiteHeader({ categories }: { readonly categories: readonly CategorySummary[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -47,28 +46,33 @@ export function SiteHeader({ categories }: { categories: CategorySummary[] }) {
     };
   }, [menuOpen]);
 
-  const account = ready ? (
-    user ? (
-      <div className="flex items-center gap-2">
-        <NotificationBell />
-        <Link href="/dashboard" className={buttonClass('outline', 'sm')}>
-          <span className="grid h-6 w-6 place-items-center rounded-full bg-ink text-[11px] font-semibold text-white">{user.name.charAt(0).toUpperCase()}</span>
-          My account
-        </Link>
-      </div>
-    ) : (
-      <>
-        <Link href="/login" className={buttonClass('ghost', 'sm')}>
-          Log in
-        </Link>
-        <Link href="/register" className={buttonClass('ink', 'sm')}>
-          Sign up
-        </Link>
-      </>
-    )
-  ) : (
-    <span className="h-9 w-40" />
-  );
+  let account: React.ReactNode = <span className="h-9 w-40" />;
+  if (ready) {
+    if (user) {
+      account = (
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <Link href="/dashboard" className={buttonClass('outline', 'sm')}>
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-ink text-[11px] font-semibold text-white">
+              {user.name.charAt(0).toUpperCase()}
+            </span>
+            <span>My account</span>
+          </Link>
+        </div>
+      );
+    } else {
+      account = (
+        <>
+          <Link href="/login" className={buttonClass('ghost', 'sm')}>
+            Log in
+          </Link>
+          <Link href="/register" className={buttonClass('ink', 'sm')}>
+            Sign up
+          </Link>
+        </>
+      );
+    }
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-rule bg-white/95 backdrop-blur">

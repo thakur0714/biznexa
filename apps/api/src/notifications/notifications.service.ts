@@ -72,12 +72,12 @@ export class NotificationsService {
     }
 
     const pages = Math.ceil(total / limit) || 1;
-    const nextCursor = items.length === limit ? items[items.length - 1].id : null;
+    const nextCursor = items.length === limit ? (items.at(-1)?.id ?? null) : null;
 
     return {
       items: items.map((i) => ({
         ...i,
-        readAt: i.readAt ? i.readAt.toISOString() : null,
+        readAt: i.readAt?.toISOString() ?? null,
         createdAt: i.createdAt.toISOString(),
       })),
       total,

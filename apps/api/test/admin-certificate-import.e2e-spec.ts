@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
@@ -12,7 +13,7 @@ let prisma: PrismaService;
 let admin: string;
 let ops: string;
 
-const run = `${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 100)}`;
+const run = `${Date.now().toString().slice(-6)}${randomInt(0, 100)}`;
 const prefix = `E2E-IMP-${run}`;
 const email = (n: number) => `e2e-imp-${run}-${n}@example.com`;
 const as = (token: string) => ({ authorization: `Bearer ${token}` });

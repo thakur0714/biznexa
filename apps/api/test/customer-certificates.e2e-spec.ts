@@ -60,7 +60,34 @@ beforeAll(async () => {
       entityType: 'PRIVATE_LIMITED',
     },
   });
+
+  const cat = await prisma.category.create({
+    data: { name: `${prefix}-Cat`, slug: `${prefix.toLowerCase()}-cat` },
+  });
+  const svc = await prisma.service.create({
+    data: {
+      name: `${prefix}-Svc`,
+      slug: `${prefix.toLowerCase()}-svc`,
+      categoryId: cat.id,
+      shortDescription: 'test desc',
+    },
+  });
+  const pkg = await prisma.servicePackage.create({
+    data: {
+      serviceId: svc.id,
+      name: 'Standard',
+      professionalFee: 50000,
+    },
+  });
+
+  servicePackageId = pkg.id;
+  serviceId = svc.id;
+  categoryId = cat.id;
 });
+
+let servicePackageId: string;
+let serviceId: string;
+let categoryId: string;
 
 afterAll(async () => {
   const certs = await prisma.certificate.findMany({
@@ -68,6 +95,7 @@ afterAll(async () => {
       OR: [
         { certificateNumber: { startsWith: prefix } },
         { certificationBody: { name: { startsWith: prefix } } },
+        { organizationName: { contains: prefix } },
       ],
     },
     select: { id: true },
@@ -77,6 +105,17 @@ afterAll(async () => {
     await prisma.certificateLookup.deleteMany({ where: { certificateId: { in: certIds } } });
     await prisma.certificate.deleteMany({ where: { id: { in: certIds } } });
   }
+
+  await prisma.notification.deleteMany({ where: { user: { email: { contains: run } } } });
+
+  await prisma.applicationDocument.deleteMany({ where: { application: { code: { startsWith: prefix } } } });
+  await prisma.applicationStageHistory.deleteMany({ where: { application: { code: { startsWith: prefix } } } });
+  await prisma.application.deleteMany({ where: { code: { startsWith: prefix } } });
+
+  if (servicePackageId) await prisma.servicePackage.deleteMany({ where: { id: servicePackageId } });
+  if (serviceId) await prisma.service.deleteMany({ where: { id: serviceId } });
+  if (categoryId) await prisma.category.deleteMany({ where: { id: categoryId } });
+
   await prisma.businessEntity.deleteMany({ where: { legalName: { startsWith: prefix } } });
   await prisma.certificationBody.deleteMany({ where: { name: { startsWith: prefix } } });
   await prisma.user.deleteMany({ where: { email: { contains: run } } });
@@ -195,5 +234,172 @@ describe('customer certificates page API (M7.6)', () => {
   it('GET /api/certificates requires authentication (401 without token)', async () => {
     const res = await http.get('/api/certificates');
     expect(res.status).toBe(401);
+  });
+
+  describe('issue certificate from application (M7.5)', () => {
+    let appWithEntity: { id: string; code: string };
+    let appNoEntity: { id: string; code: string };
+    let certFromAppWithEntity: { id: string; certificateNumber: string };
+    let certFromAppNoEntity: { id: string; certificateNumber: string };
+    let certViaDirectAdminPost: { id: string; certificateNumber: string };
+    let supportToken: string;
+
+    beforeAll(async () => {
+      supportToken = (await staffSession(http, prisma, 'SUPPORT', `cust-supp-${run}@example.com`)).accessToken;
+
+      appWithEntity = await prisma.application.create({
+        data: {
+          code: `${prefix}-APP-ENT`,
+          customerId: userA.id,
+          serviceId,
+          packageId: servicePackageId,
+          businessEntityId: entityA.id,
+          status: 'COMPLETED',
+        },
+      });
+
+      appNoEntity = await prisma.application.create({
+        data: {
+          code: `${prefix}-APP-NOENT`,
+          customerId: userA.id,
+          serviceId,
+          packageId: servicePackageId,
+          status: 'DELIVERED',
+        },
+      });
+    });
+
+    it('permission checks: 401 without token, 403 for customer, 403 for staff without PERMS.CERTIFICATES_MANAGE', async () => {
+      const payload = {
+        type: 'ISO 9001:2015',
+        certificationBodyId: testBody.id,
+        issueDate: '2026-01-01T00:00:00.000Z',
+        validFrom: '2026-01-01T00:00:00.000Z',
+        validUntil: '2029-01-01T00:00:00.000Z',
+      };
+
+      // 401 unauthenticated
+      await http.post(`/api/admin/applications/${appWithEntity.id}/certificate`).send(payload).expect(401);
+
+      // 403 customer
+      await http
+        .post(`/api/admin/applications/${appWithEntity.id}/certificate`)
+        .set(as(userA.token))
+        .send(payload)
+        .expect(403);
+
+      // 403 support staff without certificates.manage permission
+      await http
+        .post(`/api/admin/applications/${appWithEntity.id}/certificate`)
+        .set(as(supportToken))
+        .send(payload)
+        .expect(403);
+    });
+
+    it('refuses an application that is not completed or delivered (409)', async () => {
+      const draft = await prisma.application.create({
+        data: { code: `${prefix}-APP-WIP`, customerId: userA.id, serviceId, packageId: servicePackageId, status: 'IN_PROGRESS' },
+      });
+      await http
+        .post(`/api/admin/applications/${draft.id}/certificate`)
+        .set(as(admin))
+        .send({ type: 'ISO 9001', certificationBodyId: testBody.id, issueDate: '2026-01-01T00:00:00.000Z', validFrom: '2026-01-01T00:00:00.000Z', validUntil: '2029-01-01T00:00:00.000Z' })
+        .expect(409);
+    });
+
+    it('admin creates certificate from application with prefilled org name and business entity', async () => {
+      const res = await http
+        .post(`/api/admin/applications/${appWithEntity.id}/certificate`)
+        .set(as(admin))
+        .send({
+          type: 'ISO 9001:2015 — Quality Management System',
+          certificationBodyId: testBody.id,
+          issueDate: '2026-01-01T00:00:00.000Z',
+          validFrom: '2026-01-01T00:00:00.000Z',
+          validUntil: '2029-01-01T00:00:00.000Z',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.id).toBeDefined();
+      expect(res.body.applicationId).toBe(appWithEntity.id);
+      expect(res.body.businessEntityId).toBe(entityA.id);
+      expect(res.body.organizationName).toBe(`${prefix} Acme Pvt Ltd`);
+      expect(res.body.status).toBe('ACTIVE');
+
+      certFromAppWithEntity = { id: res.body.id, certificateNumber: res.body.certificateNumber };
+    });
+
+    it('admin creates certificate from application without entity (prefilled from customer name)', async () => {
+      const res = await http
+        .post(`/api/admin/applications/${appNoEntity.id}/certificate`)
+        .set(as(admin))
+        .send({
+          type: 'ISO 27001:2022 — Information Security',
+          certificationBodyId: testBody.id,
+          issueDate: '2026-02-01T00:00:00.000Z',
+          validFrom: '2026-02-01T00:00:00.000Z',
+          validUntil: '2029-02-01T00:00:00.000Z',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.id).toBeDefined();
+      expect(res.body.applicationId).toBe(appNoEntity.id);
+      expect(res.body.businessEntityId).toBeNull();
+      expect(res.body.organizationName).toBe('Cust Cert User 1');
+
+      certFromAppNoEntity = { id: res.body.id, certificateNumber: res.body.certificateNumber };
+    });
+
+    it('POST /api/admin/certificates with applicationId also prefills and stores links', async () => {
+      const res = await http
+        .post('/api/admin/certificates')
+        .set(as(admin))
+        .send({
+          type: 'ISO 14001:2015 — Environmental Management',
+          applicationId: appWithEntity.id,
+          certificationBodyId: testBody.id,
+          issueDate: '2026-03-01T00:00:00.000Z',
+          validFrom: '2026-03-01T00:00:00.000Z',
+          validUntil: '2029-03-01T00:00:00.000Z',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.applicationId).toBe(appWithEntity.id);
+      expect(res.body.businessEntityId).toBe(entityA.id);
+      expect(res.body.organizationName).toBe(`${prefix} Acme Pvt Ltd`);
+
+      certViaDirectAdminPost = { id: res.body.id, certificateNumber: res.body.certificateNumber };
+    });
+
+    it('customer A sees all certificates linked to their applications in GET /api/certificates', async () => {
+      const res = await http.get('/api/certificates').set(as(userA.token)).expect(200);
+      const items = res.body.items as Array<{ id: string; certificateNumber: string; applicationId?: string | null }>;
+      const certIds = items.map((c) => c.id);
+
+      expect(certIds).toContain(certFromAppWithEntity.id);
+      expect(certIds).toContain(certFromAppNoEntity.id);
+      expect(certIds).toContain(certViaDirectAdminPost.id);
+
+      // Can also view details
+      const detail1 = await http.get(`/api/certificates/${certFromAppWithEntity.id}`).set(as(userA.token)).expect(200);
+      expect(detail1.body.applicationId).toBe(appWithEntity.id);
+
+      const detail2 = await http.get(`/api/certificates/${certFromAppNoEntity.id}`).set(as(userA.token)).expect(200);
+      expect(detail2.body.applicationId).toBe(appNoEntity.id);
+    });
+
+    it('customer B does NOT see customer A application-linked certificates (never matched by org name)', async () => {
+      const list = await http.get('/api/certificates').set(as(userB.token)).expect(200);
+      const ids = (list.body.items as { id: string }[]).map((c) => c.id);
+
+      expect(ids).not.toContain(certFromAppWithEntity.id);
+      expect(ids).not.toContain(certFromAppNoEntity.id);
+      expect(ids).not.toContain(certViaDirectAdminPost.id);
+
+      // Attempting direct access to any of customer A's certificates yields 404
+      await http.get(`/api/certificates/${certFromAppWithEntity.id}`).set(as(userB.token)).expect(404);
+      await http.get(`/api/certificates/${certFromAppNoEntity.id}`).set(as(userB.token)).expect(404);
+      await http.get(`/api/certificates/${certViaDirectAdminPost.id}`).set(as(userB.token)).expect(404);
+    });
   });
 });

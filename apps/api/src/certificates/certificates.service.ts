@@ -5,6 +5,8 @@ import * as QRCode from 'qrcode';
 import { z } from 'zod';
 import {
   assertTransition,
+  createCertificateFromApplicationInputSchema,
+  createCertificateInputSchema,
   createCertificationBodyInput,
   effectiveCertificateStatus,
   updateCertificationBodyInput,
@@ -34,23 +36,8 @@ export function qrSignature(verificationId: string): string {
   return createHmac('sha256', env().CERT_QR_SECRET).update(verificationId).digest('hex').slice(0, 16);
 }
 
-export const createCertificateInput = z
-  .object({
-    certificateNumber: z.string().trim().min(3).max(64).optional(),
-    type: z.string().trim().min(2).max(120),
-    organizationName: z.string().trim().min(2).max(200),
-    scope: z.string().max(1000).optional(),
-    address: z.string().max(500).optional(),
-    issueDate: z.coerce.date(),
-    validFrom: z.coerce.date(),
-    validUntil: z.coerce.date(),
-    certificationBodyId: z.string().uuid(),
-    showPdfPublicly: z.boolean().default(false),
-    applicationId: z.string().uuid().optional(),
-    businessEntityId: z.string().uuid().optional(),
-    fileId: z.string().uuid().optional(),
-  })
-  .refine((v) => v.validUntil > v.validFrom, { message: 'Valid until must be after valid from', path: ['validUntil'] });
+export const createCertificateInput = createCertificateInputSchema;
+export const createCertificateFromApplicationInput = createCertificateFromApplicationInputSchema;
 
 export const statusInput = z.object({
   status: z.enum(['ACTIVE', 'SUSPENDED', 'WITHDRAWN', 'EXPIRED']),
@@ -233,7 +220,33 @@ export class CertificatesService {
       pdfKey = stored.fileKey;
     }
 
-    const { fileId, ...rest } = input;
+    let organizationName = input.organizationName?.trim();
+    let businessEntityId = input.businessEntityId || input.entityId;
+
+    if (input.applicationId) {
+      const app = await this.prisma.application.findUnique({
+        where: { id: input.applicationId },
+        include: { businessEntity: true },
+      });
+      if (!app) throw new NotFoundException('Application not found');
+      if (!organizationName) {
+        if (app.businessEntity?.legalName) {
+          organizationName = app.businessEntity.legalName;
+        } else {
+          const cust = await this.prisma.user.findUnique({ where: { id: app.customerId } });
+          organizationName = cust?.name || '';
+        }
+      }
+      if (!businessEntityId && app.businessEntityId) {
+        businessEntityId = app.businessEntityId;
+      }
+    }
+
+    if (!organizationName) {
+      throw new BadRequestException('Organisation name is required');
+    }
+
+    const { fileId, entityId, businessEntityId: _bId, organizationName: _org, ...rest } = input;
 
     let attempts = 0;
     while (attempts < 3) {
@@ -241,10 +254,17 @@ export class CertificatesService {
         const cert = await this.prisma.certificate.create({
           data: {
             ...rest,
+            organizationName,
+            businessEntityId,
+            applicationId: input.applicationId,
             certificateNumber: input.certificateNumber ?? (await this.getNextCertificateNumber()),
             verificationId: newVerificationId(),
             status: input.validUntil.getTime() < Date.now() ? 'EXPIRED' : 'ACTIVE',
             pdfKey,
+          },
+          include: {
+            certificationBody: { select: { id: true, name: true, accreditation: true, website: true } },
+            _count: { select: { lookups: true } },
           },
         });
         await this.audit.log({ actorId, action: 'certificate.issue', entityType: 'Certificate', entityId: cert.id, after: cert });
@@ -259,6 +279,19 @@ export class CertificatesService {
       }
     }
     throw new ConflictException('Failed to generate a unique certificate number. Please try again.');
+  }
+
+  async createFromApplication(
+    applicationId: string,
+    input: z.infer<typeof createCertificateFromApplicationInput>,
+    actorId: string,
+  ) {
+    const app = await this.prisma.application.findUnique({ where: { id: applicationId }, select: { status: true } });
+    if (!app) throw new NotFoundException('Application not found');
+    if (app.status !== 'COMPLETED' && app.status !== 'DELIVERED') {
+      throw new ConflictException('A certificate can be issued only for a completed or delivered application.');
+    }
+    return this.create({ ...input, applicationId }, actorId);
   }
 
   async changeStatus(id: string, input: z.infer<typeof statusInput>, actorId: string) {
@@ -365,6 +398,7 @@ export class CertificatesService {
           daysUntilExpiry,
           isExpiringSoon,
           createdAt: c.createdAt.toISOString(),
+          applicationId: c.applicationId ?? null,
         };
       }),
     );
@@ -417,6 +451,7 @@ export class CertificatesService {
       daysUntilExpiry,
       isExpiringSoon,
       createdAt: cert.createdAt.toISOString(),
+      applicationId: cert.applicationId ?? null,
     };
   }
 

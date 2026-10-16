@@ -1332,6 +1332,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/applications/{id}/certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminApplicationsController_createCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/applications": {
         parameters: {
             query?: never;
@@ -2738,6 +2754,8 @@ export interface components {
                 isExpiringSoon: boolean;
                 /** Format: date-time */
                 createdAt: string;
+                /** Format: uuid */
+                applicationId?: string | null;
             }[];
             total: number;
         };
@@ -2772,6 +2790,8 @@ export interface components {
             isExpiringSoon: boolean;
             /** Format: date-time */
             createdAt: string;
+            /** Format: uuid */
+            applicationId?: string | null;
         };
         FileLink: {
             url: string;
@@ -3681,6 +3701,7 @@ export interface components {
             businessEntity: {
                 /** Format: uuid */
                 id: string;
+                legalName?: string;
                 maskedPan: string | null;
             } | null;
             order: {
@@ -6653,7 +6674,7 @@ export interface operations {
                 "application/json": {
                     certificateNumber?: string;
                     type: string;
-                    organizationName: string;
+                    organizationName?: string;
                     scope?: string;
                     address?: string;
                     /** Format: date-time */
@@ -6671,6 +6692,8 @@ export interface operations {
                     /** Format: uuid */
                     businessEntityId?: string;
                     /** Format: uuid */
+                    entityId?: string;
+                    /** Format: uuid */
                     fileId?: string;
                 };
             };
@@ -6680,7 +6703,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminCertificateRow"];
+                };
             };
         };
     };
@@ -7573,6 +7598,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminApplicationDetail"];
+                };
+            };
+        };
+    };
+    AdminApplicationsController_createCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    certificateNumber?: string;
+                    type: string;
+                    organizationName?: string;
+                    scope?: string;
+                    address?: string;
+                    /** Format: date-time */
+                    issueDate: string;
+                    /** Format: date-time */
+                    validFrom: string;
+                    /** Format: date-time */
+                    validUntil: string;
+                    /** Format: uuid */
+                    certificationBodyId: string;
+                    /** @default false */
+                    showPdfPublicly?: boolean;
+                    /** Format: uuid */
+                    businessEntityId?: string;
+                    /** Format: uuid */
+                    entityId?: string;
+                    /** Format: uuid */
+                    fileId?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCertificateRow"];
                 };
             };
         };
