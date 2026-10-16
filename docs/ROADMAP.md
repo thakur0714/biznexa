@@ -285,7 +285,8 @@ Gaps found while planning are moved into Milestone 2.5 below.
 - [x] **M6.10 — Reminder creation.** `[Sonnet]` On recurring service completion / certificate issue, create `Reminder` rows with offsets from service config (default 30/15/7/1).
   - *Done 16-Oct-2026 (Jules, reviewed + fixed by Claude):* `RemindersService` (apps/api/src/reminders) creates `CERTIFICATE_EXPIRY` on `certificate.issued` (owner via application or entity, service offsets or 30/15/7/1, renew slug) and `SERVICE_RENEWAL` on COMPLETED for recurring services (+1/3/6/12 months, clamped to month end); idempotent per type + source; past due dates skipped. `GET /api/reminders` (own, upcoming). Claude's fix: month-end clamping.
   - *Follow-ups:* duplicate check is read-then-create (no unique index).
-- [ ] **M6.11 — Daily reminder job.** `[Sonnet]` Sends due reminders once per offset (idempotent), "Renew Now" deep link to renewal service with entity prefilled.
+- [x] **M6.11 — Daily reminder job.** `[Sonnet]` Sends due reminders once per offset (idempotent), "Renew Now" deep link to renewal service with entity prefilled.
+  - *Done 16-Oct-2026 (Jules, reviewed + fixed by Claude):* `ReminderJobService` (@Cron 08:00 IST) sends each due offset once — compared by IST day, all due offsets (also missed ones) claimed in ONE atomic update, then one notification (`certificate.expiring` / `compliance.reminder`) with the real days left and a Renew Now link (`/services/{category}/{slug}?entity=`); status SENT when every offset is sent.
 - [x] **M6.12 — "Upcoming due dates" widget** `[Haiku]` on dashboard home. Tests + CHANGELOG.
   - *Done 16-Oct-2026 (Codex, checked by Claude):* dashboard home widget with the next 5 reminders from `GET /api/reminders`, days left and a Renew link; Playwright test.
 
@@ -340,9 +341,12 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 
 ## Milestone 9 — Support, CMS & Blog
 
-- [ ] **M9.1 — Ticket API + state machine.** `[Sonnet]` Codes, priority, assignment, messages (reuse Conversation), auto-close RESOLVED after 7 days job.
-- [ ] **M9.2 — Customer Support page.** `[Sonnet]` Create ticket (subject, related application, description, attachment, priority), list, thread.
-- [ ] **M9.3 — Admin support queue.** `[Sonnet]` Assignment, replies, status, priority, SLA timer.
+- [x] **M9.1 — Ticket API + state machine.** `[Sonnet]` Codes, priority, assignment, messages (reuse Conversation), auto-close RESOLVED after 7 days job.
+  - *Done 16-Oct-2026 (Antigravity, reviewed + fixed by Claude):* `apps/api/src/tickets`: customer create/list/detail/reply, staff list/detail/status/assignee/priority/reply (`tickets.manage`), TKT-YYYY-NNNNNN codes with retry, thread via Conversation, events ticket.created/replied/resolved, daily auto-close of RESOLVED after 7 days, audit log. Claude's fix: a customer reply moves RESOLVED / WAITING_FOR_CUSTOMER to IN_PROGRESS (state machine).
+- [x] **M9.2 — Customer Support page.** `[Sonnet]` Create ticket (subject, related application, description, attachment, priority), list, thread.
+  - *Done 16-Oct-2026 (Antigravity):* `/dashboard/support` create form, list, thread + reply.
+- [x] **M9.3 — Admin support queue.** `[Sonnet]` Assignment, replies, status, priority, SLA timer.
+  - *Done 16-Oct-2026 (Antigravity; re-added by Claude after #37 merged without it):* admin `/support` queue with filters, SLA timer, thread, reply, status / priority / assignee.
 - [ ] **M9.4 — Rich-text editor + image upload** `[Opus]` (shared admin component, sanitised HTML on save and render). Images go through the M2.5.6 multer upload (images only, size limit) but into a separate **public** storage area served with long cache headers — never the private documents folder.
 - [ ] **M9.5 — CMS pages admin.** `[Sonnet]` About, Terms, Privacy, Refund, contact info; draft/publish; SEO fields.
 - [ ] **M9.6 — Homepage CMS.** `[Sonnet]` Banners, testimonials, stats counters, popular-services picker, FAQ.
