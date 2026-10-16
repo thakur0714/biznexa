@@ -33,6 +33,12 @@ export const adminCustomerListResponseSchema = z.object({
   limit: z.number().int(),
 });
 
+export const adminCustomerStatusInputSchema = z.object({
+  status: z.enum(['ACTIVE', 'BLOCKED', 'DEACTIVATED']),
+  reason: z.string().trim().min(3).max(500),
+});
+export type AdminCustomerStatusInput = z.infer<typeof adminCustomerStatusInputSchema>;
+
 export const adminCustomerDetailSchema = z.object({
   profile: z.object({
     id: z.string().uuid(),

@@ -180,3 +180,94 @@ describe('GET /api/admin/customers/:id', () => {
     return http.get(`/api/admin/customers/${staffUserId}`).set(as(admin)).expect(404);
   });
 });
+
+describe('PATCH /api/admin/customers/:id/status', () => {
+  let patchCustomerId: string;
+  let patchCustomerEmail: string;
+  let patchCustomerToken: string;
+  let patchCustomerRefreshToken: string;
+
+  beforeAll(async () => {
+    patchCustomerEmail = email('patch');
+    const registerRes = await http.post('/api/auth/register').send({ name: `Patch Cust ${run}`, email: patchCustomerEmail, mobile: `98${run}3`, password: 'Password@123', consent: true }).expect(201);
+    patchCustomerToken = registerRes.body.accessToken;
+    patchCustomerRefreshToken = registerRes.body.refreshToken;
+    patchCustomerId = registerRes.body.user.id;
+  });
+
+  afterAll(async () => {
+    try {
+      await prisma.user.deleteMany({ where: { email: patchCustomerEmail } });
+    } finally {
+      // app.close() is already handled in the main afterAll block
+    }
+  });
+
+  it('rejects unauthenticated', () => {
+    return http.patch(`/api/admin/customers/${patchCustomerId}/status`).send({ status: 'BLOCKED', reason: 'Spam' }).expect(401);
+  });
+
+  it('rejects customers (403)', () => {
+    return http.patch(`/api/admin/customers/${patchCustomerId}/status`).set(as(customerToken)).send({ status: 'BLOCKED', reason: 'Spam' }).expect(403);
+  });
+
+  it('rejects SUPPORT and OPERATIONS (no customers.manage)', async () => {
+    await http.patch(`/api/admin/customers/${patchCustomerId}/status`).set(as(support)).send({ status: 'BLOCKED', reason: 'Spam' }).expect(403);
+    await http.patch(`/api/admin/customers/${patchCustomerId}/status`).set(as(ops)).send({ status: 'BLOCKED', reason: 'Spam' }).expect(403);
+  });
+
+  it('404s for unknown id', () => {
+    return http.patch('/api/admin/customers/00000000-0000-0000-0000-000000000000/status').set(as(admin)).send({ status: 'BLOCKED', reason: 'Spam' }).expect(404);
+  });
+
+  it('404s for a staff user id', () => {
+    return http.patch(`/api/admin/customers/${staffUserId}/status`).set(as(admin)).send({ status: 'BLOCKED', reason: 'Spam' }).expect(404);
+  });
+
+  it('400s for missing/short reason', () => {
+    return http.patch(`/api/admin/customers/${patchCustomerId}/status`).set(as(admin)).send({ status: 'BLOCKED', reason: 'a' }).expect(400);
+  });
+
+  it('blocks a customer, revokes their token, logs audit, and reactivates them', async () => {
+    // Block the customer
+    const res = await http.patch(`/api/admin/customers/${patchCustomerId}/status`).set(as(admin)).send({ status: 'BLOCKED', reason: 'Violated terms' }).expect(200);
+    expect(res.body.status).toBe('BLOCKED');
+    expect(res.body.id).toBe(patchCustomerId);
+    expect(res.body.applicationCount).toBe(0);
+
+    // Old access token should still work until it expires, but refresh token is revoked
+    await http.post('/api/auth/refresh').send({ refreshToken: patchCustomerRefreshToken }).expect(401);
+
+    // Login is refused
+    await http.post('/api/auth/login').send({ email: patchCustomerEmail, password: 'Password@123', consent: true }).expect(403);
+
+    // Audit log should be created
+    const logsRes = await http.get(`/api/admin/audit?entityType=User&entityId=${patchCustomerId}`).set(as(admin)).expect(200);
+    expect(logsRes.body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          action: 'customer.status',
+          entityId: patchCustomerId,
+          after: expect.objectContaining({ status: 'BLOCKED', reason: 'Violated terms' }),
+        }),
+      ])
+    );
+
+    // Cannot change to same status
+    await http.patch(`/api/admin/customers/${patchCustomerId}/status`).set(as(admin)).send({ status: 'BLOCKED', reason: 'Still blocked' }).expect(409);
+
+    // Reactivate the customer
+    const reactivateRes = await http.patch(`/api/admin/customers/${patchCustomerId}/status`).set(as(admin)).send({ status: 'ACTIVE', reason: 'Resolved issue' }).expect(200);
+    expect(reactivateRes.body.status).toBe('ACTIVE');
+
+    // Login works again
+    await http.post('/api/auth/login').send({ email: patchCustomerEmail, password: 'Password@123', consent: true }).expect(200);
+  });
+
+  it('409s when trying to change status of customer PENDING_DELETION', async () => {
+    await prisma.user.update({ where: { id: customer2Id }, data: { status: 'PENDING_DELETION' } });
+    await http.patch(`/api/admin/customers/${customer2Id}/status`).set(as(admin)).send({ status: 'BLOCKED', reason: 'Spam' }).expect(409);
+    // Revert status so we don't break subsequent tests
+    await prisma.user.update({ where: { id: customer2Id }, data: { status: 'DEACTIVATED' } });
+  });
+});
