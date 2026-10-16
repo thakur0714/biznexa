@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import {
   conditionMet,
   formatDate,
@@ -18,6 +18,10 @@ import {
   type FormField,
   type FormLeafField,
   type InvoiceSummary,
+  type MarkMessagesReadResponse,
+  type Message,
+  type MessageThreadPage,
+  type MessageUnreadCount,
   type PaymentStatusView,
 } from '@biznexa/types';
 import { ClientApiError } from '@biznexa/api-client/browser';
@@ -27,17 +31,26 @@ import { DocumentRow } from '@/components/document-row';
 import { Icon } from '@/components/icons';
 import { applicationStatusTone } from '../../services/services-view';
 
-type DetailTab = 'documents' | 'form' | 'payments' | 'deliverables';
+type DetailTab = 'documents' | 'form' | 'payments' | 'deliverables' | 'messages';
 
 const DETAIL_TABS: readonly { key: DetailTab; label: string }[] = [
   { key: 'documents', label: 'Documents' },
   { key: 'form', label: 'Form' },
   { key: 'payments', label: 'Payments' },
   { key: 'deliverables', label: 'Deliverables' },
+  { key: 'messages', label: 'Messages' },
 ];
 
+const MESSAGES_PAGE_LIMIT = 50;
+
 function isDetailTab(value: string | null): value is DetailTab {
-  return value === 'documents' || value === 'form' || value === 'payments' || value === 'deliverables';
+  return (
+    value === 'documents' ||
+    value === 'form' ||
+    value === 'payments' ||
+    value === 'deliverables' ||
+    value === 'messages'
+  );
 }
 
 function stageStateBadge(state: CustomerStageState): { label: string; tone: Tone } {
@@ -113,7 +126,11 @@ function ReadOnlyLeafAnswer({
   }
 
   if (field.type === 'file') {
-    const ids = Array.isArray(value) ? value.filter((x): x is string => typeof x === 'string') : typeof value === 'string' ? [value] : [];
+    const ids = Array.isArray(value)
+      ? value.filter((x): x is string => typeof x === 'string')
+      : typeof value === 'string'
+        ? [value]
+        : [];
     if (ids.length === 0) return <span className="text-muted">—</span>;
     return (
       <div className="flex flex-wrap gap-2">
@@ -151,6 +168,18 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatusView | null>(null);
   const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
   const [deliverables, setDeliverables] = useState<DeliverableList>([]);
+
+  // Messages state (M5.7)
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesTotal, setMessagesTotal] = useState(0);
+  const [messagesPage, setMessagesPage] = useState(1);
+  const [messagesLimit, setMessagesLimit] = useState(MESSAGES_PAGE_LIMIT);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [draftMessage, setDraftMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -163,6 +192,12 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
     setPaymentStatus(null);
     setInvoices([]);
     setDeliverables([]);
+    setMessages([]);
+    setMessagesTotal(0);
+    setMessagesPage(1);
+    setUnreadMessages(0);
+    setDraftMessage('');
+    setMessageError(null);
     setError(null);
     setActionError(null);
   }
@@ -180,8 +215,18 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
         .call<InvoiceSummary[]>((c) => c.GET('/api/invoices', { params: { query: { applicationId } } }))
         .catch(() => []),
       api.call<DeliverableList>((c) => c.GET('/api/applications/{id}/deliverables', path)).catch(() => []),
+      api
+        .call<MessageThreadPage>((c) =>
+          c.GET('/api/applications/{id}/messages', {
+            params: { path: { id: applicationId }, query: { page: 1, limit: MESSAGES_PAGE_LIMIT } },
+          }),
+        )
+        .catch(() => ({ items: [], total: 0, page: 1, limit: MESSAGES_PAGE_LIMIT })),
+      api
+        .call<MessageUnreadCount>((c) => c.GET('/api/applications/{id}/messages/unread-count', path))
+        .catch(() => ({ count: 0 })),
     ])
-      .then(([tl, fd, docs, pay, invs, delivs]) => {
+      .then(([tl, fd, docs, pay, invs, delivs, msgPage, unread]) => {
         if (!cancelled) {
           setTimeline(tl);
           setFormDetail(fd);
@@ -189,6 +234,11 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
           setPaymentStatus(pay);
           setInvoices(invs);
           setDeliverables(delivs);
+          setMessages(msgPage.items);
+          setMessagesTotal(msgPage.total);
+          setMessagesPage(msgPage.page);
+          setMessagesLimit(msgPage.limit);
+          setUnreadMessages(unread.count);
           setError(null);
         }
       })
@@ -202,6 +252,83 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
       cancelled = true;
     };
   }, [api, applicationId]);
+
+  // Mark messages read when the Messages tab is opened
+  useEffect(() => {
+    if (activeTab !== 'messages' || !timeline) return;
+    let cancelled = false;
+
+    api
+      .call<MarkMessagesReadResponse>((c) =>
+        c.POST('/api/applications/{id}/messages/read', {
+          params: { path: { id: applicationId } },
+        }),
+      )
+      .then(() => {
+        if (!cancelled) {
+          setUnreadMessages(0);
+        }
+      })
+      .catch(() => {
+        // Non-blocking if mark-read fails
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, applicationId, activeTab, timeline]);
+
+  async function handleLoadOlderMessages() {
+    if (loadingOlder) return;
+    const nextPage = messagesPage + 1;
+    setLoadingOlder(true);
+    setMessageError(null);
+    try {
+      const res = await api.call<MessageThreadPage>((c) =>
+        c.GET('/api/applications/{id}/messages', {
+          params: {
+            path: { id: applicationId },
+            query: { page: nextPage, limit: messagesLimit },
+          },
+        }),
+      );
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const older = res.items.filter((m) => !existingIds.has(m.id));
+        return [...older, ...prev];
+      });
+      setMessagesTotal(res.total);
+      setMessagesPage(nextPage);
+    } catch (err: unknown) {
+      setMessageError(err instanceof ClientApiError ? err.message : 'Could not load older messages.');
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
+  async function handleSendMessage(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = draftMessage.trim();
+    if (!trimmed || sendingMessage) return;
+
+    setSendingMessage(true);
+    setMessageError(null);
+    try {
+      const created = await api.call<Message>((c) =>
+        c.POST('/api/applications/{id}/messages', {
+          params: { path: { id: applicationId } },
+          body: { body: trimmed },
+        }),
+      );
+      setMessages((prev) => (prev.some((m) => m.id === created.id) ? prev : [...prev, created]));
+      setMessagesTotal((prev) => prev + 1);
+      setDraftMessage('');
+    } catch (err: unknown) {
+      setMessageError(err instanceof ClientApiError ? err.message : 'Failed to send message.');
+    } finally {
+      setSendingMessage(false);
+    }
+  }
 
   async function openFileLink(fileId: string, disposition: 'inline' | 'attachment') {
     setActionError(null);
@@ -273,6 +400,7 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
   }
 
   const pendingMandatory = checklist?.pendingMandatory ?? 0;
+  const hasOlderMessages = messages.length < messagesTotal && messagesPage * messagesLimit < messagesTotal;
 
   return (
     <div className="min-w-0 space-y-6">
@@ -423,7 +551,7 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
 
       {actionError && <Notice tone="error">{actionError}</Notice>}
 
-      {/* Detail Tabs (M5.5) */}
+      {/* Detail Tabs (M5.5 & M5.7) */}
       <div className="space-y-4">
         <div
           role="tablist"
@@ -439,7 +567,7 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
                 role="tab"
                 aria-selected={selected}
                 onClick={() => setActiveTab(t.key)}
-                className={` inline-flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                className={`inline-flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
                   selected
                     ? 'border-ink text-ink'
                     : 'border-transparent text-muted hover:border-rule hover:text-night'
@@ -451,6 +579,9 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
                 )}
                 {t.key === 'deliverables' && deliverables.length > 0 && (
                   <Badge tone="success">{deliverables.length}</Badge>
+                )}
+                {t.key === 'messages' && unreadMessages > 0 && (
+                  <Badge tone="info">{unreadMessages}</Badge>
                 )}
               </button>
             );
@@ -768,6 +899,96 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
                 ))}
               </ul>
             )}
+          </section>
+        )}
+
+        {/* Tab: Messages (M5.7) */}
+        {activeTab === 'messages' && (
+          <section aria-label="Messages" className="rounded-lg border border-rule bg-white p-5 sm:p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-bold text-night">Messages</h2>
+                <p className="mt-0.5 text-xs text-muted">
+                  Direct conversation with the BizNexa team handling your application.
+                </p>
+              </div>
+              {unreadMessages > 0 && <Badge tone="info">{unreadMessages} unread</Badge>}
+            </div>
+
+            {messageError && (
+              <div className="mb-4">
+                <Notice tone="error">{messageError}</Notice>
+              </div>
+            )}
+
+            {hasOlderMessages && (
+              <div className="mb-4 text-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={loadingOlder}
+                  onClick={() => void handleLoadOlderMessages()}
+                >
+                  {loadingOlder ? 'Loading…' : 'Load older'}
+                </Button>
+              </div>
+            )}
+
+            {messages.length === 0 ? (
+              <EmptyState
+                className="py-8"
+                icon={<Icon name="message" size={32} className="text-ink/40" />}
+                title="No messages yet"
+                description="Send a message below if you have any questions about your application."
+              />
+            ) : (
+              <ul className="mb-4 max-h-96 space-y-3 overflow-y-auto pr-1" aria-label="Message thread">
+                {messages.map((msg) => {
+                  const isStaff = msg.sender.isStaff;
+                  return (
+                    <li
+                      key={msg.id}
+                      data-sender={isStaff ? 'staff' : 'customer'}
+                      className={`rounded-lg border p-3.5 ${
+                        isStaff ? 'border-rule bg-paper text-night' : 'border-sky-200 bg-sky-50/70 text-night'
+                      }`}
+                    >
+                      <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+                        <span className="font-semibold text-night">
+                          {msg.sender.name}{' '}
+                          <span className="font-normal text-muted">
+                            ({isStaff ? 'BizNexa Team' : 'You'})
+                          </span>
+                        </span>
+                        <span className="num">{formatDate(msg.createdAt)}</span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm">{msg.body}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <form onSubmit={(e) => void handleSendMessage(e)} className="mt-4 space-y-2 border-t border-rule pt-4">
+              <label htmlFor="customer-message-input" className="block text-xs font-semibold text-ink">
+                Your message
+              </label>
+              <textarea
+                id="customer-message-input"
+                rows={3}
+                value={draftMessage}
+                onChange={(e) => setDraftMessage(e.target.value)}
+                placeholder="Write a message to our team…"
+                maxLength={4000}
+                className="w-full rounded-md border border-rule bg-white p-2.5 text-sm text-night focus:border-ink focus:outline-none"
+              />
+              <div className="flex justify-end">
+                <Button type="submit" variant="primary" disabled={!draftMessage.trim() || sendingMessage}>
+                  {sendingMessage ? 'Sending…' : 'Send'}
+                </Button>
+              </div>
+            </form>
           </section>
         )}
       </div>
