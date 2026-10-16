@@ -88,7 +88,7 @@ export function CustomerDetailView({ id }: { id: string }) {
 
   const handleStatusChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetStatus || reason.length < 3) return;
+    if (!targetStatus || reason.trim().length < 3) return;
 
     setIsUpdating(true);
     setStatusUpdateError(null);
@@ -371,7 +371,7 @@ export function CustomerDetailView({ id }: { id: string }) {
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isUpdating}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isUpdating || reason.length < 3}>
+              <Button type="submit" disabled={isUpdating || reason.trim().length < 3}>
                 {isUpdating ? 'Saving...' : 'Save'}
               </Button>
             </div>
