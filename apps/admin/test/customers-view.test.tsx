@@ -78,7 +78,7 @@ describe('Customers View UI', () => {
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith('/api/admin/customers', expect.objectContaining({
-        query: expect.objectContaining({ q: 'Jane' })
+        params: { query: expect.objectContaining({ q: 'Jane' }) }
       }));
     });
   });

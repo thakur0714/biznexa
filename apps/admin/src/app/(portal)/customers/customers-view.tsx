@@ -48,7 +48,7 @@ export function CustomersView() {
         if (query) queryParams.q = query;
         if (statusGroup !== 'ALL') queryParams.status = statusGroup as AdminCustomerListQuery['status'];
 
-        const res = await api.call<{ items: AdminCustomerRow[]; total: number; page: number; limit: number }>((c) => c.GET('/api/admin/customers', { query: queryParams }));
+        const res = await api.call<{ items: AdminCustomerRow[]; total: number; page: number; limit: number }>((c) => c.GET('/api/admin/customers', { params: { query: queryParams } }));
         if (cancel) return;
         setData(res);
       } catch (err: unknown) {
