@@ -26,3 +26,4 @@ export * from './audit';
 export * from './admin-applications';
 export * from './notifications';
 export * from './certificate-import';
+export * from './admin-customers';
