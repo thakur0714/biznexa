@@ -1700,6 +1700,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCustomersController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leads": {
         parameters: {
             query?: never;
@@ -4404,6 +4436,72 @@ export interface components {
             total: number;
             pdfReady: boolean;
         }[];
+        AdminCustomerList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                email: string | null;
+                mobile: string | null;
+                /** @enum {string} */
+                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+                /** Format: date-time */
+                createdAt: string;
+                applicationCount: number;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        AdminCustomerDetail: {
+            profile: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                email: string | null;
+                mobile: string | null;
+                /** @enum {string} */
+                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+                /** Format: date-time */
+                createdAt: string;
+            };
+            businessEntities: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                type: string;
+            }[];
+            applications: {
+                /** Format: uuid */
+                id: string;
+                code: string;
+                /** @enum {string} */
+                status: "DRAFT" | "PAYMENT_PENDING" | "SUBMITTED" | "DOCUMENTS_UNDER_REVIEW" | "DOCUMENTS_PENDING" | "DOCUMENTS_APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "DELIVERED" | "CANCELLED";
+                serviceName: string;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            orders: {
+                /** Format: uuid */
+                id: string;
+                code: string;
+                total: number;
+                amountPaid: number;
+                /** @enum {string} */
+                status: "CREATED" | "PAYMENT_PENDING" | "PARTIALLY_PAID" | "PAID" | "CANCELLED" | "REFUNDED";
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            payments: {
+                /** Format: uuid */
+                id: string;
+                amount: number;
+                /** @enum {string} */
+                status: "CREATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUND_INITIATED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+        };
     };
     responses: never;
     parameters: never;
@@ -8494,6 +8592,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminCustomersController_list: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerList"];
+                };
+            };
+        };
+    };
+    AdminCustomersController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCustomerDetail"];
+                };
             };
         };
     };
