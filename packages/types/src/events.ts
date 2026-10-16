@@ -126,6 +126,27 @@ export interface DomainEventPayloads {
     senderId: string;
     fromStaff: boolean;
   };
+  'ticket.created': {
+    ticketId: string;
+    ticketCode: string;
+    customerId: string;
+    subject: string;
+  };
+  'ticket.replied': {
+    ticketId: string;
+    ticketCode: string;
+    customerId: string;
+    messageId: string;
+    senderId: string;
+    fromStaff: boolean;
+    replyExcerpt: string;
+  };
+  'ticket.resolved': {
+    ticketId: string;
+    ticketCode: string;
+    customerId: string;
+    resolution?: string;
+  };
 }
 
 export type DomainEventName = keyof DomainEventPayloads;

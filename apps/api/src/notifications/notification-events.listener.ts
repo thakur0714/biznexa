@@ -33,6 +33,9 @@ export class NotificationEventsListener implements OnModuleInit {
     this.events.on('application.status_changed', (e) => this.handleApplicationStatusChanged(e.payload));
     this.events.on('certificate.issued', (e) => this.handleCertificateIssued(e.payload));
     this.events.on('message.created', (e) => this.handleMessageCreated(e.payload));
+    this.events.on('ticket.created', (e) => this.handleTicketCreated(e.payload));
+    this.events.on('ticket.replied', (e) => this.handleTicketReplied(e.payload));
+    this.events.on('ticket.resolved', (e) => this.handleTicketResolved(e.payload));
   }
 
   async handlePaymentSucceeded(payload: DomainEventPayloads['payment.succeeded']): Promise<void> {
@@ -508,4 +511,74 @@ export class NotificationEventsListener implements OnModuleInit {
       this.logger.error(`Error handling message.created: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+
+  async handleTicketCreated(payload: DomainEventPayloads['ticket.created']): Promise<void> {
+    try {
+      const customer = await this.prisma.user.findUnique({
+        where: { id: payload.customerId },
+        select: { id: true, name: true, email: true, mobile: true },
+      });
+      if (!customer) return;
+
+      const link = `${env().PUBLIC_WEB_URL}/dashboard/support`;
+      const variables: Record<string, unknown> = {
+        customerName: customer.name,
+        ticketCode: payload.ticketCode,
+        subject: payload.subject,
+        link,
+      };
+
+      await this.dispatchForEvent('ticket.created', customer, variables, link);
+    } catch (err) {
+      this.logger.error(`Error handling ticket.created: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async handleTicketReplied(payload: DomainEventPayloads['ticket.replied']): Promise<void> {
+    try {
+      // Only notify customer on staff replies
+      if (!payload.fromStaff) return;
+
+      const customer = await this.prisma.user.findUnique({
+        where: { id: payload.customerId },
+        select: { id: true, name: true, email: true, mobile: true },
+      });
+      if (!customer) return;
+
+      const link = `${env().PUBLIC_WEB_URL}/dashboard/support`;
+      const variables: Record<string, unknown> = {
+        customerName: customer.name,
+        ticketCode: payload.ticketCode,
+        replyExcerpt: payload.replyExcerpt,
+        link,
+      };
+
+      await this.dispatchForEvent('ticket.replied', customer, variables, link);
+    } catch (err) {
+      this.logger.error(`Error handling ticket.replied: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async handleTicketResolved(payload: DomainEventPayloads['ticket.resolved']): Promise<void> {
+    try {
+      const customer = await this.prisma.user.findUnique({
+        where: { id: payload.customerId },
+        select: { id: true, name: true, email: true, mobile: true },
+      });
+      if (!customer) return;
+
+      const link = `${env().PUBLIC_WEB_URL}/dashboard/support`;
+      const variables: Record<string, unknown> = {
+        customerName: customer.name,
+        ticketCode: payload.ticketCode,
+        resolution: payload.resolution ?? 'Resolved by support team',
+        link,
+      };
+
+      await this.dispatchForEvent('ticket.resolved', customer, variables, link);
+    } catch (err) {
+      this.logger.error(`Error handling ticket.resolved: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 }
+

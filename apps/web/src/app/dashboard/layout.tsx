@@ -29,7 +29,7 @@ export const DASHBOARD_NAV: readonly NavSection[] = [
   { label: 'Notifications', icon: 'bell', href: '/dashboard/notifications', ready: true },
   { label: 'Profile', icon: 'people', href: '/dashboard/profile', ready: true },
   { label: 'Businesses', icon: 'building', href: '/dashboard/businesses', ready: true },
-  { label: 'Support', icon: 'phone', ready: false },
+  { label: 'Support', icon: 'phone', href: '/dashboard/support', ready: true },
 ];
 
 function isSectionActive(href: string, pathname: string): boolean {
