@@ -38,7 +38,8 @@ describe('notification types and schemas', () => {
   });
 
   it('validates notification events', () => {
-    expect(NOTIFICATION_EVENTS).toHaveLength(19);
+    expect(NOTIFICATION_EVENTS).toHaveLength(20);
+    expect(notificationEventSchema.safeParse('message.received').success).toBe(true);
     expect(notificationEventSchema.safeParse('payment.succeeded').success).toBe(true);
     expect(notificationEventSchema.safeParse('auth.registered').success).toBe(true);
     expect(notificationEventSchema.safeParse('invalid.event').success).toBe(false);
