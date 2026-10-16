@@ -208,7 +208,8 @@ Gaps found while planning are moved into Milestone 2.5 below.
   - *Follow-ups:* `InternalNote` has no `updatedAt`, so responses repeat `createdAt`; write + audit log not in one transaction; unused imports in the controller. The notes UI arrives with the application detail page (M4.4).
 - [ ] **M4.11 — Messaging threads (async).** `[Sonnet]` `Conversation` per application; post message with text + attachments; unread counts per participant; staff and owning customer only. Emits `message.created`. *Ref: §7.12.*
   - *Part 1 done 16-Oct-2026 (Argon + Claude):* text threads per application (staff + customer APIs, unread via `readAt` = read by the other side, `message.created`), admin panel + customer tab. Left: attachments, notification on new message.
-- [ ] **M4.12 — Final deliverables.** `[Sonnet]` Ops uploads final documents (type, file) via the upload service (M2.5.6); application → COMPLETED → DELIVERED; customer download (owner only).
+- [x] **M4.12 — Final deliverables.** `[Sonnet]` Ops uploads final documents (type, file) via the upload service (M2.5.6); application → COMPLETED → DELIVERED; customer download (owner only).
+  - *Done 16-Oct-2026 (part 1 Jules, part 2 Codex; reviewed by Claude):* moving to DELIVERED is refused (409) without at least one `FinalDeliverable` (checked in `ApplicationStatusService`); admin `deliverables-panel.tsx` lists, opens (signed inline link) and uploads deliverables for `applications.update` on IN_PROGRESS/COMPLETED. Claude's fix: no DELIVERED-only 200 response.
   - *Part 1 done 16-Oct-2026 (Jules + Claude):* staff add/list deliverables (IN_PROGRESS/COMPLETED, own clean unused file, audit), customer list, download via `FilesService.canRead`. Left: COMPLETED → DELIVERED guard and admin upload UI.
 - [ ] **M4.13 — Refunds.** `[Opus]` Admin full/partial refund with reason → gateway refund → `Refund` record → payment REFUND_INITIATED/REFUNDED/PARTIALLY_REFUNDED via webhook; credit note number + PDF. Idempotent.
 - [x] **M4.14 — Customer management (admin).** `[Sonnet]` Search by name/mobile/email/application ID; profile, entities, orders, payments, documents; block/deactivate (revokes sessions). Support role read-only.
@@ -241,7 +242,8 @@ Gaps found while planning are moved into Milestone 2.5 below.
 - [ ] **M5.6 — Re-upload rejected documents.** `[Sonnet]` Rejection reason shown prominently; re-upload creates new version → back to review. **Done when:** acceptance criterion "rejects → re-upload → back to review" passes end-to-end.
 - [x] **M5.7 — Application message thread (customer side).** `[Sonnet]`
   - *Done 16-Oct-2026 (Argon, finished by Claude):* Messages tab on the application detail: thread (page 1 = newest, "Load older"), send, marks staff messages read when opened, unread count. Text only — attachments come with M4.11 part 2.
-- [ ] **M5.8 — Pending Actions.** `[Sonnet]` One list: docs to upload/re-upload, balances due, info requested; each links to the action.
+- [x] **M5.8 — Pending Actions.** `[Sonnet]` One list: docs to upload/re-upload, balances due, info requested; each links to the action.
+  - *Done 16-Oct-2026 (Codex, reviewed by Claude):* `GET /api/pending-actions` (upload / re-upload documents incl. requested ones, pay balance for PARTIALLY_PAID orders, unread staff messages) and `/dashboard/pending`, linked from the dashboard card; links open the right tab (`?tab=`).
 - [x] **M5.9 — Documents page.** `[Sonnet]` All docs across applications, filters, view/download/replace.
   - *Done 16-Oct-2026 (Codex, reviewed by Claude):* `GET /api/documents?status=needs_action|all` (reuses `ApplicationDocumentsService` checklists per application); `/dashboard/documents` grouped by application with the shared `DocumentRow`.
 - [x] **M5.10 — Payments page.** `[Sonnet]` History, receipts, invoice PDF download, pay balance.
@@ -284,7 +286,8 @@ Gaps found while planning are moved into Milestone 2.5 below.
   - *Done 16-Oct-2026 (Jules, reviewed + fixed by Claude):* `RemindersService` (apps/api/src/reminders) creates `CERTIFICATE_EXPIRY` on `certificate.issued` (owner via application or entity, service offsets or 30/15/7/1, renew slug) and `SERVICE_RENEWAL` on COMPLETED for recurring services (+1/3/6/12 months, clamped to month end); idempotent per type + source; past due dates skipped. `GET /api/reminders` (own, upcoming). Claude's fix: month-end clamping.
   - *Follow-ups:* duplicate check is read-then-create (no unique index).
 - [ ] **M6.11 — Daily reminder job.** `[Sonnet]` Sends due reminders once per offset (idempotent), "Renew Now" deep link to renewal service with entity prefilled.
-- [ ] **M6.12 — "Upcoming due dates" widget** `[Haiku]` on dashboard home. Tests + CHANGELOG.
+- [x] **M6.12 — "Upcoming due dates" widget** `[Haiku]` on dashboard home. Tests + CHANGELOG.
+  - *Done 16-Oct-2026 (Codex, checked by Claude):* dashboard home widget with the next 5 reminders from `GET /api/reminders`, days left and a Renew link; Playwright test.
 
 ---
 
