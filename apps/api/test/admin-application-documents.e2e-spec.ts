@@ -92,6 +92,7 @@ describe('Admin Application Documents (M4.8)', () => {
     await prisma.servicePackage.deleteMany({ where: { id: packageId } });
     await prisma.service.deleteMany({ where: { id: serviceId } });
 
+    await prisma.notification.deleteMany({ where: { userId: customerId } });
     await prisma.user.deleteMany({ where: { email: { contains: `-${run}@example.com` } } });
 
     await app.close();
@@ -223,6 +224,14 @@ describe('Admin Application Documents (M4.8)', () => {
     const updatedDoc = await prisma.applicationDocument.findUnique({ where: { id: d.id } });
     expect(updatedDoc?.status).toBe('REJECTED');
     expect(updatedDoc?.rejectionReason).toBe('Blurry');
+
+    const notif = await prisma.notification.findFirst({
+      where: { userId: customerId, channel: 'IN_APP', event: 'document.rejected' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(notif).not.toBeNull();
+    expect(notif?.title).toBe('Document Rejected');
+    expect(notif?.body).toContain('Blurry');
   });
 
   it('request an additional document for an application', async () => {

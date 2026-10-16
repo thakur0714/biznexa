@@ -14,6 +14,8 @@ import { TemplateEngineService } from './template-engine.service';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 
+import { NotificationEventsListener } from './notification-events.listener';
+
 @Module({
   imports: [PrismaModule],
   controllers: [NotificationsController],
@@ -30,6 +32,7 @@ import { NotificationsController } from './notifications.controller';
     NotificationDispatcherService,
     TemplateEngineService,
     NotificationsService,
+    NotificationEventsListener,
   ],
   exports: [
     EmailProvider,
@@ -39,6 +42,7 @@ import { NotificationsController } from './notifications.controller';
     NotificationDispatcherService,
     TemplateEngineService,
     NotificationsService,
+    NotificationEventsListener,
     EmailChannel,
     SmsChannel,
     PushChannel,

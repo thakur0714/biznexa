@@ -44,6 +44,27 @@ export interface DomainEventPayloads {
     version: number;
     actorId: string;
   };
+  'document.requested': {
+    documentId: string;
+    applicationId: string;
+    name: string;
+    reason?: string;
+    actorId: string;
+  };
+  'document.approved': {
+    documentId: string;
+    applicationId: string;
+    name: string;
+    reason?: string;
+    actorId: string;
+  };
+  'document.rejected': {
+    documentId: string;
+    applicationId: string;
+    name: string;
+    reason?: string;
+    actorId: string;
+  };
   /**
    * A verified gateway webhook confirmed an order's payment (M3.17). Emitted once per payment, after the
    * order is PAID (or PARTIALLY_PAID for an advance, M3.19) and its applications are submitted.
