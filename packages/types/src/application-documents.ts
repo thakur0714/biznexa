@@ -86,6 +86,20 @@ export const documentChecklistSchema = z.object({
 });
 export type DocumentChecklist = z.infer<typeof documentChecklistSchema>;
 
+/** Customer's documents grouped by application (M5.9). */
+export const customerDocumentsQuery = z.object({
+  status: z.enum(['needs_action', 'all']).default('needs_action'),
+});
+export type CustomerDocumentsQuery = z.output<typeof customerDocumentsQuery>;
+
+export const customerDocumentsSchema = z.array(z.object({
+  applicationId: z.string().uuid(),
+  applicationCode: z.string(),
+  serviceName: z.string(),
+  checklist: documentChecklistSchema,
+}));
+export type CustomerDocuments = z.infer<typeof customerDocumentsSchema>;
+
 /**
  * Body of `POST /api/applications/{id}/documents/{requirementId}` (a file uploaded with `POST /api/files?requirementId=`)
  * and of `POST /api/applications/{id}/documents/additional/{requestId}` (a file uploaded without `requirementId`).

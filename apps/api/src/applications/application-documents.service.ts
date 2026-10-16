@@ -3,12 +3,15 @@ import {
   assertTransition,
   canReplaceDocument,
   canUploadDocuments,
+  needsUpload,
   pendingMandatoryCount,
   requirementApplies,
   type AdditionalDocumentItem,
   type ApplicationDocumentResult,
   type DocumentChecklist,
   type DocumentChecklistItem,
+  type CustomerDocuments,
+  type CustomerDocumentsQuery,
 } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventBus } from '../events/event-bus';
@@ -67,6 +70,36 @@ export class ApplicationDocumentsService {
     });
     if (!app) throw new NotFoundException('Application not found');
     return this.build(app);
+  }
+
+  /** All customer-owned applications with document requirements or requested additional documents (M5.9). */
+  async listForCustomer(customerId: string, query: CustomerDocumentsQuery): Promise<CustomerDocuments> {
+    const applications = await this.prisma.application.findMany({
+      where: {
+        customerId,
+        OR: [
+          { service: { documents: { some: {} } } },
+          { documents: { some: {} } },
+        ],
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { id: true, code: true, status: true, serviceId: true, packageId: true, service: { select: { name: true } } },
+    });
+
+    const grouped = await Promise.all(applications.map(async (application) => ({
+      applicationId: application.id,
+      applicationCode: application.code,
+      serviceName: application.service.name,
+      checklist: await this.build(application),
+    })));
+
+    return grouped.filter(({ checklist }) => {
+      if (checklist.items.length + checklist.additional.length === 0) return false;
+      if (query.status === 'all') return true;
+      return checklist.pendingMandatory > 0 ||
+        checklist.items.some((item) => item.current !== null && needsUpload(item)) ||
+        checklist.additional.some(needsUpload);
+    });
   }
 
   /**
