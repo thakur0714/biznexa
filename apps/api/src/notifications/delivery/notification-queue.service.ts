@@ -7,6 +7,7 @@ import { QueueService } from '../../queue/queue.service';
 import { AuditService } from '../../audit/audit.service';
 import { NotificationDispatcherService, UnknownNotificationChannelError } from '../notification-dispatcher.service';
 import { DELIVERY_ATTEMPTS, deliveryIdempotencyKey, isPermanentFailure, retryDelayMs, safeErrorText, BASE_RETRY_DELAY_MS } from './delivery-policy';
+import { env } from '../../config/env';
 
 export const NOTIFICATIONS_QUEUE = 'notifications';
 
@@ -35,11 +36,20 @@ interface DeliveryContent {
   body: string;
   link?: string | null;
   payload?: Record<string, unknown> | null;
+  /** Address given by the caller instead of the user record (an anonymised account, M5.12). Removed once the delivery is finished. */
+  recipient?: SendNotificationInput['recipient'] | null;
 }
 
 const FINISHED: NotificationDeliveryStatus[] = ['SENT', 'DELIVERED', 'SKIPPED'];
 /** A QUEUED delivery untouched this long has probably lost its job (Redis was down when it was queued). */
 const STALE_QUEUED_MS = 15 * 60_000;
+
+/** A caller-given address is kept only until the delivery is finished, then dropped from the log. */
+function withoutRecipient(content: DeliveryContent): { content?: Prisma.InputJsonValue } {
+  if (!content.recipient) return {};
+  const { recipient: _recipient, ...rest } = content;
+  return { content: rest as unknown as Prisma.InputJsonValue };
+}
 
 /**
  * Notification queue + delivery log (M6.3, D59). `enqueue` writes one `NotificationDelivery` row per
@@ -79,6 +89,7 @@ export class NotificationQueueService implements OnModuleInit, OnApplicationBoot
 
   /** Deliveries still QUEUED whose job was never added (Redis down) or lost are queued again on start. */
   async onApplicationBootstrap() {
+    if (!env().QUEUE_BOOT_SWEEP) return;
     const stale = await this.prisma.notificationDelivery.findMany({
       where: { status: 'QUEUED', updatedAt: { lt: new Date(Date.now() - STALE_QUEUED_MS) }, createdAt: { gt: new Date(Date.now() - 7 * 24 * 3600_000) } },
       select: { id: true, sendAt: true },
@@ -95,7 +106,13 @@ export class NotificationQueueService implements OnModuleInit, OnApplicationBoot
    */
   async enqueue(input: EnqueueNotificationInput): Promise<{ id: string; created: boolean }> {
     const idempotencyKey = deliveryIdempotencyKey({ event: input.event, sourceKey: input.sourceKey, userId: input.userId, channel: input.channel });
-    const content: DeliveryContent = { title: input.title, body: input.body, link: input.link ?? null, payload: input.payload ?? null };
+    const content: DeliveryContent = {
+      title: input.title,
+      body: input.body,
+      link: input.link ?? null,
+      payload: input.payload ?? null,
+      ...(input.recipient ? { recipient: input.recipient } : {}),
+    };
     const sendAt = input.sendAt && input.sendAt.getTime() > Date.now() ? input.sendAt : null;
     try {
       const row = await this.prisma.notificationDelivery.create({
@@ -159,6 +176,7 @@ export class NotificationQueueService implements OnModuleInit, OnApplicationBoot
         body: content.body,
         link: content.link,
         payload: content.payload,
+        ...(content.recipient ? { recipient: content.recipient } : {}),
       });
     } catch (err) {
       result = {
@@ -182,6 +200,7 @@ export class NotificationQueueService implements OnModuleInit, OnApplicationBoot
           sentAt: result.skipped ? null : now,
           deliveredAt: status === 'DELIVERED' ? now : null,
           failedAt: null,
+          ...withoutRecipient(content),
         },
       });
       return status;
@@ -191,7 +210,7 @@ export class NotificationQueueService implements OnModuleInit, OnApplicationBoot
     const final = result.permanent === true || job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
     await this.prisma.notificationDelivery.update({
       where: { id: row.id },
-      data: { lastError: error, ...(final ? { status: 'FAILED', failedAt: now } : {}) },
+      data: { lastError: error, ...(final ? { status: 'FAILED', failedAt: now, ...withoutRecipient(content) } : {}) },
     });
     this.logger.warn(`${row.channel} ${row.event} for user=${row.userId} failed (try ${row.attempts + 1}${result.permanent ? ', permanent' : ''}): ${error}`);
     // Permanent: done, nothing to retry. Otherwise throw so bullmq retries with backoff (dead-letter after the last try).

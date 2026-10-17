@@ -11,6 +11,6 @@ import { otpSenderProvider } from './otp-sender';
   imports: [NotificationsModule],
   controllers: [AuthController],
   providers: [AuthService, OtpService, TokenService, TwoFactorService, otpSenderProvider],
-  exports: [TokenService],
+  exports: [TokenService, OtpService],
 })
 export class AuthModule {}

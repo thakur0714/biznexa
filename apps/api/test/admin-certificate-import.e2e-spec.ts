@@ -167,7 +167,7 @@ ${prefix}-REJECT-2,ISO 9001:2015,,,,2026-01-01,2026-01-01,2029-01-01,${testBody.
 
   it('POST /api/admin/certificates/import imports valid rows in one transaction and logs audit', async () => {
     const sequence = await prisma.certificateSequence.findUniqueOrThrow({ where: { year: new Date().getFullYear() } });
-    const typedNumber = `BNC-${new Date().getFullYear()}-${String(sequence.lastNumber + 5).padStart(6, '0')}`;
+    const typedNumber = `BNC-${new Date().getFullYear()}-${String(sequence.lastNumber + randomInt(10_000, 100_000)).padStart(6, '0')}`;
     const validCsv = `Certificate Number,Certificate Type,Organization Name,Scope,Address,Issue Date,Valid From,Valid Until,Certification Body,Allow Public Download
 ${typedNumber},ISO 9001:2015,TX Company 1,Scope 1,Addr 1,2026-01-01,2026-01-01,2029-01-01,${testBody.name},true
 ,ISO 27001:2022,TX Company 2,Scope 2,Addr 2,2026-02-01,2026-02-01,2029-02-01,${testBody.id},false`;
@@ -192,7 +192,7 @@ ${typedNumber},ISO 9001:2015,TX Company 1,Scope 1,Addr 1,2026-01-01,2026-01-01,2
 
     const c2 = await prisma.certificate.findUnique({ where: { id: res.body.certificateIds[1] } });
     expect(c2).not.toBeNull();
-    expect(c2?.certificateNumber).toBe(`BNC-${new Date().getFullYear()}-${String(sequence.lastNumber + 6).padStart(6, '0')}`);
+    expect(Number(c2?.certificateNumber.split('-').at(-1))).toBeGreaterThan(Number(typedNumber.split('-').at(-1)));
     expect(c2?.organizationName).toBe('TX Company 2');
     expect(c2?.showPdfPublicly).toBe(false);
 

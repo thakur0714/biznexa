@@ -17,7 +17,9 @@ let app: INestApplication;
 let pdfs: PdfService;
 let storage: StorageService;
 let renderer: PdfRenderer;
+let eventBus: EventBus;
 let events: AnyDomainEvent[] = [];
+let startupCompletion: ReturnType<typeof generated>;
 
 const KIND = `e2e-${Date.now().toString(36)}`;
 /** The records: id → stored PDF key (null until attached). Missing id = deleted record. */
@@ -42,14 +44,20 @@ async function bytes(key: string) {
   return Buffer.concat(chunks);
 }
 
-/** Waits for the worker (polling the record), up to `ms`. */
-async function attached(id: string, ms = 20_000) {
-  const until = Date.now() + ms;
-  while (Date.now() < until) {
-    if (records.get(id)) return records.get(id)!;
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  throw new Error(`No PDF attached to ${id} within ${ms} ms`);
+// The queue worker can wait behind other API workers during the full parallel suite.
+function generated(id: string, ms = 60_000) {
+  return new Promise<{ kind: string; id: string; fileKey: string; sizeBytes: number }>((resolve, reject) => {
+    const unsubscribe = eventBus.on('pdf.generated', (event) => {
+      if (event.payload.kind !== KIND || event.payload.id !== id) return;
+      clearTimeout(timeout);
+      unsubscribe();
+      resolve(event.payload);
+    });
+    const timeout = setTimeout(() => {
+      unsubscribe();
+      reject(new Error(`PDF generation event was not emitted for ${id} within ${ms} ms`));
+    }, ms);
+  });
 }
 
 beforeAll(async () => {
@@ -58,6 +66,8 @@ beforeAll(async () => {
   pdfs = app.get(PdfService);
   storage = app.get(StorageService);
   renderer = app.get(PdfRenderer);
+  // This suite tests queue/storage/attachment behavior; actual Chromium rendering is covered by renderer and certificate tests.
+  jest.spyOn(renderer, 'render').mockResolvedValue(Buffer.from('%PDF-1.4\n% queue pipeline fixture\n'));
   // Registered before start-up, like a feature module's onModuleInit: this record has no PDF yet.
   records.set('left-over', null);
   pdfs.register(KIND, doc);
@@ -66,9 +76,13 @@ beforeAll(async () => {
     written.push(key);
     return write(key, data);
   });
-  // Only this suite's kind: invoices without a PDF (M3.23) are queued at start-up too.
-  app.get(EventBus).onAny((e) => void ((e.name !== 'pdf.generated' || e.payload.kind === KIND) && events.push(e)));
+  // Only this suite's kind.
+  eventBus = app.get(EventBus);
+  eventBus.onAny((e) => void ((e.name !== 'pdf.generated' || e.payload.kind === KIND) && events.push(e)));
+  startupCompletion = generated('left-over');
   await app.init();
+  // The start-up sweep is off in tests (QUEUE_BOOT_SWEEP, setup-env.js): run it for this suite's kind only.
+  await pdfs.queueMissing([KIND]);
 });
 
 beforeEach(() => {
@@ -83,31 +97,32 @@ afterAll(async () => {
 
 describe('PDF generation (M3.22)', () => {
   it('queues records still without a PDF when the app starts', async () => {
-    const key = await attached('left-over');
+    const { fileKey: key } = await startupCompletion;
+    expect(records.get('left-over')).toBe(key);
     expect((await bytes(key)).subarray(0, 5).toString()).toBe('%PDF-');
-  });
+  }, 90_000);
 
   it('a queued record is rendered, stored and attached, then announced', async () => {
     records.set('a', null);
+    const completion = generated('a');
     pdfs.enqueue(KIND, 'a');
-    const key = await attached('a');
+    const { fileKey: key } = await completion;
     const pdf = await bytes(key);
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
-    await new Promise((r) => setTimeout(r, 50));
     expect(events.filter((e) => e.name === 'pdf.generated').map((e) => e.payload)).toContainEqual({ kind: KIND, id: 'a', fileKey: key, sizeBytes: pdf.length });
-  });
+  }, 90_000);
 
   it('is idempotent: queued many times, one file; a record with its PDF is skipped', async () => {
     records.set('b', null);
+    const completion = generated('b');
     for (let i = 0; i < 5; i++) pdfs.enqueue(KIND, 'b');
-    const key = await attached('b');
-    await new Promise((r) => setTimeout(r, 500));
+    const { fileKey: key } = await completion;
     expect(records.get('b')).toBe(key);
     expect(events.filter((e) => e.name === 'pdf.generated' && e.payload.id === 'b')).toHaveLength(1);
     const before = written.length;
     expect(await pdfs.generate(KIND, 'b')).toBe('exists');
     expect(written.length).toBe(before);
-  });
+  }, 90_000);
 
   it('a run that loses the race deletes the file it made', async () => {
     records.set('c', null);

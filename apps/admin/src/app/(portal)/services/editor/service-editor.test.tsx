@@ -112,6 +112,7 @@ const type = (label: string | RegExp, value: string) => fireEvent.change(within(
 const openTab = (name: RegExp) => fireEvent.click(screen.getByRole('tab', { name }));
 
 describe('new service', () => {
+  // This workflow renders and validates five tabs before submitting; under the parallel workspace run it can exceed 5 seconds.
   it('creates a service from every tab in one request and opens it', async () => {
     renderEditor();
     await screen.findByRole('heading', { name: 'New service' });
@@ -163,7 +164,7 @@ describe('new service', () => {
       relatedServiceIds: [OTHER],
     });
     expect(await screen.findByText('Pollution NOC (Delhi) is live on the website.')).toBeTruthy();
-  });
+  }, 15_000);
 
   it('marks the tabs with problems and sends nothing until they are fixed', async () => {
     renderEditor();

@@ -6,6 +6,7 @@ import { QueueService } from '../queue/queue.service';
 import { EventBus } from '../events/event-bus';
 import { StorageService } from './storage.service';
 import { VirusScanner } from './virus-scanner';
+import { env } from '../config/env';
 
 export const FILE_SCAN_QUEUE = 'file-scan';
 
@@ -37,7 +38,8 @@ export class FileScanService implements OnModuleInit, OnApplicationBootstrap {
 
   /** Files left PENDING because queuing failed (Redis down) or the process stopped are queued again on start. */
   async onApplicationBootstrap() {
-    const pending = await this.prisma.storedFile.findMany({ where: { scanStatus: 'PENDING' }, select: { id: true } });
+    if (!env().QUEUE_BOOT_SWEEP) return;
+    const pending = await this.prisma.storedFile.findMany({ where: { scanStatus: 'PENDING', deletedAt: null }, select: { id: true } });
     for (const { id } of pending) this.enqueue(id);
     if (pending.length) this.logger.log(`Queued ${pending.length} file(s) still waiting for a virus scan`);
   }
@@ -50,7 +52,7 @@ export class FileScanService implements OnModuleInit, OnApplicationBootstrap {
   /** The job. Idempotent: a file that already has a result is not scanned again. */
   async scan(fileId: string): Promise<FileScanStatus | 'missing'> {
     const file = await this.prisma.storedFile.findUnique({ where: { id: fileId } });
-    if (!file) return 'missing';
+    if (!file || file.deletedAt) return 'missing'; // deleted with its owner's account (M5.12): nothing to scan
     if (file.scanStatus === 'INFECTED') await this.storage.remove(file.fileKey); // an earlier attempt may have stopped before removing it
     if (file.scanStatus !== 'PENDING') return file.scanStatus;
 

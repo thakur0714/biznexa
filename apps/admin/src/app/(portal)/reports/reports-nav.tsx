@@ -9,7 +9,12 @@ export function ReportsNav() {
   const tabs = [
     { label: 'Sales', href: '/reports/sales' },
     { label: 'Customers', href: '/reports/customers' },
+    { label: 'Services', href: '/reports/services' },
+    { label: 'Consultants', href: '/reports/consultants' },
+    { label: 'Support', href: '/reports/support' },
   ];
+
+
 
   return (
     <div className="space-y-4">

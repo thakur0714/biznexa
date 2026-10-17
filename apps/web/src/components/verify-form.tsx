@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@biznexa/ui';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 const MODES = [
   { key: 'number', label: 'Certificate number', placeholder: 'e.g. BNC-2026-000123', hint: 'Printed at the top of the certificate.' },
@@ -12,7 +13,18 @@ const MODES = [
 
 type Mode = (typeof MODES)[number]['key'];
 
-export function VerifyForm({ initialMode = 'number', initialValue = '' }: { initialMode?: Mode; initialValue?: string }) {
+export function VerifyForm({
+  initialMode = 'number',
+  initialValue = '',
+  captchaRequired = false,
+  turnstileSiteKey,
+}: {
+  initialMode?: Mode;
+  initialValue?: string;
+  /** The API asked for a captcha (M12.3): show the challenge; solving it repeats the lookup with the token. */
+  captchaRequired?: boolean;
+  turnstileSiteKey?: string;
+}) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [value, setValue] = useState(initialValue);
@@ -26,6 +38,12 @@ export function VerifyForm({ initialMode = 'number', initialValue = '' }: { init
     if (mode === 'organization' && v.length < 3) return setError('Enter at least 3 characters of the organisation name.');
     setError('');
     router.push(`/verify?${mode}=${encodeURIComponent(v)}`);
+  }
+
+  function retryWith(token: string) {
+    const v = value.trim();
+    if (!v) return;
+    router.push(`/verify?${new URLSearchParams({ [mode]: v, captchaToken: token })}`);
   }
 
   return (
@@ -70,6 +88,20 @@ export function VerifyForm({ initialMode = 'number', initialValue = '' }: { init
       <p id="verify-hint" className={`mt-2 text-sm ${error ? 'text-danger' : 'text-muted'}`}>
         {error || m.hint}
       </p>
+      {captchaRequired && (
+        <div className="mt-4" data-testid="verify-captcha">
+          {turnstileSiteKey ? (
+            <Turnstile siteKey={turnstileSiteKey} onSuccess={retryWith} options={{ size: 'flexible' }} />
+          ) : process.env.NODE_ENV !== 'production' ? (
+            // Development without a Turnstile key: the API's mock verifier accepts the token "pass".
+            <Button type="button" variant="outline" onClick={() => retryWith('pass')}>
+              I am not a robot (development)
+            </Button>
+          ) : (
+            <p className="text-sm text-muted">Verification is busy right now. Please wait a few minutes and try again.</p>
+          )}
+        </div>
+      )}
     </form>
   );
 }
