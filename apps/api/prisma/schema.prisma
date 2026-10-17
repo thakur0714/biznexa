@@ -19,6 +19,8 @@ enum UserStatus {
   BLOCKED
   DEACTIVATED
   PENDING_DELETION
+  /// Anonymised after an approved deletion request (M5.12); can never sign in again.
+  DELETED
 }
 
 enum OtpChannel {
@@ -30,6 +32,8 @@ enum OtpPurpose {
   LOGIN
   VERIFY_MOBILE
   RESET_PASSWORD
+  /// Re-check before an account deletion request (M5.12).
+  ACCOUNT_DELETION
 }
 
 enum OrderStatus {
@@ -237,6 +241,8 @@ model User {
   invoices          Invoice[]
   creditNotes       CreditNote[]
   deviceTokens      DeviceToken[]
+  dataRequests      DataRequest[]     @relation("DataRequestUser")
+  handledDataRequests DataRequest[]   @relation("DataRequestHandler")
 
   @@index([createdAt])
 }
@@ -1303,6 +1309,8 @@ model StoredFile {
   scanStatus    FileScanStatus              @default(PENDING) // only CLEAN files can be downloaded
   scanSignature String? // what the scanner found, when INFECTED
   scannedAt     DateTime?
+  /// Bytes deleted with the uploader's account (M5.12); the row stays for the documents that point at it.
+  deletedAt     DateTime?
   createdAt     DateTime                    @default(now())
   owner         User                        @relation(fields: [ownerId], references: [id])
   requirement   ServiceDocumentRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
@@ -1318,4 +1326,42 @@ enum FileScanStatus {
   PENDING // uploaded, scan job queued or retrying
   CLEAN
   INFECTED // stored bytes deleted, row kept for the record
+}
+
+enum DataRequestType {
+  EXPORT
+  DELETION
+}
+
+enum DataRequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+/// A customer's data export or account deletion request (DPDP Act 2023, M5.12). At most one open
+/// (PENDING/PROCESSING) request per type per user — a partial unique index in the migration.
+model DataRequest {
+  id              String            @id @default(uuid())
+  userId          String
+  type            DataRequestType
+  status          DataRequestStatus @default(PENDING)
+  reason          String? // the customer's, optional
+  rejectionReason String?
+  /// Export only: the ZIP in private storage; cleared when the cleanup job deletes it.
+  fileKey         String?           @unique
+  /// Export only: the file is deleted after this.
+  expiresAt       DateTime?
+  handledById     String?
+  handledAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  user            User              @relation("DataRequestUser", fields: [userId], references: [id])
+  handledBy       User?             @relation("DataRequestHandler", fields: [handledById], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([expiresAt])
 }

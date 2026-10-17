@@ -1,4 +1,4 @@
-/** Queue infrastructure against a real Redis (QUEUE_PREFIX=bn-test-<worker>). No database needed. */
+/** Queue infrastructure against a real Redis (QUEUE_PREFIX=bn-test-<checkout>-<worker>). No database needed. */
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnrecoverableError, type Job } from 'bullmq';
 import { DEAD_LETTER_QUEUE, QUEUE_OPTIONS, QueueModule, QueueService } from '../src/queue/queue.service';

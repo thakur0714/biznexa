@@ -198,6 +198,7 @@ export class FilesService {
 
 /** Only files the virus scan passed can be downloaded: not while PENDING, never when INFECTED. */
 function assertClean(file: StoredFile) {
+  if (file.deletedAt) throw new GoneException('This file was deleted with the customer’s account.');
   if (file.scanStatus === 'INFECTED') throw new GoneException('This file was blocked because a virus was found in it. Please upload a clean copy.');
   if (file.scanStatus !== 'CLEAN') throw new ConflictException('This file is still being checked for viruses. Please try again in a minute.');
 }
@@ -206,7 +207,7 @@ function assertClean(file: StoredFile) {
  * What a signed link opens: `/api/<scope>/<id>/download`. Stored files (D17) and invoice PDFs (M3.23) share
  * the secret; the scope is part of what is signed, so a link for one can never open the other.
  */
-export type LinkScope = 'files' | 'invoices' | 'certificates' | 'credit-notes' | 'report-exports';
+export type LinkScope = 'files' | 'invoices' | 'certificates' | 'credit-notes' | 'data-exports' | 'report-exports';
 
 function sign(scope: LinkScope, id: string, expires: number, disposition: Disposition) {
   // Files sign the bare id, as they did before invoices had links.
