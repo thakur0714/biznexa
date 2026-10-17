@@ -91,6 +91,21 @@ export interface DomainEventPayloads {
     reason: string | null;
   };
   /**
+   * A verified gateway webhook paid a booking (M8.8): it is CONFIRMED and its slot is the customer's.
+   * The confirmation (meeting link, .ics, notifications, reminders — M8.9) listens to this.
+   */
+  'booking.confirmed': {
+    bookingId: string;
+    code: string;
+    customerId: string;
+    consultantId: string;
+    startAt: string;
+    endAt: string;
+    paymentId: string;
+    /** Integer paise. */
+    amount: number;
+  };
+  /**
    * An invoice was issued for a successful payment (M3.21): one per payment, so an advance and its balance
    * each get one. The PDF (M3.22–M3.23) and the "invoice issued" notification (M6) listen to this.
    */

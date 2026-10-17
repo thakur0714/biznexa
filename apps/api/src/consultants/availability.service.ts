@@ -20,6 +20,7 @@ import type { z } from 'zod';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { liveBookingWhere } from '../bookings/booking-holds';
 
 type ExceptionInput = z.output<typeof availabilityExceptionInputSchema>;
 
@@ -151,15 +152,15 @@ export class AvailabilityService {
     };
   }
 
-  /** Bookings that take time from `from` to `to` (IST dates): confirmed ones. */
-  async busy(db: Prisma.TransactionClient, consultantId: string, from: string, to: string, _now: Date): Promise<BusyInterval[]> {
+  /** Bookings that take time from `from` to `to` (IST dates): confirmed ones and unexpired holds (M8.8). */
+  async busy(db: Prisma.TransactionClient, consultantId: string, from: string, to: string, now: Date): Promise<BusyInterval[]> {
     // A day of margin either side so a booking just outside the range still keeps its buffer.
     return db.booking.findMany({
       where: {
         consultantId,
         startAt: { lt: istInstant(addDays(to, 2), 0) },
         endAt: { gt: istInstant(addDays(from, -1), 0) },
-        status: 'CONFIRMED',
+        ...liveBookingWhere(now),
       },
       select: { startAt: true, endAt: true },
     });

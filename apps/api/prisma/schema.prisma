@@ -123,6 +123,8 @@ enum BookingStatus {
   CANCELLED
   NO_SHOW
   RESCHEDULED
+  /// The 10-minute hold ran out (or the customer picked another slot) before payment (M8.8).
+  EXPIRED
 }
 
 enum CertificateStatus {
@@ -918,6 +920,10 @@ model AvailabilitySlot {
   @@index([consultantId, date, isBlocked])
 }
 
+/// A consultation booking (M8.8, D58). PENDING_PAYMENT holds its slot until `holdExpiresAt`; the webhook makes
+/// it CONFIRMED. An exclusion constraint (migration `booking_hold`, btree_gist) forbids two PENDING_PAYMENT /
+/// CONFIRMED bookings of one consultant from overlapping, so an expired hold is moved to EXPIRED (under the
+/// consultant row lock) before its slot is given to someone else.
 model Booking {
   id           String           @id @default(uuid())
   code         String           @unique
@@ -928,6 +934,7 @@ model Booking {
   endAt        DateTime
   fee          Int
   status       BookingStatus    @default(PENDING_PAYMENT)
+  holdExpiresAt DateTime?
   meetingLink  String?
   notes        String?
   createdAt    DateTime         @default(now())
@@ -939,6 +946,8 @@ model Booking {
   conversations Conversation[]
 
   @@index([consultantId, startAt])
+  @@index([customerId, startAt])
+  @@index([status, holdExpiresAt])
 }
 
 model Review {

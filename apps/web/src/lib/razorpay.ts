@@ -1,4 +1,4 @@
-import type { PaymentCheckout } from '@biznexa/types';
+import type { BookingCheckout, PaymentCheckout } from '@biznexa/types';
 
 const SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -41,28 +41,32 @@ function loadScript(): Promise<void> {
 }
 
 /**
- * Opens Razorpay Checkout for a payment started by the API (M3.16). Every value comes from the API's
- * response; the amount is shown by Checkout but charged from the gateway order, which the server created.
+ * Opens Razorpay Checkout for a payment started by the API (M3.16; a booking's, M8.8). Every value comes from
+ * the API's response; the amount is shown by Checkout but charged from the gateway order, which the server created.
  */
 export async function openRazorpayCheckout(
-  checkout: PaymentCheckout,
+  checkout: PaymentCheckout | BookingCheckout,
   handlers: { onSuccess: (r: RazorpaySuccess) => void; onDismiss: () => void; onFailure: (message: string) => void },
 ): Promise<void> {
   await loadScript();
   if (!window.Razorpay) throw new Error('The payment window could not be loaded. Try again.');
+  const ref =
+    'bookingCode' in checkout
+      ? { code: checkout.bookingCode, notes: { bookingCode: checkout.bookingCode } }
+      : { code: checkout.applicationCode, notes: { applicationCode: checkout.applicationCode, orderCode: checkout.orderCode } };
   const rzp = new window.Razorpay({
     key: checkout.key,
     order_id: checkout.gatewayOrderId,
     amount: checkout.amount,
     currency: checkout.currency,
     name: 'BizNexa',
-    description: `${checkout.description} · ${checkout.applicationCode}`,
+    description: `${checkout.description} · ${ref.code}`,
     prefill: {
       ...(checkout.prefill.name && { name: checkout.prefill.name }),
       ...(checkout.prefill.email && { email: checkout.prefill.email }),
       ...(checkout.prefill.contact && { contact: checkout.prefill.contact }),
     },
-    notes: { applicationCode: checkout.applicationCode, orderCode: checkout.orderCode },
+    notes: ref.notes,
     handler: handlers.onSuccess,
     modal: { ondismiss: handlers.onDismiss, confirm_close: true },
   });

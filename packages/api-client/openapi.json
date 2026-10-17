@@ -10992,6 +10992,47 @@
         ]
       }
     },
+    "/api/payments/mock/{paymentId}/pay": {
+      "post": {
+        "operationId": "MockCheckoutController_pay",
+        "parameters": [
+          {
+            "name": "paymentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MockPaymentResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not using the mock gateway, or no such open payment of yours"
+          },
+          "409": {
+            "description": "The mock gateway no longer knows this order (the API restarted); start the payment again"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "payments"
+        ]
+      }
+    },
     "/api/invoices": {
       "get": {
         "operationId": "InvoicesController_list",
@@ -13376,6 +13417,265 @@
         ],
         "tags": [
           "consultant · availability"
+        ]
+      }
+    },
+    "/api/bookings": {
+      "post": {
+        "operationId": "BookingsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "consultantSlug": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "AUDIO",
+                      "VIDEO",
+                      "CHAT",
+                      "MEETING"
+                    ]
+                  },
+                  "startAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "consultantSlug",
+                  "type",
+                  "startAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad body, a type the consultant doesn’t offer, or booking yourself"
+          },
+          "404": {
+            "description": "No approved consultant with this slug"
+          },
+          "409": {
+            "description": "The slot is not offered or already held / booked"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "bookings"
+        ]
+      },
+      "get": {
+        "operationId": "BookingsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/api/bookings/{id}": {
+      "get": {
+        "operationId": "BookingsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such booking among yours"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/api/bookings/{id}/payment": {
+      "post": {
+        "operationId": "BookingsController_pay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingCheckout"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such booking among yours"
+          },
+          "409": {
+            "description": "Already paid, or the hold ran out (pick a slot again)"
+          },
+          "502": {
+            "description": "The payment gateway refused the order; try again"
+          },
+          "503": {
+            "description": "The payment gateway could not be reached; try again"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/api/bookings/{id}/payment/callback": {
+      "post": {
+        "operationId": "BookingsController_callback",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paymentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "gatewayOrderId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "gatewayPaymentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "signature": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                },
+                "required": [
+                  "paymentId",
+                  "gatewayOrderId",
+                  "gatewayPaymentId",
+                  "signature"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad body, or the signature or ids don’t match a payment of this booking"
+          },
+          "404": {
+            "description": "No such booking among yours"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "bookings"
         ]
       }
     }
@@ -28042,6 +28342,26 @@
         ],
         "additionalProperties": false
       },
+      "MockPaymentResult": {
+        "type": "object",
+        "properties": {
+          "gatewayOrderId": {
+            "type": "string"
+          },
+          "gatewayPaymentId": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "gatewayOrderId",
+          "gatewayPaymentId",
+          "signature"
+        ],
+        "additionalProperties": false
+      },
       "CustomerPaymentList": {
         "type": "object",
         "properties": {
@@ -30396,6 +30716,330 @@
           "minNoticeMinutes",
           "weekly",
           "exceptions"
+        ],
+        "additionalProperties": false
+      },
+      "BookingView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_PAYMENT",
+              "CONFIRMED",
+              "COMPLETED",
+              "CANCELLED",
+              "NO_SHOW",
+              "RESCHEDULED",
+              "EXPIRED"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "AUDIO",
+              "VIDEO",
+              "CHAT",
+              "MEETING"
+            ]
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fee": {
+            "type": "integer"
+          },
+          "holdExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "consultant": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "payment": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "CREATED",
+                  "PENDING",
+                  "SUCCESS",
+                  "FAILED",
+                  "REFUND_INITIATED",
+                  "REFUNDED",
+                  "PARTIALLY_REFUNDED"
+                ]
+              },
+              "amount": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "amount"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "status",
+          "type",
+          "startAt",
+          "endAt",
+          "fee",
+          "holdExpiresAt",
+          "consultant",
+          "payment",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "BookingList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "PENDING_PAYMENT",
+                    "CONFIRMED",
+                    "COMPLETED",
+                    "CANCELLED",
+                    "NO_SHOW",
+                    "RESCHEDULED",
+                    "EXPIRED"
+                  ]
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "AUDIO",
+                    "VIDEO",
+                    "CHAT",
+                    "MEETING"
+                  ]
+                },
+                "startAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "fee": {
+                  "type": "integer"
+                },
+                "holdExpiresAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "consultant": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                "payment": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "CREATED",
+                        "PENDING",
+                        "SUCCESS",
+                        "FAILED",
+                        "REFUND_INITIATED",
+                        "REFUNDED",
+                        "PARTIALLY_REFUNDED"
+                      ]
+                    },
+                    "amount": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "amount"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "status",
+                "type",
+                "startAt",
+                "endAt",
+                "fee",
+                "holdExpiresAt",
+                "consultant",
+                "payment",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "BookingCheckout": {
+        "type": "object",
+        "properties": {
+          "paymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gateway": {
+            "type": "string",
+            "enum": [
+              "RAZORPAY",
+              "MOCK"
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "gatewayOrderId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "exclusiveMinimum": true,
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "INR"
+            ]
+          },
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bookingCode": {
+            "type": "string"
+          },
+          "holdExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "prefill": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "contact": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "name",
+              "email",
+              "contact"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "paymentId",
+          "gateway",
+          "key",
+          "gatewayOrderId",
+          "amount",
+          "currency",
+          "bookingId",
+          "bookingCode",
+          "holdExpiresAt",
+          "description",
+          "prefill"
         ],
         "additionalProperties": false
       }
