@@ -51,7 +51,7 @@ async function findInQueue(request: import('@playwright/test').APIRequestContext
   return undefined;
 }
 
-test('rejects -> re-upload -> back to review', async ({ page, request }) => {
+test('ops reviews -> rejects -> customer re-uploads -> ops approves -> in progress -> delivers', async ({ page, request }) => {
   test.setTimeout(120_000);
   const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
   const runId = Date.now().toString().slice(-6) + Math.floor(Math.random() * 1000);
@@ -196,4 +196,61 @@ test('rejects -> re-upload -> back to review', async ({ page, request }) => {
   expect(item2).toBeDefined();
   expect(item2?.version).toBe(2);
   expect(item2?.fileName).toBe(`doc-v2-${runId}.pdf`);
+
+  // 11. Ops reviews and approves the re-uploaded document
+  const approveRes = await request.post(`${apiUrl}/api/admin/documents/${item2!.id}/approve`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  expect(approveRes.status()).toBe(201);
+
+  // 12. Move to IN_PROGRESS
+  const applicationUuid = item1.application.id;
+  const inProgressRes = await request.post(`${apiUrl}/api/admin/applications/${applicationUuid}/status`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { to: 'IN_PROGRESS', note: 'Documentation approved; moving into fulfilment' },
+  });
+  expect(inProgressRes.status()).toBe(201);
+
+  // 13. Ops uploads and attaches final deliverable
+  const deliverablePdf = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF');
+  const uploadRes = await request.post(`${apiUrl}/api/files`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    multipart: {
+      file: {
+        name: `trademark-certificate-${runId}.pdf`,
+        mimeType: 'application/pdf',
+        buffer: deliverablePdf,
+      },
+    },
+  });
+  expect(uploadRes.status()).toBe(201);
+  const { id: fileId } = (await uploadRes.json()) as { id: string };
+
+  const deliverableRes = await request.post(`${apiUrl}/api/admin/applications/${applicationUuid}/deliverables`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { title: 'Trademark Registration Certificate', fileId },
+  });
+  expect(deliverableRes.status()).toBe(201);
+
+  // 14. Move COMPLETED -> DELIVERED
+  const completedRes = await request.post(`${apiUrl}/api/admin/applications/${applicationUuid}/status`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { to: 'COMPLETED', note: 'All formalities complete' },
+  });
+  expect(completedRes.status()).toBe(201);
+
+  const deliveredRes = await request.post(`${apiUrl}/api/admin/applications/${applicationUuid}/status`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { to: 'DELIVERED', note: 'Delivered final trademark certificate' },
+  });
+  expect(deliveredRes.status()).toBe(201);
+
+  // 15. Customer sees Delivered status and views deliverable
+  await page.goto(`/dashboard/applications/${applicationUuid}`);
+  await expect(page.getByText('Delivered', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Deliverables' }).click();
+  await expect(page.getByRole('heading', { name: 'Final Deliverables' })).toBeVisible();
+  await expect(page.getByText('Trademark Registration Certificate')).toBeVisible();
+  await expect(page.getByText(`trademark-certificate-${runId}.pdf`)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Download' })).toBeVisible();
 });
