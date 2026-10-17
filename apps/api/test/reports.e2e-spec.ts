@@ -195,9 +195,8 @@ afterAll(async () => {
 
 describe('Reports API Endpoints (M10)', () => {
   describe('Authorization: reports.view permission enforced on every route', () => {
-    it('GET /api/admin/reports/dashboard requires authentication (401)', async () => {
-      const res = await http.get('/api/admin/reports/dashboard');
-      expect(res.status).toBe(401);
+    it('GET /api/admin/reports/dashboard requires authentication (401)', () => {
+      return http.get('/api/admin/reports/dashboard').expect(401);
     });
 
     it('GET /api/admin/reports/dashboard returns 403 for Customer (missing reports.view)', async () => {
