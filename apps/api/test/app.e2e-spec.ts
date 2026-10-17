@@ -22,6 +22,7 @@ import {
 import { buildOpenApiDocument, configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { qrSignature } from '../src/certificates/certificates.service';
+import { captchaLookupMap } from '../src/certificates/certificates.controller';
 import { EventBus } from '../src/events/event-bus';
 import { staffSession } from './staff';
 
@@ -397,6 +398,9 @@ describe('catalogue', () => {
 });
 
 describe('certificate verification', () => {
+  // Many lookups from one IP: keep the M12.3 captcha gate out of these tests (covered in public-verify-api).
+  beforeEach(() => captchaLookupMap.clear());
+
   it('verifies by certificate number and by verification ID (case-insensitive)', async () => {
     const byNumber = await http.get('/api/public/certificates/verify?number=bnc-demo-000001').expect(200);
     expect(byNumber.body.found).toBe(true);
@@ -478,6 +482,8 @@ describe('certificate verification', () => {
 });
 
 describe('OpenAPI document', () => {
+  beforeEach(() => captchaLookupMap.clear());
+
   it('lists every route the API serves', () => {
     const doc = buildOpenApiDocument(app);
     const documented = new Set(Object.entries(doc.paths).flatMap(([path, ops]) => Object.keys(ops).map((m) => `${m.toUpperCase()} ${path}`)));

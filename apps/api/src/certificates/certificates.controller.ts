@@ -44,6 +44,7 @@ import {
 import { CSV_SAMPLE_TEMPLATE, generateCsvErrorReport } from './certificate-csv';
 import { CertificatesService, createCertificateInput, statusInput } from './certificates.service';
 import { CertificatePdfService } from './certificate-pdf.service';
+import { CaptchaVerifier } from '../captcha/captcha-verifier';
 import { AuthUser, CurrentUser, PERMS, Public, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 
@@ -81,6 +82,30 @@ export function checkVerifyRateLimit(key: string, limit: number, windowMs = 60_0
   return { remaining: limit - bucket.count, resetAt: bucket.resetAt };
 }
 
+/**
+ * CAPTCHA gate for anonymous lookups (M12.3): after CAPTCHA_FREE_LOOKUPS from one IP within the window, the next
+ * lookup needs a valid captcha token; a valid one starts that IP's count again. Partner API keys never see it.
+ */
+export const CAPTCHA_FREE_LOOKUPS = 5;
+const CAPTCHA_WINDOW_MS = 10 * 60_000;
+export const captchaLookupMap = new Map<string, RateLimitBucket>();
+
+/** Counts this lookup; true when the IP has used up its free lookups and must solve a captcha first. */
+export function captchaNeeded(ip: string): boolean {
+  const now = Date.now();
+  if (captchaLookupMap.size > 10_000) {
+    for (const [k, b] of captchaLookupMap) if (b.resetAt <= now) captchaLookupMap.delete(k);
+  }
+  const bucket = captchaLookupMap.get(ip);
+  if (!bucket || bucket.resetAt <= now) {
+    captchaLookupMap.set(ip, { count: 1, resetAt: now + CAPTCHA_WINDOW_MS });
+    return false;
+  }
+  if (bucket.count >= CAPTCHA_FREE_LOOKUPS) return true;
+  bucket.count++;
+  return false;
+}
+
 export function validateVerifyApiKey(key?: string): boolean {
   if (!key) return false;
   // Only keys we handed out; with none configured, every key is refused.
@@ -93,6 +118,7 @@ export function validateVerifyApiKey(key?: string): boolean {
 @Controller('public/certificates')
 export class PublicCertificatesController {
   constructor(
+    private readonly captcha: CaptchaVerifier,
     private readonly certs: CertificatesService,
     private readonly pdfService: CertificatePdfService,
   ) {}
@@ -110,10 +136,11 @@ export class PublicCertificatesController {
           t: z.string().max(32).optional().describe('QR signature'),
           apiKey: z.string().max(128).optional().describe('Optional API key'),
           key: z.string().max(128).optional().describe('Optional API key alias'),
+          captchaToken: z.string().max(2048).optional().describe(`Captcha token, required after ${CAPTCHA_FREE_LOOKUPS} lookups from one IP in 10 minutes`),
         }),
       ),
     )
-    q: { number?: string; id?: string; t?: string; apiKey?: string; key?: string },
+    q: { number?: string; id?: string; t?: string; apiKey?: string; key?: string; captchaToken?: string },
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -130,6 +157,20 @@ export class PublicCertificatesController {
     const rateKey = isPartnerApi ? `key:${rawApiKey}` : `ip:${req.ip || 'anonymous'}`;
     const limit = isPartnerApi ? 300 : 30;
     const { remaining, resetAt } = checkVerifyRateLimit(rateKey, limit);
+
+    if (!isPartnerApi) {
+      const ip = req.ip || 'anonymous';
+      if (captchaNeeded(ip)) {
+        if (!q.captchaToken) {
+          throw new HttpException({ statusCode: 429, captchaRequired: true, message: 'Please complete the captcha to continue.' }, HttpStatus.TOO_MANY_REQUESTS);
+        }
+        if (!(await this.captcha.verify(q.captchaToken, req.ip))) {
+          throw new HttpException({ statusCode: 429, captchaRequired: true, message: 'The captcha could not be verified. Please try again.' }, HttpStatus.TOO_MANY_REQUESTS);
+        }
+        // Solved: this IP (only this one) gets its free lookups again, and this lookup counts as the first.
+        captchaLookupMap.set(ip, { count: 1, resetAt: Date.now() + CAPTCHA_WINDOW_MS });
+      }
+    }
 
     res.setHeader('X-RateLimit-Limit', limit.toString());
     res.setHeader('X-RateLimit-Remaining', remaining.toString());
