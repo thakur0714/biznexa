@@ -1,12 +1,16 @@
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
+import { randomInt, randomUUID } from 'node:crypto';
+import { QueueEvents } from 'bullmq';
 import { PERMS } from '@biznexa/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { StorageService } from '../src/files/storage.service';
 import { signedPath } from '../src/files/files.service';
+import { EventBus } from '../src/events/event-bus';
+import { QueueService } from '../src/queue/queue.service';
 import { staffSession } from './staff';
 
 let app: NestExpressApplication;
@@ -19,8 +23,15 @@ let bob: string;
 let admin: string;
 let bodyId: string;
 let entityId: string;
+let events: EventBus;
+let pdfQueueEvents: QueueEvents;
+const generatedPdfKeys = new Map<string, string>();
+const generatedPdfWaiters = new Map<string, Set<(key: string) => void>>();
+const completedPdfJobs = new Map<string, Set<() => void>>();
+const completedPdfJobIds = new Set<string>();
 
-const run = Date.now().toString().slice(-7);
+const run = randomUUID();
+const mobileRun = String(randomInt(1_000_000, 10_000_000));
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
 const users = { email: { startsWith: `e2e-certpdf-${run}` } };
 const writtenKeys: string[] = [];
@@ -30,7 +41,7 @@ async function register(n: number) {
     .post('/api/auth/register')
     .send({
       name: `Cert PDF User ${n}`,
-      mobile: `8${run}${String(10 + n).padStart(2, '0')}`,
+      mobile: `8${mobileRun}${String(10 + n).padStart(2, '0')}`,
       email: `e2e-certpdf-${run}-${n}@example.com`,
       password: 'secretPassword123!',
       consent: true,
@@ -52,14 +63,48 @@ const binary = (res: request.Response, callback: (err: Error | null, body: Buffe
   res.on('end', () => callback(null, Buffer.concat(data)));
 };
 
-async function waitForPdf(certId: string, ms = 20_000) {
-  const until = Date.now() + ms;
-  while (Date.now() < until) {
-    const cert = await prisma.certificate.findUnique({ where: { id: certId }, select: { pdfKey: true } });
-    if (cert?.pdfKey) return cert.pdfKey;
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  throw new Error(`PDF was not attached to certificate ${certId} within ${ms} ms`);
+// Chromium rendering may wait behind other PDF jobs in the full parallel API run.
+function waitForGeneratedPdf(certId: string, ms = 120_000) {
+  const ready = generatedPdfKeys.get(certId);
+  if (ready) return Promise.resolve(ready);
+
+  return new Promise<string>((resolve, reject) => {
+    const waiters = generatedPdfWaiters.get(certId) ?? new Set<(key: string) => void>();
+    const finish = (key: string) => {
+      clearTimeout(timeout);
+      waiters.delete(finish);
+      if (!waiters.size) generatedPdfWaiters.delete(certId);
+      resolve(key);
+    };
+    waiters.add(finish);
+    generatedPdfWaiters.set(certId, waiters);
+    const timeout = setTimeout(() => {
+      waiters.delete(finish);
+      if (!waiters.size) generatedPdfWaiters.delete(certId);
+      reject(new Error(`PDF generation was not completed for certificate ${certId} within ${ms} ms`));
+    }, ms);
+  });
+}
+
+function waitForPdfJobCompletion(certId: string, ms = 120_000) {
+  const jobId = `certificate-${certId}`;
+  if (completedPdfJobIds.has(jobId)) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const waiters = completedPdfJobs.get(jobId) ?? new Set<() => void>();
+    const finish = () => {
+      clearTimeout(timeout);
+      waiters.delete(finish);
+      if (!waiters.size) completedPdfJobs.delete(jobId);
+      resolve();
+    };
+    waiters.add(finish);
+    completedPdfJobs.set(jobId, waiters);
+    const timeout = setTimeout(() => {
+      waiters.delete(finish);
+      if (!waiters.size) completedPdfJobs.delete(jobId);
+      reject(new Error(`PDF queue job ${jobId} was not completed within ${ms} ms`));
+    }, ms);
+  });
 }
 
 beforeAll(async () => {
@@ -71,6 +116,19 @@ beforeAll(async () => {
   http = request(app.getHttpServer());
   prisma = app.get(PrismaService);
   storage = app.get(StorageService);
+  events = app.get(EventBus);
+  const pdfQueue = app.get(QueueService).queue('pdf');
+  pdfQueueEvents = new QueueEvents('pdf', { connection: pdfQueue.opts.connection, prefix: pdfQueue.opts.prefix });
+  pdfQueueEvents.on('completed', ({ jobId }) => {
+    completedPdfJobIds.add(jobId);
+    for (const resolve of completedPdfJobs.get(jobId) ?? []) resolve();
+  });
+  await pdfQueueEvents.waitUntilReady();
+  events.on('pdf.generated', (event) => {
+    if (event.payload.kind !== 'certificate') return;
+    generatedPdfKeys.set(event.payload.id, event.payload.fileKey);
+    for (const resolve of generatedPdfWaiters.get(event.payload.id) ?? []) resolve(event.payload.fileKey);
+  });
 
   const uAlice = await register(1);
   alice = uAlice.token;
@@ -115,6 +173,7 @@ afterAll(async () => {
   await prisma.businessEntity.deleteMany({ where: { id: entityId } });
   await prisma.auditLog.deleteMany({ where: { actor: users } });
   await prisma.user.deleteMany({ where: users });
+  await pdfQueueEvents.close();
   await app.close();
 });
 
@@ -146,13 +205,17 @@ describe('Certificate PDF template + generation (M7.3)', () => {
     verId = res.body.verificationId;
     expect(certId).toBeDefined();
 
-    pdfKey = await waitForPdf(certId);
+    // A row can get its key just before BullMQ completes and removes the active job ID; await the completion event
+    // so the later regeneration request cannot be swallowed as a duplicate of this still-active job.
+    const jobCompletion = waitForPdfJobCompletion(certId);
+    pdfKey = await waitForGeneratedPdf(certId);
+    await jobCompletion;
     expect(pdfKey).toBeDefined();
     writtenKeys.push(pdfKey);
 
     const bytes = await stored(pdfKey);
     expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
-  });
+  }, 150_000);
 
   it('the customer owner gets a signed download link and streams the PDF', async () => {
     const link = (await http.post(`/api/certificates/${certId}/link`).set(as(alice)).expect(200)).body;
@@ -243,13 +306,18 @@ describe('Certificate PDF template + generation (M7.3)', () => {
   });
 
   it('regenerate PDF from template re-renders and re-attaches official PDF', async () => {
+    generatedPdfKeys.delete(certId);
+    completedPdfJobIds.delete(`certificate-${certId}`);
+    const jobCompletion = waitForPdfJobCompletion(certId);
     await http.post(`/api/admin/certificates/${certId}/pdf/regenerate`).set(as(admin)).expect(201);
-    const newPdfKey = await waitForPdf(certId);
+    const newPdfKey = await waitForGeneratedPdf(certId);
+    await jobCompletion;
     writtenKeys.push(newPdfKey);
+    expect(newPdfKey).not.toBe(pdfKey);
 
     const bytes = await stored(newPdfKey);
     expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
     // Ensure it is not the custom uploaded string
     expect(bytes.toString().includes('Custom Uploaded Certificate Content')).toBe(false);
-  });
+  }, 150_000);
 });
