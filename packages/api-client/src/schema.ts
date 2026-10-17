@@ -2388,6 +2388,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/consultants/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantsController_ownProfile"];
+        put: operations["ConsultantsController_updateOwnProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/consultants": {
         parameters: {
             query?: never;
@@ -2478,6 +2494,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["AdminConsultantsController_suspend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/consultants/{id}/fee-requests/{requestId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminConsultantsController_approveFeeChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/consultants/{id}/fee-requests/{requestId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminConsultantsController_rejectFeeChange"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6222,6 +6270,19 @@ export interface components {
                 /** Format: date-time */
                 createdAt: string;
             }[];
+            feeChangeRequests: {
+                /** Format: uuid */
+                id: string;
+                requestedFee: number;
+                /** @enum {string} */
+                status: "PENDING" | "APPROVED" | "REJECTED";
+                decisionReason: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                decidedAt: string | null;
+                decidedBy: string | null;
+            }[];
         };
         AdminConsultantActionResponse: {
             /** Format: uuid */
@@ -6229,11 +6290,53 @@ export interface components {
             /** @enum {string} */
             verificationStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
         };
+        ConsultantFeeChangeAction: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            consultantId: string;
+            requestedFee: number;
+            /** @enum {string} */
+            status: "APPROVED" | "REJECTED";
+            decisionReason: string | null;
+        };
         ConsultantApplicationResponse: {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
             verificationStatus: "PENDING";
+        };
+        ConsultantOwnProfile: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            /** @enum {string} */
+            category: "CA" | "CS" | "LAWYER" | "TAX_CONSULTANT" | "TRADEMARK_CONSULTANT" | "ISO_CONSULTANT" | "BUSINESS_CONSULTANT" | "TECHNOLOGY_CONSULTANT";
+            qualification: string;
+            membershipNo: string | null;
+            experienceYears: number;
+            expertise: string[];
+            languages: string[];
+            city: string;
+            state: string;
+            area: string | null;
+            bio: string | null;
+            feePerSession: number;
+            consultationTypes: ("AUDIO" | "VIDEO" | "CHAT" | "MEETING")[];
+            pendingFeeRequest: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                consultantId: string;
+                requestedFee: number;
+                /** @enum {string} */
+                status: "PENDING" | "APPROVED" | "REJECTED";
+                decisionReason: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                decidedAt: string | null;
+            } | null;
         };
         PublicConsultantDirectory: {
             items: {
@@ -12012,6 +12115,63 @@ export interface operations {
             };
         };
     };
+    ConsultantsController_ownProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantOwnProfile"];
+                };
+            };
+        };
+    };
+    ConsultantsController_updateOwnProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    category: "CA" | "CS" | "LAWYER" | "TAX_CONSULTANT" | "TRADEMARK_CONSULTANT" | "ISO_CONSULTANT" | "BUSINESS_CONSULTANT" | "TECHNOLOGY_CONSULTANT";
+                    qualification: string;
+                    membershipNo?: string | null;
+                    experienceYears: number;
+                    expertise: string[];
+                    languages: string[];
+                    city: string;
+                    state: string;
+                    area?: string | null;
+                    bio?: string | null;
+                    /** @description Consultation fee in paise */
+                    feePerSession: number;
+                    consultationTypes: ("AUDIO" | "VIDEO" | "CHAT" | "MEETING")[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantOwnProfile"];
+                };
+            };
+        };
+    };
     AdminConsultantsController_list: {
         parameters: {
             query?: {
@@ -12161,6 +12321,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminConsultantActionResponse"];
+                };
+            };
+        };
+    };
+    AdminConsultantsController_approveFeeChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantFeeChangeAction"];
+                };
+            };
+        };
+    };
+    AdminConsultantsController_rejectFeeChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantFeeChangeAction"];
                 };
             };
         };

@@ -109,6 +109,12 @@ enum VerificationStatus {
   SUSPENDED
 }
 
+enum ConsultantFeeChangeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum ConsultationType {
   AUDIO
   VIDEO
@@ -218,6 +224,7 @@ model User {
   orders            Order[]
   assignedApps      Application[]     @relation("AssignedApplications")
   consultant        Consultant?
+  consultantFeeDecisions ConsultantFeeChangeRequest[] @relation("ConsultantFeeDecisionActor")
   notifications     Notification[]
   tickets           Ticket[]          @relation("TicketCustomer")
   assignedTickets   Ticket[]          @relation("TicketAssignee")
@@ -888,6 +895,7 @@ model Consultant {
   bookings           Booking[]
   reviews            Review[]
   documents          ConsultantDocument[]
+  feeChangeRequests  ConsultantFeeChangeRequest[]
 
   @@index([category, city, rating])
   @@index([state, city, area])
@@ -898,6 +906,21 @@ model Consultant {
   @@index([feePerSession])
   @@index([languages], type: Gin)
   @@index([consultationTypes], type: Gin)
+}
+
+model ConsultantFeeChangeRequest {
+  id             String                    @id @default(uuid())
+  consultantId   String
+  requestedFee   Int // paise
+  status         ConsultantFeeChangeStatus @default(PENDING)
+  decisionReason String?
+  createdAt      DateTime                  @default(now())
+  decidedAt      DateTime?
+  decidedById    String?
+  consultant     Consultant                @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  decidedBy      User?                     @relation("ConsultantFeeDecisionActor", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([consultantId, status, createdAt])
 }
 
 model ConsultantService {

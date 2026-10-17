@@ -29,11 +29,11 @@ describe('visibleNav', () => {
     expect(slugs(SUPPORT)).toEqual(['', 'customers', 'support', 'leads', 'payments']);
   });
 
-  it('shows a consultant the dashboard and their assigned applications', () => {
-    expect(slugs(CONSULTANT)).toEqual(['', 'applications']);
+  it('shows consultants only their profile and availability portal', () => {
+    expect(visibleNav(CONSULTANT, NAV, ['CONSULTANT']).flatMap((g) => g.items.map((i) => i.slug))).toEqual(['consultant/profile', 'consultant/availability']);
   });
 
-  it('drops groups that end up empty', () => {
+  it('drops groups that end up empty for regular permission filtered navigation', () => {
     expect(visibleNav(CONSULTANT).map((g) => g.label)).toEqual(['Overview', 'Work']);
   });
 

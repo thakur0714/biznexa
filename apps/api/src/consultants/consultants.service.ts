@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
   addDays,
@@ -10,6 +10,9 @@ import {
   adminConsultantListSchema,
   adminConsultantSummarySchema,
   consultantApplicationResponseSchema,
+  consultantOwnProfileSchema,
+  consultantFeeChangeRequestSchema,
+  consultantFeeChangeActionResponseSchema,
   publicConsultantDirectorySchema,
   publicConsultantProfileSchema,
   type AdminConsultantDetail,
@@ -19,6 +22,8 @@ import {
   type ConsultantApplicationInput,
   type ConsultantApplicationResponse,
   type ConsultantRejectInput,
+  type ConsultantOwnProfile,
+  type ConsultantFeeChangeDecision,
   type PublicConsultantDirectory,
   type PublicConsultantDirectoryQuery,
   type PublicConsultantProfile,
@@ -134,6 +139,7 @@ export class ConsultantsService {
       include: {
         user: { select: { name: true, email: true } },
         documents: { include: { file: { select: { originalName: true, mimeType: true, scanStatus: true } } }, orderBy: { kind: 'asc' } },
+        feeChangeRequests: { include: { decidedBy: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
       },
     });
     if (!consultant) throw new NotFoundException('Consultant not found');
@@ -143,6 +149,15 @@ export class ConsultantsService {
       updatedAt: consultant.updatedAt.toISOString(),
       name: consultant.user.name,
       email: consultant.user.email,
+      feeChangeRequests: consultant.feeChangeRequests.map((request) => ({
+        id: request.id,
+        requestedFee: request.requestedFee,
+        status: request.status,
+        decisionReason: request.decisionReason,
+        createdAt: request.createdAt.toISOString(),
+        decidedAt: request.decidedAt?.toISOString() ?? null,
+        decidedBy: request.decidedBy?.name ?? null,
+      })),
       documents: consultant.documents.map(({ file, ...document }) => ({
         ...document,
         createdAt: document.createdAt.toISOString(),
@@ -157,6 +172,11 @@ export class ConsultantsService {
     const before = await this.prisma.consultant.findUnique({ where: { id } });
     if (!before) throw new NotFoundException('Consultant not found');
     const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Consultant" WHERE id = ${id} FOR UPDATE`;
+      const current = await tx.consultant.findUniqueOrThrow({ where: { id }, select: { feePerSession: true } });
+      if (input.feePerSession !== current.feePerSession && await tx.consultantFeeChangeRequest.findFirst({ where: { consultantId: id, status: 'PENDING' }, select: { id: true } })) {
+        throw new ConflictException('Decide the pending fee change request before editing the consultant fee.');
+      }
       const consultant = await tx.consultant.update({
         where: { id },
         data: {
@@ -186,6 +206,92 @@ export class ConsultantsService {
       return consultant;
     });
     return this.getAdmin(updated.id);
+  }
+
+  async getOwnProfile(userId: string): Promise<ConsultantOwnProfile> {
+    const consultant = await this.prisma.consultant.findFirst({
+      where: { userId, verificationStatus: 'APPROVED' },
+      select: {
+        id: true, slug: true, category: true, qualification: true, membershipNo: true, experienceYears: true,
+        expertise: true, languages: true, city: true, state: true, area: true, bio: true, feePerSession: true,
+        consultationTypes: true,
+        feeChangeRequests: { where: { status: 'PENDING' }, orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+    if (!consultant) throw new ForbiddenException('Only an approved consultant can edit their profile');
+    const pending = consultant.feeChangeRequests[0];
+    return consultantOwnProfileSchema.parse({
+      ...consultant,
+      pendingFeeRequest: pending ? consultantFeeChangeRequestSchema.parse({
+        ...pending, createdAt: pending.createdAt.toISOString(), decidedAt: pending.decidedAt?.toISOString() ?? null,
+      }) : null,
+    });
+  }
+
+  async updateOwnProfile(userId: string, input: AdminConsultantProfileInput): Promise<ConsultantOwnProfile> {
+    await this.prisma.$transaction(async (tx) => {
+      const before = await tx.consultant.findFirst({ where: { userId, verificationStatus: 'APPROVED' } });
+      if (!before) throw new ForbiddenException('Only an approved consultant can edit their profile');
+      await tx.$queryRaw`SELECT id FROM "Consultant" WHERE id = ${before.id} FOR UPDATE`;
+      const pending = await tx.consultantFeeChangeRequest.findFirst({ where: { consultantId: before.id, status: 'PENDING' }, select: { id: true } });
+      if (pending && input.feePerSession !== before.feePerSession) {
+        throw new ConflictException('Your fee change is awaiting admin review. You can still save other profile changes.');
+      }
+      const updated = await tx.consultant.update({
+        where: { id: before.id },
+        data: {
+          category: input.category, qualification: input.qualification, membershipNo: input.membershipNo || null,
+          experienceYears: input.experienceYears, expertise: input.expertise, languages: input.languages,
+          city: input.city, state: input.state, area: input.area || null, bio: input.bio || null,
+          consultationTypes: input.consultationTypes,
+        },
+        select: {
+          id: true, category: true, qualification: true, membershipNo: true, experienceYears: true, expertise: true,
+          languages: true, city: true, state: true, area: true, bio: true, feePerSession: true, consultationTypes: true,
+        },
+      });
+      await this.audit.log({
+        actorId: userId, action: 'consultant.profile.self_update', entityType: 'Consultant', entityId: before.id,
+        before: this.profileAuditShape(before), after: { ...updated, feePerSession: before.feePerSession },
+      }, tx);
+      if (input.feePerSession !== before.feePerSession) {
+        const request = await tx.consultantFeeChangeRequest.create({
+          data: { consultantId: before.id, requestedFee: input.feePerSession },
+          select: { id: true, requestedFee: true, status: true },
+        });
+        await this.audit.log({
+          actorId: userId, action: 'consultant.fee_change.request', entityType: 'ConsultantFeeChangeRequest', entityId: request.id,
+          before: { feePerSession: before.feePerSession }, after: { requestedFee: request.requestedFee, status: request.status },
+        }, tx);
+      }
+    });
+    return this.getOwnProfile(userId);
+  }
+
+  async decideFeeChange(consultantId: string, requestId: string, decision: 'APPROVED' | 'REJECTED', input: ConsultantFeeChangeDecision | null, staffId: string) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Consultant" WHERE id = ${consultantId} FOR UPDATE`;
+      const request = await tx.consultantFeeChangeRequest.findFirst({ where: { id: requestId, consultantId }, select: { id: true, requestedFee: true, status: true, decisionReason: true } });
+      if (!request) throw new NotFoundException('Fee change request not found');
+      if (request.status !== 'PENDING') throw new ConflictException('This fee change request has already been decided.');
+      const consultant = await tx.consultant.findUniqueOrThrow({ where: { id: consultantId }, select: { feePerSession: true } });
+      const reason = decision === 'REJECTED' ? input?.reason ?? null : null;
+      const update = await tx.consultantFeeChangeRequest.updateMany({
+        where: { id: requestId, consultantId, status: 'PENDING' },
+        data: { status: decision, decisionReason: reason, decidedAt: new Date(), decidedById: staffId },
+      });
+      if (update.count !== 1) throw new ConflictException('This fee change request was decided while you were reviewing it. Reload and try again.');
+      if (decision === 'APPROVED') await tx.consultant.update({ where: { id: consultantId }, data: { feePerSession: request.requestedFee } });
+      await this.audit.log({
+        actorId: staffId,
+        action: `consultant.fee_change.${decision.toLowerCase()}`,
+        entityType: 'ConsultantFeeChangeRequest', entityId: requestId,
+        before: { status: request.status, currentFee: consultant.feePerSession, requestedFee: request.requestedFee },
+        after: { status: decision, currentFee: decision === 'APPROVED' ? request.requestedFee : consultant.feePerSession, requestedFee: request.requestedFee, reason },
+      }, tx);
+      return { id: request.id, consultantId, requestedFee: request.requestedFee, status: decision, decisionReason: reason };
+    });
+    return consultantFeeChangeActionResponseSchema.parse(result);
   }
 
   async approve(id: string, staffId: string) {

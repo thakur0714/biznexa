@@ -25,6 +25,8 @@ const as = (token: string) => ({ authorization: `Bearer ${token}` });
 let consultant: { token: string; id: string; slug: string };
 let other: { token: string; id: string };
 let customer: { token: string; id: string };
+let admin: { token: string };
+let operations: { token: string };
 
 /** A portal session for a CONSULTANT-role user with a consultant profile in `status`. */
 async function consultantSession(label: string, status: 'APPROVED' | 'PENDING' | 'SUSPENDED') {
@@ -58,6 +60,10 @@ beforeAll(async () => {
   prisma = app.get(PrismaService);
   consultant = await consultantSession('main', 'APPROVED');
   other = await consultantSession('other', 'APPROVED');
+  const adminSession = await staffSession(http, prisma, 'ADMIN', `${emailPrefix}-admin@example.com`);
+  admin = { token: adminSession.accessToken };
+  const operationsSession = await staffSession(http, prisma, 'OPERATIONS', `${emailPrefix}-operations@example.com`);
+  operations = { token: operationsSession.accessToken };
   const reg = await http
     .post('/api/auth/register')
     .send({ name: 'Avail Customer', mobile: `7${Date.now().toString().slice(-9)}`, email: `${emailPrefix}-customer@example.com`, password: 'secret123', consent: true })
@@ -127,6 +133,48 @@ describe('consultant availability (M8.6)', () => {
     expect(after.exceptions).toEqual([]);
     const actions = (await prisma.auditLog.findMany({ where: { entityId: id }, select: { action: true } })).map((a) => a.action).sort();
     expect(actions).toEqual(['consultant.availability_exception.create', 'consultant.availability_exception.delete']);
+  });
+});
+
+describe('consultant portal profile and fee approval (M8.7)', () => {
+  const profileUrl = '/api/consultants/me/profile';
+
+  it('lets an approved consultant edit their own profile and queues fee changes for admin review', async () => {
+    await http.get(profileUrl).expect(401);
+    await http.get(profileUrl).set(as(customer.token)).expect(403);
+    await http.get(profileUrl).set(as(operations.token)).expect(403);
+    const pending = await consultantSession('profile-pending', 'PENDING');
+    await http.get(profileUrl).set(as(pending.token)).expect(403);
+
+    const current = (await http.get(profileUrl).set(as(consultant.token)).expect(200)).body;
+    expect(current).toMatchObject({ id: consultant.id, feePerSession: 50_000, pendingFeeRequest: null });
+    const updated = (await http.put(profileUrl).set(as(consultant.token)).send({
+      category: current.category, qualification: current.qualification, membershipNo: current.membershipNo,
+      experienceYears: current.experienceYears, expertise: ['GST', 'Audit'], languages: current.languages,
+      city: 'Mumbai', state: current.state, area: current.area, bio: 'Updated bio',
+      feePerSession: 75_000, consultationTypes: current.consultationTypes,
+    }).expect(200)).body;
+    expect(updated).toMatchObject({ city: 'Mumbai', expertise: ['GST', 'Audit'], feePerSession: 50_000, pendingFeeRequest: { requestedFee: 75_000, status: 'PENDING' } });
+
+    const requestId = updated.pendingFeeRequest.id as string;
+    const adminBase = `/api/admin/consultants/${consultant.id}/fee-requests/${requestId}`;
+    await http.post(`${adminBase}/approve`).set(as(consultant.token)).expect(403);
+    await http.post(`${adminBase}/approve`).set(as(operations.token)).expect(403);
+    await http.post(`${adminBase}/approve`).set(as(admin.token)).expect(201).expect(({ body }) => expect(body).toMatchObject({ status: 'APPROVED', requestedFee: 75_000 }));
+    expect((await http.get(profileUrl).set(as(consultant.token)).expect(200)).body).toMatchObject({ feePerSession: 75_000, pendingFeeRequest: null });
+
+    const second = await http.put(profileUrl).set(as(consultant.token)).send({
+      category: current.category, qualification: current.qualification, membershipNo: current.membershipNo,
+      experienceYears: current.experienceYears, expertise: current.expertise, languages: current.languages,
+      city: 'Mumbai', state: current.state, area: current.area, bio: current.bio,
+      feePerSession: 90_000, consultationTypes: current.consultationTypes,
+    }).expect(200);
+    const rejectBase = `/api/admin/consultants/${consultant.id}/fee-requests/${second.body.pendingFeeRequest.id}`;
+    await http.post(`${rejectBase}/reject`).set(as(admin.token)).send({ reason: 'Outside current fee policy' }).expect(201).expect(({ body }) => expect(body).toMatchObject({ status: 'REJECTED', decisionReason: 'Outside current fee policy' }));
+    expect((await http.get(profileUrl).set(as(consultant.token)).expect(200)).body).toMatchObject({ feePerSession: 75_000, pendingFeeRequest: null });
+    const detail = (await http.get(`/api/admin/consultants/${consultant.id}`).set(as(admin.token)).expect(200)).body;
+    expect(detail.feeChangeRequests.map((request: { status: string }) => request.status)).toEqual(['REJECTED', 'APPROVED']);
+    await prisma.consultant.update({ where: { id: consultant.id }, data: { feePerSession: 50_000 } });
   });
 });
 
