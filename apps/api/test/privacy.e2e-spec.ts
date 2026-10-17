@@ -312,14 +312,14 @@ describe('staff queue and deletion', () => {
       data: {
         number: code('PRV/'), financialYear: '2026-27', sequence: 1, issuedAt: new Date(), orderId: order.id, paymentId: payment.id, customerId: bobId,
         seller: { name: 'BizNexa' }, buyerName: 'Privacy 2', buyer: { name: 'Privacy 2', email: `e2e-priv-${run}-2@example.com` }, taxType: 'CGST_SGST', lines: [], taxableValue: 100000, cgst: 9000, sgst: 9000, total: 118000, amountInWords: 'One lakh eighteen thousand rupees',
-        // Already has a PDF, so another suite's start-up PDF queue does not render one mid-test and change the row.
+        // Already has a PDF (like the certificate below), so another suite's PDF queue does not render one mid-test and change the row.
         pdfKey: `e2e/privacy-${run}/invoice.pdf`,
       },
     });
     const business = await prisma.businessEntity.create({ data: { ownerId: bobId, legalName: `Bob Proprietor ${run}`, entityType: 'PROPRIETORSHIP', gstin: '03ABCDE1234F1Z5' } });
     const body = await prisma.certificationBody.create({ data: { name: `e2e-priv-${run}` } });
     const certificate = await prisma.certificate.create({
-      data: { certificateNumber: code('CERT-P'), verificationId: code('VP'), type: 'ISO 9001:2015', organizationName: `Bob Proprietor ${run}`, issueDate: new Date(), validFrom: new Date(), validUntil: new Date(Date.now() + 365 * 86_400_000), certificationBodyId: body.id, businessEntityId: business.id },
+      data: { certificateNumber: code('CERT-P'), verificationId: code('VP'), type: 'ISO 9001:2015', organizationName: `Bob Proprietor ${run}`, issueDate: new Date(), validFrom: new Date(), validUntil: new Date(Date.now() + 365 * 86_400_000), certificationBodyId: body.id, businessEntityId: business.id, pdfKey: `e2e/privacy-${run}/certificate.pdf` },
     });
     kept = { invoice, payment, certificate };
 
