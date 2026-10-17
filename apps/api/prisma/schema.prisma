@@ -163,6 +163,14 @@ enum NotificationStatus {
   FAILED
 }
 
+enum NotificationDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  SKIPPED
+}
+
 enum TicketStatus {
   OPEN
   IN_PROGRESS
@@ -219,6 +227,7 @@ model User {
   assignedApps      Application[]     @relation("AssignedApplications")
   consultant        Consultant?
   notifications     Notification[]
+  notificationDeliveries NotificationDelivery[]
   tickets           Ticket[]          @relation("TicketCustomer")
   assignedTickets   Ticket[]          @relation("TicketAssignee")
   bookings          Booking[]
@@ -1063,8 +1072,43 @@ model NotificationTemplate {
   dltTemplateId String?
   isActive  Boolean             @default(true)
   updatedAt DateTime            @updatedAt
+  deliveries NotificationDelivery[]
 
   @@unique([event, channel])
+}
+
+/// One notification to one user on one channel (M6.3, D59): the queue job's state and the delivery log.
+/// `idempotencyKey` = event + source + user + channel, so the same event emitted twice sends once.
+model NotificationDelivery {
+  id                String                     @id @default(uuid())
+  idempotencyKey    String                     @unique
+  userId            String
+  event             String
+  /// What the event was about (payment id, document id…); part of the idempotency key.
+  sourceKey         String
+  channel           NotificationChannel
+  category          String                     @default("TRANSACTIONAL")
+  templateId        String?
+  status            NotificationDeliveryStatus @default(QUEUED)
+  attempts          Int                        @default(0)
+  /// Short reason of the last failure, emails and numbers masked.
+  lastError         String?
+  providerMessageId String?
+  /// What the job sends: title, body, link and template variables. Not returned by the admin API.
+  content           Json
+  sendAt            DateTime?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  failedAt          DateTime?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  user              User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template          NotificationTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([event, createdAt])
+  @@index([channel, providerMessageId])
 }
 
 model Notification {

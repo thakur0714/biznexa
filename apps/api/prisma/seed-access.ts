@@ -29,6 +29,7 @@ export const PERMISSIONS: Record<string, string> = {
   'settings.manage': 'Change platform settings, roles and staff',
   'audit.view': 'View the audit log',
   'leads.view': 'View enquiries from the website',
+  'notifications.view': 'View the notification delivery log and retry failed deliveries',
 };
 
 export const ROLES: RoleDefinition[] = [

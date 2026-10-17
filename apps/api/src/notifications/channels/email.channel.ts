@@ -5,6 +5,7 @@ import { EmailProvider } from '../providers/email.provider';
 import { TemplateEngineService, TemplateNotFoundError } from '../template-engine.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { env } from '../../config/env';
+import { isPermanentFailure } from '../delivery/delivery-policy';
 
 @Injectable()
 export class EmailChannel implements NotificationChannel {
@@ -35,6 +36,7 @@ export class EmailChannel implements NotificationChannel {
           success: false,
           channel: this.channel,
           error: 'Recipient email address not found',
+          permanent: true,
         };
       }
 
@@ -96,6 +98,7 @@ export class EmailChannel implements NotificationChannel {
         success: false,
         channel: this.channel,
         error: errorMsg,
+        permanent: isPermanentFailure(err),
       };
     }
   }

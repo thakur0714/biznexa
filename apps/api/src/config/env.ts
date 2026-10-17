@@ -29,6 +29,8 @@ const baseSchema = z
     SMS_PROVIDER: z.enum(['console', 'msg91']).default('console'),
     MSG91_AUTH_KEY: z.string().optional().default(''),
     MSG91_OTP_TEMPLATE_ID: z.string().optional().default(''),
+    /** Token in the MSG91 delivery report URL (M6.3). Empty = reports switched off; SMS stays SENT. */
+    MSG91_WEBHOOK_TOKEN: z.string().optional().default(''),
     /** `console` = in-memory (nothing sent), `smtp` = Mailpit in dev (docker compose), `sendgrid` in production. */
     EMAIL_PROVIDER: z.enum(['console', 'sendgrid', 'smtp']).default('console'),
     EMAIL_FROM: z.string().default('BizNexa <no-reply@biznexa.com>'),
@@ -38,6 +40,8 @@ const baseSchema = z
     SMTP_PASS: z.string().optional().default(''),
     SMTP_SECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
     SENDGRID_API_KEY: z.string().optional().default(''),
+    /** SendGrid Event Webhook verification key (M6.3). Empty = delivery events switched off; email stays SENT. */
+    SENDGRID_WEBHOOK_PUBLIC_KEY: z.string().optional().default(''),
     FCM_PROVIDER: z.enum(['fake', 'firebase']).default('fake'),
     FIREBASE_PROJECT_ID: z.string().optional().default(''),
     FIREBASE_SERVICE_ACCOUNT_KEY: z.string().optional().default(''),
