@@ -9551,13 +9551,17 @@
                 "properties": {
                   "body": {
                     "type": "string",
-                    "minLength": 1,
                     "maxLength": 4000
+                  },
+                  "fileIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 5
                   }
                 },
-                "required": [
-                  "body"
-                ],
                 "additionalProperties": false
               }
             }
@@ -9732,13 +9736,17 @@
                 "properties": {
                   "body": {
                     "type": "string",
-                    "minLength": 1,
                     "maxLength": 4000
+                  },
+                  "fileIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 5
                   }
                 },
-                "required": [
-                  "body"
-                ],
                 "additionalProperties": false
               }
             }
@@ -27542,7 +27550,8 @@
                   "format": "uuid"
                 },
                 "body": {
-                  "type": "string"
+                  "type": "string",
+                  "nullable": true
                 },
                 "sender": {
                   "type": "object",
@@ -27564,6 +27573,35 @@
                     "isStaff"
                   ],
                   "additionalProperties": false
+                },
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "fileName": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "sizeBytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "fileName",
+                      "mimeType",
+                      "sizeBytes"
+                    ],
+                    "additionalProperties": false
+                  }
                 },
                 "createdAt": {
                   "type": "string",
@@ -27614,7 +27652,8 @@
             "format": "uuid"
           },
           "body": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "sender": {
             "type": "object",
@@ -27636,6 +27675,35 @@
               "isStaff"
             ],
             "additionalProperties": false
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "fileName": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "id",
+                "fileName",
+                "mimeType",
+                "sizeBytes"
+              ],
+              "additionalProperties": false
+            }
           },
           "createdAt": {
             "type": "string",
@@ -29842,7 +29910,8 @@
                       "format": "uuid"
                     },
                     "body": {
-                      "type": "string"
+                      "type": "string",
+                      "nullable": true
                     },
                     "sender": {
                       "type": "object",
@@ -29864,6 +29933,35 @@
                         "isStaff"
                       ],
                       "additionalProperties": false
+                    },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mimeType": {
+                            "type": "string"
+                          },
+                          "sizeBytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fileName",
+                          "mimeType",
+                          "sizeBytes"
+                        ],
+                        "additionalProperties": false
+                      }
                     },
                     "createdAt": {
                       "type": "string",
@@ -29916,7 +30014,8 @@
                   "format": "uuid"
                 },
                 "body": {
-                  "type": "string"
+                  "type": "string",
+                  "nullable": true
                 },
                 "sender": {
                   "type": "object",
@@ -29938,6 +30037,35 @@
                     "isStaff"
                   ],
                   "additionalProperties": false
+                },
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "fileName": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "sizeBytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "fileName",
+                      "mimeType",
+                      "sizeBytes"
+                    ],
+                    "additionalProperties": false
+                  }
                 },
                 "createdAt": {
                   "type": "string",
@@ -30450,7 +30578,8 @@
                       "format": "uuid"
                     },
                     "body": {
-                      "type": "string"
+                      "type": "string",
+                      "nullable": true
                     },
                     "sender": {
                       "type": "object",
@@ -30472,6 +30601,35 @@
                         "isStaff"
                       ],
                       "additionalProperties": false
+                    },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mimeType": {
+                            "type": "string"
+                          },
+                          "sizeBytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fileName",
+                          "mimeType",
+                          "sizeBytes"
+                        ],
+                        "additionalProperties": false
+                      }
                     },
                     "createdAt": {
                       "type": "string",
@@ -30524,7 +30682,8 @@
                   "format": "uuid"
                 },
                 "body": {
-                  "type": "string"
+                  "type": "string",
+                  "nullable": true
                 },
                 "sender": {
                   "type": "object",
@@ -30546,6 +30705,35 @@
                     "isStaff"
                   ],
                   "additionalProperties": false
+                },
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "fileName": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "sizeBytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "fileName",
+                      "mimeType",
+                      "sizeBytes"
+                    ],
+                    "additionalProperties": false
+                  }
                 },
                 "createdAt": {
                   "type": "string",
