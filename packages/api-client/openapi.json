@@ -13098,6 +13098,286 @@
           "public · consultants"
         ]
       }
+    },
+    "/api/public/consultants/{slug}/slots": {
+      "get": {
+        "operationId": "PublicConsultantsController_slots",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicConsultantSlots"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad dates, `to` before `from`, or more than 14 days"
+          },
+          "404": {
+            "description": "No approved consultant with this slug"
+          }
+        },
+        "tags": [
+          "public · consultants"
+        ]
+      }
+    },
+    "/api/consultants/me/availability": {
+      "get": {
+        "operationId": "ConsultantAvailabilityController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantAvailability"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not signed in to the portal, or no approved consultant profile"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultant · availability"
+        ]
+      },
+      "put": {
+        "operationId": "ConsultantAvailabilityController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sessionMinutes": {
+                    "type": "integer",
+                    "minimum": 15,
+                    "maximum": 240
+                  },
+                  "bufferMinutes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120
+                  },
+                  "minNoticeMinutes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 20160
+                  },
+                  "weekly": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "weekday": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 6
+                        },
+                        "startTime": {
+                          "type": "string",
+                          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$"
+                        },
+                        "endTime": {
+                          "type": "string",
+                          "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$"
+                        }
+                      },
+                      "required": [
+                        "weekday",
+                        "startTime",
+                        "endTime"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 70
+                  }
+                },
+                "required": [
+                  "sessionMinutes",
+                  "bufferMinutes",
+                  "minNoticeMinutes",
+                  "weekly"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantAvailability"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad times, overlapping windows on one day, or an odd session length"
+          },
+          "403": {
+            "description": "Not signed in to the portal, or no approved consultant profile"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultant · availability"
+        ]
+      }
+    },
+    "/api/consultants/me/availability/exceptions": {
+      "post": {
+        "operationId": "ConsultantAvailabilityController_addException",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "date": {
+                    "type": "string"
+                  },
+                  "isBlocked": {
+                    "type": "boolean"
+                  },
+                  "startTime": {
+                    "type": "string",
+                    "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$"
+                  },
+                  "endTime": {
+                    "type": "string",
+                    "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$"
+                  }
+                },
+                "required": [
+                  "date",
+                  "isBlocked"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantAvailability"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad date or times, or a date in the past"
+          },
+          "403": {
+            "description": "Not signed in to the portal, or no approved consultant profile"
+          },
+          "409": {
+            "description": "The same exception is already saved"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultant · availability"
+        ]
+      }
+    },
+    "/api/consultants/me/availability/exceptions/{id}": {
+      "delete": {
+        "operationId": "ConsultantAvailabilityController_removeException",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantAvailability"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not signed in to the portal, or no approved consultant profile"
+          },
+          "404": {
+            "description": "No such exception among yours"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultant · availability"
+        ]
+      }
     }
   },
   "info": {
@@ -29930,6 +30210,192 @@
           "total",
           "page",
           "limit"
+        ],
+        "additionalProperties": false
+      },
+      "PublicConsultantSlots": {
+        "type": "object",
+        "properties": {
+          "consultant": {
+            "type": "object",
+            "properties": {
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "qualification": {
+                "type": "string"
+              },
+              "feePerSession": {
+                "type": "integer"
+              },
+              "sessionMinutes": {
+                "type": "integer"
+              },
+              "consultationTypes": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "AUDIO",
+                    "VIDEO",
+                    "CHAT",
+                    "MEETING"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "slug",
+              "name",
+              "category",
+              "qualification",
+              "feePerSession",
+              "sessionMinutes",
+              "consultationTypes"
+            ],
+            "additionalProperties": false
+          },
+          "timezone": {
+            "type": "string",
+            "enum": [
+              "Asia/Kolkata"
+            ]
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "startAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "time": {
+                  "type": "string",
+                  "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$"
+                }
+              },
+              "required": [
+                "startAt",
+                "endAt",
+                "date",
+                "time"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "consultant",
+          "timezone",
+          "from",
+          "to",
+          "slots"
+        ],
+        "additionalProperties": false
+      },
+      "ConsultantAvailability": {
+        "type": "object",
+        "properties": {
+          "sessionMinutes": {
+            "type": "integer"
+          },
+          "bufferMinutes": {
+            "type": "integer"
+          },
+          "minNoticeMinutes": {
+            "type": "integer"
+          },
+          "weekly": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "weekday": {
+                  "type": "integer"
+                },
+                "startTime": {
+                  "type": "string",
+                  "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$"
+                },
+                "endTime": {
+                  "type": "string",
+                  "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$"
+                }
+              },
+              "required": [
+                "id",
+                "weekday",
+                "startTime",
+                "endTime"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "exceptions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "startTime": {
+                  "type": "string",
+                  "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$"
+                },
+                "endTime": {
+                  "type": "string",
+                  "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$|^24:00$"
+                },
+                "isBlocked": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "date",
+                "startTime",
+                "endTime",
+                "isBlocked"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "sessionMinutes",
+          "bufferMinutes",
+          "minNoticeMinutes",
+          "weekly",
+          "exceptions"
         ],
         "additionalProperties": false
       }

@@ -2436,6 +2436,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/consultants/{slug}/slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicConsultantsController_slots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantAvailabilityController_get"];
+        put: operations["ConsultantAvailabilityController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/availability/exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConsultantAvailabilityController_addException"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/availability/exceptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["ConsultantAvailabilityController_removeException"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5960,6 +6024,49 @@ export interface components {
             total: number;
             page: number;
             limit: number;
+        };
+        PublicConsultantSlots: {
+            consultant: {
+                slug: string;
+                name: string;
+                category: string;
+                qualification: string;
+                feePerSession: number;
+                sessionMinutes: number;
+                consultationTypes: ("AUDIO" | "VIDEO" | "CHAT" | "MEETING")[];
+            };
+            /** @enum {string} */
+            timezone: "Asia/Kolkata";
+            from: string;
+            to: string;
+            slots: {
+                /** Format: date-time */
+                startAt: string;
+                /** Format: date-time */
+                endAt: string;
+                date: string;
+                time: string;
+            }[];
+        };
+        ConsultantAvailability: {
+            sessionMinutes: number;
+            bufferMinutes: number;
+            minNoticeMinutes: number;
+            weekly: {
+                /** Format: uuid */
+                id: string;
+                weekday: number;
+                startTime: string;
+                endTime: string;
+            }[];
+            exceptions: {
+                /** Format: uuid */
+                id: string;
+                date: string;
+                startTime: string;
+                endTime: string;
+                isBlocked: boolean;
+            }[];
         };
     };
     responses: never;
@@ -11610,6 +11717,200 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PublicConsultantDirectory"];
                 };
+            };
+        };
+    };
+    PublicConsultantsController_slots: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicConsultantSlots"];
+                };
+            };
+            /** @description Bad dates, `to` before `from`, or more than 14 days */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No approved consultant with this slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConsultantAvailabilityController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantAvailability"];
+                };
+            };
+            /** @description Not signed in to the portal, or no approved consultant profile */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConsultantAvailabilityController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    sessionMinutes: number;
+                    bufferMinutes: number;
+                    minNoticeMinutes: number;
+                    weekly: {
+                        weekday: number;
+                        startTime: string;
+                        endTime: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantAvailability"];
+                };
+            };
+            /** @description Bad times, overlapping windows on one day, or an odd session length */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in to the portal, or no approved consultant profile */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConsultantAvailabilityController_addException: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    date: string;
+                    isBlocked: boolean;
+                    startTime?: string;
+                    endTime?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantAvailability"];
+                };
+            };
+            /** @description Bad date or times, or a date in the past */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in to the portal, or no approved consultant profile */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The same exception is already saved */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConsultantAvailabilityController_removeException: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantAvailability"];
+                };
+            };
+            /** @description Not signed in to the portal, or no approved consultant profile */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such exception among yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

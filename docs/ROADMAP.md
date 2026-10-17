@@ -330,7 +330,9 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [ ] **M8.3 — Directory API.** `[Sonnet]` Filters: category, state/city/area, rating, experience, fee range, language, consultation type, available today; sorts; pagination; indexes for filters.
 - [ ] **M8.4 — Directory page `/consultants`.** `[Sonnet]` Cards + filter chips + URL-synced filters, SEO.
 - [ ] **M8.5 — Profile page.** `[Sonnet]` Details, services, rating breakdown, verified reviews, availability calendar, JSON-LD.
-- [ ] **M8.6 — Availability model.** `[Opus]` Weekly recurring slots + date exceptions; slot generation function (IST, duration, buffer) with unit tests incl. DST-free IST edge cases and past times.
+- [x] **M8.6 — Availability model.** `[Opus]` Weekly recurring slots + date exceptions; slot generation function (IST, duration, buffer) with unit tests incl. DST-free IST edge cases and past times.
+  - *Done 17-Oct-2026 (Claude):* `generateSlots` in `packages/types/src/availability.ts` (weekly + exceptions, session + buffer, min notice, busy time; unit tests for IST midnight, window ends, buffer, blocked/extra hours). `AvailabilitySlot.date` is an IST `DATE` with CHECK constraints; `Consultant.bufferMinutes` / `minNoticeMinutes`. Consultant API `/api/consultants/me/availability` (GET/PUT, exceptions POST/DELETE, audited) and public `GET /api/public/consultants/:slug/slots` (≤ 14 days). D57.
+  - *Follow-ups:* the directory's "available today" still checks windows only (no blocked hours or bookings) — switch it to `generateSlots`; availability editor UI is M8.7.
 - [ ] **M8.7 — Consultant portal scaffold** `[Sonnet]` (in `apps/admin`, consultant role): profile edit (fee changes need admin approval), availability editor.
 - [ ] **M8.8 — Booking hold + payment.** `[Opus]` Pick type/date/slot → slot locked for 10 min (no double booking under concurrency — test) → pay via M3.15 → webhook → CONFIRMED.
 - [ ] **M8.9 — Booking confirmation.** `[Sonnet]` Meeting link (consultant-provided or generated), `.ics` file, notifications, reminders 24h and 1h before (queue delayed jobs).

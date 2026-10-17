@@ -848,6 +848,10 @@ model Consultant {
   photoUrl           String?
   feePerSession      Int // paise
   sessionMinutes     Int                @default(30)
+  /// Free minutes after each session before the next slot (M8.6).
+  bufferMinutes      Int                @default(0)
+  /// Slots starting sooner than this are not offered (M8.6).
+  minNoticeMinutes   Int                @default(120)
   consultationTypes  ConsultationType[]
   commissionPercent  Int                @default(20)
   verificationStatus VerificationStatus @default(PENDING)
@@ -897,13 +901,16 @@ model ConsultantDocument {
   @@index([consultantId])
 }
 
+/// A consultant's availability (M8.6, D57): a weekly window (`weekday`, never blocked) or a date exception
+/// (`date`: blocked hours when `isBlocked`, else extra hours that day). A CHECK constraint keeps exactly one of
+/// weekday/date set. Slots are generated from these by `generateSlots` in packages/types.
 model AvailabilitySlot {
   id           String     @id @default(uuid())
   consultantId String
   weekday      Int? // 0=Sun..6=Sat for recurring slots
-  date         DateTime? // for one-off exceptions
+  date         DateTime?  @db.Date // IST calendar date of an exception
   startTime    String // "10:00" IST
-  endTime      String // "13:00" IST
+  endTime      String // "13:00" IST; "24:00" = end of day
   isBlocked    Boolean    @default(false)
   consultant   Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
 
