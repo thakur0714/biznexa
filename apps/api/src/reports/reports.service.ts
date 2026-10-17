@@ -4,7 +4,6 @@ import {
   type ReportDashboardResponse,
   type ReportDateRangeQuery,
   type ReportSalesResponse,
-  formatDate,
   getDaysInISTRange,
   istDay,
   resolveReportDateRange,

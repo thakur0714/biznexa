@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { CustomersReportView } from '../src/app/(portal)/reports/customers/customers-report-view';
+import { CustomersReportView } from '../src/app/(portal)/reports/customers/customers-view';
 
 const mockGet = vi.fn();
 let mockUserPermissions = ['admin.access', 'reports.view'];

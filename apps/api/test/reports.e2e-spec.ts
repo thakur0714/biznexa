@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
@@ -14,7 +15,7 @@ let adminToken: string;
 let opsToken: string;
 let customerToken: string;
 
-const runId = `${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000)}`;
+const runId = `${Date.now().toString().slice(-6)}${randomInt(100, 999)}`;
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
 
 // Track IDs for safe cleanup
@@ -195,7 +196,8 @@ afterAll(async () => {
 describe('Reports API Endpoints (M10)', () => {
   describe('Authorization: reports.view permission enforced on every route', () => {
     it('GET /api/admin/reports/dashboard requires authentication (401)', async () => {
-      await http.get('/api/admin/reports/dashboard').expect(401);
+      const res = await http.get('/api/admin/reports/dashboard');
+      expect(res.status).toBe(401);
     });
 
     it('GET /api/admin/reports/dashboard returns 403 for Customer (missing reports.view)', async () => {

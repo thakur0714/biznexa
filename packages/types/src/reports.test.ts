@@ -82,7 +82,7 @@ describe('Reports Date & IST Boundary Helpers', () => {
         '2026-10-16',
         '2026-10-17',
       ]);
-      expect(days.length).toBe(7);
+      expect(days).toHaveLength(7);
     });
 
     it('this month preset starts on 1st of month', () => {

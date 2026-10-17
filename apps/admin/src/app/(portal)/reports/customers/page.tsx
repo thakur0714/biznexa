@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { CustomersReportView } from './customers-report-view';
+import { CustomersReportView } from './customers-view';
 
 export const metadata: Metadata = { title: 'Customers Report' };
 

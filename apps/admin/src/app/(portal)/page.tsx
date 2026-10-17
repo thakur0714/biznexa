@@ -247,7 +247,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between pb-3 border-b border-rule">
                       <h3 className="font-semibold text-night flex items-center gap-2">
                         <span className="inline-block h-2.5 w-2.5 rounded-full bg-danger" />
-                        SLA Breaches
+                        <span>SLA Breaches</span>
                       </h3>
                       <Badge tone={data.needsAttention.slaBreaches.length > 0 ? 'danger' : 'neutral'}>
                         {data.needsAttention.slaBreaches.length}
@@ -286,7 +286,7 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between pb-3 border-b border-rule">
                       <h3 className="font-semibold text-night flex items-center gap-2">
                         <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber" />
-                        Documents Waiting &gt; 24h
+                        <span>Documents Waiting &gt; 24h</span>
                       </h3>
                       <Badge tone={data.needsAttention.waitingDocuments.length > 0 ? 'warning' : 'neutral'}>
                         {data.needsAttention.waitingDocuments.length}

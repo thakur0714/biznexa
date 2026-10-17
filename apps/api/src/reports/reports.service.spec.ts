@@ -157,15 +157,15 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
       // Exactly payment 1 (100,000 paise)
       expect(res.kpis.revenue).toBe(100000);
       expect(res.kpis.orders).toBe(1);
-      expect(res.series.length).toBe(1);
+      expect(res.series).toHaveLength(1);
       expect(res.series[0]).toEqual({
         date: '2026-10-17',
         revenue: 100000,
         orders: 1,
       });
-      expect(res.needsAttention.slaBreaches.length).toBe(1);
+      expect(res.needsAttention.slaBreaches).toHaveLength(1);
       expect(res.needsAttention.slaBreaches[0].customerName).toBe('Alice Smith');
-      expect(res.needsAttention.waitingDocuments.length).toBe(1);
+      expect(res.needsAttention.waitingDocuments).toHaveLength(1);
     });
 
     it('Day 18 range includes payment at 00:01 IST (with refund reduction) and excludes Day 17 payment', async () => {
@@ -177,7 +177,7 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
       // Payment 2 (200,000 - 50,000 refund = 150,000 paise)
       expect(res.kpis.revenue).toBe(150000);
       expect(res.kpis.orders).toBe(1);
-      expect(res.series.length).toBe(1);
+      expect(res.series).toHaveLength(1);
       expect(res.series[0]).toEqual({
         date: '2026-10-18',
         revenue: 150000,
@@ -213,7 +213,7 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
       expect(res.total.refundTotal).toBe(50000);
 
       // Monthly
-      expect(res.monthly.length).toBe(1);
+      expect(res.monthly).toHaveLength(1);
       expect(res.monthly[0]).toEqual({
         month: '2026-10',
         label: 'Oct 2026',
@@ -222,7 +222,7 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
       });
 
       // Service-wise
-      expect(res.serviceWise.length).toBe(2);
+      expect(res.serviceWise).toHaveLength(2);
       const svc1 = res.serviceWise.find((s) => s.serviceId === 'svc-1');
       expect(svc1).toEqual({
         serviceId: 'svc-1',
@@ -233,7 +233,7 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
       });
 
       // Category-wise
-      expect(res.categoryWise.length).toBe(2);
+      expect(res.categoryWise).toHaveLength(2);
       const cat1 = res.categoryWise.find((c) => c.categoryId === 'cat-1');
       expect(cat1).toEqual({
         categoryId: 'cat-1',

@@ -74,7 +74,7 @@ export function SalesReportView() {
     );
   }
 
-  const isEmpty = data && data.total.orders === 0 && data.total.revenue === 0;
+  const isEmpty = data?.total.orders === 0 && data.total.revenue === 0;
 
   return (
     <div className="max-w-[1020px] space-y-8">
