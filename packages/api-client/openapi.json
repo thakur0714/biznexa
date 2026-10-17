@@ -12379,6 +12379,207 @@
         ]
       }
     },
+    "/api/admin/reports/dashboard": {
+      "get": {
+        "operationId": "ReportsController_getDashboard",
+        "parameters": [
+          {
+            "name": "preset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportDashboard"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · reports"
+        ]
+      }
+    },
+    "/api/admin/reports/sales": {
+      "get": {
+        "operationId": "ReportsController_getSales",
+        "parameters": [
+          {
+            "name": "preset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportSales"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · reports"
+        ]
+      }
+    },
+    "/api/admin/reports/customers": {
+      "get": {
+        "operationId": "ReportsController_getCustomers",
+        "parameters": [
+          {
+            "name": "preset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportCustomers"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · reports"
+        ]
+      }
+    },
     "/api/consultants": {
       "post": {
         "operationId": "ConsultantsController_apply",
@@ -29468,6 +29669,398 @@
           "updatedAt",
           "thread",
           "messages"
+        ],
+        "additionalProperties": false
+      },
+      "ReportDashboard": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "preset": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "kpis": {
+            "type": "object",
+            "properties": {
+              "revenue": {
+                "type": "number"
+              },
+              "orders": {
+                "type": "number"
+              },
+              "newCustomers": {
+                "type": "number"
+              },
+              "activeApplications": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "revenue",
+              "orders",
+              "newCustomers",
+              "activeApplications"
+            ],
+            "additionalProperties": false
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "revenue": {
+                  "type": "number"
+                },
+                "orders": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "date",
+                "revenue",
+                "orders"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "needsAttention": {
+            "type": "object",
+            "properties": {
+              "slaBreaches": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "serviceName": {
+                      "type": "string"
+                    },
+                    "customerName": {
+                      "type": "string"
+                    },
+                    "slaDueAt": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "serviceName",
+                    "customerName",
+                    "slaDueAt",
+                    "status",
+                    "link"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "waitingDocuments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "applicationId": {
+                      "type": "string"
+                    },
+                    "applicationCode": {
+                      "type": "string"
+                    },
+                    "serviceName": {
+                      "type": "string"
+                    },
+                    "documentName": {
+                      "type": "string"
+                    },
+                    "uploadedAt": {
+                      "type": "string"
+                    },
+                    "link": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "applicationId",
+                    "applicationCode",
+                    "serviceName",
+                    "documentName",
+                    "uploadedAt",
+                    "link"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "slaBreaches",
+              "waitingDocuments"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "range",
+          "kpis",
+          "series",
+          "needsAttention"
+        ],
+        "additionalProperties": false
+      },
+      "ReportSales": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "preset": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "total": {
+            "type": "object",
+            "properties": {
+              "revenue": {
+                "type": "number"
+              },
+              "orders": {
+                "type": "number"
+              },
+              "discountTotal": {
+                "type": "number"
+              },
+              "refundTotal": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "revenue",
+              "orders",
+              "discountTotal",
+              "refundTotal"
+            ],
+            "additionalProperties": false
+          },
+          "monthly": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "revenue": {
+                  "type": "number"
+                },
+                "orders": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "month",
+                "label",
+                "revenue",
+                "orders"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "serviceWise": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serviceId": {
+                  "type": "string"
+                },
+                "serviceName": {
+                  "type": "string"
+                },
+                "categoryName": {
+                  "type": "string"
+                },
+                "orders": {
+                  "type": "number"
+                },
+                "revenue": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "serviceId",
+                "serviceName",
+                "categoryName",
+                "orders",
+                "revenue"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "categoryWise": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "categoryId": {
+                  "type": "string"
+                },
+                "categoryName": {
+                  "type": "string"
+                },
+                "orders": {
+                  "type": "number"
+                },
+                "revenue": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "categoryId",
+                "categoryName",
+                "orders",
+                "revenue"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "couponImpact": {
+            "type": "object",
+            "properties": {
+              "discountGiven": {
+                "type": "number"
+              },
+              "ordersWithCoupon": {
+                "type": "number"
+              },
+              "coupons": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "ordersCount": {
+                      "type": "number"
+                    },
+                    "discountGiven": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "type",
+                    "ordersCount",
+                    "discountGiven"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "discountGiven",
+              "ordersWithCoupon",
+              "coupons"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "range",
+          "total",
+          "monthly",
+          "serviceWise",
+          "categoryWise",
+          "couponImpact"
+        ],
+        "additionalProperties": false
+      },
+      "ReportCustomers": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "preset": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "total": {
+            "type": "number"
+          },
+          "newInRange": {
+            "type": "number"
+          },
+          "activeLast90Days": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "range",
+          "total",
+          "newInRange",
+          "activeLast90Days"
         ],
         "additionalProperties": false
       },

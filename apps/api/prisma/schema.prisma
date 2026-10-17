@@ -228,6 +228,8 @@ model User {
   invoices          Invoice[]
   creditNotes       CreditNote[]
   deviceTokens      DeviceToken[]
+
+  @@index([createdAt])
 }
 
 model Role {
@@ -512,6 +514,9 @@ model Order {
   invoices     Invoice[]
 
   @@index([customerId])
+  @@index([couponId])
+  @@index([createdAt])
+  @@index([status, createdAt])
 }
 
 model OrderItem {
@@ -566,6 +571,8 @@ model Application {
   @@index([customerId])
   @@index([status])
   @@index([assignedToId])
+  @@index([slaDueAt])
+  @@index([createdAt])
 }
 
 model ApplicationStageHistory {
@@ -612,6 +619,8 @@ model ApplicationDocument {
   @@unique([requestId, version]) // the same for additional documents, whose requirementId is null
   @@index([applicationId])
   @@index([status])
+  @@index([uploadedAt])
+  @@index([status, uploadedAt])
 }
 
 model FinalDeliverable {
@@ -659,6 +668,8 @@ model Payment {
   webhookEvents    PaymentWebhookEvent[]
 
   @@index([status])
+  @@index([paidAt])
+  @@index([status, paidAt])
 }
 
 /// Every gateway webhook whose signature passed (M3.17), stored as received. The unique
@@ -703,6 +714,7 @@ model Refund {
 
   @@unique([paymentId, idempotencyKey])
   @@index([paymentId])
+  @@index([createdAt])
 }
 
 /// A GST credit note for a processed refund (M4.13, D53): the reverse of the refunded payment's invoice lines
