@@ -169,7 +169,7 @@ export const adminConsultantActionResponseSchema = z.object({
 });
 export type AdminConsultantActionResponse = z.infer<typeof adminConsultantActionResponseSchema>;
 
-export const adminConsultantFeaturedInputSchema = z.object({ isFeatured: z.boolean() });
+export const adminConsultantFeaturedInputSchema = z.object({ isFeatured: z.boolean() }).strict();
 export type AdminConsultantFeaturedInput = z.infer<typeof adminConsultantFeaturedInputSchema>;
 
 export const publicConsultantDirectoryQuerySchema = z.object({
