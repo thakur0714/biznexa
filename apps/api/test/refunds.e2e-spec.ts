@@ -1,7 +1,7 @@
 /**
  * Refunds (M4.13): an admin refunds a paid payment fully or partly → Refund INITIATED, payment REFUND_INITIATED,
  * gateway refund; the `refund.processed` webhook makes it PROCESSED, the payment REFUNDED / PARTIALLY_REFUNDED
- * and issues a credit note (GST reversed in proportion); `refund.failed` puts the payment back. Over-refunds,
+ * and issues a credit note (fee + GST reversed before government fees); `refund.failed` puts the payment back. Over-refunds,
  * parallel requests, retried requests (Idempotency-Key) and redelivered webhooks never refund twice. Only staff
  * with `payments.refund` may refund; the customer and staff with `payments.view` can download the credit note.
  */
@@ -199,18 +199,18 @@ describe('refunds (M4.13)', () => {
     await refund(p.paymentId, { amount: 100, reason: 'Once more' }).expect(409);
   });
 
-  it('partial refunds: PARTIALLY_REFUNDED, then the rest; credit notes split the GST in proportion and add up to the invoice', async () => {
+  it('partial refunds: PARTIALLY_REFUNDED, then the rest; credit notes take the fee + GST before the government fee and add up to the invoice', async () => {
     const p = await paid();
     const first = (await refund(p.paymentId, { amount: TOTAL / 2, reason: 'Half the work was not done' }).expect(201)).body;
     await send(gateway.refundWebhook('refund.processed', gatewayRefund(first.id))).expect(200);
     expect((await paymentOf(p.paymentId)).status).toBe('PARTIALLY_REFUNDED');
     const half = await prisma.creditNote.findUniqueOrThrow({ where: { refundId: first.id } });
-    expect(half).toMatchObject({ taxableValue: 50000, govtFees: 225000, total: TOTAL / 2 });
-    // Half the GST, split the way the invoice was.
+    expect(half).toMatchObject({ taxableValue: FEE, govtFees: TOTAL / 2 - FEE - 18000, total: TOTAL / 2 });
+    // All of the GST, split the way the invoice was.
     const invoiceTax = await prisma.invoice.findUniqueOrThrow({ where: { id: p.invoiceId }, select: { taxType: true } });
     expect(half.taxType).toBe(invoiceTax.taxType);
     expect({ cgst: half.cgst, sgst: half.sgst, igst: half.igst }).toEqual(
-      half.taxType === 'IGST' ? { cgst: 0, sgst: 0, igst: 9000 } : { cgst: 4500, sgst: 4500, igst: 0 },
+      half.taxType === 'IGST' ? { cgst: 0, sgst: 0, igst: 18000 } : { cgst: 9000, sgst: 9000, igst: 0 },
     );
 
     // Over-refund: more than what is left → 400, nothing recorded.
@@ -367,6 +367,8 @@ describe('refunds (M4.13)', () => {
     const list = (await http.get('/api/payments').set(as(alice)).expect(200)).body;
     const row = list.items.find((i: { id: string }) => i.id === p.paymentId);
     expect(row.status).toBe('PARTIALLY_REFUNDED');
+    // The Total Paid card shows the net: processed refunds are counted (alice's earlier tests refunded too).
+    expect(list.totalRefunded).toBeGreaterThanOrEqual(20000);
     expect(row.refunds).toEqual([
       { id: r.id, amount: 20000, status: 'PROCESSED', createdAt: expect.any(String), processedAt: expect.any(String), creditNote: { id: note.id, number: note.number, issuedAt: expect.any(String), pdfReady: expect.any(Boolean) } },
     ]);

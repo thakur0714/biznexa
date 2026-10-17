@@ -172,9 +172,18 @@ export function CustomerPaymentsView() {
             </div>
           </div>
           <div className="num mt-3 text-2xl font-bold text-emerald-700 sm:text-3xl">
-            {data ? formatINR(data.totalPaid) : '—'}
+            {data ? formatINR(data.totalPaid - data.totalRefunded, (data.totalPaid - data.totalRefunded) % 100 !== 0) : '—'}
           </div>
-          <p className="mt-1 text-xs text-muted">Successful payments across all orders</p>
+          <p className="mt-1 text-xs text-muted">
+            {data && data.totalRefunded > 0 ? (
+              <>
+                Paid <span className="num">{formatINR(data.totalPaid)}</span>, refunded{' '}
+                <span className="num">{formatINR(data.totalRefunded, data.totalRefunded % 100 !== 0)}</span>
+              </>
+            ) : (
+              'Successful payments across all orders'
+            )}
+          </p>
         </div>
 
         <div className="rounded-lg border border-rule bg-white p-5 shadow-sm">

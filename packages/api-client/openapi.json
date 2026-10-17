@@ -27225,6 +27225,9 @@
           "totalPaid": {
             "type": "integer"
           },
+          "totalRefunded": {
+            "type": "integer"
+          },
           "outstandingBalance": {
             "type": "integer"
           }
@@ -27235,6 +27238,7 @@
           "page",
           "limit",
           "totalPaid",
+          "totalRefunded",
           "outstandingBalance"
         ],
         "additionalProperties": false

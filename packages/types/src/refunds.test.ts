@@ -66,14 +66,22 @@ describe('credit note lines', () => {
     expect({ ...cn, lines: undefined }).toEqual({ ...inv, lines: undefined });
   });
 
-  it('a partial refund takes the same share of the fee, GST and government fee', () => {
-    // ₹1,000 fee + 18 % (₹90 + ₹90) + ₹4,500 government fee = ₹5,680; refund half.
+  it('a partial refund takes the professional fee + GST before the government fee', () => {
+    // ₹1,000 fee + 18 % (₹90 + ₹90) + ₹4,500 government fee = ₹5,680.
     const inv = invoiceOf([item({ governmentFee: 450000 })], 'CGST_SGST');
     expect(inv.total).toBe(568000);
-    const cn = creditNoteLines(inv.lines, [], 284000, 'CGST_SGST');
-    expect(cn).toMatchObject({ taxableValue: 50000, cgst: 4500, sgst: 4500, igst: 0, govtFees: 225000, total: 284000 });
-    expect(cn.lines.map((l) => l.kind)).toEqual(['SERVICE', 'GOVERNMENT_FEE']);
-    expectConsistent(cn, 'CGST_SGST');
+
+    // Half of the service part (₹590): no government fee.
+    const small = creditNoteLines(inv.lines, [], 59000, 'CGST_SGST');
+    expect(small).toMatchObject({ taxableValue: 50000, cgst: 4500, sgst: 4500, igst: 0, govtFees: 0, total: 59000 });
+    expect(small.lines.map((l) => l.kind)).toEqual(['SERVICE']);
+    expectConsistent(small, 'CGST_SGST');
+
+    // Half of everything (₹2,840): the whole service part, the rest from the government fee.
+    const half = creditNoteLines(inv.lines, [], 284000, 'CGST_SGST');
+    expect(half).toMatchObject({ taxableValue: 100000, cgst: 9000, sgst: 9000, igst: 0, govtFees: 166000, total: 284000 });
+    expect(half.lines.map((l) => l.kind)).toEqual(['SERVICE', 'GOVERNMENT_FEE']);
+    expectConsistent(half, 'CGST_SGST');
   });
 
   it('IGST invoices are credited in IGST', () => {

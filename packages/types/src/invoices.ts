@@ -281,8 +281,9 @@ type Credit = { professionalFee: number; discount: number; taxableValue: number;
  *
  * - Refunding everything not yet credited takes exactly what is left of every line, so an invoice's credit
  *   notes never add up to more (or less) than the invoice, to the paisa.
- * - A smaller refund takes a share of **every** line — professional fee + GST and government fees alike — in
- *   proportion to what is left of it; the GST in a service line's share is worked back out at its rate, split
+ * - A smaller refund takes the **professional fee + GST first** (a share of each service line in proportion to
+ *   what is left of it) and government fees only with what remains, as those are usually already paid out to
+ *   the government (the reverse of D48's advance); the GST in a service line's share is worked back out at its rate, split
  *   CGST/SGST as the invoice was (or IGST), and the discount follows the taxable value.
  *
  * Throws when the refund is more than is left to credit.
@@ -313,7 +314,12 @@ export function creditNoteLines(invoice: InvoiceLine[], previous: InvoiceLine[],
 
   let parts = left;
   if (amount < owed) {
-    const shares = splitShare(amount, left.map((r) => r.total));
+    // Professional fee + GST first, government fees only once that is used up: they are usually already paid out.
+    const isService = invoice.map((l) => l.kind === 'SERVICE');
+    const serviceLeft = left.reduce((a, r, i) => a + (isService[i] ? r.total : 0), 0);
+    const fromService = splitShare(Math.min(amount, serviceLeft), left.map((r, i) => (isService[i] ? r.total : 0)));
+    const fromGovt = splitShare(amount - Math.min(amount, serviceLeft), left.map((r, i) => (isService[i] ? 0 : r.total)));
+    const shares = fromService.map((s, i) => s + fromGovt[i]);
     parts = left.map((r, i) => {
       const g = shares[i];
       const line = invoice[i];

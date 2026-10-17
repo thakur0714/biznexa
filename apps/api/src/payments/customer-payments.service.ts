@@ -27,7 +27,7 @@ export class CustomerPaymentsService {
       },
     };
 
-    const [total, rows, orders] = await Promise.all([
+    const [total, rows, orders, refunded] = await Promise.all([
       this.prisma.payment.count({ where }),
       this.prisma.payment.findMany({
         where,
@@ -72,6 +72,10 @@ export class CustomerPaymentsService {
           amountPaid: true,
           status: true,
         },
+      }),
+      this.prisma.refund.aggregate({
+        where: { status: 'PROCESSED', payment: { order: { customerId } } },
+        _sum: { amount: true },
       }),
     ]);
 
@@ -126,6 +130,7 @@ export class CustomerPaymentsService {
       page,
       limit,
       totalPaid,
+      totalRefunded: refunded._sum.amount ?? 0,
       outstandingBalance,
     };
   }

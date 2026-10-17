@@ -157,6 +157,7 @@ describe('customer payments API (M5.10)', () => {
 
     expect(res.body.total).toBe(1);
     expect(res.body.totalPaid).toBe(30000);
+    expect(res.body.totalRefunded).toBe(0);
     expect(res.body.outstandingBalance).toBe(29000); // 59000 - 30000
 
     expect(res.body.items).toHaveLength(1);

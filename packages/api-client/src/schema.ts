@@ -5321,6 +5321,7 @@ export interface components {
             page: number;
             limit: number;
             totalPaid: number;
+            totalRefunded: number;
             outstandingBalance: number;
         };
         InvoiceList: {

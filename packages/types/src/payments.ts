@@ -341,6 +341,8 @@ export const customerPaymentListResponseSchema = z.object({
   page: z.number().int(),
   limit: z.number().int(),
   totalPaid: z.number().int(),
+  /** Refunds the gateway has processed (M4.13); `totalPaid` stays what was paid, the card shows the net. */
+  totalRefunded: z.number().int(),
   outstandingBalance: z.number().int(),
 });
 export type CustomerPaymentListResponse = z.infer<typeof customerPaymentListResponseSchema>;

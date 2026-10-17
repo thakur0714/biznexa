@@ -190,6 +190,7 @@ describe('customer payments schemas (M5.10)', () => {
         page: 1,
         limit: 25,
         totalPaid: 50000,
+        totalRefunded: 0,
         outstandingBalance: 50000,
       }).success,
     ).toBe(true);
