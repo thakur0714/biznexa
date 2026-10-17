@@ -2404,6 +2404,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/reports/support": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_getSupport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/consultants": {
         parameters: {
             query?: never;
@@ -6232,6 +6248,39 @@ export interface components {
                 reviewCount: number;
                 bookingsCount: number;
                 bookingRevenue: number;
+            }[];
+        };
+        ReportSupport: {
+            range: {
+                from: string;
+                to: string;
+                preset?: string;
+            };
+            summary: {
+                totalTickets: number;
+                openTickets: number;
+                resolvedTickets: number;
+                avgFirstResponseHours: number;
+                avgResolutionHours: number;
+            };
+            byStatus: {
+                status: string;
+                label: string;
+                count: number;
+            }[];
+            recentTickets: {
+                id: string;
+                code: string;
+                subject: string;
+                status: string;
+                priority: string;
+                customerName: string;
+                assignedToName: string | null;
+                createdAt: string;
+                firstResponseAt: string | null;
+                resolvedAt: string | null;
+                firstResponseHours: number | null;
+                resolutionHours: number | null;
             }[];
         };
         AdminConsultantList: {
@@ -12027,6 +12076,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportConsultants"];
+                };
+            };
+        };
+    };
+    ReportsController_getSupport: {
+        parameters: {
+            query?: {
+                preset?: string;
+                from?: string;
+                to?: string;
+                serviceId?: string;
+                categoryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSupport"];
                 };
             };
         };

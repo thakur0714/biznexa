@@ -194,6 +194,15 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
             },
           ];
         }
+        if (sql.includes('avgFirstResponseHours')) {
+          return [
+            {
+              avgFirstResponseHours: 1.5,
+              avgResolutionHours: 12.0,
+              totalTickets: 4,
+            },
+          ];
+        }
         return [];
       }),
       consultant: {
@@ -204,6 +213,26 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
         groupBy: jest.fn().mockResolvedValue([
           { verificationStatus: 'APPROVED', _count: { _all: 8 } },
           { verificationStatus: 'PENDING', _count: { _all: 2 } },
+        ]),
+      },
+      ticket: {
+        groupBy: jest.fn().mockResolvedValue([
+          { status: 'RESOLVED', _count: { _all: 3 } },
+          { status: 'OPEN', _count: { _all: 1 } },
+        ]),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 't-1',
+            code: 'TICK-1',
+            subject: 'Issue with payment',
+            status: 'RESOLVED',
+            priority: 'HIGH',
+            customer: { id: 'cust-1', name: 'John Doe' },
+            assignedTo: { id: 'staff-1', name: 'Support Staff' },
+            createdAt: new Date('2026-10-15T10:00:00.000Z'),
+            firstResponseAt: new Date('2026-10-15T11:30:00.000Z'),
+            resolvedAt: new Date('2026-10-15T22:00:00.000Z'),
+          },
         ]),
       },
     };
@@ -410,6 +439,43 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
         reviewCount: 15,
         bookingsCount: 20,
         bookingRevenue: 10000000,
+      });
+    });
+  });
+
+  describe('Support Report aggregations (M10.7)', () => {
+    it('returns tickets by status, avg first response time, avg resolution time, and recent tickets', async () => {
+      const res = await service.getSupportReport({
+        from: '2026-10-01',
+        to: '2026-10-31',
+      });
+
+      expect(res.range).toBeDefined();
+      expect(res.summary.totalTickets).toBe(4);
+      expect(res.summary.openTickets).toBe(1);
+      expect(res.summary.resolvedTickets).toBe(3);
+      expect(res.summary.avgFirstResponseHours).toBe(1.5);
+      expect(res.summary.avgResolutionHours).toBe(12.0);
+
+      expect(res.byStatus).toEqual([
+        { status: 'RESOLVED', label: 'Resolved', count: 3 },
+        { status: 'OPEN', label: 'Open', count: 1 },
+      ]);
+
+      expect(res.recentTickets).toHaveLength(1);
+      expect(res.recentTickets[0]).toEqual({
+        id: 't-1',
+        code: 'TICK-1',
+        subject: 'Issue with payment',
+        status: 'RESOLVED',
+        priority: 'HIGH',
+        customerName: 'John Doe',
+        assignedToName: 'Support Staff',
+        createdAt: '2026-10-15T10:00:00.000Z',
+        firstResponseAt: '2026-10-15T11:30:00.000Z',
+        resolvedAt: '2026-10-15T22:00:00.000Z',
+        firstResponseHours: 1.5,
+        resolutionHours: 12.0,
       });
     });
   });

@@ -221,6 +221,51 @@ describe('Reports Date & IST Boundary Helpers', () => {
       expect(parsed.success).toBe(true);
     });
   });
+
+  describe('Support Report Schema', () => {
+    it('validates a complete ReportSupportResponse object', async () => {
+      const { reportSupportResponseSchema } = await import('./reports');
+      const valid = {
+        range: {
+          from: '2026-10-10T18:30:00.000Z',
+          to: '2026-10-17T18:29:59.999Z',
+          preset: 'last 7 days',
+        },
+        summary: {
+          totalTickets: 15,
+          openTickets: 5,
+          resolvedTickets: 10,
+          avgFirstResponseHours: 1.5,
+          avgResolutionHours: 12.0,
+        },
+        byStatus: [
+          { status: 'OPEN', label: 'Open', count: 2 },
+          { status: 'IN_PROGRESS', label: 'In Progress', count: 3 },
+          { status: 'RESOLVED', label: 'Resolved', count: 8 },
+          { status: 'CLOSED', label: 'Closed', count: 2 },
+        ],
+        recentTickets: [
+          {
+            id: 't-1',
+            code: 'TICK-101',
+            subject: 'Issue with GST application',
+            status: 'RESOLVED',
+            priority: 'HIGH',
+            customerName: 'Rahul Verma',
+            assignedToName: 'Support Agent 1',
+            createdAt: '2026-10-12T10:00:00.000Z',
+            firstResponseAt: '2026-10-12T11:30:00.000Z',
+            resolvedAt: '2026-10-12T22:00:00.000Z',
+            firstResponseHours: 1.5,
+            resolutionHours: 12.0,
+          },
+        ],
+      };
+
+      const parsed = reportSupportResponseSchema.safeParse(valid);
+      expect(parsed.success).toBe(true);
+    });
+  });
 });
 
 

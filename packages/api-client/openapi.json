@@ -12755,6 +12755,73 @@
         ]
       }
     },
+    "/api/admin/reports/support": {
+      "get": {
+        "operationId": "ReportsController_getSupport",
+        "parameters": [
+          {
+            "name": "preset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportSupport"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · reports"
+        ]
+      }
+    },
     "/api/consultants": {
       "post": {
         "operationId": "ConsultantsController_apply",
@@ -31070,6 +31137,152 @@
           "summary",
           "byVerificationStatus",
           "consultants"
+        ],
+        "additionalProperties": false
+      },
+      "ReportSupport": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "preset": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "totalTickets": {
+                "type": "number"
+              },
+              "openTickets": {
+                "type": "number"
+              },
+              "resolvedTickets": {
+                "type": "number"
+              },
+              "avgFirstResponseHours": {
+                "type": "number"
+              },
+              "avgResolutionHours": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "totalTickets",
+              "openTickets",
+              "resolvedTickets",
+              "avgFirstResponseHours",
+              "avgResolutionHours"
+            ],
+            "additionalProperties": false
+          },
+          "byStatus": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "status",
+                "label",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "recentTickets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "priority": {
+                  "type": "string"
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "assignedToName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "firstResponseAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "resolvedAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "firstResponseHours": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "resolutionHours": {
+                  "type": "number",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "subject",
+                "status",
+                "priority",
+                "customerName",
+                "assignedToName",
+                "createdAt",
+                "firstResponseAt",
+                "resolvedAt",
+                "firstResponseHours",
+                "resolutionHours"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "range",
+          "summary",
+          "byStatus",
+          "recentTickets"
         ],
         "additionalProperties": false
       },

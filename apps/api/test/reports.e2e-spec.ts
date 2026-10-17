@@ -32,10 +32,12 @@ const refundIds: string[] = [];
 const applicationIds: string[] = [];
 const consultantIds: string[] = [];
 const bookingIds: string[] = [];
+const ticketIds: string[] = [];
 
 let testServiceId: string;
 let testCategoryId: string;
 let testConsultantId: string;
+let testTicketId: string;
 
 beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -253,10 +255,32 @@ beforeAll(async () => {
     },
   });
   paymentIds.push(bookingPayment.id);
+
+  // 10. Support ticket with exact 1-hour first response and 2-hour resolution
+  const ticketCreatedAt = new Date(now.getTime() - 2 * 3600 * 1000);
+  const ticketFirstResponseAt = new Date(now.getTime() - 1 * 3600 * 1000);
+  const ticketResolvedAt = now;
+
+  const ticket = await prisma.ticket.create({
+    data: {
+      code: `TICK-REP-${runId}`,
+      customerId,
+      subject: `Report Test Ticket ${runId}`,
+      description: 'Testing support report metrics',
+      priority: 'HIGH',
+      status: 'RESOLVED',
+      createdAt: ticketCreatedAt,
+      firstResponseAt: ticketFirstResponseAt,
+      resolvedAt: ticketResolvedAt,
+    },
+  });
+  ticketIds.push(ticket.id);
+  testTicketId = ticket.id;
 });
 
 afterAll(async () => {
   // Safe cleanup: delete strictly rows created by this test, in dependency order
+  if (ticketIds.length) await prisma.ticket.deleteMany({ where: { id: { in: ticketIds } } });
   if (refundIds.length) await prisma.refund.deleteMany({ where: { id: { in: refundIds } } });
   if (paymentIds.length) await prisma.payment.deleteMany({ where: { id: { in: paymentIds } } });
   if (bookingIds.length) await prisma.booking.deleteMany({ where: { id: { in: bookingIds } } });
@@ -310,6 +334,11 @@ describe('Reports API Endpoints (M10)', () => {
     it('GET /api/admin/reports/consultants returns 403 for Operations and 200 for Admin', async () => {
       await http.get('/api/admin/reports/consultants').set(as(opsToken)).expect(403);
       await http.get('/api/admin/reports/consultants').set(as(adminToken)).expect(200);
+    });
+
+    it('GET /api/admin/reports/support returns 403 for Operations and 200 for Admin', async () => {
+      await http.get('/api/admin/reports/support').set(as(opsToken)).expect(403);
+      await http.get('/api/admin/reports/support').set(as(adminToken)).expect(200);
     });
   });
 
@@ -437,6 +466,29 @@ describe('Reports API Endpoints (M10)', () => {
       expect(consultantEntry.reviewCount).toBe(1);
       expect(consultantEntry.bookingsCount).toBe(1);
       expect(consultantEntry.bookingRevenue).toBe(50000);
+    });
+
+    it('Support Report returns accurate ticket metrics and scoped recent ticket', async () => {
+      const res = await http
+        .get('/api/admin/reports/support?preset=today')
+        .set(as(adminToken))
+        .expect(200);
+
+      expect(res.body.range).toBeDefined();
+      expect(res.body.summary.totalTickets).toBeGreaterThanOrEqual(1);
+      expect(res.body.summary.resolvedTickets).toBeGreaterThanOrEqual(1);
+      expect(res.body.summary.avgFirstResponseHours).toBeGreaterThanOrEqual(0);
+      expect(res.body.summary.avgResolutionHours).toBeGreaterThanOrEqual(0);
+
+      const ticketEntry = res.body.recentTickets.find((t: any) => t.id === testTicketId);
+      expect(ticketEntry).toBeDefined();
+      expect(ticketEntry.code).toBe(`TICK-REP-${runId}`);
+      expect(ticketEntry.subject).toBe(`Report Test Ticket ${runId}`);
+      expect(ticketEntry.status).toBe('RESOLVED');
+      expect(ticketEntry.priority).toBe('HIGH');
+      expect(ticketEntry.customerName).toBe(`Customer Rep ${runId}`);
+      expect(ticketEntry.firstResponseHours).toBe(1);
+      expect(ticketEntry.resolutionHours).toBe(2);
     });
   });
 });

@@ -6,6 +6,7 @@ import {
   type ReportDateRangeQuery,
   type ReportSalesResponse,
   type ReportServicesResponse,
+  type ReportSupportResponse,
   getDaysInISTRange,
   istDay,
   resolveReportDateRange,
@@ -35,6 +36,14 @@ const VERIFICATION_LABELS: Record<string, string> = {
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   SUSPENDED: 'Suspended',
+};
+
+const TICKET_STATUS_LABELS: Record<string, string> = {
+  OPEN: 'Open',
+  IN_PROGRESS: 'In Progress',
+  WAITING_FOR_CUSTOMER: 'Waiting for Customer',
+  RESOLVED: 'Resolved',
+  CLOSED: 'Closed',
 };
 
 @Injectable()
@@ -798,6 +807,117 @@ export class ReportsService {
       },
       byVerificationStatus,
       consultants,
+    };
+  }
+
+  /**
+   * Builds the Support report (M10.7): tickets by status,
+   * average first staff response time, average resolution time.
+   * All sums and metrics computed in SQL.
+   */
+  async getSupportReport(query: ReportDateRangeQuery, now = new Date()): Promise<ReportSupportResponse> {
+    const { from, to, preset } = resolveReportDateRange(query, now);
+
+    const [statusCounts, avgTimesRows, ticketRows] = await Promise.all([
+      // 1. Tickets grouped by status in range (SQL groupBy)
+      this.prisma.ticket.groupBy({
+        by: ['status'],
+        where: {
+          createdAt: { gte: from, lte: to },
+        },
+        _count: { _all: true },
+      }),
+
+      // 2. Average first staff response time & average resolution time in hours (computed in SQL)
+      this.prisma.$queryRaw<
+        Array<{
+          avgFirstResponseHours: number | null;
+          avgResolutionHours: number | null;
+          totalTickets: number;
+        }>
+      >`
+        SELECT
+          COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ("firstResponseAt" - "createdAt")) / 3600.0)::numeric, 1), 0)::float AS "avgFirstResponseHours",
+          COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ("resolvedAt" - "createdAt")) / 3600.0)::numeric, 1), 0)::float AS "avgResolutionHours",
+          COUNT(*)::int AS "totalTickets"
+        FROM "Ticket"
+        WHERE "createdAt" >= ${from} AND "createdAt" <= ${to}
+      `,
+
+      // 3. Recent tickets in range with response and resolution times
+      this.prisma.ticket.findMany({
+        where: {
+          createdAt: { gte: from, lte: to },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+        include: {
+          customer: { select: { id: true, name: true } },
+          assignedTo: { select: { id: true, name: true } },
+        },
+      }),
+    ]);
+
+    const byStatus = statusCounts
+      .map((sc) => ({
+        status: sc.status,
+        label: TICKET_STATUS_LABELS[sc.status] ?? sc.status,
+        count: sc._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const openCount = statusCounts
+      .filter((sc) => sc.status === 'OPEN' || sc.status === 'IN_PROGRESS' || sc.status === 'WAITING_FOR_CUSTOMER')
+      .reduce((sum, sc) => sum + sc._count._all, 0);
+
+    const resolvedCount = statusCounts
+      .filter((sc) => sc.status === 'RESOLVED' || sc.status === 'CLOSED')
+      .reduce((sum, sc) => sum + sc._count._all, 0);
+
+    const avgMetrics = avgTimesRows[0];
+    const totalTickets = Number(avgMetrics?.totalTickets ?? 0);
+    const avgFirstResponseHours = Number(avgMetrics?.avgFirstResponseHours ?? 0);
+    const avgResolutionHours = Number(avgMetrics?.avgResolutionHours ?? 0);
+
+    const recentTickets = ticketRows.map((t) => {
+      const firstResponseHours = t.firstResponseAt
+        ? Number(((t.firstResponseAt.getTime() - t.createdAt.getTime()) / (3600 * 1000)).toFixed(1))
+        : null;
+      const resolutionHours = t.resolvedAt
+        ? Number(((t.resolvedAt.getTime() - t.createdAt.getTime()) / (3600 * 1000)).toFixed(1))
+        : null;
+
+      return {
+        id: t.id,
+        code: t.code,
+        subject: t.subject,
+        status: t.status,
+        priority: t.priority,
+        customerName: t.customer?.name ?? 'Unknown Customer',
+        assignedToName: t.assignedTo?.name ?? null,
+        createdAt: t.createdAt.toISOString(),
+        firstResponseAt: t.firstResponseAt ? t.firstResponseAt.toISOString() : null,
+        resolvedAt: t.resolvedAt ? t.resolvedAt.toISOString() : null,
+        firstResponseHours,
+        resolutionHours,
+      };
+    });
+
+    return {
+      range: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        preset,
+      },
+      summary: {
+        totalTickets,
+        openTickets: openCount,
+        resolvedTickets: resolvedCount,
+        avgFirstResponseHours,
+        avgResolutionHours,
+      },
+      byStatus,
+      recentTickets,
     };
   }
 }

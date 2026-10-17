@@ -354,4 +354,46 @@ export const reportConsultantsResponseSchema = z.object({
 });
 export type ReportConsultantsResponse = z.infer<typeof reportConsultantsResponseSchema>;
 
+export const reportTicketStatusCountSchema = z.object({
+  status: z.string(),
+  label: z.string(),
+  count: z.number(),
+});
+export type ReportTicketStatusCount = z.infer<typeof reportTicketStatusCountSchema>;
+
+export const reportSupportTicketItemSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  subject: z.string(),
+  status: z.string(),
+  priority: z.string(),
+  customerName: z.string(),
+  assignedToName: z.string().nullable(),
+  createdAt: z.string(),
+  firstResponseAt: z.string().nullable(),
+  resolvedAt: z.string().nullable(),
+  firstResponseHours: z.number().nullable(),
+  resolutionHours: z.number().nullable(),
+});
+export type ReportSupportTicketItem = z.infer<typeof reportSupportTicketItemSchema>;
+
+export const reportSupportResponseSchema = z.object({
+  range: z.object({
+    from: z.string(),
+    to: z.string(),
+    preset: z.string().optional(),
+  }),
+  summary: z.object({
+    totalTickets: z.number(),
+    openTickets: z.number(),
+    resolvedTickets: z.number(),
+    avgFirstResponseHours: z.number(),
+    avgResolutionHours: z.number(),
+  }),
+  byStatus: z.array(reportTicketStatusCountSchema),
+  recentTickets: z.array(reportSupportTicketItemSchema),
+});
+export type ReportSupportResponse = z.infer<typeof reportSupportResponseSchema>;
+
+
 
