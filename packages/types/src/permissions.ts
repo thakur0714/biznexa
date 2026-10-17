@@ -24,6 +24,8 @@ export const PERMS = {
   SETTINGS_MANAGE: 'settings.manage',
   AUDIT_VIEW: 'audit.view',
   LEADS_VIEW: 'leads.view',
+  /** Notification delivery log, and retrying a failed delivery (M6.3). */
+  NOTIFICATIONS_VIEW: 'notifications.view',
 } as const;
 
 export type Permission = (typeof PERMS)[keyof typeof PERMS];
