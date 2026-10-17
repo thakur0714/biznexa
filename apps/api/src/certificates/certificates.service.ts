@@ -185,22 +185,13 @@ export class CertificatesService {
     return { items, total, page: params.page, limit: params.limit };
   }
 
-  private async getNextCertificateNumber(tx: Prisma.TransactionClient | PrismaService = this.prisma, startFrom?: string) {
+  private async getNextCertificateNumber(tx: Prisma.TransactionClient) {
     const year = new Date().getFullYear();
-    const prefix = `BNC-${year}-`;
-    let currentMax = 0;
-
-    if (startFrom && startFrom.startsWith(prefix)) {
-        currentMax = parseInt(startFrom.slice(prefix.length), 10);
-    } else {
-      // Highest auto-style number only: a hand-typed number such as BNC-2026-ABC must not break the sequence.
-      const [row] = await tx.$queryRaw<{ max: number | null }[]>`
-        SELECT MAX(CAST(SUBSTRING("certificateNumber" FROM ${'^' + prefix + '([0-9]{1,9})$'}) AS INTEGER)) AS max
-        FROM "Certificate" WHERE "certificateNumber" LIKE ${prefix + '%'}`;
-      currentMax = row?.max ?? 0;
-    }
-
-    return `${prefix}${String(currentMax + 1).padStart(6, '0')}`;
+    const [row] = await tx.$queryRaw<{ lastNumber: number }[]>`
+      INSERT INTO "CertificateSequence" ("year", "lastNumber", "updatedAt") VALUES (${year}, 1, now())
+      ON CONFLICT ("year") DO UPDATE SET "lastNumber" = "CertificateSequence"."lastNumber" + 1, "updatedAt" = now()
+      RETURNING "lastNumber"`;
+    return `BNC-${year}-${String(Number(row.lastNumber)).padStart(6, '0')}`;
   }
 
   async create(input: z.infer<typeof createCertificateInput>, actorId: string) {
@@ -248,38 +239,29 @@ export class CertificatesService {
 
     const { fileId, entityId, businessEntityId: _bId, organizationName: _org, ...rest } = input;
 
-    let attempts = 0;
-    while (attempts < 10) {
-      try {
-        const cert = await this.prisma.certificate.create({
-          data: {
-            ...rest,
-            organizationName,
-            businessEntityId,
-            applicationId: input.applicationId,
-            certificateNumber: input.certificateNumber ?? (await this.getNextCertificateNumber()),
-            verificationId: newVerificationId(),
-            status: input.validUntil.getTime() < Date.now() ? 'EXPIRED' : 'ACTIVE',
-            pdfKey,
-          },
-          include: {
-            certificationBody: { select: { id: true, name: true, accreditation: true, website: true } },
-            _count: { select: { lookups: true } },
-          },
-        });
-        await this.audit.log({ actorId, action: 'certificate.issue', entityType: 'Certificate', entityId: cert.id, after: cert });
-        await this.events.emit('certificate.issued', { certificateId: cert.id, certificateNumber: cert.certificateNumber, status: cert.status, actorId });
-        return { ...cert, qrUrl: this.qrUrl(cert.verificationId) };
-      } catch (e: any) {
-        if (e.code === 'P2002' && attempts < 9 && !input.certificateNumber) {
-          await new Promise((resolve) => setTimeout(resolve, Math.random() * 50));
-          attempts++;
-          continue;
-        }
-        throw e;
-      }
-    }
-    throw new ConflictException('Failed to generate a unique certificate number. Please try again.');
+    const cert = await this.prisma.$transaction(async (tx) => {
+      const certificateNumber = input.certificateNumber ?? (await this.getNextCertificateNumber(tx));
+      const created = await tx.certificate.create({
+        data: {
+          ...rest,
+          organizationName,
+          businessEntityId,
+          applicationId: input.applicationId,
+          certificateNumber,
+          verificationId: newVerificationId(),
+          status: input.validUntil.getTime() < Date.now() ? 'EXPIRED' : 'ACTIVE',
+          pdfKey,
+        },
+        include: {
+          certificationBody: { select: { id: true, name: true, accreditation: true, website: true } },
+          _count: { select: { lookups: true } },
+        },
+      });
+      await this.audit.log({ actorId, action: 'certificate.issue', entityType: 'Certificate', entityId: created.id, after: created }, tx);
+      return created;
+    }, { maxWait: 60_000, timeout: 60_000 });
+    await this.events.emit('certificate.issued', { certificateId: cert.id, certificateNumber: cert.certificateNumber, status: cert.status, actorId });
+    return { ...cert, qrUrl: this.qrUrl(cert.verificationId) };
   }
 
   async createFromApplication(
@@ -728,82 +710,66 @@ export class CertificatesService {
       throw new BadRequestException('No valid rows found to import');
     }
 
-    let attempts = 0;
-    while (attempts < 10) {
-      try {
-        const created = await this.prisma.$transaction(async (tx) => {
-          let nextNumberInput: string | undefined = undefined;
-          const results = [];
+    const created = await this.prisma.$transaction(async (tx) => {
+      const results = [];
 
-          for (const row of validRows) {
-            let certNumber = row.certificateNumber;
-            if (!certNumber) {
-              certNumber = await this.getNextCertificateNumber(tx, nextNumberInput);
-              nextNumberInput = certNumber;
-            }
+      for (const row of validRows) {
+        let certNumber = row.certificateNumber;
+        if (!certNumber) {
+          certNumber = await this.getNextCertificateNumber(tx);
+        }
 
-            const cert = await tx.certificate.create({
-              data: {
-                certificateNumber: certNumber,
-                verificationId: newVerificationId(),
-                type: row.type,
-                organizationName: row.organizationName,
-                scope: row.scope,
-                address: row.address,
-                issueDate: row.issueDateDate,
-                validFrom: row.validFromDate,
-                validUntil: row.validUntilDate,
-                certificationBodyId: row.certificationBodyId,
-                showPdfPublicly: row.showPdfPublicly,
-                status: row.validUntilDate.getTime() < Date.now() ? 'EXPIRED' : 'ACTIVE',
-              },
-            });
-            results.push(cert);
-          }
-
-          await this.audit.log(
-            {
-              actorId,
-              action: 'certificate.bulk_import',
-              entityType: 'Certificate',
-              entityId: results[0].id,
-              after: {
-                importedCount: results.length,
-                firstCertificateNumber: results[0].certificateNumber,
-                lastCertificateNumber: results[results.length - 1].certificateNumber,
-              },
-            },
-            tx,
-          );
-
-          return results;
+        const cert = await tx.certificate.create({
+          data: {
+            certificateNumber: certNumber,
+            verificationId: newVerificationId(),
+            type: row.type,
+            organizationName: row.organizationName,
+            scope: row.scope,
+            address: row.address,
+            issueDate: row.issueDateDate,
+            validFrom: row.validFromDate,
+            validUntil: row.validUntilDate,
+            certificationBodyId: row.certificationBodyId,
+            showPdfPublicly: row.showPdfPublicly,
+            status: row.validUntilDate.getTime() < Date.now() ? 'EXPIRED' : 'ACTIVE',
+          },
         });
-
-        for (const cert of created) {
-          await this.events.emit('certificate.issued', {
-            certificateId: cert.id,
-            certificateNumber: cert.certificateNumber,
-            status: cert.status,
-            actorId,
-          });
-        }
-
-        return {
-          success: true,
-          importedCount: created.length,
-          certificateIds: created.map((c) => c.id),
-        };
-      } catch (e: any) {
-        if (e.code === 'P2002' && attempts < 9) {
-          await new Promise((resolve) => setTimeout(resolve, Math.random() * 50));
-          attempts++;
-          continue;
-        }
-        throw e;
+        results.push(cert);
       }
+
+      await this.audit.log(
+        {
+          actorId,
+          action: 'certificate.bulk_import',
+          entityType: 'Certificate',
+          entityId: results[0].id,
+          after: {
+            importedCount: results.length,
+            firstCertificateNumber: results[0].certificateNumber,
+            lastCertificateNumber: results[results.length - 1].certificateNumber,
+          },
+        },
+        tx,
+      );
+
+      return results;
+    }, { maxWait: 60_000, timeout: 60_000 });
+
+    for (const cert of created) {
+      await this.events.emit('certificate.issued', {
+        certificateId: cert.id,
+        certificateNumber: cert.certificateNumber,
+        status: cert.status,
+        actorId,
+      });
     }
 
-    throw new ConflictException('Failed to generate unique certificate numbers during import. Please try again.');
+    return {
+      success: true,
+      importedCount: created.length,
+      certificateIds: created.map((c) => c.id),
+    };
   }
 
   /** Nightly: mark certificates past their validity as EXPIRED. */

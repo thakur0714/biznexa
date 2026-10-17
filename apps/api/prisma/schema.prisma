@@ -797,6 +797,13 @@ model InvoiceSequence {
   updatedAt     DateTime @updatedAt
 }
 
+/// Gap-free certificate counter per calendar year, bumped in the certificate creation transaction.
+model CertificateSequence {
+  year       Int      @id
+  lastNumber Int
+  updatedAt  DateTime @updatedAt
+}
+
 model Coupon {
   id            String     @id @default(uuid())
   code          String     @unique

@@ -69,9 +69,12 @@ describe('Certificate number generation', () => {
     expect(next.certificateNumber).toMatch(/^BNC-\d{4}-\d{6,}$/);
   });
 
-  it('gives distinct numbers to certificates issued at the same time', async () => {
-    const responses = await Promise.all([6, 7, 8].map((n) => issue(n)));
+  it('gives parallel certificates distinct consecutive numbers without conflicts', async () => {
+    const responses = await Promise.all(Array.from({ length: 10 }, (_, n) => issue(n + 6)));
     for (const r of responses) expect(r.status).toBe(201);
-    expect(new Set(responses.map((r) => r.body.certificateNumber)).size).toBe(3);
+    expect(new Set(responses.map((r) => r.body.certificateNumber)).size).toBe(10);
+    const numbers = responses.map((r) => seq(r.body.certificateNumber)).sort((a: number, b: number) => a - b);
+    expect(numbers).toHaveLength(10);
+    expect(numbers.every((number: number, index: number) => index === 0 || number === numbers[index - 1] + 1)).toBe(true);
   });
 });
