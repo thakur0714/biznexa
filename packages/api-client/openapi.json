@@ -13714,6 +13714,53 @@
         ]
       }
     },
+    "/api/admin/consultants/{id}/featured": {
+      "patch": {
+        "operationId": "AdminConsultantsController_setFeatured",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "isFeatured": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "isFeatured"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · consultants"
+        ]
+      }
+    },
     "/api/admin/consultants/{id}/fee-requests/{requestId}/approve": {
       "post": {
         "operationId": "AdminConsultantsController_approveFeeChange",
@@ -13941,6 +13988,18 @@
           },
           {
             "name": "availableToday",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "featured",
             "required": false,
             "in": "query",
             "schema": {
@@ -32450,6 +32509,9 @@
                 "feePerSession": {
                   "type": "integer"
                 },
+                "isFeatured": {
+                  "type": "boolean"
+                },
                 "createdAt": {
                   "type": "string",
                   "format": "date-time"
@@ -32466,6 +32528,7 @@
                 "state",
                 "experienceYears",
                 "feePerSession",
+                "isFeatured",
                 "createdAt"
               ],
               "additionalProperties": false
@@ -32540,6 +32603,9 @@
           },
           "feePerSession": {
             "type": "integer"
+          },
+          "isFeatured": {
+            "type": "boolean"
           },
           "createdAt": {
             "type": "string",
@@ -32709,6 +32775,7 @@
           "state",
           "experienceYears",
           "feePerSession",
+          "isFeatured",
           "createdAt",
           "slug",
           "qualification",
@@ -33039,6 +33106,9 @@
                 },
                 "availableToday": {
                   "type": "boolean"
+                },
+                "isFeatured": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -33060,7 +33130,8 @@
                 "rating",
                 "reviewCount",
                 "isOnline",
-                "availableToday"
+                "availableToday",
+                "isFeatured"
               ],
               "additionalProperties": false
             }
@@ -33270,6 +33341,9 @@
           "isOnline": {
             "type": "boolean"
           },
+          "isFeatured": {
+            "type": "boolean"
+          },
           "experienceYears": {
             "type": "integer"
           },
@@ -33398,6 +33472,7 @@
           "rating",
           "reviewCount",
           "isOnline",
+          "isFeatured",
           "experienceYears",
           "ratingSummary",
           "services",
