@@ -1,5 +1,5 @@
 /**
- * htmlparser2 and its helpers (used by sanitize-html, D59) ship ES modules only. Node 22 loads them
+ * htmlparser2 and its helpers (used by sanitize-html, D60) ship ES modules only. Node 22 loads them
  * from CommonJS at runtime, but Jest cannot, so they are compiled to CommonJS for tests.
  */
 const ESM_ONLY = '(?:htmlparser2|domhandler|domutils|dom-serializer|domelementtype|entities)';

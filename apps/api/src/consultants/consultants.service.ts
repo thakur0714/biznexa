@@ -1,13 +1,20 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
+  addDays,
+  generateSlots,
   istDate,
+  istInstant,
   adminConsultantActionResponseSchema,
   adminConsultantDetailSchema,
   adminConsultantListSchema,
   adminConsultantSummarySchema,
   consultantApplicationResponseSchema,
+  consultantOwnProfileSchema,
+  consultantFeeChangeRequestSchema,
+  consultantFeeChangeActionResponseSchema,
   publicConsultantDirectorySchema,
+  publicConsultantProfileSchema,
   type AdminConsultantDetail,
   type AdminConsultantList,
   type AdminConsultantListQuery,
@@ -15,12 +22,16 @@ import {
   type ConsultantApplicationInput,
   type ConsultantApplicationResponse,
   type ConsultantRejectInput,
+  type ConsultantOwnProfile,
+  type ConsultantFeeChangeDecision,
   type PublicConsultantDirectory,
   type PublicConsultantDirectoryQuery,
+  type PublicConsultantProfile,
 } from '@biznexa/types';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { liveBookingWhere } from '../bookings/booking-holds';
 
 @Injectable()
 export class ConsultantsService {
@@ -128,6 +139,7 @@ export class ConsultantsService {
       include: {
         user: { select: { name: true, email: true } },
         documents: { include: { file: { select: { originalName: true, mimeType: true, scanStatus: true } } }, orderBy: { kind: 'asc' } },
+        feeChangeRequests: { include: { decidedBy: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
       },
     });
     if (!consultant) throw new NotFoundException('Consultant not found');
@@ -137,6 +149,15 @@ export class ConsultantsService {
       updatedAt: consultant.updatedAt.toISOString(),
       name: consultant.user.name,
       email: consultant.user.email,
+      feeChangeRequests: consultant.feeChangeRequests.map((request) => ({
+        id: request.id,
+        requestedFee: request.requestedFee,
+        status: request.status,
+        decisionReason: request.decisionReason,
+        createdAt: request.createdAt.toISOString(),
+        decidedAt: request.decidedAt?.toISOString() ?? null,
+        decidedBy: request.decidedBy?.name ?? null,
+      })),
       documents: consultant.documents.map(({ file, ...document }) => ({
         ...document,
         createdAt: document.createdAt.toISOString(),
@@ -151,6 +172,11 @@ export class ConsultantsService {
     const before = await this.prisma.consultant.findUnique({ where: { id } });
     if (!before) throw new NotFoundException('Consultant not found');
     const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Consultant" WHERE id = ${id} FOR UPDATE`;
+      const current = await tx.consultant.findUniqueOrThrow({ where: { id }, select: { feePerSession: true } });
+      if (input.feePerSession !== current.feePerSession && await tx.consultantFeeChangeRequest.findFirst({ where: { consultantId: id, status: 'PENDING' }, select: { id: true } })) {
+        throw new ConflictException('Decide the pending fee change request before editing the consultant fee.');
+      }
       const consultant = await tx.consultant.update({
         where: { id },
         data: {
@@ -180,6 +206,99 @@ export class ConsultantsService {
       return consultant;
     });
     return this.getAdmin(updated.id);
+  }
+
+  async getOwnProfile(userId: string): Promise<ConsultantOwnProfile> {
+    const consultant = await this.prisma.consultant.findFirst({
+      where: { userId, verificationStatus: 'APPROVED' },
+      select: {
+        id: true, slug: true, category: true, qualification: true, membershipNo: true, experienceYears: true,
+        expertise: true, languages: true, city: true, state: true, area: true, bio: true, feePerSession: true,
+        consultationTypes: true,
+        feeChangeRequests: { where: { status: 'PENDING' }, orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+    if (!consultant) throw new ForbiddenException('Only an approved consultant can edit their profile');
+    const pending = consultant.feeChangeRequests[0];
+    return consultantOwnProfileSchema.parse({
+      ...consultant,
+      pendingFeeRequest: pending ? consultantFeeChangeRequestSchema.parse({
+        ...pending, createdAt: pending.createdAt.toISOString(), decidedAt: pending.decidedAt?.toISOString() ?? null,
+      }) : null,
+    });
+  }
+
+  async updateOwnProfile(userId: string, input: AdminConsultantProfileInput): Promise<ConsultantOwnProfile> {
+    await this.prisma.$transaction(async (tx) => {
+      const before = await tx.consultant.findFirst({ where: { userId, verificationStatus: 'APPROVED' } });
+      if (!before) throw new ForbiddenException('Only an approved consultant can edit their profile');
+      await tx.$queryRaw`SELECT id FROM "Consultant" WHERE id = ${before.id} FOR UPDATE`;
+      if (
+        input.category !== before.category
+        || input.qualification !== before.qualification
+        || (input.membershipNo ?? null) !== before.membershipNo
+      ) {
+        throw new ConflictException('Contact support to change your category, qualification or membership number.');
+      }
+      const pending = await tx.consultantFeeChangeRequest.findFirst({ where: { consultantId: before.id, status: 'PENDING' }, select: { id: true } });
+      if (pending && input.feePerSession !== before.feePerSession) {
+        throw new ConflictException('Your fee change is awaiting admin review. You can still save other profile changes.');
+      }
+      const updated = await tx.consultant.update({
+        where: { id: before.id },
+        data: {
+          category: input.category, qualification: input.qualification, membershipNo: input.membershipNo || null,
+          experienceYears: input.experienceYears, expertise: input.expertise, languages: input.languages,
+          city: input.city, state: input.state, area: input.area || null, bio: input.bio || null,
+          consultationTypes: input.consultationTypes,
+        },
+        select: {
+          id: true, category: true, qualification: true, membershipNo: true, experienceYears: true, expertise: true,
+          languages: true, city: true, state: true, area: true, bio: true, feePerSession: true, consultationTypes: true,
+        },
+      });
+      await this.audit.log({
+        actorId: userId, action: 'consultant.profile.self_update', entityType: 'Consultant', entityId: before.id,
+        before: this.profileAuditShape(before), after: { ...updated, feePerSession: before.feePerSession },
+      }, tx);
+      if (input.feePerSession !== before.feePerSession) {
+        const request = await tx.consultantFeeChangeRequest.create({
+          data: { consultantId: before.id, requestedFee: input.feePerSession },
+          select: { id: true, requestedFee: true, status: true },
+        });
+        await this.audit.log({
+          actorId: userId, action: 'consultant.fee_change.request', entityType: 'ConsultantFeeChangeRequest', entityId: request.id,
+          before: { feePerSession: before.feePerSession }, after: { requestedFee: request.requestedFee, status: request.status },
+        }, tx);
+      }
+    });
+    return this.getOwnProfile(userId);
+  }
+
+  async decideFeeChange(consultantId: string, requestId: string, decision: 'APPROVED' | 'REJECTED', input: ConsultantFeeChangeDecision | null, staffId: string) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Consultant" WHERE id = ${consultantId} FOR UPDATE`;
+      const request = await tx.consultantFeeChangeRequest.findFirst({ where: { id: requestId, consultantId }, select: { id: true, requestedFee: true, status: true, decisionReason: true } });
+      if (!request) throw new NotFoundException('Fee change request not found');
+      if (request.status !== 'PENDING') throw new ConflictException('This fee change request has already been decided.');
+      const consultant = await tx.consultant.findUniqueOrThrow({ where: { id: consultantId }, select: { feePerSession: true } });
+      const reason = decision === 'REJECTED' ? input?.reason ?? null : null;
+      const update = await tx.consultantFeeChangeRequest.updateMany({
+        where: { id: requestId, consultantId, status: 'PENDING' },
+        data: { status: decision, decisionReason: reason, decidedAt: new Date(), decidedById: staffId },
+      });
+      if (update.count !== 1) throw new ConflictException('This fee change request was decided while you were reviewing it. Reload and try again.');
+      if (decision === 'APPROVED') await tx.consultant.update({ where: { id: consultantId }, data: { feePerSession: request.requestedFee } });
+      await this.audit.log({
+        actorId: staffId,
+        action: `consultant.fee_change.${decision.toLowerCase()}`,
+        entityType: 'ConsultantFeeChangeRequest', entityId: requestId,
+        before: { status: request.status, currentFee: consultant.feePerSession, requestedFee: request.requestedFee },
+        after: { status: decision, currentFee: decision === 'APPROVED' ? request.requestedFee : consultant.feePerSession, requestedFee: request.requestedFee, reason },
+      }, tx);
+      return { id: request.id, consultantId, requestedFee: request.requestedFee, status: decision, decisionReason: reason };
+    });
+    return consultantFeeChangeActionResponseSchema.parse(result);
   }
 
   async approve(id: string, staffId: string) {
@@ -252,24 +371,9 @@ export class ConsultantsService {
   }
 
   async listPublic(query: PublicConsultantDirectoryQuery, now = new Date()): Promise<PublicConsultantDirectory> {
-    const ist = new Date(now.getTime() + 330 * 60_000);
-    const weekday = ist.getUTCDay();
-    // Exception dates are IST calendar dates (`@db.Date`, M8.6).
-    const today = new Date(`${istDate(now)}T00:00:00Z`);
-    const parts = new Intl.DateTimeFormat('en-IN', {
-      timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-    }).formatToParts(now);
-    const hour = parts.find((part) => part.type === 'hour')?.value ?? '00';
-    const minute = parts.find((part) => part.type === 'minute')?.value ?? '00';
-    const localTime = `${hour}:${minute}`;
-    const availableSlotWhere: Prisma.AvailabilitySlotWhereInput = {
-      isBlocked: false,
-      startTime: { gte: localTime },
-      OR: [
-        { weekday, date: null },
-        { date: today },
-      ],
-    };
+    const today = istDate(now);
+    const todayStart = istInstant(today, 0);
+    const tomorrowStart = istInstant(addDays(today, 1), 0);
     const where: Prisma.ConsultantWhereInput = {
       verificationStatus: 'APPROVED',
       ...(query.category ? { category: query.category } : {}),
@@ -286,8 +390,6 @@ export class ConsultantsService {
       } : {}),
       ...(query.language ? { languages: { has: query.language } } : {}),
       ...(query.consultationType ? { consultationTypes: { has: query.consultationType } } : {}),
-      ...(query.availableToday === true ? { availability: { some: availableSlotWhere } } : {}),
-      ...(query.availableToday === false ? { availability: { none: availableSlotWhere } } : {}),
     };
     const orderBy: Prisma.ConsultantOrderByWithRelationInput[] = query.sort === 'experience'
       ? [{ experienceYears: 'desc' }, { rating: 'desc' }, { id: 'asc' }]
@@ -297,22 +399,84 @@ export class ConsultantsService {
           ? [{ feePerSession: 'desc' }, { rating: 'desc' }, { id: 'asc' }]
           : [{ rating: 'desc' }, { reviewCount: 'desc' }, { id: 'asc' }];
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.consultant.findMany({
+    const select = {
+      id: true, slug: true, category: true, qualification: true, city: true, state: true, area: true,
+      expertise: true, languages: true, bio: true, photoUrl: true, feePerSession: true,
+      sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true,
+      user: { select: { name: true } },
+    } satisfies Prisma.ConsultantSelect;
+    let rows: (Prisma.ConsultantGetPayload<{ select: typeof select }> & { availableToday: boolean })[];
+    let total: number;
+    if (query.availableToday !== undefined) {
+      const candidates = await this.prisma.consultant.findMany({
         where,
         orderBy,
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
         select: {
-          id: true, slug: true, category: true, qualification: true, city: true, state: true, area: true,
-          expertise: true, languages: true, bio: true, photoUrl: true, feePerSession: true,
-          sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true,
-          user: { select: { name: true } },
-          availability: { where: availableSlotWhere, select: { id: true }, take: 1 },
+          ...select,
+          sessionMinutes: true,
+          bufferMinutes: true,
+          minNoticeMinutes: true,
+          availability: {
+            where: { OR: [{ weekday: { not: null } }, { date: new Date(`${today}T00:00:00Z`) }] },
+            select: { weekday: true, date: true, startTime: true, endTime: true, isBlocked: true },
+          },
         },
-      }),
-      this.prisma.consultant.count({ where }),
-    ]);
+      });
+      const bookings = candidates.length ? await this.prisma.booking.findMany({
+        where: { consultantId: { in: candidates.map((c) => c.id) }, startAt: { lt: tomorrowStart }, endAt: { gt: todayStart }, ...liveBookingWhere(now) },
+        select: { consultantId: true, startAt: true, endAt: true },
+      }) : [];
+      const busyByConsultant = new Map<string, { startAt: Date; endAt: Date }[]>();
+      for (const booking of bookings) busyByConsultant.set(booking.consultantId, [...(busyByConsultant.get(booking.consultantId) ?? []), booking]);
+      const available = candidates.map((c) => {
+        const slots = generateSlots({
+          sessionMinutes: c.sessionMinutes,
+          bufferMinutes: c.bufferMinutes,
+          minNoticeMinutes: c.minNoticeMinutes,
+          weekly: c.availability.filter((s) => s.weekday !== null).map((s) => ({ weekday: s.weekday!, startTime: s.startTime, endTime: s.endTime })),
+          exceptions: c.availability.filter((s) => s.date !== null).map((s) => ({ date: s.date!.toISOString().slice(0, 10), startTime: s.startTime, endTime: s.endTime, isBlocked: s.isBlocked })),
+        }, { from: today, to: today, now, busy: busyByConsultant.get(c.id) ?? [] }).length > 0;
+        const { availability: _availability, bufferMinutes: _bufferMinutes, minNoticeMinutes: _minNoticeMinutes, ...row } = c;
+        return { ...row, availableToday: slots };
+      }).filter((c) => c.availableToday === query.availableToday);
+      total = available.length;
+      rows = available.slice((query.page - 1) * query.limit, query.page * query.limit);
+    } else {
+      const [pageRows, count] = await this.prisma.$transaction([
+        this.prisma.consultant.findMany({
+          where, orderBy, skip: (query.page - 1) * query.limit, take: query.limit,
+          select: {
+            ...select,
+            sessionMinutes: true,
+            bufferMinutes: true,
+            minNoticeMinutes: true,
+            availability: {
+              where: { OR: [{ weekday: { not: null } }, { date: new Date(`${today}T00:00:00Z`) }] },
+              select: { weekday: true, date: true, startTime: true, endTime: true, isBlocked: true },
+            },
+          },
+        }),
+        this.prisma.consultant.count({ where }),
+      ]);
+      const bookings = pageRows.length ? await this.prisma.booking.findMany({
+        where: { consultantId: { in: pageRows.map((c) => c.id) }, startAt: { lt: tomorrowStart }, endAt: { gt: todayStart }, ...liveBookingWhere(now) },
+        select: { consultantId: true, startAt: true, endAt: true },
+      }) : [];
+      const busyByConsultant = new Map<string, { startAt: Date; endAt: Date }[]>();
+      for (const booking of bookings) busyByConsultant.set(booking.consultantId, [...(busyByConsultant.get(booking.consultantId) ?? []), booking]);
+      rows = pageRows.map((c) => {
+        const availableToday = generateSlots({
+          sessionMinutes: c.sessionMinutes,
+          bufferMinutes: c.bufferMinutes,
+          minNoticeMinutes: c.minNoticeMinutes,
+          weekly: c.availability.filter((s) => s.weekday !== null).map((s) => ({ weekday: s.weekday!, startTime: s.startTime, endTime: s.endTime })),
+          exceptions: c.availability.filter((s) => s.date !== null).map((s) => ({ date: s.date!.toISOString().slice(0, 10), startTime: s.startTime, endTime: s.endTime, isBlocked: s.isBlocked })),
+        }, { from: today, to: today, now, busy: busyByConsultant.get(c.id) ?? [] }).length > 0;
+        const { availability: _availability, bufferMinutes: _bufferMinutes, minNoticeMinutes: _minNoticeMinutes, ...row } = c;
+        return { ...row, availableToday };
+      });
+      total = count;
+    }
     return publicConsultantDirectorySchema.parse({
       items: rows.map((row) => ({
         id: row.id,
@@ -333,11 +497,64 @@ export class ConsultantsService {
         rating: row.rating,
         reviewCount: row.reviewCount,
         isOnline: row.isOnline,
-        availableToday: row.availability.length > 0,
+        availableToday: row.availableToday,
       })),
       total,
       page: query.page,
       limit: query.limit,
+    });
+  }
+
+  async getPublic(slug: string): Promise<PublicConsultantProfile> {
+    const consultant = await this.prisma.consultant.findFirst({
+      where: { slug, verificationStatus: 'APPROVED' },
+      select: {
+        id: true, slug: true, category: true, qualification: true, experienceYears: true, expertise: true,
+        languages: true, city: true, state: true, area: true, bio: true, photoUrl: true, feePerSession: true,
+        sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true,
+        user: { select: { name: true } },
+        services: {
+          where: { service: { isActive: true, deletedAt: null } },
+          orderBy: { service: { name: 'asc' } },
+          select: { service: { select: { id: true, slug: true, name: true, category: { select: { name: true } } } } },
+        },
+      },
+    });
+    if (!consultant) throw new NotFoundException('Consultant not found');
+    const ratings = await this.prisma.review.groupBy({
+      by: ['rating'],
+      where: { consultantId: consultant.id, isPublished: true },
+      _count: { _all: true },
+    });
+    const breakdown = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+    for (const rating of ratings) breakdown[String(rating.rating) as keyof typeof breakdown] = rating._count._all;
+    return publicConsultantProfileSchema.parse({
+      id: consultant.id,
+      slug: consultant.slug,
+      name: consultant.user.name,
+      category: consultant.category,
+      qualification: consultant.qualification,
+      experienceYears: consultant.experienceYears,
+      expertise: consultant.expertise,
+      languages: consultant.languages,
+      city: consultant.city,
+      state: consultant.state,
+      area: consultant.area,
+      bio: consultant.bio,
+      photoUrl: consultant.photoUrl,
+      feePerSession: consultant.feePerSession,
+      sessionMinutes: consultant.sessionMinutes,
+      consultationTypes: consultant.consultationTypes,
+      rating: consultant.rating,
+      reviewCount: consultant.reviewCount,
+      isOnline: consultant.isOnline,
+      ratingSummary: {
+        average: consultant.rating,
+        reviewCount: consultant.reviewCount,
+        breakdown,
+      },
+      services: consultant.services.map(({ service }) => ({ ...service, category: service.category.name })),
+      verifiedReviews: [],
     });
   }
 }

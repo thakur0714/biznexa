@@ -5,6 +5,7 @@ import { SmsProvider } from '../providers/sms.provider';
 import { TemplateEngineService, TemplateNotFoundError } from '../template-engine.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { env } from '../../config/env';
+import { isPermanentFailure } from '../delivery/delivery-policy';
 
 @Injectable()
 export class SmsChannel implements NotificationChannel {
@@ -35,6 +36,7 @@ export class SmsChannel implements NotificationChannel {
           success: false,
           channel: this.channel,
           error: 'Recipient mobile number not found',
+          permanent: true,
         };
       }
 
@@ -56,6 +58,7 @@ export class SmsChannel implements NotificationChannel {
           success: false,
           channel: this.channel,
           error: `SMS template for event "${input.event}" has no registered DLT template ID`,
+          permanent: true,
         };
       }
 
@@ -95,6 +98,7 @@ export class SmsChannel implements NotificationChannel {
         success: false,
         channel: this.channel,
         error: errorMsg,
+        permanent: isPermanentFailure(err),
       };
     }
   }

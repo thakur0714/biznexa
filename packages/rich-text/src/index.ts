@@ -1,5 +1,5 @@
 /**
- * The one allow-list for rich text (M9.4, D59). The API runs `sanitizeRichText` before saving CMS
+ * The one allow-list for rich text (M9.4, D60). The API runs `sanitizeRichText` before saving CMS
  * pages and blog posts, and the website runs it again before rendering, so a row written some other
  * way (seed, SQL, an old version) still cannot inject markup.
  */

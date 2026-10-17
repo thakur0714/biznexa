@@ -161,7 +161,7 @@ describe('SmsChannel & MSG91 Provider (M6.5)', () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        text: async () => '{"type":"success"}',
+        text: async () => '{"type":"success","message":"3561646b6a71353030303031"}',
       } as Response);
 
       const res = await msg91.sendSms({
@@ -171,7 +171,8 @@ describe('SmsChannel & MSG91 Provider (M6.5)', () => {
         variables: { var1: 'val1' },
       });
 
-      expect(res.messageId).toBeDefined();
+      // The request id comes back in MSG91's delivery report (M6.3).
+      expect(res.messageId).toBe('3561646b6a71353030303031');
       expect(global.fetch).toHaveBeenCalledTimes(1);
       const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
       expect(url).toBe('https://control.msg91.com/api/v5/flow/');
