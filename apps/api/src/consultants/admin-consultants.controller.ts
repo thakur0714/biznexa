@@ -7,10 +7,13 @@ import {
   adminConsultantListSchema,
   adminConsultantProfileInputSchema,
   consultantRejectInputSchema,
+  consultantFeeChangeActionResponseSchema,
+  consultantFeeChangeDecisionSchema,
   PERMS,
   type AdminConsultantListQuery,
   type AdminConsultantProfileInput,
   type ConsultantRejectInput,
+  type ConsultantFeeChangeDecision,
 } from '@biznexa/types';
 import { AuthUser, CurrentUser, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
@@ -65,5 +68,22 @@ export class AdminConsultantsController {
   @Post(':id/suspend')
   suspend(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() staff: AuthUser) {
     return this.consultants.suspend(id, staff.id);
+  }
+
+  @ApiZodResponse('ConsultantFeeChangeAction', consultantFeeChangeActionResponseSchema)
+  @Post(':id/fee-requests/:requestId/approve')
+  approveFeeChange(@Param('id', new ParseUUIDPipe()) id: string, @Param('requestId', new ParseUUIDPipe()) requestId: string, @CurrentUser() staff: AuthUser) {
+    return this.consultants.decideFeeChange(id, requestId, 'APPROVED', null, staff.id);
+  }
+
+  @ApiZodResponse('ConsultantFeeChangeAction', consultantFeeChangeActionResponseSchema)
+  @Post(':id/fee-requests/:requestId/reject')
+  rejectFeeChange(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @ZodBody(consultantFeeChangeDecisionSchema) body: ConsultantFeeChangeDecision,
+    @CurrentUser() staff: AuthUser,
+  ) {
+    return this.consultants.decideFeeChange(id, requestId, 'REJECTED', body, staff.id);
   }
 }

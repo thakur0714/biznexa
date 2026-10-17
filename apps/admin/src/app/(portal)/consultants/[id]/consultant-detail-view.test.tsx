@@ -5,11 +5,11 @@ import { ConsultantDetailView } from './consultant-detail-view';
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const FILE_ID = '33333333-3333-4333-8333-333333333333';
-const calls: Array<{ url: string; options?: { params?: { path?: { id?: string } }; body?: unknown } }> = [];
+const calls: Array<{ url: string; options?: { params?: { path?: { id?: string; requestId?: string } }; body?: unknown } }> = [];
 let detail: AdminConsultantDetail;
 const fakeClient = {
   GET: vi.fn(async () => ({ data: detail, response: new Response(null, { status: 200 }) })),
-  POST: vi.fn(async (url: string, options?: { params?: { path?: { id?: string } }; body?: unknown }) => {
+  POST: vi.fn(async (url: string, options?: { params?: { path?: { id?: string; requestId?: string } }; body?: unknown }) => {
     calls.push({ url, options });
     return { data: { id: ID, verificationStatus: 'APPROVED' }, response: new Response(null, { status: 201 }) };
   }),
@@ -32,6 +32,7 @@ beforeEach(() => {
     slug: 'asha-rao', qualification: 'CA', membershipNo: 'ICAI-1', expertise: ['GST'], languages: ['English'],
     area: null, bio: null, consultationTypes: ['AUDIO'], rejectionReason: null,
     documents: [{ id: '44444444-4444-4444-8444-444444444444', kind: 'QUALIFICATION_PROOF', fileId: FILE_ID, fileName: 'degree.pdf', mimeType: 'application/pdf', scanStatus: 'CLEAN', createdAt: '2026-10-17T08:00:00.000Z' }],
+    feeChangeRequests: [],
   });
 });
 
@@ -51,5 +52,16 @@ describe('ConsultantDetailView', () => {
     expect(reject.disabled).toBe(false);
     fireEvent.click(reject);
     await waitFor(() => expect(calls).toContainEqual({ url: '/api/admin/consultants/{id}/reject', options: { params: { path: { id: ID } }, body: { reason: 'Missing proof' } } }));
+  });
+
+  it('approves a pending consultant fee change from the detail page', async () => {
+    detail = adminConsultantDetailSchema.parse({ ...detail, feeChangeRequests: [{
+      id: '55555555-5555-4555-8555-555555555555', requestedFee: 150000, status: 'PENDING', decisionReason: null,
+      createdAt: '2026-10-17T08:00:00.000Z', decidedAt: null, decidedBy: null,
+    }] });
+    render(<ConsultantDetailView id={ID} />);
+    expect(await screen.findByText('₹1,500 requested · PENDING')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Approve fee' }));
+    await waitFor(() => expect(calls).toContainEqual({ url: '/api/admin/consultants/{id}/fee-requests/{requestId}/approve', options: { params: { path: { id: ID, requestId: '55555555-5555-4555-8555-555555555555' } } } }));
   });
 });
