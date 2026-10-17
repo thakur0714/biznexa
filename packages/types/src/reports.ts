@@ -271,3 +271,48 @@ export const reportCustomersResponseSchema = z.object({
   activeLast90Days: z.number(),
 });
 export type ReportCustomersResponse = z.infer<typeof reportCustomersResponseSchema>;
+
+export const reportServicePopularItemSchema = z.object({
+  serviceId: z.string(),
+  serviceName: z.string(),
+  categoryName: z.string(),
+  orders: z.number(),
+  revenue: z.number(), // paise
+  avgTurnaroundDays: z.number().nullable(),
+  slaBreaches: z.number(),
+});
+export type ReportServicePopularItem = z.infer<typeof reportServicePopularItemSchema>;
+
+export const reportApplicationStatusItemSchema = z.object({
+  status: z.string(),
+  label: z.string(),
+  count: z.number(),
+});
+export type ReportApplicationStatusItem = z.infer<typeof reportApplicationStatusItemSchema>;
+
+export const reportSlaBreachPerServiceItemSchema = z.object({
+  serviceId: z.string(),
+  serviceName: z.string(),
+  categoryName: z.string(),
+  breachCount: z.number(),
+});
+export type ReportSlaBreachPerServiceItem = z.infer<typeof reportSlaBreachPerServiceItemSchema>;
+
+export const reportServicesResponseSchema = z.object({
+  range: z.object({
+    from: z.string(),
+    to: z.string(),
+    preset: z.string().optional(),
+  }),
+  summary: z.object({
+    totalOrders: z.number(),
+    totalRevenue: z.number(), // paise
+    avgTurnaroundDays: z.number(),
+    totalSlaBreaches: z.number(),
+  }),
+  popularServices: z.array(reportServicePopularItemSchema),
+  applicationsByStatus: z.array(reportApplicationStatusItemSchema),
+  slaBreaches: z.array(reportSlaBreachPerServiceItemSchema),
+});
+export type ReportServicesResponse = z.infer<typeof reportServicesResponseSchema>;
+

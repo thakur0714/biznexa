@@ -142,10 +142,51 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
           },
         ]),
       },
+      $queryRaw: jest.fn().mockImplementation(async (query: any) => {
+        const sql = Array.isArray(query?.strings) ? query.strings.join(' ') : String(query);
+        if (sql.includes('COUNT(DISTINCT o.id)')) {
+          return [
+            {
+              serviceId: 'svc-1',
+              serviceName: 'Private Limited',
+              categoryName: 'Start',
+              orders: 1,
+              revenue: 100000n,
+            },
+          ];
+        }
+        if (sql.includes('avgTurnaroundDays') && sql.includes('GROUP BY a."serviceId"')) {
+          return [
+            {
+              serviceId: 'svc-1',
+              avgTurnaroundDays: 2.5,
+            },
+          ];
+        }
+        if (sql.includes('avgTurnaroundDays')) {
+          return [{ avgTurnaroundDays: 2.5 }];
+        }
+        if (sql.includes('breachCount')) {
+          return [
+            {
+              serviceId: 'svc-1',
+              serviceName: 'Private Limited',
+              categoryName: 'Start',
+              breachCount: 1,
+            },
+          ];
+        }
+        return [];
+      }),
     };
+    mockPrisma.application.groupBy = jest.fn().mockResolvedValue([
+      { status: 'COMPLETED', _count: { _all: 3 } },
+      { status: 'IN_PROGRESS', _count: { _all: 1 } },
+    ]);
 
     service = new ReportsService(mockPrisma);
   });
+
 
   describe('IST Boundary Handling in Dashboard KPIs', () => {
     it('Day 17 range includes payment at 23:59 IST and excludes payment at 00:01 IST next day', async () => {
@@ -268,4 +309,46 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
       expect(res.activeLast90Days).toBe(42);
     });
   });
+
+  describe('Services Report aggregations (M10.5)', () => {
+    it('returns popular services, turnaround, applications by status, and SLA breaches', async () => {
+      const res = await service.getServicesReport({
+        from: '2026-10-01',
+        to: '2026-10-31',
+      });
+
+      expect(res.range).toBeDefined();
+      expect(res.summary.totalOrders).toBe(1);
+      expect(res.summary.totalRevenue).toBe(100000);
+      expect(res.summary.avgTurnaroundDays).toBe(2.5);
+      expect(res.summary.totalSlaBreaches).toBe(1);
+
+      expect(res.popularServices).toEqual([
+        {
+          serviceId: 'svc-1',
+          serviceName: 'Private Limited',
+          categoryName: 'Start',
+          orders: 1,
+          revenue: 100000,
+          avgTurnaroundDays: 2.5,
+          slaBreaches: 1,
+        },
+      ]);
+
+      expect(res.applicationsByStatus).toEqual([
+        { status: 'COMPLETED', label: 'Completed', count: 3 },
+        { status: 'IN_PROGRESS', label: 'In Progress', count: 1 },
+      ]);
+
+      expect(res.slaBreaches).toEqual([
+        {
+          serviceId: 'svc-1',
+          serviceName: 'Private Limited',
+          categoryName: 'Start',
+          breachCount: 1,
+        },
+      ]);
+    });
+  });
 });
+

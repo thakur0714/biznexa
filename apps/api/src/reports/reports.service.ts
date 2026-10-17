@@ -4,13 +4,30 @@ import {
   type ReportDashboardResponse,
   type ReportDateRangeQuery,
   type ReportSalesResponse,
+  type ReportServicesResponse,
   getDaysInISTRange,
   istDay,
   resolveReportDateRange,
 } from '@biznexa/types';
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Draft',
+  PAYMENT_PENDING: 'Payment Pending',
+  SUBMITTED: 'Submitted',
+  DOCUMENTS_UNDER_REVIEW: 'Docs Under Review',
+  DOCUMENTS_PENDING: 'Docs Pending',
+  DOCUMENTS_APPROVED: 'Docs Approved',
+  ASSIGNED: 'Assigned',
+  IN_PROGRESS: 'In Progress',
+  ON_HOLD: 'On Hold',
+  COMPLETED: 'Completed',
+  DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled',
+};
 
 @Injectable()
 export class ReportsService {
@@ -468,4 +485,202 @@ export class ReportsService {
       activeLast90Days,
     };
   }
+
+  /**
+   * Builds the Services report (M10.5): popular services (orders + revenue),
+   * applications by status, average turnaround (submittedAt -> completedAt, days),
+   * SLA breaches per service. All sums and aggregations computed directly in SQL.
+   */
+  async getServicesReport(query: ReportDateRangeQuery, now = new Date()): Promise<ReportServicesResponse> {
+    const { from, to, preset } = resolveReportDateRange(query, now);
+
+    // 1. Popular services (orders + revenue computed in SQL)
+    const popularPromise = this.prisma.$queryRaw<
+      Array<{
+        serviceId: string;
+        serviceName: string;
+        categoryName: string;
+        orders: number;
+        revenue: bigint | number;
+      }>
+    >`
+      SELECT
+        s.id AS "serviceId",
+        s.name AS "serviceName",
+        c.name AS "categoryName",
+        COUNT(DISTINCT o.id)::int AS "orders",
+        COALESCE(SUM(
+          COALESCE(op.net_amount, o.total - COALESCE(o.discount, 0))
+        ), 0)::bigint AS "revenue"
+      FROM "Service" s
+      JOIN "Category" c ON c.id = s."categoryId"
+      JOIN (
+        SELECT DISTINCT sp."serviceId", oi."orderId"
+        FROM "OrderItem" oi
+        JOIN "ServicePackage" sp ON sp.id = oi."packageId"
+      ) os ON os."serviceId" = s.id
+      JOIN "Order" o ON o.id = os."orderId"
+      LEFT JOIN (
+        SELECT
+          p."orderId",
+          SUM(p.amount - COALESCE(rf.refund_sum, 0)) AS net_amount
+        FROM "Payment" p
+        LEFT JOIN (
+          SELECT "paymentId", SUM(amount) AS refund_sum
+          FROM "Refund"
+          WHERE status != 'FAILED'
+          GROUP BY "paymentId"
+        ) rf ON rf."paymentId" = p.id
+        WHERE p.status IN ('SUCCESS', 'REFUND_INITIATED', 'REFUNDED', 'PARTIALLY_REFUNDED')
+        GROUP BY p."orderId"
+      ) op ON op."orderId" = o.id
+      WHERE o."createdAt" >= ${from} AND o."createdAt" <= ${to}
+        ${query.serviceId ? Prisma.sql`AND s.id = ${query.serviceId}` : Prisma.empty}
+        ${query.categoryId ? Prisma.sql`AND c.id = ${query.categoryId}` : Prisma.empty}
+      GROUP BY s.id, s.name, c.name
+      ORDER BY "revenue" DESC, "orders" DESC
+    `;
+
+    // 2. Average turnaround per service (submittedAt -> completedAt in days)
+    const turnaroundByServicePromise = this.prisma.$queryRaw<
+      Array<{
+        serviceId: string;
+        avgTurnaroundDays: number | null;
+      }>
+    >`
+      SELECT
+        a."serviceId",
+        ROUND(AVG(EXTRACT(EPOCH FROM (a."completedAt" - a."submittedAt")) / 86400.0)::numeric, 1)::float AS "avgTurnaroundDays"
+      FROM "Application" a
+      JOIN "Service" s ON s.id = a."serviceId"
+      WHERE a."submittedAt" IS NOT NULL
+        AND a."completedAt" IS NOT NULL
+        AND (
+          (a."completedAt" >= ${from} AND a."completedAt" <= ${to})
+          OR (a."createdAt" >= ${from} AND a."createdAt" <= ${to})
+        )
+        ${query.serviceId ? Prisma.sql`AND a."serviceId" = ${query.serviceId}` : Prisma.empty}
+        ${query.categoryId ? Prisma.sql`AND s."categoryId" = ${query.categoryId}` : Prisma.empty}
+      GROUP BY a."serviceId"
+    `;
+
+    // 3. Overall average turnaround
+    const overallTurnaroundPromise = this.prisma.$queryRaw<
+      Array<{ avgTurnaroundDays: number | null }>
+    >`
+      SELECT
+        COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (a."completedAt" - a."submittedAt")) / 86400.0)::numeric, 1), 0)::float AS "avgTurnaroundDays"
+      FROM "Application" a
+      JOIN "Service" s ON s.id = a."serviceId"
+      WHERE a."submittedAt" IS NOT NULL
+        AND a."completedAt" IS NOT NULL
+        AND (
+          (a."completedAt" >= ${from} AND a."completedAt" <= ${to})
+          OR (a."createdAt" >= ${from} AND a."createdAt" <= ${to})
+        )
+        ${query.serviceId ? Prisma.sql`AND a."serviceId" = ${query.serviceId}` : Prisma.empty}
+        ${query.categoryId ? Prisma.sql`AND s."categoryId" = ${query.categoryId}` : Prisma.empty}
+    `;
+
+    // 4. SLA breaches per service (active open overdue applications)
+    const breachesPromise = this.prisma.$queryRaw<
+      Array<{
+        serviceId: string;
+        serviceName: string;
+        categoryName: string;
+        breachCount: number;
+      }>
+    >`
+      SELECT
+        s.id AS "serviceId",
+        s.name AS "serviceName",
+        c.name AS "categoryName",
+        COUNT(a.id)::int AS "breachCount"
+      FROM "Application" a
+      JOIN "Service" s ON s.id = a."serviceId"
+      JOIN "Category" c ON c.id = s."categoryId"
+      WHERE a.status NOT IN ('DRAFT', 'COMPLETED', 'DELIVERED', 'CANCELLED')
+        AND a."slaDueAt" IS NOT NULL
+        AND a."slaDueAt" < ${now}
+        ${query.serviceId ? Prisma.sql`AND s.id = ${query.serviceId}` : Prisma.empty}
+        ${query.categoryId ? Prisma.sql`AND c.id = ${query.categoryId}` : Prisma.empty}
+      GROUP BY s.id, s.name, c.name
+      ORDER BY "breachCount" DESC
+    `;
+
+    // 5. Applications grouped by status (SQL groupBy)
+    const statusCountsPromise = this.prisma.application.groupBy({
+      by: ['status'],
+      where: {
+        createdAt: { gte: from, lte: to },
+        ...(query.serviceId ? { serviceId: query.serviceId } : {}),
+        ...(query.categoryId ? { service: { categoryId: query.categoryId } } : {}),
+      },
+      _count: { _all: true },
+    });
+
+    const [popularRows, turnaroundRows, overallTurnaround, breachRows, statusCounts] = await Promise.all([
+      popularPromise,
+      turnaroundByServicePromise,
+      overallTurnaroundPromise,
+      breachesPromise,
+      statusCountsPromise,
+    ]);
+
+    const turnaroundMap = new Map<string, number>(
+      turnaroundRows
+        .filter((r) => r.avgTurnaroundDays !== null)
+        .map((r) => [r.serviceId, Number(r.avgTurnaroundDays)]),
+    );
+
+    const breachMap = new Map<string, number>(
+      breachRows.map((r) => [r.serviceId, Number(r.breachCount)]),
+    );
+
+    const popularServices = popularRows.map((r) => ({
+      serviceId: r.serviceId,
+      serviceName: r.serviceName,
+      categoryName: r.categoryName,
+      orders: Number(r.orders),
+      revenue: Number(r.revenue),
+      avgTurnaroundDays: turnaroundMap.get(r.serviceId) ?? null,
+      slaBreaches: breachMap.get(r.serviceId) ?? 0,
+    }));
+
+    const applicationsByStatus = statusCounts
+      .map((sc) => ({
+        status: sc.status,
+        label: STATUS_LABELS[sc.status] ?? sc.status,
+        count: sc._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const totalOrders = popularServices.reduce((sum, s) => sum + s.orders, 0);
+    const totalRevenue = popularServices.reduce((sum, s) => sum + s.revenue, 0);
+    const totalSlaBreaches = breachRows.reduce((sum, b) => sum + Number(b.breachCount), 0);
+    const avgTurnaroundDays = Number(overallTurnaround[0]?.avgTurnaroundDays ?? 0);
+
+    return {
+      range: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        preset,
+      },
+      summary: {
+        totalOrders,
+        totalRevenue,
+        avgTurnaroundDays,
+        totalSlaBreaches,
+      },
+      popularServices,
+      applicationsByStatus,
+      slaBreaches: breachRows.map((b) => ({
+        serviceId: b.serviceId,
+        serviceName: b.serviceName,
+        categoryName: b.categoryName,
+        breachCount: Number(b.breachCount),
+      })),
+    };
+  }
 }
+

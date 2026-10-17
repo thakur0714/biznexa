@@ -162,7 +162,7 @@ beforeAll(async () => {
   });
   refundIds.push(refund.id);
 
-  // 7. Active application
+  // 7. Active application with SLA breach
   const appRow = await prisma.application.create({
     data: {
       code: `BN-REP-${runId}`,
@@ -171,10 +171,28 @@ beforeAll(async () => {
       serviceId: svc.id,
       packageId: pkg.id,
       status: 'IN_PROGRESS',
+      slaDueAt: new Date(Date.now() - 3600 * 1000), // overdue by 1 hour -> breach
     },
   });
   applicationIds.push(appRow.id);
+
+  // 8. Completed application with exact 2-day turnaround
+  const now = new Date();
+  const twoDaysAgo = new Date(now.getTime() - 2 * 86400 * 1000);
+  const completedApp = await prisma.application.create({
+    data: {
+      code: `BN-COMP-${runId}`,
+      customerId,
+      serviceId: svc.id,
+      packageId: pkg.id,
+      status: 'COMPLETED',
+      submittedAt: twoDaysAgo,
+      completedAt: now,
+    },
+  });
+  applicationIds.push(completedApp.id);
 });
+
 
 afterAll(async () => {
   // Safe cleanup: delete strictly rows created by this test, in dependency order
@@ -219,6 +237,11 @@ describe('Reports API Endpoints (M10)', () => {
     it('GET /api/admin/reports/customers returns 403 for Operations and 200 for Admin', async () => {
       await http.get('/api/admin/reports/customers').set(as(opsToken)).expect(403);
       await http.get('/api/admin/reports/customers').set(as(adminToken)).expect(200);
+    });
+
+    it('GET /api/admin/reports/services returns 403 for Operations and 200 for Admin', async () => {
+      await http.get('/api/admin/reports/services').set(as(opsToken)).expect(403);
+      await http.get('/api/admin/reports/services').set(as(adminToken)).expect(200);
     });
   });
 
@@ -281,5 +304,47 @@ describe('Reports API Endpoints (M10)', () => {
       expect(res.body.newInRange).toBeGreaterThanOrEqual(1);
       expect(res.body.activeLast90Days).toBeGreaterThanOrEqual(1);
     });
+
+    it('Services Report scoped to testServiceId returns exact popular services, turnaround, and breaches', async () => {
+      const res = await http
+        .get(`/api/admin/reports/services?serviceId=${testServiceId}&preset=today`)
+        .set(as(adminToken))
+        .expect(200);
+
+      expect(res.body.range).toBeDefined();
+      expect(res.body.summary.totalOrders).toBe(1);
+      expect(res.body.summary.totalRevenue).toBe(70000);
+      expect(res.body.summary.avgTurnaroundDays).toBe(2);
+      expect(res.body.summary.totalSlaBreaches).toBe(1);
+
+      expect(res.body.popularServices).toHaveLength(1);
+      expect(res.body.popularServices[0]).toEqual({
+        serviceId: testServiceId,
+        serviceName: `Report Service ${runId}`,
+        categoryName: `Report Cat ${runId}`,
+        orders: 1,
+        revenue: 70000,
+        avgTurnaroundDays: 2,
+        slaBreaches: 1,
+      });
+
+      const inProg = res.body.applicationsByStatus.find((s: any) => s.status === 'IN_PROGRESS');
+      expect(inProg).toBeDefined();
+      expect(inProg.count).toBe(1);
+
+      const comp = res.body.applicationsByStatus.find((s: any) => s.status === 'COMPLETED');
+      expect(comp).toBeDefined();
+      expect(comp.count).toBe(1);
+
+      expect(res.body.slaBreaches).toEqual([
+        {
+          serviceId: testServiceId,
+          serviceName: `Report Service ${runId}`,
+          categoryName: `Report Cat ${runId}`,
+          breachCount: 1,
+        },
+      ]);
+    });
   });
 });
+

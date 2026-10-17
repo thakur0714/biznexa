@@ -5,10 +5,12 @@ import {
   type ReportDashboardResponse,
   type ReportDateRangeQuery,
   type ReportSalesResponse,
+  type ReportServicesResponse,
   reportCustomersResponseSchema,
   reportDashboardResponseSchema,
   reportDateRangeQuerySchema,
   reportSalesResponseSchema,
+  reportServicesResponseSchema,
 } from '@biznexa/types';
 import { PERMS, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery } from '../common/openapi';
@@ -38,4 +40,11 @@ export class ReportsController {
   getCustomers(@ZodQuery(reportDateRangeQuerySchema) query: ReportDateRangeQuery): Promise<ReportCustomersResponse> {
     return this.reportsService.getCustomersReport(query);
   }
+
+  @ApiZodResponse('ReportServices', reportServicesResponseSchema)
+  @Get('services')
+  getServices(@ZodQuery(reportDateRangeQuerySchema) query: ReportDateRangeQuery): Promise<ReportServicesResponse> {
+    return this.reportsService.getServicesReport(query);
+  }
 }
+

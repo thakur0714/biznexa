@@ -2372,6 +2372,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/reports/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_getServices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/consultants": {
         parameters: {
             query?: never;
@@ -6138,6 +6154,39 @@ export interface components {
             total: number;
             newInRange: number;
             activeLast90Days: number;
+        };
+        ReportServices: {
+            range: {
+                from: string;
+                to: string;
+                preset?: string;
+            };
+            summary: {
+                totalOrders: number;
+                totalRevenue: number;
+                avgTurnaroundDays: number;
+                totalSlaBreaches: number;
+            };
+            popularServices: {
+                serviceId: string;
+                serviceName: string;
+                categoryName: string;
+                orders: number;
+                revenue: number;
+                avgTurnaroundDays: number | null;
+                slaBreaches: number;
+            }[];
+            applicationsByStatus: {
+                status: string;
+                label: string;
+                count: number;
+            }[];
+            slaBreaches: {
+                serviceId: string;
+                serviceName: string;
+                categoryName: string;
+                breachCount: number;
+            }[];
         };
         AdminConsultantList: {
             items: {
@@ -11882,6 +11931,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportCustomers"];
+                };
+            };
+        };
+    };
+    ReportsController_getServices: {
+        parameters: {
+            query?: {
+                preset?: string;
+                from?: string;
+                to?: string;
+                serviceId?: string;
+                categoryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportServices"];
                 };
             };
         };

@@ -128,4 +128,58 @@ describe('Reports Date & IST Boundary Helpers', () => {
       expect(res.to.toISOString()).toBe('2026-10-17T18:29:59.999Z');
     });
   });
+
+  describe('Services Report Schema', () => {
+    it('validates a complete ReportServicesResponse object', async () => {
+      const { reportServicesResponseSchema } = await import('./reports');
+      const valid = {
+        range: {
+          from: '2026-10-10T18:30:00.000Z',
+          to: '2026-10-17T18:29:59.999Z',
+          preset: 'last 7 days',
+        },
+        summary: {
+          totalOrders: 10,
+          totalRevenue: 5000000,
+          avgTurnaroundDays: 2.5,
+          totalSlaBreaches: 1,
+        },
+        popularServices: [
+          {
+            serviceId: 'svc-1',
+            serviceName: 'Private Limited',
+            categoryName: 'Startup',
+            orders: 10,
+            revenue: 5000000,
+            avgTurnaroundDays: 2.5,
+            slaBreaches: 1,
+          },
+        ],
+        applicationsByStatus: [
+          {
+            status: 'COMPLETED',
+            label: 'Completed',
+            count: 8,
+          },
+          {
+            status: 'IN_PROGRESS',
+            label: 'In Progress',
+            count: 2,
+          },
+        ],
+        slaBreaches: [
+          {
+            serviceId: 'svc-1',
+            serviceName: 'Private Limited',
+            categoryName: 'Startup',
+            breachCount: 1,
+          },
+        ],
+      };
+
+      const parsed = reportServicesResponseSchema.safeParse(valid);
+      expect(parsed.success).toBe(true);
+    });
+  });
 });
+

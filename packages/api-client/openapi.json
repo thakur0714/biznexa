@@ -12621,6 +12621,73 @@
         ]
       }
     },
+    "/api/admin/reports/services": {
+      "get": {
+        "operationId": "ReportsController_getServices",
+        "parameters": [
+          {
+            "name": "preset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportServices"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · reports"
+        ]
+      }
+    },
     "/api/consultants": {
       "post": {
         "operationId": "ConsultantsController_apply",
@@ -30661,6 +30728,152 @@
           "total",
           "newInRange",
           "activeLast90Days"
+        ],
+        "additionalProperties": false
+      },
+      "ReportServices": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "preset": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "totalOrders": {
+                "type": "number"
+              },
+              "totalRevenue": {
+                "type": "number"
+              },
+              "avgTurnaroundDays": {
+                "type": "number"
+              },
+              "totalSlaBreaches": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "totalOrders",
+              "totalRevenue",
+              "avgTurnaroundDays",
+              "totalSlaBreaches"
+            ],
+            "additionalProperties": false
+          },
+          "popularServices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serviceId": {
+                  "type": "string"
+                },
+                "serviceName": {
+                  "type": "string"
+                },
+                "categoryName": {
+                  "type": "string"
+                },
+                "orders": {
+                  "type": "number"
+                },
+                "revenue": {
+                  "type": "number"
+                },
+                "avgTurnaroundDays": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "slaBreaches": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "serviceId",
+                "serviceName",
+                "categoryName",
+                "orders",
+                "revenue",
+                "avgTurnaroundDays",
+                "slaBreaches"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "applicationsByStatus": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "status",
+                "label",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "slaBreaches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serviceId": {
+                  "type": "string"
+                },
+                "serviceName": {
+                  "type": "string"
+                },
+                "categoryName": {
+                  "type": "string"
+                },
+                "breachCount": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "serviceId",
+                "serviceName",
+                "categoryName",
+                "breachCount"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "range",
+          "summary",
+          "popularServices",
+          "applicationsByStatus",
+          "slaBreaches"
         ],
         "additionalProperties": false
       },
