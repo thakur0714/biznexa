@@ -361,10 +361,12 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 
 ## Milestone 10 — Reports & Admin Dashboard
 
-- [ ] **M10.1 — Report query layer.** `[Sonnet]` Date-range helpers (IST boundaries), shared aggregation queries; add DB indexes; unit tests with fixed fixture data so numbers are exactly checkable.
-- [ ] **M10.2 — Admin dashboard KPIs.** `[Sonnet]` KPI cards + revenue/orders charts + "needs attention" (SLA breaches, docs waiting > 24h).
-- [ ] **M10.3 — Sales report** `[Sonnet]` (total, monthly, service-wise, category-wise, coupon impact).
-- [ ] **M10.4 — Customers report** `[Haiku]` (total, new, active in 90 days).
+- [x] **M10.1 — Report query layer.** `[Sonnet]` Date-range helpers (IST boundaries), shared aggregation queries; add DB indexes; unit tests with fixed fixture data so numbers are exactly checkable.
+- [x] **M10.2 — Admin dashboard KPIs.** `[Sonnet]` KPI cards + revenue/orders charts + "needs attention" (SLA breaches, docs waiting > 24h).
+- [x] **M10.3 — Sales report** `[Sonnet]` (total, monthly, service-wise, category-wise, coupon impact).
+- [x] **M10.4 — Customers report** `[Haiku]` (total, new, active in 90 days).
+  - *Done 17-Oct-2026 (Antigravity, reviewed by Claude):* M10.1–M10.4 — `apps/api/src/reports` (`reports.view` on every route): IST date-range presets, `GET /api/admin/reports/dashboard` (KPIs, daily revenue/orders, SLA breaches, documents waiting > 24 h) on the admin home, `/reports/sales` (total, monthly, service/category-wise, coupon impact; revenue = payment − refunds not FAILED) and `/reports/customers` (total, new, active in 90 days). Migration `20261017111418_report_indexes` (Claude dropped its duplicate `Refund_paymentId_idx`, already created by M4.13).
+  - *Follow-ups:* reports load the range's payments and add them up in JS — move to SQL `GROUP BY` before data grows; a refund lowers revenue on the payment's date, not the refund's date, and counts while still INITIATED (the customer card counts only PROCESSED) — decide one rule with the accountant.
 - [ ] **M10.5 — Services report** `[Sonnet]` (popular, active/completed/cancelled, avg turnaround, SLA breaches).
 - [ ] **M10.6 — Consultants report** `[Sonnet]` (total, active, bookings, revenue, avg rating).
 - [ ] **M10.7 — Support report** `[Sonnet]` (by status, avg first response, resolution time).
