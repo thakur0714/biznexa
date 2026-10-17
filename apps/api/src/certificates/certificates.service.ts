@@ -17,7 +17,8 @@ import {
 } from '@biznexa/types';
 import { mapHeaders, parseCsv, parseCsvBoolean, parseCsvDate } from './certificate-csv';
 import { PrismaService } from '../prisma/prisma.service';
-import type { Prisma } from '../generated/prisma/client';
+import { Prisma } from '../generated/prisma/client';
+import type { Prisma as PrismaType } from '../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { EventBus } from '../events/event-bus';
 import { env } from '../config/env';
@@ -185,13 +186,30 @@ export class CertificatesService {
     return { items, total, page: params.page, limit: params.limit };
   }
 
-  private async getNextCertificateNumber(tx: Prisma.TransactionClient) {
+  private async getNextCertificateNumber(tx: PrismaType.TransactionClient) {
     const year = new Date().getFullYear();
     const [row] = await tx.$queryRaw<{ lastNumber: number }[]>`
       INSERT INTO "CertificateSequence" ("year", "lastNumber", "updatedAt") VALUES (${year}, 1, now())
       ON CONFLICT ("year") DO UPDATE SET "lastNumber" = "CertificateSequence"."lastNumber" + 1, "updatedAt" = now()
       RETURNING "lastNumber"`;
     return `BNC-${year}-${String(Number(row.lastNumber)).padStart(6, '0')}`;
+  }
+
+  private async syncManualCertificateNumber(tx: PrismaType.TransactionClient, certificateNumber: string) {
+    const match = /^BNC-(\d{4})-(\d{6,})$/.exec(certificateNumber);
+    if (!match) return;
+    const year = Number(match[1]);
+    const lastNumber = Number(match[2]);
+    await tx.$executeRaw`
+      INSERT INTO "CertificateSequence" ("year", "lastNumber", "updatedAt") VALUES (${year}, ${lastNumber}, now())
+      ON CONFLICT ("year") DO UPDATE SET "lastNumber" = GREATEST("CertificateSequence"."lastNumber", EXCLUDED."lastNumber"), "updatedAt" = now()`;
+  }
+
+  private isCertificateNumberConflict(error: unknown) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') return false;
+    const target = error.meta?.target;
+    return target === 'certificateNumber' || (Array.isArray(target) && target.includes('certificateNumber')) ||
+      (typeof target === 'string' && target.includes('certificateNumber'));
   }
 
   async create(input: z.infer<typeof createCertificateInput>, actorId: string) {
@@ -241,6 +259,7 @@ export class CertificatesService {
 
     const cert = await this.prisma.$transaction(async (tx) => {
       const certificateNumber = input.certificateNumber ?? (await this.getNextCertificateNumber(tx));
+      if (input.certificateNumber) await this.syncManualCertificateNumber(tx, certificateNumber);
       const created = await tx.certificate.create({
         data: {
           ...rest,
@@ -259,7 +278,12 @@ export class CertificatesService {
       });
       await this.audit.log({ actorId, action: 'certificate.issue', entityType: 'Certificate', entityId: created.id, after: created }, tx);
       return created;
-    }, { maxWait: 60_000, timeout: 60_000 });
+    }, { maxWait: 60_000, timeout: 60_000 }).catch((error: unknown) => {
+      if (this.isCertificateNumberConflict(error) && input.certificateNumber) {
+        throw new ConflictException(`Certificate number "${input.certificateNumber}" already exists.`);
+      }
+      throw error;
+    });
     await this.events.emit('certificate.issued', { certificateId: cert.id, certificateNumber: cert.certificateNumber, status: cert.status, actorId });
     return { ...cert, qrUrl: this.qrUrl(cert.verificationId) };
   }
@@ -700,6 +724,8 @@ export class CertificatesService {
   async importCertificates(csv: string, actorId: string): Promise<CertificateImportResponse> {
     const { validRows, invalidRowsCount, errors } = await this.validateCsv(csv);
     if (errors.length > 0) {
+      const existingNumber = errors.find(({ field, message }) => field === 'certificateNumber' && message.includes('already exists in the database'));
+      if (existingNumber) throw new ConflictException(existingNumber.message);
       throw new BadRequestException({
         statusCode: 400,
         message: `Cannot import CSV: found ${errors.length} validation error(s) across ${invalidRowsCount} row(s).`,
@@ -710,6 +736,7 @@ export class CertificatesService {
       throw new BadRequestException('No valid rows found to import');
     }
 
+    let conflictNumber: string | undefined;
     const created = await this.prisma.$transaction(async (tx) => {
       const results = [];
 
@@ -717,7 +744,10 @@ export class CertificatesService {
         let certNumber = row.certificateNumber;
         if (!certNumber) {
           certNumber = await this.getNextCertificateNumber(tx);
+        } else {
+          await this.syncManualCertificateNumber(tx, certNumber);
         }
+        conflictNumber = certNumber;
 
         const cert = await tx.certificate.create({
           data: {
@@ -754,7 +784,12 @@ export class CertificatesService {
       );
 
       return results;
-    }, { maxWait: 60_000, timeout: 60_000 });
+    }, { maxWait: 60_000, timeout: 60_000 }).catch((error: unknown) => {
+      if (this.isCertificateNumberConflict(error) && conflictNumber) {
+        throw new ConflictException(`Certificate number "${conflictNumber}" already exists.`);
+      }
+      throw error;
+    });
 
     for (const cert of created) {
       await this.events.emit('certificate.issued', {

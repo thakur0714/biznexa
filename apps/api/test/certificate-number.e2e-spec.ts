@@ -69,6 +69,19 @@ describe('Certificate number generation', () => {
     expect(next.certificateNumber).toMatch(/^BNC-\d{4}-\d{6,}$/);
   });
 
+  it('advances the counter past a hand-typed number and rejects duplicates with 409', async () => {
+    const current = await prisma.certificateSequence.findUniqueOrThrow({ where: { year: new Date().getFullYear() } });
+    const manualNumber = `${prefix}${String(current.lastNumber + 5).padStart(6, '0')}`;
+    await issue(20, manualNumber).expect(201);
+
+    const automatic = await Promise.all([21, 22, 23].map((n) => issue(n)));
+    for (const response of automatic) expect(response.status).toBe(201);
+    const numbers = automatic.map((response) => seq(response.body.certificateNumber)).sort((a: number, b: number) => a - b);
+    expect(numbers).toEqual([seq(manualNumber) + 1, seq(manualNumber) + 2, seq(manualNumber) + 3]);
+
+    await issue(24, manualNumber).expect(409);
+  });
+
   it('gives parallel certificates distinct consecutive numbers without conflicts', async () => {
     const responses = await Promise.all(Array.from({ length: 10 }, (_, n) => issue(n + 6)));
     for (const r of responses) expect(r.status).toBe(201);
