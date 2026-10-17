@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.service';
+import { AuditModule } from '../audit/audit.module';
 import { EmailChannel } from './channels/email.channel';
 import { EmailProvider, emailProviderFactory } from './providers/email.provider';
 import { SmsChannel } from './channels/sms.channel';
@@ -13,12 +14,14 @@ import { NotificationDispatcherService } from './notification-dispatcher.service
 import { TemplateEngineService } from './template-engine.service';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
+import { AdminNotificationTemplatesController } from './admin-notification-templates.controller';
+import { AdminNotificationTemplatesService } from './admin-notification-templates.service';
 
 import { NotificationEventsListener } from './notification-events.listener';
 
 @Module({
-  imports: [PrismaModule],
-  controllers: [NotificationsController],
+  imports: [PrismaModule, AuditModule],
+  controllers: [NotificationsController, AdminNotificationTemplatesController],
   providers: [
     emailProviderFactory,
     smsProviderFactory,
@@ -33,6 +36,7 @@ import { NotificationEventsListener } from './notification-events.listener';
     TemplateEngineService,
     NotificationsService,
     NotificationEventsListener,
+    AdminNotificationTemplatesService,
   ],
   exports: [
     EmailProvider,
@@ -43,6 +47,7 @@ import { NotificationEventsListener } from './notification-events.listener';
     TemplateEngineService,
     NotificationsService,
     NotificationEventsListener,
+    AdminNotificationTemplatesService,
     EmailChannel,
     SmsChannel,
     PushChannel,

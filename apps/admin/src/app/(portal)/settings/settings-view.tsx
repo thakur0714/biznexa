@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { OPTION_SOURCES, formatDate, type RejectionPresets } from '@biznexa/types';
-import { Button, Field, Notice, Select, useToast } from '@biznexa/ui';
+import { Button, LinkButton, Field, Notice, Select, useToast } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { NotAllowed } from '@/components/portal-shell';
@@ -20,6 +20,17 @@ export function SettingsView() {
     <div className="space-y-12">
       <SellerSettingsPage />
       <RejectionPresetsPage />
+      <div className="max-w-[800px] rounded-lg border border-rule bg-white p-6 shadow-xs">
+        <h2 className="text-xl font-bold tracking-[-0.02em] text-night">Notification Templates</h2>
+        <p className="mt-1 text-sm text-muted">
+          Manage transactional message templates, DLT template IDs, and preview rendered notifications across email, SMS, push, and in-app channels.
+        </p>
+        <div className="mt-4">
+          <LinkButton href="/notifications" variant="outline" size="sm">
+            Open Notification Template Editor →
+          </LinkButton>
+        </div>
+      </div>
     </div>
   );
 }

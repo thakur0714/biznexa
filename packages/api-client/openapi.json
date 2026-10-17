@@ -1500,6 +1500,242 @@
         ]
       }
     },
+    "/api/admin/notifications/templates": {
+      "get": {
+        "operationId": "AdminNotificationTemplatesController_list",
+        "parameters": [
+          {
+            "name": "event",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "channel",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "EMAIL",
+                "SMS",
+                "PUSH",
+                "IN_APP",
+                "WHATSAPP"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNotificationTemplateList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · notifications"
+        ]
+      }
+    },
+    "/api/admin/notifications/templates/events": {
+      "get": {
+        "operationId": "AdminNotificationTemplatesController_events",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · notifications"
+        ]
+      }
+    },
+    "/api/admin/notifications/templates/preview": {
+      "post": {
+        "operationId": "AdminNotificationTemplatesController_preview",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "EMAIL",
+                      "SMS",
+                      "PUSH",
+                      "IN_APP",
+                      "WHATSAPP"
+                    ]
+                  },
+                  "event": {
+                    "type": "string"
+                  },
+                  "subject": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sampleVariables": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "channel",
+                  "body"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewNotificationTemplateResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · notifications"
+        ]
+      }
+    },
+    "/api/admin/notifications/templates/{id}": {
+      "get": {
+        "operationId": "AdminNotificationTemplatesController_getById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNotificationTemplate"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · notifications"
+        ]
+      },
+      "put": {
+        "operationId": "AdminNotificationTemplatesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subject": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "dltTemplateId": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "body"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminNotificationTemplate"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · notifications"
+        ]
+      }
+    },
     "/api/catalogue/categories": {
       "get": {
         "operationId": "CatalogueController_categories",
@@ -15271,6 +15507,170 @@
         },
         "required": [
           "success"
+        ],
+        "additionalProperties": false
+      },
+      "AdminNotificationTemplateList": {
+        "type": "object",
+        "properties": {
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "event": {
+                  "type": "string"
+                },
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "EMAIL",
+                    "SMS",
+                    "PUSH",
+                    "IN_APP",
+                    "WHATSAPP"
+                  ]
+                },
+                "subject": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "body": {
+                  "type": "string"
+                },
+                "dltTemplateId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "isActive": {
+                  "type": "boolean"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "allowedVariables": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "event",
+                "channel",
+                "subject",
+                "body",
+                "dltTemplateId",
+                "isActive",
+                "updatedAt",
+                "allowedVariables"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "templates"
+        ],
+        "additionalProperties": false
+      },
+      "PreviewNotificationTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "renderedSubject": {
+            "type": "string"
+          },
+          "renderedBody": {
+            "type": "string"
+          },
+          "variablesUsed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missingVariables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unknownVariables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "renderedBody",
+          "variablesUsed",
+          "missingVariables",
+          "unknownVariables"
+        ],
+        "additionalProperties": false
+      },
+      "AdminNotificationTemplate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "event": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "EMAIL",
+              "SMS",
+              "PUSH",
+              "IN_APP",
+              "WHATSAPP"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "nullable": true
+          },
+          "body": {
+            "type": "string"
+          },
+          "dltTemplateId": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "allowedVariables": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "event",
+          "channel",
+          "subject",
+          "body",
+          "dltTemplateId",
+          "isActive",
+          "updatedAt",
+          "allowedVariables"
         ],
         "additionalProperties": false
       },
