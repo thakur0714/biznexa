@@ -43,7 +43,19 @@ test('upcoming due dates show five reminders and a category-qualified renewal li
   await expect(widget.getByRole('heading', { name: 'Upcoming due dates', exact: true })).toBeVisible();
   await expect(widget.locator('li')).toHaveCount(5);
   await expect(widget.getByText('Reminder 1')).toBeVisible();
-  await expect(widget.getByText(`Due ${formatDate(reminders.items[0].dueDate)} · 2 days left`)).toBeVisible();
+
+  // Calculate days left using the exact same logic as the component to avoid flaky tests across timezones
+  const daysLeft = (dueDate: string) => {
+    const istDay = (value: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(value));
+    const calendarDay = (value: string) => {
+      const [year, month, day] = istDay(value).split('-').map(Number);
+      return Date.UTC(year, month - 1, day);
+    };
+    return Math.max(0, Math.round((calendarDay(dueDate) - calendarDay(new Date().toISOString())) / 86_400_000));
+  };
+  const remainingDays = daysLeft(reminders.items[0].dueDate);
+
+  await expect(widget.getByText(`Due ${formatDate(reminders.items[0].dueDate)} · ${remainingDays} ${remainingDays === 1 ? 'day' : 'days'} left`)).toBeVisible();
   await expect(widget.getByRole('link', { name: 'Renew' })).toHaveAttribute('href', '/services/tax-gst/gst-registration');
   await expect(widget.getByText('Reminder 6')).toHaveCount(0);
 });

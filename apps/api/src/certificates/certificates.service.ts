@@ -249,7 +249,7 @@ export class CertificatesService {
     const { fileId, entityId, businessEntityId: _bId, organizationName: _org, ...rest } = input;
 
     let attempts = 0;
-    while (attempts < 3) {
+    while (attempts < 10) {
       try {
         const cert = await this.prisma.certificate.create({
           data: {
@@ -271,7 +271,8 @@ export class CertificatesService {
         await this.events.emit('certificate.issued', { certificateId: cert.id, certificateNumber: cert.certificateNumber, status: cert.status, actorId });
         return { ...cert, qrUrl: this.qrUrl(cert.verificationId) };
       } catch (e: any) {
-        if (e.code === 'P2002' && attempts < 2 && !input.certificateNumber) {
+        if (e.code === 'P2002' && attempts < 9 && !input.certificateNumber) {
+          await new Promise((resolve) => setTimeout(resolve, Math.random() * 50));
           attempts++;
           continue;
         }
@@ -728,8 +729,7 @@ export class CertificatesService {
     }
 
     let attempts = 0;
-
-    while (attempts < 3) {
+    while (attempts < 10) {
       try {
         const created = await this.prisma.$transaction(async (tx) => {
           let nextNumberInput: string | undefined = undefined;
@@ -794,7 +794,8 @@ export class CertificatesService {
           certificateIds: created.map((c) => c.id),
         };
       } catch (e: any) {
-        if (e.code === 'P2002' && attempts < 2) {
+        if (e.code === 'P2002' && attempts < 9) {
+          await new Promise((resolve) => setTimeout(resolve, Math.random() * 50));
           attempts++;
           continue;
         }

@@ -201,7 +201,7 @@ export class AdminApplicationsService {
       documents: {
         where: { isLatest: true },
         select: {
-          id: true, requirementId: true, name: true, status: true, fileKey: true, fileName: true, sizeBytes: true, mimeType: true
+          id: true, requirementId: true, description: true, name: true, status: true, fileKey: true, fileName: true, sizeBytes: true, mimeType: true
         },
         orderBy: { requirement: { sortOrder: 'asc' } },
         
@@ -285,7 +285,8 @@ export class AdminApplicationsService {
         fileName: d.fileName || '',
         fileSize: d.sizeBytes || 0,
         mimeType: d.mimeType || '',
-        requirementId: d.requirementId || '',
+        requirementId: d.requirementId,
+        description: d.description,
       })),
       
       history: app.history.map(h => ({

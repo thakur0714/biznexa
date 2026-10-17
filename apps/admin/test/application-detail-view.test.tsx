@@ -34,6 +34,19 @@ vi.mock('@biznexa/api-client/react', () => {
             service: { name: 'Service' },
             package: { name: 'Package' },
             priority: 'normal',
+            documents: [
+              {
+                id: 'doc-1',
+                requirementId: null,
+                description: 'A utility bill from the last 3 months',
+                name: 'Address proof',
+                status: 'REQUIRED',
+                fileKey: '',
+                fileName: '',
+                fileSize: 0,
+                mimeType: '',
+              }
+            ],
           });
         }
         if (path === '/api/admin/applications/{applicationId}/messages') {
@@ -77,6 +90,15 @@ describe('Admin Application Detail UI', () => {
     fireEvent.change(nameInput, { target: { value: 'Proof of address' } });
 
     expect(submitBtn).not.toBeDisabled();
+  });
+
+  it('renders document description when available', async () => {
+    render(<ApplicationDetailView id="app1" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Address proof')).toBeInTheDocument();
+      expect(screen.getByText('A utility bill from the last 3 months')).toBeInTheDocument();
+    });
   });
 
   it('does not show "Issue certificate" button when application is DRAFT', async () => {

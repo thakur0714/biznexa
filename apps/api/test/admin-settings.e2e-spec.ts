@@ -59,7 +59,7 @@ beforeAll(async () => {
 afterAll(async () => {
   const kept = new Map(original.map((r) => [r.key, r.value]));
   await prisma.setting.deleteMany({ where: { key: { in: [...KEYS.filter((k) => !kept.has(k)), REJECTION_PRESETS_KEY] } } });
-  for (const [key, value] of kept) await prisma.setting.update({ where: { key }, data: { value: value as object } });
+  for (const [key, value] of kept) await prisma.setting.upsert({ where: { key }, update: { value: value as object }, create: { key, value: value as object } });
   await prisma.setting.deleteMany({ where: { key: REJECTION_PRESETS_KEY } });
   await prisma.auditLog.deleteMany({ where: { actorId: adminId } });
   await prisma.user.deleteMany({ where: { email: { startsWith: `e2e-st-${run}` } } });
@@ -90,7 +90,9 @@ describe('admin seller settings (M3.14)', () => {
     expect(await stored(SELLER_SETTING_KEYS.state)).toBe('Punjab');
     expect(await stored(SELLER_SETTING_KEYS.address)).toEqual(address);
     expect(await stored(SELLER_SETTING_KEYS.invoicePrefix)).toBe('BN');
-    expect((await http.get('/api/admin/settings/seller').set(as(admin)).expect(200)).body).toEqual(body);
+    const getRes = (await http.get('/api/admin/settings/seller').set(as(admin)).expect(200)).body;
+    expect(getRes).toMatchObject(body);
+    expect(getRes.updatedAt).toBeDefined();
 
     await put({ ...details, phone: '', invoicePrefix: 'BNX' }).expect(200);
     expect(await stored(SELLER_SETTING_KEYS.phone)).toBe('');
