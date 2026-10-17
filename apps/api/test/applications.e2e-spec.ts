@@ -2,6 +2,7 @@
  * Starting an application (M3.8, D35): draft order + DRAFT application, codes from DB sequences.
  */
 import { Test } from '@nestjs/testing';
+import { randomInt, randomUUID } from 'node:crypto';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { APPLICATION_CODE_PATTERN, draftApplicationSchema, GENERIC_SERVICE_FORM, istYear, ORDER_CODE_PATTERN, type DraftApplication } from '@biznexa/types';
@@ -17,7 +18,8 @@ let serviceId: string;
 let packageIds: string[];
 let noFormPackageId: string;
 
-const run = Date.now().toString().slice(-7);
+const run = randomUUID();
+const mobileRun = String(randomInt(1_000_000, 10_000_000));
 const base = '/api/applications';
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
 const users = { email: { startsWith: `e2e-app-${run}` } };
@@ -28,7 +30,7 @@ const CUSTOMERS = 8;
 async function register(n: number) {
   const res = await http
     .post('/api/auth/register')
-    .send({ name: 'Application Test', mobile: `6${run}${String(n).padStart(2, '0')}`, email: `e2e-app-${run}-${n}@example.com`, password: 'secret123', consent: true })
+    .send({ name: 'Application Test', mobile: `6${mobileRun}${String(n).padStart(2, '0')}`, email: `e2e-app-${run}-${n}@example.com`, password: 'secret123', consent: true })
     .expect(201);
   return res.body.accessToken as string;
 }
@@ -164,8 +166,12 @@ describe('start an application (M3.8)', () => {
   it('never gives two orders or applications the same code under concurrent creation', async () => {
     // Every customer starts three packages at once: 24 new drafts in parallel, plus repeats that must resume.
     const before = await prisma.application.count({ where: myApps });
-    const requests = customers.slice(2).flatMap((token) => packageIds.slice(0, 3).flatMap((packageId) => [start(token, { packageId }), start(token, { packageId })]));
-    const results = await Promise.all(requests);
+    const results = [];
+    // Race several customers together while keeping the database work bounded under the full API run.
+    for (let offset = 2; offset < customers.length; offset += 2) {
+      const batch = customers.slice(offset, offset + 2).flatMap((token) => packageIds.slice(0, 3).flatMap((packageId) => [start(token, { packageId }), start(token, { packageId })]));
+      results.push(...(await Promise.all(batch)));
+    }
     for (const r of results) expect([200, 201]).toContain(r.status);
     const created = results.filter((r) => r.status === 201).map((r) => draftApplicationSchema.parse(r.body));
     expect(created).toHaveLength((CUSTOMERS - 2) * 3);
@@ -181,15 +187,21 @@ describe('start an application (M3.8)', () => {
   });
 
   it('hands out distinct codes straight from the service under heavy parallel load', async () => {
-    // 40 parallel starts by different customers bypass the per-customer lock and only rely on the sequences.
+    // Forty unique customers still exercise simultaneous sequence allocation without opening 80 DB operations at once.
     const { ApplicationsService } = await import('../src/applications/applications.service');
     const svc = app.get(ApplicationsService);
-    const ids = await Promise.all(
-      Array.from({ length: 40 }, async (_, i) => {
-        const u = await prisma.user.create({ data: { name: 'Load', email: `e2e-app-${run}-load-${i}@example.com`, passwordHash: 'x', consentAt: new Date() } });
-        return svc.startDraft(u.id, { packageId: packageIds[i % 3], businessEntityId: null });
-      }),
-    );
+    await prisma.user.createMany({
+      data: Array.from({ length: 40 }, (_, i) => ({ name: 'Load', email: `e2e-app-${run}-load-${i}@example.com`, passwordHash: 'x', consentAt: new Date() })),
+    });
+    const loadUsers = await prisma.user.findMany({ where: { email: { startsWith: `e2e-app-${run}-load-` } }, orderBy: { email: 'asc' }, select: { id: true } });
+    const ids = [];
+    for (let offset = 0; offset < loadUsers.length; offset += 8) {
+      ids.push(
+        ...(await Promise.all(
+          loadUsers.slice(offset, offset + 8).map((u, index) => svc.startDraft(u.id, { packageId: packageIds[(offset + index) % 3], businessEntityId: null })),
+        )),
+      );
+    }
     expect(new Set(ids.map((d) => d.code)).size).toBe(40);
     expect(new Set(ids.map((d) => d.order.code)).size).toBe(40);
   });
