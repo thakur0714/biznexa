@@ -33,7 +33,7 @@ const fakeClient = {
       response: new Response(null, { status: 200 }),
     };
   }),
-  POST: vi.fn(async (url: string, options?: { body?: { body?: string } }) => {
+  POST: vi.fn(async (url: string, options?: { body?: { body?: string, fileIds?: string[] } | FormData | any }) => {
     calls.push({ method: 'POST', url, options });
     if (url.endsWith('/read')) {
       const readRes: MarkMessagesReadResponse = markMessagesReadResponseSchema.parse({ count: 1 });
@@ -42,9 +42,16 @@ const fakeClient = {
         response: new Response(null, { status: 200 }),
       };
     }
+    if (url === '/api/files') {
+      return {
+        data: { id: 'file-1234' },
+        response: new Response(null, { status: 201 }),
+      };
+    }
     const nextMsg: Message = messageSchema.parse({
       ...createdMessage,
-      body: options?.body?.body ?? createdMessage.body,
+      body: options?.body?.body !== undefined ? options.body.body : createdMessage.body,
+      attachments: options?.body?.fileIds ? [{ id: options.body.fileIds[0], fileName: 'attached.pdf', mimeType: 'application/pdf', sizeBytes: 1024 }] : [],
     });
     return {
       data: nextMsg,
@@ -135,5 +142,57 @@ describe('MessagesPanel (M4.11)', () => {
       expect(textarea.value).toBe('');
     });
     expect(sendButton.disabled).toBe(true);
+  });
+
+  it('renders a message with an attachment and a null body', async () => {
+    initialPage = messageThreadPageSchema.parse({
+      items: [
+        {
+          id: '44444444-4444-4444-8444-444444444444',
+          body: null,
+          sender: { id: CUST_ID, name: 'Riya Sharma', isStaff: false },
+          createdAt: '2026-10-15T06:30:00.000Z',
+          readAt: null,
+          attachments: [
+            { id: 'att-1', fileName: 'document.pdf', mimeType: 'application/pdf', sizeBytes: 2048 },
+          ],
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 50,
+    });
+
+    render(<MessagesPanel applicationId={APP_ID} />);
+    await screen.findByText('document.pdf');
+    expect(screen.getByText('2.0 KB')).toBeTruthy();
+    expect(screen.queryByText('null')).toBeNull();
+  });
+
+  it('allows sending a message with one file attached (collects fileId)', async () => {
+    render(<MessagesPanel applicationId={APP_ID} />);
+    await screen.findByText('Customer question about GST certificate');
+
+    const sendButton = screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement;
+    // Querying for the specific file input using the ID or type.
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    expect(sendButton.disabled).toBe(true);
+
+    const file = new File(['content'], 'test-upload.pdf', { type: 'application/pdf' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await waitFor(() => {
+      expect(sendButton.disabled).toBe(false);
+    });
+
+    fireEvent.click(sendButton);
+
+    await waitFor(() => {
+      expect(calls.some(c => c.url === '/api/files' && c.method === 'POST')).toBe(true);
+      expect(calls.some(c => c.url.includes('/messages') && c.method === 'POST' && (c.options as any)?.body?.fileIds?.includes('file-1234'))).toBe(true);
+    });
+
+    await screen.findByText('attached.pdf');
   });
 });
