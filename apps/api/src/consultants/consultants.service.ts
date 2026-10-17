@@ -1,7 +1,10 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
+  addDays,
+  generateSlots,
   istDate,
+  istInstant,
   adminConsultantActionResponseSchema,
   adminConsultantDetailSchema,
   adminConsultantListSchema,
@@ -21,6 +24,7 @@ import {
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { liveBookingWhere } from '../bookings/booking-holds';
 
 @Injectable()
 export class ConsultantsService {
@@ -252,24 +256,9 @@ export class ConsultantsService {
   }
 
   async listPublic(query: PublicConsultantDirectoryQuery, now = new Date()): Promise<PublicConsultantDirectory> {
-    const ist = new Date(now.getTime() + 330 * 60_000);
-    const weekday = ist.getUTCDay();
-    // Exception dates are IST calendar dates (`@db.Date`, M8.6).
-    const today = new Date(`${istDate(now)}T00:00:00Z`);
-    const parts = new Intl.DateTimeFormat('en-IN', {
-      timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-    }).formatToParts(now);
-    const hour = parts.find((part) => part.type === 'hour')?.value ?? '00';
-    const minute = parts.find((part) => part.type === 'minute')?.value ?? '00';
-    const localTime = `${hour}:${minute}`;
-    const availableSlotWhere: Prisma.AvailabilitySlotWhereInput = {
-      isBlocked: false,
-      startTime: { gte: localTime },
-      OR: [
-        { weekday, date: null },
-        { date: today },
-      ],
-    };
+    const today = istDate(now);
+    const todayStart = istInstant(today, 0);
+    const tomorrowStart = istInstant(addDays(today, 1), 0);
     const where: Prisma.ConsultantWhereInput = {
       verificationStatus: 'APPROVED',
       ...(query.category ? { category: query.category } : {}),
@@ -286,8 +275,6 @@ export class ConsultantsService {
       } : {}),
       ...(query.language ? { languages: { has: query.language } } : {}),
       ...(query.consultationType ? { consultationTypes: { has: query.consultationType } } : {}),
-      ...(query.availableToday === true ? { availability: { some: availableSlotWhere } } : {}),
-      ...(query.availableToday === false ? { availability: { none: availableSlotWhere } } : {}),
     };
     const orderBy: Prisma.ConsultantOrderByWithRelationInput[] = query.sort === 'experience'
       ? [{ experienceYears: 'desc' }, { rating: 'desc' }, { id: 'asc' }]
@@ -297,22 +284,84 @@ export class ConsultantsService {
           ? [{ feePerSession: 'desc' }, { rating: 'desc' }, { id: 'asc' }]
           : [{ rating: 'desc' }, { reviewCount: 'desc' }, { id: 'asc' }];
 
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.consultant.findMany({
+    const select = {
+      id: true, slug: true, category: true, qualification: true, city: true, state: true, area: true,
+      expertise: true, languages: true, bio: true, photoUrl: true, feePerSession: true,
+      sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true,
+      user: { select: { name: true } },
+    } satisfies Prisma.ConsultantSelect;
+    let rows: (Prisma.ConsultantGetPayload<{ select: typeof select }> & { availableToday: boolean })[];
+    let total: number;
+    if (query.availableToday !== undefined) {
+      const candidates = await this.prisma.consultant.findMany({
         where,
         orderBy,
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
         select: {
-          id: true, slug: true, category: true, qualification: true, city: true, state: true, area: true,
-          expertise: true, languages: true, bio: true, photoUrl: true, feePerSession: true,
-          sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true,
-          user: { select: { name: true } },
-          availability: { where: availableSlotWhere, select: { id: true }, take: 1 },
+          ...select,
+          sessionMinutes: true,
+          bufferMinutes: true,
+          minNoticeMinutes: true,
+          availability: {
+            where: { OR: [{ weekday: { not: null } }, { date: new Date(`${today}T00:00:00Z`) }] },
+            select: { weekday: true, date: true, startTime: true, endTime: true, isBlocked: true },
+          },
         },
-      }),
-      this.prisma.consultant.count({ where }),
-    ]);
+      });
+      const bookings = candidates.length ? await this.prisma.booking.findMany({
+        where: { consultantId: { in: candidates.map((c) => c.id) }, startAt: { lt: tomorrowStart }, endAt: { gt: todayStart }, ...liveBookingWhere(now) },
+        select: { consultantId: true, startAt: true, endAt: true },
+      }) : [];
+      const busyByConsultant = new Map<string, { startAt: Date; endAt: Date }[]>();
+      for (const booking of bookings) busyByConsultant.set(booking.consultantId, [...(busyByConsultant.get(booking.consultantId) ?? []), booking]);
+      const available = candidates.map((c) => {
+        const slots = generateSlots({
+          sessionMinutes: c.sessionMinutes,
+          bufferMinutes: c.bufferMinutes,
+          minNoticeMinutes: c.minNoticeMinutes,
+          weekly: c.availability.filter((s) => s.weekday !== null).map((s) => ({ weekday: s.weekday!, startTime: s.startTime, endTime: s.endTime })),
+          exceptions: c.availability.filter((s) => s.date !== null).map((s) => ({ date: s.date!.toISOString().slice(0, 10), startTime: s.startTime, endTime: s.endTime, isBlocked: s.isBlocked })),
+        }, { from: today, to: today, now, busy: busyByConsultant.get(c.id) ?? [] }).length > 0;
+        const { availability: _availability, bufferMinutes: _bufferMinutes, minNoticeMinutes: _minNoticeMinutes, ...row } = c;
+        return { ...row, availableToday: slots };
+      }).filter((c) => c.availableToday === query.availableToday);
+      total = available.length;
+      rows = available.slice((query.page - 1) * query.limit, query.page * query.limit);
+    } else {
+      const [pageRows, count] = await this.prisma.$transaction([
+        this.prisma.consultant.findMany({
+          where, orderBy, skip: (query.page - 1) * query.limit, take: query.limit,
+          select: {
+            ...select,
+            sessionMinutes: true,
+            bufferMinutes: true,
+            minNoticeMinutes: true,
+            availability: {
+              where: { OR: [{ weekday: { not: null } }, { date: new Date(`${today}T00:00:00Z`) }] },
+              select: { weekday: true, date: true, startTime: true, endTime: true, isBlocked: true },
+            },
+          },
+        }),
+        this.prisma.consultant.count({ where }),
+      ]);
+      const bookings = pageRows.length ? await this.prisma.booking.findMany({
+        where: { consultantId: { in: pageRows.map((c) => c.id) }, startAt: { lt: tomorrowStart }, endAt: { gt: todayStart }, ...liveBookingWhere(now) },
+        select: { consultantId: true, startAt: true, endAt: true },
+      }) : [];
+      const busyByConsultant = new Map<string, { startAt: Date; endAt: Date }[]>();
+      for (const booking of bookings) busyByConsultant.set(booking.consultantId, [...(busyByConsultant.get(booking.consultantId) ?? []), booking]);
+      rows = pageRows.map((c) => {
+        const availableToday = generateSlots({
+          sessionMinutes: c.sessionMinutes,
+          bufferMinutes: c.bufferMinutes,
+          minNoticeMinutes: c.minNoticeMinutes,
+          weekly: c.availability.filter((s) => s.weekday !== null).map((s) => ({ weekday: s.weekday!, startTime: s.startTime, endTime: s.endTime })),
+          exceptions: c.availability.filter((s) => s.date !== null).map((s) => ({ date: s.date!.toISOString().slice(0, 10), startTime: s.startTime, endTime: s.endTime, isBlocked: s.isBlocked })),
+        }, { from: today, to: today, now, busy: busyByConsultant.get(c.id) ?? [] }).length > 0;
+        const { availability: _availability, bufferMinutes: _bufferMinutes, minNoticeMinutes: _minNoticeMinutes, ...row } = c;
+        return { ...row, availableToday };
+      });
+      total = count;
+    }
     return publicConsultantDirectorySchema.parse({
       items: rows.map((row) => ({
         id: row.id,
@@ -333,7 +382,7 @@ export class ConsultantsService {
         rating: row.rating,
         reviewCount: row.reviewCount,
         isOnline: row.isOnline,
-        availableToday: row.availability.length > 0,
+        availableToday: row.availableToday,
       })),
       total,
       page: query.page,
