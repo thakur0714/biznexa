@@ -10,7 +10,7 @@ import { Button, Checkbox, Dialog, Field, Notice } from '@biznexa/ui';
 import { isMediaPath, MEDIA_ACCEPT, MEDIA_MAX_MB, mediaTypeFromName, safeLinkHref, type MediaImage } from '@biznexa/types';
 
 /**
- * Shared rich-text editor for CMS pages, homepage blocks and blog posts (M9.4, D59). Tiptap, limited
+ * Shared rich-text editor for CMS pages, homepage blocks and blog posts (M9.4, D60). Tiptap, limited
  * to what the sanitiser keeps: H2–H4, bold/italic/underline/strike, lists, links, quotes, tables,
  * code and images uploaded to the public media store. The API sanitises again on save.
  *

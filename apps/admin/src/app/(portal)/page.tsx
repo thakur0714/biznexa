@@ -66,7 +66,7 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
-  const sections = visibleNav(user.permissions)
+  const sections = visibleNav(user.permissions, undefined, user.roles)
     .flatMap((g) => g.items)
     .filter((i) => i.slug !== '');
 

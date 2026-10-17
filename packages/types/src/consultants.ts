@@ -102,6 +102,15 @@ export const adminConsultantDetailSchema = adminConsultantSummarySchema.extend({
   rejectionReason: z.string().nullable(),
   updatedAt: z.string().datetime(),
   documents: z.array(adminConsultantDocumentSchema),
+  feeChangeRequests: z.array(z.object({
+    id: z.string().uuid(),
+    requestedFee: z.number().int(),
+    status: z.enum(['PENDING', 'APPROVED', 'REJECTED']),
+    decisionReason: z.string().nullable(),
+    createdAt: z.string().datetime(),
+    decidedAt: z.string().datetime().nullable(),
+    decidedBy: z.string().nullable(),
+  })),
 });
 export type AdminConsultantDetail = z.infer<typeof adminConsultantDetailSchema>;
 
@@ -115,6 +124,41 @@ export type AdminConsultantList = z.infer<typeof adminConsultantListSchema>;
 
 export const adminConsultantProfileInputSchema = consultantProfileInputSchema;
 export type AdminConsultantProfileInput = z.infer<typeof adminConsultantProfileInputSchema>;
+export const consultantFeeChangeStatus = ['PENDING', 'APPROVED', 'REJECTED'] as const;
+export const consultantFeeChangeRequestSchema = z.object({
+  id: z.string().uuid(),
+  consultantId: z.string().uuid(),
+  requestedFee: z.number().int(),
+  status: z.enum(consultantFeeChangeStatus),
+  decisionReason: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  decidedAt: z.string().datetime().nullable(),
+});
+export type ConsultantFeeChangeRequest = z.infer<typeof consultantFeeChangeRequestSchema>;
+export const consultantOwnProfileSchema = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  category: consultantCategorySchema,
+  qualification: z.string(),
+  membershipNo: z.string().nullable(),
+  experienceYears: z.number().int(),
+  expertise: z.array(z.string()),
+  languages: z.array(z.string()),
+  city: z.string(),
+  state: z.string(),
+  area: z.string().nullable(),
+  bio: z.string().nullable(),
+  feePerSession: z.number().int(),
+  consultationTypes: z.array(consultationTypeSchema),
+  pendingFeeRequest: consultantFeeChangeRequestSchema.nullable(),
+});
+export type ConsultantOwnProfile = z.infer<typeof consultantOwnProfileSchema>;
+export const consultantFeeChangeDecisionSchema = z.object({ reason: z.string().trim().min(3).max(1000) });
+export type ConsultantFeeChangeDecision = z.infer<typeof consultantFeeChangeDecisionSchema>;
+export const consultantFeeChangeActionResponseSchema = z.object({
+  id: z.string().uuid(), consultantId: z.string().uuid(), requestedFee: z.number().int(), status: z.enum(['APPROVED', 'REJECTED']), decisionReason: z.string().nullable(),
+});
+export type ConsultantFeeChangeActionResponse = z.infer<typeof consultantFeeChangeActionResponseSchema>;
 export const consultantRejectInputSchema = z.object({ reason: z.string().trim().min(3).max(1000) });
 export type ConsultantRejectInput = z.infer<typeof consultantRejectInputSchema>;
 
@@ -174,3 +218,15 @@ export const publicConsultantDirectorySchema = z.object({
   limit: z.number().int(),
 });
 export type PublicConsultantDirectory = z.infer<typeof publicConsultantDirectorySchema>;
+
+export const publicConsultantProfileSchema = publicConsultantCardSchema.omit({ availableToday: true }).extend({
+  experienceYears: z.number().int(),
+  ratingSummary: z.object({
+    average: z.number(),
+    reviewCount: z.number().int(),
+    breakdown: z.object({ '1': z.number().int(), '2': z.number().int(), '3': z.number().int(), '4': z.number().int(), '5': z.number().int() }),
+  }),
+  services: z.array(z.object({ id: z.string().uuid(), slug: z.string(), name: z.string(), category: z.string() })),
+  verifiedReviews: z.array(z.object({ id: z.string().uuid(), rating: z.number().int().min(1).max(5), text: z.string().nullable(), createdAt: z.string().datetime() })),
+});
+export type PublicConsultantProfile = z.infer<typeof publicConsultantProfileSchema>;

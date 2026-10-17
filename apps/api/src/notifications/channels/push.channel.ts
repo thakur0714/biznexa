@@ -4,6 +4,7 @@ import type { NotificationChannel } from '../notification-channel.interface';
 import { FcmProvider } from '../providers/fcm.provider';
 import { TemplateEngineService, TemplateNotFoundError } from '../template-engine.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { isPermanentFailure } from '../delivery/delivery-policy';
 
 @Injectable()
 export class PushChannel implements NotificationChannel {
@@ -128,6 +129,7 @@ export class PushChannel implements NotificationChannel {
         success: false,
         channel: this.channel,
         error: message,
+        permanent: isPermanentFailure(err),
       };
     }
   }

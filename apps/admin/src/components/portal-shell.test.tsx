@@ -9,10 +9,10 @@ vi.mock('@/lib/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/auth')>()),
   useAuth: () => auth,
 }));
-const nav = vi.hoisted(() => ({ replace: vi.fn() }));
+const nav = vi.hoisted(() => ({ replace: vi.fn(), pathname: '/services' }));
 vi.mock('next/navigation', () => ({
   useRouter: () => nav,
-  usePathname: () => '/services',
+  usePathname: () => nav.pathname,
   useSearchParams: () => new URLSearchParams('status=inactive'),
 }));
 
@@ -27,7 +27,7 @@ const staff = (twoFactor: TwoFactorState): StaffUser => ({
   twoFactor,
 });
 
-beforeEach(() => nav.replace.mockClear());
+beforeEach(() => { nav.replace.mockClear(); nav.pathname = '/services'; });
 
 describe('PortalShell two-factor gate', () => {
   it('sends a staff session that has not passed 2FA to the 2FA step, keeping the page to return to', async () => {
@@ -41,6 +41,22 @@ describe('PortalShell two-factor gate', () => {
     auth.user = staff({ required: true, enabled: true, verified: true });
     render(<PortalShell>secret page</PortalShell>);
     expect(screen.getByText('secret page')).toBeTruthy();
+    expect(nav.replace).not.toHaveBeenCalled();
+  });
+
+  it('redirects consultants from other admin routes and shows only consultant portal navigation', async () => {
+    auth.user = { ...staff({ required: true, enabled: true, verified: true }), roles: ['CONSULTANT'], permissions: [PERMS.ADMIN_ACCESS, PERMS.APPLICATIONS_VIEW_ASSIGNED] };
+    render(<PortalShell>admin route</PortalShell>);
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith('/consultant/profile'));
+    expect(screen.queryByText('admin route')).toBeNull();
+
+    nav.pathname = '/consultant/profile';
+    nav.replace.mockClear();
+    render(<PortalShell>consultant route</PortalShell>);
+    expect(screen.getByText('consultant route')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'My profile' }).getAttribute('href')).toBe('/consultant/profile');
+    expect(screen.getByRole('link', { name: 'Availability' }).getAttribute('href')).toBe('/consultant/availability');
+    expect(screen.queryByRole('link', { name: 'Applications' })).toBeNull();
     expect(nav.replace).not.toHaveBeenCalled();
   });
 

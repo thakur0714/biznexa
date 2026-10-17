@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationDispatcherService } from '../notifications/notification-dispatcher.service';
+import { NotificationQueueService } from '../notifications/delivery/notification-queue.service';
 import { TemplateEngineService } from '../notifications/template-engine.service';
 import { env } from '../config/env';
 import { istDay, type NotificationEvent } from '@biznexa/types';
@@ -20,7 +20,7 @@ export class ReminderJobService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly dispatcher: NotificationDispatcherService,
+    private readonly notifications: NotificationQueueService,
     private readonly templateEngine: TemplateEngineService,
   ) {}
 
@@ -56,14 +56,15 @@ export class ReminderJobService {
         if (reminder.offsets.every((o) => sent.includes(o))) {
           await this.prisma.reminder.update({ where: { id: reminder.id }, data: { status: 'SENT' } });
         }
-        await this.processDispatch(reminder, daysBetween(today, istDay(reminder.dueDate)));
+        // One notification per claim, named by the nearest offset claimed (the one that is due now).
+        await this.processDispatch(reminder, daysBetween(today, istDay(reminder.dueDate)), `${reminder.id}:${Math.min(...dueOffsets)}`);
       } catch (err) {
         this.logger.error(`Error processing reminder ${reminder.id}: ${err instanceof Error ? err.message : err}`);
       }
     }
   }
 
-  private async processDispatch(reminder: ReminderWithEntity, daysLeft: number) {
+  private async processDispatch(reminder: ReminderWithEntity, daysLeft: number, sourceKey: string) {
     let link = `${env().PUBLIC_WEB_URL}/dashboard`;
 
     if (reminder.renewServiceSlug) {
@@ -125,21 +126,19 @@ export class ReminderJobService {
     for (const template of templates) {
       try {
         const rendered = this.templateEngine.render(template, variables);
-        await this.dispatcher.dispatch({
+        await this.notifications.enqueue({
           userId: user.id,
           channel: template.channel,
           event,
+          sourceKey,
+          templateId: template.id,
           title: rendered.subject,
           body: rendered.body,
           payload: variables,
           link,
-          recipient: {
-            email: user.email ?? undefined,
-            mobile: user.mobile ?? undefined,
-          },
         });
       } catch (err) {
-        this.logger.error(`Failed to dispatch reminder notification: ${err instanceof Error ? err.message : String(err)}`);
+        this.logger.error(`Failed to queue reminder notification: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   }

@@ -1,6 +1,6 @@
 /*
  * Look of rich text (M9.4): the same rules in the admin editor and on the website, so what an editor
- * sees is what visitors get. Only styles the tags the sanitiser allows (D59).
+ * sees is what visitors get. Only styles the tags the sanitiser allows (D60).
  */
 .rich-text {
   font-size: 17px;

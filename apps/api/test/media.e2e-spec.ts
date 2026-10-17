@@ -1,5 +1,5 @@
 /**
- * Public website images (M9.4, D59) against a real database and throwaway UPLOAD_DIR / MEDIA_DIR
+ * Public website images (M9.4, D60) against a real database and throwaway UPLOAD_DIR / MEDIA_DIR
  * (see setup-env.js): upload rules, permissions, the public URL, and that private uploads can never
  * be read through /api/media.
  */
