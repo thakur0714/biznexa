@@ -96,6 +96,12 @@ enum ConsultantCategory {
   TECHNOLOGY_CONSULTANT
 }
 
+enum ConsultantDocumentKind {
+  QUALIFICATION_PROOF
+  MEMBERSHIP_PROOF
+  ID_PROOF
+}
+
 enum VerificationStatus {
   PENDING
   APPROVED
@@ -845,6 +851,7 @@ model Consultant {
   consultationTypes  ConsultationType[]
   commissionPercent  Int                @default(20)
   verificationStatus VerificationStatus @default(PENDING)
+  rejectionReason    String?
   rating             Float              @default(0)
   reviewCount        Int                @default(0)
   isOnline           Boolean            @default(false)
@@ -855,8 +862,17 @@ model Consultant {
   availability       AvailabilitySlot[]
   bookings           Booking[]
   reviews            Review[]
+  documents          ConsultantDocument[]
 
   @@index([category, city, rating])
+  @@index([state, city, area])
+  @@index([city])
+  @@index([area])
+  @@index([rating])
+  @@index([experienceYears])
+  @@index([feePerSession])
+  @@index([languages], type: Gin)
+  @@index([consultationTypes], type: Gin)
 }
 
 model ConsultantService {
@@ -868,6 +884,19 @@ model ConsultantService {
   @@id([consultantId, serviceId])
 }
 
+model ConsultantDocument {
+  id           String                @id @default(uuid())
+  consultantId String
+  kind         ConsultantDocumentKind
+  fileId       String                @unique
+  createdAt    DateTime              @default(now())
+  consultant   Consultant            @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  file         StoredFile            @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@unique([consultantId, kind])
+  @@index([consultantId])
+}
+
 model AvailabilitySlot {
   id           String     @id @default(uuid())
   consultantId String
@@ -877,6 +906,9 @@ model AvailabilitySlot {
   endTime      String // "13:00" IST
   isBlocked    Boolean    @default(false)
   consultant   Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+
+  @@index([consultantId, weekday, isBlocked])
+  @@index([consultantId, date, isBlocked])
 }
 
 model Booking {
@@ -1206,6 +1238,7 @@ model StoredFile {
   owner         User                        @relation(fields: [ownerId], references: [id])
   requirement   ServiceDocumentRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
   document      ApplicationDocument?
+  consultantDocument ConsultantDocument?
 
   @@index([ownerId])
   @@index([scanStatus])

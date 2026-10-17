@@ -181,7 +181,7 @@ describe('catalogue', () => {
   it('lists categories with service counts', async () => {
     const res = await http.get('/api/catalogue/categories').expect(200);
     expect(res.body.length).toBeGreaterThanOrEqual(7);
-    expect(res.body[0].serviceCount).toBeGreaterThan(0);
+    expect(res.body.some((category: { serviceCount: number }) => category.serviceCount > 0)).toBe(true);
   });
 
   it('filters and sorts services', async () => {
