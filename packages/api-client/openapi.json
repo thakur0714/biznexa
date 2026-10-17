@@ -14191,6 +14191,133 @@
           "bookings"
         ]
       }
+    },
+    "/api/privacy/requests": {
+      "get": {
+        "operationId": "PrivacyController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataRequestList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "privacy"
+        ]
+      },
+      "post": {
+        "operationId": "PrivacyController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "EXPORT",
+                      "DELETION"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "confirm": {
+                    "type": "boolean",
+                    "description": "Deletion only: the customer ticked \"I understand\""
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "Deletion only"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$",
+                    "description": "Deletion only"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Deletion: wrong password or code"
+          },
+          "403": {
+            "description": "Deletion: staff and consultant accounts"
+          },
+          "409": {
+            "description": "A request of this type is already open"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "privacy"
+        ]
+      }
+    },
+    "/api/privacy/otp": {
+      "post": {
+        "operationId": "PrivacyController_otp",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrivacyOtp"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "privacy"
+        ]
+      }
     }
   },
   "info": {
@@ -32395,6 +32522,207 @@
           "holdExpiresAt",
           "description",
           "prefill"
+        ],
+        "additionalProperties": false
+      },
+      "DataRequestList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "EXPORT",
+                    "DELETION"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "PENDING",
+                    "PROCESSING",
+                    "COMPLETED",
+                    "REJECTED"
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "rejectionReason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "handledAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "completedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "downloadable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "status",
+                "reason",
+                "rejectionReason",
+                "createdAt",
+                "handledAt",
+                "completedAt",
+                "expiresAt",
+                "downloadable"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "reauth": {
+            "type": "object",
+            "properties": {
+              "password": {
+                "type": "boolean"
+              },
+              "otpChannel": {
+                "type": "string",
+                "enum": [
+                  "MOBILE",
+                  "EMAIL"
+                ],
+                "nullable": true
+              }
+            },
+            "required": [
+              "password",
+              "otpChannel"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "items",
+          "reauth"
+        ],
+        "additionalProperties": false
+      },
+      "DataRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "EXPORT",
+              "DELETION"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PROCESSING",
+              "COMPLETED",
+              "REJECTED"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "handledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "downloadable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "status",
+          "reason",
+          "rejectionReason",
+          "createdAt",
+          "handledAt",
+          "completedAt",
+          "expiresAt",
+          "downloadable"
+        ],
+        "additionalProperties": false
+      },
+      "PrivacyOtp": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "MOBILE",
+              "EMAIL"
+            ]
+          },
+          "sentTo": {
+            "type": "string"
+          },
+          "expiresIn": {
+            "type": "integer"
+          },
+          "resendAfter": {
+            "type": "integer"
+          },
+          "devCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel",
+          "sentTo",
+          "expiresIn",
+          "resendAfter"
         ],
         "additionalProperties": false
       }
