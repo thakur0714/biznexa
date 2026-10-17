@@ -129,7 +129,7 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
-  if (sellerSetting) await prisma.setting.update({ where: { key: SELLER_STATE_KEY }, data: { value: sellerSetting.value as object } });
+  if (sellerSetting) await prisma.setting.upsert({ where: { key: SELLER_STATE_KEY }, update: { value: sellerSetting.value as object }, create: { key: SELLER_STATE_KEY, value: sellerSetting.value as object } });
   else await prisma.setting.deleteMany({ where: { key: SELLER_STATE_KEY } });
   const orders = { customer: users };
   await prisma.auditLog.deleteMany({ where: { OR: [{ actor: users }, { entityType: 'Application', entityId: { in: (await prisma.application.findMany({ where: { order: orders }, select: { id: true } })).map((a) => a.id) } }] } });
