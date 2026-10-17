@@ -2260,6 +2260,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/reports/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_getDashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports/sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_getSales"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_getCustomers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5618,6 +5666,96 @@ export interface components {
                 /** Format: date-time */
                 readAt: string | null;
             }[];
+        };
+        ReportDashboard: {
+            range: {
+                from: string;
+                to: string;
+                preset?: string;
+            };
+            kpis: {
+                revenue: number;
+                orders: number;
+                newCustomers: number;
+                activeApplications: number;
+            };
+            series: {
+                date: string;
+                revenue: number;
+                orders: number;
+            }[];
+            needsAttention: {
+                slaBreaches: {
+                    id: string;
+                    code: string;
+                    serviceName: string;
+                    customerName: string;
+                    slaDueAt: string;
+                    status: string;
+                    link: string;
+                }[];
+                waitingDocuments: {
+                    id: string;
+                    applicationId: string;
+                    applicationCode: string;
+                    serviceName: string;
+                    documentName: string;
+                    uploadedAt: string;
+                    link: string;
+                }[];
+            };
+        };
+        ReportSales: {
+            range: {
+                from: string;
+                to: string;
+                preset?: string;
+            };
+            total: {
+                revenue: number;
+                orders: number;
+                discountTotal: number;
+                refundTotal: number;
+            };
+            monthly: {
+                month: string;
+                label: string;
+                revenue: number;
+                orders: number;
+            }[];
+            serviceWise: {
+                serviceId: string;
+                serviceName: string;
+                categoryName: string;
+                orders: number;
+                revenue: number;
+            }[];
+            categoryWise: {
+                categoryId: string;
+                categoryName: string;
+                orders: number;
+                revenue: number;
+            }[];
+            couponImpact: {
+                discountGiven: number;
+                ordersWithCoupon: number;
+                coupons: {
+                    code: string;
+                    type: string;
+                    ordersCount: number;
+                    discountGiven: number;
+                }[];
+            };
+        };
+        ReportCustomers: {
+            range: {
+                from: string;
+                to: string;
+                preset?: string;
+            };
+            total: number;
+            newInRange: number;
+            activeLast90Days: number;
         };
     };
     responses: never;
@@ -10904,6 +11042,81 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ReportsController_getDashboard: {
+        parameters: {
+            query?: {
+                preset?: string;
+                from?: string;
+                to?: string;
+                serviceId?: string;
+                categoryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDashboard"];
+                };
+            };
+        };
+    };
+    ReportsController_getSales: {
+        parameters: {
+            query?: {
+                preset?: string;
+                from?: string;
+                to?: string;
+                serviceId?: string;
+                categoryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSales"];
+                };
+            };
+        };
+    };
+    ReportsController_getCustomers: {
+        parameters: {
+            query?: {
+                preset?: string;
+                from?: string;
+                to?: string;
+                serviceId?: string;
+                categoryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportCustomers"];
+                };
             };
         };
     };
