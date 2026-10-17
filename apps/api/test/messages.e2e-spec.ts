@@ -124,6 +124,12 @@ describe('MessagesController (e2e, M4.11)', () => {
 
   afterAll(async () => {
     try {
+      await prisma.messageAttachment.deleteMany({
+        where: { message: { conversation: { application: { customerId: { in: [customer1Id, customer2Id] } } } } },
+      });
+      await prisma.storedFile.deleteMany({
+        where: { fileKey: { startsWith: `test-msg-file-${run}-` } },
+      });
       await prisma.message.deleteMany({
         where: { conversation: { application: { customerId: { in: [customer1Id, customer2Id] } } } },
       });
@@ -415,5 +421,98 @@ describe('MessagesController (e2e, M4.11)', () => {
       .set(auth(assignedOpsToken))
       .send({ body: 'y'.repeat(4001) })
       .expect(400);
+  });
+
+  describe('attachments', () => {
+    let f1Id: string;
+    let f2Id: string;
+    let cust2FileId: string;
+
+    beforeAll(async () => {
+      const f1 = await prisma.storedFile.create({
+        data: {
+          fileKey: `test-msg-file-${run}-1`,
+          ownerId: customer1Id,
+          originalName: 'file1.pdf',
+          mimeType: 'application/pdf',
+          sizeBytes: 100,
+          sha256: 'abc',
+          scanStatus: 'CLEAN',
+        },
+      });
+      f1Id = f1.id;
+
+      const f2 = await prisma.storedFile.create({
+        data: {
+          fileKey: `test-msg-file-${run}-2`,
+          ownerId: customer1Id,
+          originalName: 'file2.jpg',
+          mimeType: 'image/jpeg',
+          sizeBytes: 200,
+          sha256: 'def',
+          scanStatus: 'CLEAN',
+        },
+      });
+      f2Id = f2.id;
+
+      const cf = await prisma.storedFile.create({
+        data: {
+          fileKey: `test-msg-file-${run}-cust2`,
+          ownerId: customer2Id,
+          originalName: 'secret.pdf',
+          mimeType: 'application/pdf',
+          sizeBytes: 100,
+          sha256: 'xyz',
+          scanStatus: 'CLEAN',
+        },
+      });
+      cust2FileId = cf.id;
+    });
+
+    it('sends a message with 2 files', async () => {
+      const res = await http
+        .post(`/api/applications/${app1Id}/messages`)
+        .set(auth(customer1Token))
+        .send({ body: 'Here are the files', fileIds: [f1Id, f2Id] })
+        .expect(201);
+
+      expect(res.body.attachments).toHaveLength(2);
+      const attachments = res.body.attachments;
+      expect(attachments.map((a: any) => a.id)).toBeDefined();
+      expect(attachments.map((a: any) => a.fileName).sort()).toEqual(['file1.pdf', 'file2.jpg']);
+
+      const threadRes = await http
+        .get(`/api/applications/${app1Id}/messages`)
+        .set(auth(customer1Token))
+        .expect(200);
+
+      const msg = threadRes.body.items.find((m: any) => m.id === res.body.id);
+      expect(msg.attachments).toHaveLength(2);
+    });
+
+    it('returns 400 when using another users file', async () => {
+      await http
+        .post(`/api/applications/${app1Id}/messages`)
+        .set(auth(customer1Token))
+        .send({ body: 'Stealing a file', fileIds: [cust2FileId] })
+        .expect(400);
+    });
+
+    it('returns 400 when sending 6 files', async () => {
+      const ids = [f1Id, f2Id, f1Id, f2Id, f1Id, f2Id];
+      await http
+        .post(`/api/applications/${app1Id}/messages`)
+        .set(auth(customer1Token))
+        .send({ body: 'Too many files', fileIds: ids })
+        .expect(400);
+    });
+
+    it('a different customer cannot see or download the files', async () => {
+      // customer2 tries to get download link for f1
+      await http
+        .post(`/api/files/${f1Id}/link`)
+        .set(auth(customer2Token))
+        .expect(404); // Or 403, our API throws 404 for findReadable
+    });
   });
 });

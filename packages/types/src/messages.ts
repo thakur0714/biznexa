@@ -10,12 +10,20 @@ import { z } from 'zod';
 export const postMessageInput = z
   .object({
     body: z
-      .string({ required_error: 'Enter a message' })
+      .string()
       .trim()
-      .min(1, 'Message cannot be empty')
-      .max(4000, 'Message cannot exceed 4000 characters'),
+      .max(4000, 'Message cannot exceed 4000 characters')
+      .optional(),
+    fileIds: z
+      .array(z.string().uuid())
+      .max(5, 'You can attach up to 5 files per message')
+      .optional(),
   })
-  .strict();
+  .strict()
+  .refine((data) => data.body || (data.fileIds && data.fileIds.length > 0), {
+    message: 'Enter a message or attach a file',
+    path: ['body'],
+  });
 
 export const postMessageInputSchema = postMessageInput;
 export type PostMessageInput = z.infer<typeof postMessageInput>;
@@ -27,10 +35,19 @@ export const messageSenderSchema = z.object({
 });
 export type MessageSender = z.infer<typeof messageSenderSchema>;
 
+export const messageAttachmentSchema = z.object({
+  id: z.string().uuid(),
+  fileName: z.string(),
+  mimeType: z.string(),
+  sizeBytes: z.number().int().min(0),
+});
+export type MessageAttachment = z.infer<typeof messageAttachmentSchema>;
+
 export const messageSchema = z.object({
   id: z.string().uuid(),
-  body: z.string(),
+  body: z.string().nullable(),
   sender: messageSenderSchema,
+  attachments: z.array(messageAttachmentSchema).optional(),
   createdAt: z.string().datetime(),
   readAt: z.string().datetime().nullable(),
 });
