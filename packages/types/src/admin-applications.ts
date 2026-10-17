@@ -131,7 +131,8 @@ export const adminApplicationDetailSchema = z.object({
 
   documents: z.array(z.object({
     id: z.string().uuid(),
-    requirementId: z.string().uuid(),
+    requirementId: z.string().uuid().nullable(),
+    description: z.string().nullable(),
     name: z.string(),
     status: z.string(),
     fileKey: z.string(),

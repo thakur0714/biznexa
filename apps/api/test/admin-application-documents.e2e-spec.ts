@@ -239,7 +239,7 @@ describe('Admin Application Documents (M4.8)', () => {
 
     await http.post(`/api/admin/applications/${a.id}/documents`)
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'Extra ID' })
+      .send({ name: 'Extra ID', description: 'A utility bill from the last 3 months' })
       .expect(201);
 
     const extraDocs = await prisma.applicationDocument.findMany({
@@ -251,6 +251,15 @@ describe('Admin Application Documents (M4.8)', () => {
     // Because a document is REQUIRED, application should move to DOCUMENTS_PENDING
     const updatedApp = await prisma.application.findUnique({ where: { id: a.id } });
     expect(updatedApp?.status).toBe('DOCUMENTS_PENDING');
+
+    const appDetails = await http.get(`/api/admin/applications/${a.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    const doc = appDetails.body.documents.find((d: any) => d.name === 'Extra ID');
+    expect(doc).toBeDefined();
+    expect(doc.requirementId).toBeNull();
+    expect(doc.description).toBe('A utility bill from the last 3 months');
   });
 
   it('approve with another mandatory requirement still missing keeps DOCUMENTS_UNDER_REVIEW', async () => {

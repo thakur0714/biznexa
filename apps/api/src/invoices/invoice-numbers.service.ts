@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DEFAULT_INVOICE_PREFIX, financialYear, formatInvoiceNumber } from '@biznexa/types';
+import { DEFAULT_INVOICE_PREFIX, financialYear, formatCreditNoteNumber, formatInvoiceNumber } from '@biznexa/types';
 import { Prisma } from '../generated/prisma/client';
 
 export interface InvoiceNumber {
@@ -32,5 +32,16 @@ export class InvoiceNumbersService {
       RETURNING "lastNumber"`;
     const sequence = Number(row.lastNumber);
     return { number: formatInvoiceNumber(prefix ?? DEFAULT_INVOICE_PREFIX, fy, sequence), financialYear: fy, sequence };
+  }
+
+  /** `CN/2627/000001`: the credit-note series (M4.13, D53), gap-free per financial year the same way. */
+  async nextCreditNote(tx: Prisma.TransactionClient, at: Date = new Date()): Promise<InvoiceNumber> {
+    const fy = financialYear(at);
+    const [row] = await tx.$queryRaw<{ lastNumber: number }[]>`
+      INSERT INTO "CreditNoteSequence" ("financialYear", "lastNumber", "updatedAt") VALUES (${fy}, 1, now())
+      ON CONFLICT ("financialYear") DO UPDATE SET "lastNumber" = "CreditNoteSequence"."lastNumber" + 1, "updatedAt" = now()
+      RETURNING "lastNumber"`;
+    const sequence = Number(row.lastNumber);
+    return { number: formatCreditNoteNumber(fy, sequence), financialYear: fy, sequence };
   }
 }

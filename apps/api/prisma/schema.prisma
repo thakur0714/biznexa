@@ -96,6 +96,12 @@ enum ConsultantCategory {
   TECHNOLOGY_CONSULTANT
 }
 
+enum ConsultantDocumentKind {
+  QUALIFICATION_PROOF
+  MEMBERSHIP_PROOF
+  ID_PROOF
+}
+
 enum VerificationStatus {
   PENDING
   APPROVED
@@ -220,6 +226,7 @@ model User {
   stageChanges      ApplicationStageHistory[]
   files             StoredFile[]
   invoices          Invoice[]
+  creditNotes       CreditNote[]
   deviceTokens      DeviceToken[]
 
   @@index([createdAt])
@@ -685,20 +692,73 @@ model PaymentWebhookEvent {
   @@index([paymentId])
 }
 
+/// A refund of (part of) a payment (M4.13, D53). Created INITIATED by an admin, then PROCESSED or FAILED by the
+/// gateway's `refund.*` webhook. `idempotencyKey` is the admin request's `Idempotency-Key` header, so a retried
+/// request finds this row instead of refunding twice. A PROCESSED refund of an invoiced payment gets a credit note.
 model Refund {
   id              String       @id @default(uuid())
   paymentId       String
   amount          Int
   reason          String
   status          RefundStatus @default(INITIATED)
-  gatewayRefundId String?
+  gatewayRefundId String?      @unique
   initiatedById   String
+  idempotencyKey  String?
+  failureReason   String?
+  processedAt     DateTime?
   creditNoteNo    String?      @unique
   createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @default(now()) @updatedAt
   payment         Payment      @relation(fields: [paymentId], references: [id])
+  creditNote      CreditNote?
 
+  @@unique([paymentId, idempotencyKey])
   @@index([paymentId])
   @@index([createdAt])
+}
+
+/// A GST credit note for a processed refund (M4.13, D53): the reverse of the refunded payment's invoice lines
+/// (a share of them for a partial refund). Seller, buyer, place of supply and tax split are copied from that
+/// invoice, so it always matches what was invoiced. Numbered `CN/2627/000001` from `CreditNoteSequence`.
+model CreditNote {
+  id            String   @id @default(uuid())
+  number        String   @unique
+  financialYear String
+  sequence      Int
+  issuedAt      DateTime
+  refundId      String   @unique
+  invoiceId     String
+  customerId    String
+  seller        Json // InvoiceSeller, as on the invoice
+  buyer         Json // InvoiceBuyer, as on the invoice
+  placeOfSupply String?
+  taxType       String // CGST_SGST | IGST, as on the invoice
+  lines         Json // InvoiceLine[]: what is credited, per invoice line
+  taxableValue  Int
+  cgst          Int      @default(0)
+  sgst          Int      @default(0)
+  igst          Int      @default(0)
+  govtFees      Int      @default(0)
+  discount      Int      @default(0)
+  total         Int // = the refund
+  amountInWords String
+  reason        String
+  pdfKey        String?
+  createdAt     DateTime @default(now())
+  refund        Refund   @relation(fields: [refundId], references: [id])
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+  customer      User     @relation(fields: [customerId], references: [id])
+
+  @@unique([financialYear, sequence])
+  @@index([invoiceId])
+  @@index([customerId, issuedAt])
+}
+
+/// Gap-free credit note counter per financial year (M4.13), bumped like `InvoiceSequence`.
+model CreditNoteSequence {
+  financialYear String   @id
+  lastNumber    Int
+  updatedAt     DateTime @updatedAt
 }
 
 /// One per successful payment (M3.21): an advance and its balance each get their own. Everything printed is
@@ -734,6 +794,7 @@ model Invoice {
   order          Order    @relation(fields: [orderId], references: [id])
   payment        Payment  @relation(fields: [paymentId], references: [id])
   customer       User     @relation(fields: [customerId], references: [id])
+  creditNotes    CreditNote[]
 
   @@unique([financialYear, sequence])
   @@index([orderId])
@@ -802,6 +863,7 @@ model Consultant {
   consultationTypes  ConsultationType[]
   commissionPercent  Int                @default(20)
   verificationStatus VerificationStatus @default(PENDING)
+  rejectionReason    String?
   rating             Float              @default(0)
   reviewCount        Int                @default(0)
   isOnline           Boolean            @default(false)
@@ -812,8 +874,17 @@ model Consultant {
   availability       AvailabilitySlot[]
   bookings           Booking[]
   reviews            Review[]
+  documents          ConsultantDocument[]
 
   @@index([category, city, rating])
+  @@index([state, city, area])
+  @@index([city])
+  @@index([area])
+  @@index([rating])
+  @@index([experienceYears])
+  @@index([feePerSession])
+  @@index([languages], type: Gin)
+  @@index([consultationTypes], type: Gin)
 }
 
 model ConsultantService {
@@ -825,6 +896,19 @@ model ConsultantService {
   @@id([consultantId, serviceId])
 }
 
+model ConsultantDocument {
+  id           String                @id @default(uuid())
+  consultantId String
+  kind         ConsultantDocumentKind
+  fileId       String                @unique
+  createdAt    DateTime              @default(now())
+  consultant   Consultant            @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  file         StoredFile            @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@unique([consultantId, kind])
+  @@index([consultantId])
+}
+
 model AvailabilitySlot {
   id           String     @id @default(uuid())
   consultantId String
@@ -834,6 +918,9 @@ model AvailabilitySlot {
   endTime      String // "13:00" IST
   isBlocked    Boolean    @default(false)
   consultant   Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+
+  @@index([consultantId, weekday, isBlocked])
+  @@index([consultantId, date, isBlocked])
 }
 
 model Booking {
@@ -1163,6 +1250,7 @@ model StoredFile {
   owner         User                        @relation(fields: [ownerId], references: [id])
   requirement   ServiceDocumentRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
   document      ApplicationDocument?
+  consultantDocument ConsultantDocument?
 
   @@index([ownerId])
   @@index([scanStatus])

@@ -12,7 +12,7 @@ export interface SeedTemplate {
 /**
  * Seed templates for all events listed in PROMPT §7.9:
  * Exactly one name per event, matching packages/types/src/events.ts where applicable.
- * 19 events × 5 channels = 95 templates.
+ * One template per event and channel (5 channels).
  */
 export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
   // ────────────────── auth.registered ──────────────────
@@ -134,6 +134,36 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     event: 'payment.failed',
     channel: 'WHATSAPP',
     body: 'Hello {{customerName}}, payment for Order {{orderId}} was unsuccessful: {{reason}}.',
+  },
+
+  // ────────────────── refund.processed (M4.13) ──────────────────
+  {
+    event: 'refund.processed',
+    channel: 'EMAIL',
+    subject: 'Refund of Rs. {{amount}} processed for Order #{{orderId}}',
+    body: '<p>Hello {{customerName}},</p><p>Your refund of Rs. {{amount}} for Order #{{orderId}} has been processed. It usually reaches your account in 5–7 working days. Your credit note is available in your dashboard.</p>',
+  },
+  {
+    event: 'refund.processed',
+    channel: 'SMS',
+    body: 'Refund of Rs. {{amount}} for Order {{orderId}} processed. It reaches your account in 5-7 working days. - BizNexa',
+  },
+  {
+    event: 'refund.processed',
+    channel: 'PUSH',
+    subject: 'Refund Processed',
+    body: 'Your refund of Rs. {{amount}} for Order {{orderId}} has been processed.',
+  },
+  {
+    event: 'refund.processed',
+    channel: 'IN_APP',
+    subject: 'Refund Processed',
+    body: 'Refund of Rs. {{amount}} for Order {{orderId}} processed. The credit note is in Payments.',
+  },
+  {
+    event: 'refund.processed',
+    channel: 'WHATSAPP',
+    body: 'Hello {{customerName}}, your refund of Rs. {{amount}} for Order {{orderId}} has been processed and will reach your account in 5-7 working days.',
   },
 
   // ────────────────── invoice.issued ──────────────────

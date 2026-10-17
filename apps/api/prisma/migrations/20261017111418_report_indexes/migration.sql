@@ -26,9 +26,6 @@ CREATE INDEX "Payment_paidAt_idx" ON "Payment"("paidAt");
 CREATE INDEX "Payment_status_paidAt_idx" ON "Payment"("status", "paidAt");
 
 -- CreateIndex
-CREATE INDEX "Refund_paymentId_idx" ON "Refund"("paymentId");
-
--- CreateIndex
 CREATE INDEX "Refund_createdAt_idx" ON "Refund"("createdAt");
 
 -- CreateIndex

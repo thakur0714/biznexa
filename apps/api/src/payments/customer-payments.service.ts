@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { refundSelect, toRefundView } from './refunds.service';
 import type {
   CustomerPaymentListQuery,
   CustomerPaymentListResponse,
@@ -26,7 +27,7 @@ export class CustomerPaymentsService {
       },
     };
 
-    const [total, rows, orders] = await Promise.all([
+    const [total, rows, orders, refunded] = await Promise.all([
       this.prisma.payment.count({ where }),
       this.prisma.payment.findMany({
         where,
@@ -59,6 +60,7 @@ export class CustomerPaymentsService {
               number: true,
             },
           },
+          refunds: { orderBy: { createdAt: 'desc' }, select: refundSelect },
         },
       }),
       this.prisma.order.findMany({
@@ -70,6 +72,10 @@ export class CustomerPaymentsService {
           amountPaid: true,
           status: true,
         },
+      }),
+      this.prisma.refund.aggregate({
+        where: { status: 'PROCESSED', payment: { order: { customerId } } },
+        _sum: { amount: true },
       }),
     ]);
 
@@ -111,6 +117,10 @@ export class CustomerPaymentsService {
               number: p.invoice.number,
             }
           : null,
+        refunds: p.refunds.map((r) => {
+          const { id, amount, status, createdAt, processedAt, creditNote } = toRefundView(r);
+          return { id, amount, status, createdAt, processedAt, creditNote };
+        }),
       };
     });
 
@@ -120,6 +130,7 @@ export class CustomerPaymentsService {
       page,
       limit,
       totalPaid,
+      totalRefunded: refunded._sum.amount ?? 0,
       outstandingBalance,
     };
   }
