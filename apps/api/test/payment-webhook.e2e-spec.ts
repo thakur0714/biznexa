@@ -77,7 +77,7 @@ function send(w: { body: string; headers: Record<string, string> }) {
   return http.post(hook).set(w.headers).send(w.body);
 }
 const eventsFor = (s: { id: string; paymentId: string }) =>
-  events.filter((event) => event.payload.paymentId === s.paymentId || event.payload.applicationId === s.id);
+  events.filter((event) => ('paymentId' in event.payload && event.payload.paymentId === s.paymentId) || ('applicationId' in event.payload && event.payload.applicationId === s.id));
 const captured = (payment: GatewayPayment, eventId?: string) => gateway.webhook('payment.captured', payment, eventId);
 
 async function state(id: string, orderId: string) {
