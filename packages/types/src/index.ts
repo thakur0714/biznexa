@@ -33,4 +33,5 @@ export * from './dashboard';
 export * from './pending-actions';
 export * from './reminders';
 export * from './tickets';
+export * from './reports';
 export * from './consultants';
