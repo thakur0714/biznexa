@@ -159,6 +159,84 @@ const calendarDay = z
     return !Number.isNaN(t) && new Date(t).toISOString().startsWith(d); // rejects 2026-02-30 too
   }, 'Not a real date');
 
+// ---------------------------------------------------------------------------------------------------------
+// Refunds (M4.13, D53).
+
+export const REFUND_STATUSES = ['INITIATED', 'PROCESSED', 'FAILED'] as const;
+export type RefundStatus = (typeof REFUND_STATUSES)[number];
+
+/** Payment statuses an admin may refund from. A refund in flight (REFUND_INITIATED) must finish first. */
+export const REFUNDABLE_PAYMENT_STATUSES: readonly PaymentStatus[] = ['SUCCESS', 'PARTIALLY_REFUNDED'];
+
+/** The gateways refuse refunds under ₹1. */
+export const MIN_REFUND_PAISE = 100;
+
+/**
+ * `POST /api/admin/payments/:id/refunds` body. The amount is integer paise; the server checks it against what
+ * is left to refund. The request must carry an `Idempotency-Key` header (`idempotencyKeySchema`).
+ */
+export const refundCreateInput = z
+  .object({
+    amount: z.number().int('Amount must be whole paise').min(MIN_REFUND_PAISE, 'The smallest refund is ₹1'),
+    reason: z.string().trim().min(3, 'Please give a reason (at least 3 characters)').max(500, 'Keep the reason under 500 characters'),
+  })
+  .strict();
+export type RefundCreateInput = z.infer<typeof refundCreateInput>;
+
+/** `Idempotency-Key` header: a retried request with the same key returns the first refund instead of making another. */
+export const idempotencyKeySchema = z
+  .string({ required_error: 'Send an Idempotency-Key header' })
+  .trim()
+  .min(8, 'Idempotency-Key must be 8–100 characters')
+  .max(100, 'Idempotency-Key must be 8–100 characters')
+  .regex(/^[A-Za-z0-9_:.-]+$/, 'Idempotency-Key may use letters, digits and _ : . - only');
+
+export const creditNoteSummarySchema = z.object({
+  id: z.string().uuid(),
+  /** `CN/2627/000001` */
+  number: z.string(),
+  issuedAt: isoDate,
+  /** False until the PDF is generated; the download link is refused until then. */
+  pdfReady: z.boolean(),
+});
+export type CreditNoteSummary = z.infer<typeof creditNoteSummarySchema>;
+
+export const refundSchema = z.object({
+  id: z.string().uuid(),
+  amount: z.number().int(),
+  reason: z.string(),
+  status: z.enum(REFUND_STATUSES),
+  gatewayRefundId: z.string().nullable(),
+  /** Why the gateway refused or failed the refund. */
+  failureReason: z.string().nullable(),
+  createdAt: isoDate,
+  processedAt: isoDate.nullable(),
+  /** Issued when the refund is PROCESSED and the payment has an invoice. */
+  creditNote: creditNoteSummarySchema.nullable(),
+});
+export type RefundView = z.infer<typeof refundSchema>;
+
+/** What the customer sees of a refund: no gateway ids, no internal reason. */
+export const customerRefundSchema = refundSchema.pick({ id: true, amount: true, status: true, createdAt: true, processedAt: true, creditNote: true });
+export type CustomerRefundView = z.infer<typeof customerRefundSchema>;
+
+/**
+ * A payment's status from its refunds (M4.13): a refund in flight → REFUND_INITIATED; processed refunds adding
+ * up to the amount → REFUNDED; some processed → PARTIALLY_REFUNDED; otherwise SUCCESS (a failed refund puts
+ * the payment back where it was).
+ */
+export function paymentStatusAfterRefunds(amount: number, refunds: readonly { amount: number; status: RefundStatus }[]): PaymentStatus {
+  if (refunds.some((r) => r.status === 'INITIATED')) return 'REFUND_INITIATED';
+  const processed = refunds.filter((r) => r.status === 'PROCESSED').reduce((a, r) => a + r.amount, 0);
+  if (processed >= amount) return 'REFUNDED';
+  return processed > 0 ? 'PARTIALLY_REFUNDED' : 'SUCCESS';
+}
+
+/** Paise still refundable: the amount minus every refund that has not FAILED (in flight counts). */
+export function refundableAmount(amount: number, refunds: readonly { amount: number; status: RefundStatus }[]): number {
+  return Math.max(0, amount - refunds.filter((r) => r.status !== 'FAILED').reduce((a, r) => a + r.amount, 0));
+}
+
 export const adminPaymentListQuerySchema = z.object({
   status: z.enum(['all', 'success', 'failed', 'pending']).default('all'),
   /** Calendar days in India (YYYY-MM-DD), both inclusive. */
@@ -211,15 +289,9 @@ export const adminPaymentDetailSchema = z.object({
   customerName: z.string().nullable(),
   customerEmail: z.string().nullable(),
   customerMobile: z.string().nullable(),
-  refunds: z.array(
-    z.object({
-      id: z.string().uuid(),
-      amount: z.number().int(),
-      reason: z.string(),
-      status: z.string(),
-      createdAt: isoDate,
-    }),
-  ),
+  /** Integer paise that can still be refunded: the amount minus every refund not FAILED. 0 unless the status allows a refund. */
+  refundable: z.number().int(),
+  refunds: z.array(refundSchema),
   invoice: z
     .object({
       id: z.string().uuid(),
@@ -258,6 +330,8 @@ export const customerPaymentRowSchema = z.object({
       number: z.string(),
     })
     .nullable(),
+  /** Refunds of this payment, newest first (M4.13). */
+  refunds: z.array(customerRefundSchema),
 });
 export type CustomerPaymentRow = z.infer<typeof customerPaymentRowSchema>;
 
@@ -270,4 +344,3 @@ export const customerPaymentListResponseSchema = z.object({
   outstandingBalance: z.number().int(),
 });
 export type CustomerPaymentListResponse = z.infer<typeof customerPaymentListResponseSchema>;
-

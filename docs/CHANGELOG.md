@@ -90,3 +90,20 @@ Admin applications list and detail, assignment, status updates and the document 
 - Public certificate verification endpoint `GET /api/public/certificates/verify?number=` with rate limiting and rate limit response headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`).
 - Optional partner API key support via `X-API-Key` header or `apiKey` query parameter granting elevated rate limits (300 req/min).
 - Lookup logging recording verification method (`NUMBER`, `VERIFICATION_ID`, `QR`, or `API`) and partner attribution.
+
+## M4.13 — Refunds and credit notes (17-Oct-2026)
+
+### Built and tested
+- Admin can refund a paid payment fully or partly with a reason (Payments → payment detail → Refund). Only staff with "Issue refunds" (Admin by default) see the button; the API refuses everyone else.
+- Safe against mistakes: never more than what is left to refund, one refund at a time per payment, and a double-click or retried request (same `Idempotency-Key`) never refunds twice.
+- The gateway confirms each refund by webhook: payment becomes Refunded or Partially refunded; a failed refund puts the payment back where it was. Repeated webhooks change nothing.
+- GST credit note for every processed refund: own number series `CN/2627/000001`, the reverse of the original invoice (a proportional share for a partial refund, CGST/SGST/IGST correct to the paisa), PDF in the invoice layout. Customer and staff with payments access can download it.
+- Customer Payments page shows each refund's status and the credit note; the customer gets a "refund processed" notification (email, SMS, push, in-app, WhatsApp templates).
+- Every refund step is in the audit log with before/after.
+
+### Test results
+- New: 11 API integration tests (refunds), 2 credit note template tests, 2 notification tests, 11 shared-package tests (+ gateway webhook parsing), 7 admin component tests.
+
+### Before going live
+- In the Razorpay dashboard, add the `refund.processed` and `refund.failed` events to the webhook.
+

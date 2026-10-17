@@ -10913,6 +10913,85 @@
         ]
       }
     },
+    "/api/admin/payments/{id}/refunds": {
+      "post": {
+        "operationId": "AdminPaymentsController_refund",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Unique per refund attempt; a retry with the same key returns the first refund",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "integer",
+                    "minimum": 100
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "amount",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Refund"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad amount or reason, more than is left to refund, or no Idempotency-Key"
+          },
+          "409": {
+            "description": "The payment cannot be refunded now (not paid, refund in progress), or the key was used for a different refund"
+          },
+          "502": {
+            "description": "The gateway refused the refund; it is recorded FAILED and the payment is unchanged"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · payments"
+        ]
+      }
+    },
     "/api/invoices": {
       "get": {
         "operationId": "InvoicesController_list",
@@ -11008,6 +11087,110 @@
     "/api/invoices/{id}/download": {
       "get": {
         "operationId": "InvoicesController_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s",
+            "required": true,
+            "in": "query",
+            "description": "Signature",
+            "schema": {}
+          },
+          {
+            "name": "d",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "attachment",
+                "inline"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "e",
+            "required": true,
+            "in": "query",
+            "description": "Expiry (unix seconds)",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "invoices"
+        ]
+      }
+    },
+    "/api/credit-notes/{id}/link": {
+      "post": {
+        "operationId": "CreditNotesController_link",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "disposition",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "attachment",
+                "inline"
+              ],
+              "default": "attachment"
+            },
+            "description": "inline = open in the browser"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileLink"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such credit note among yours"
+          },
+          "409": {
+            "description": "The PDF is still being generated — try again shortly"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "invoices"
+        ]
+      }
+    },
+    "/api/credit-notes/{id}/download": {
+      "get": {
+        "operationId": "CreditNotesController_download",
         "parameters": [
           {
             "name": "id",
@@ -26440,6 +26623,9 @@
             "type": "string",
             "nullable": true
           },
+          "refundable": {
+            "type": "integer"
+          },
           "refunds": {
             "type": "array",
             "items": {
@@ -26456,11 +26642,56 @@
                   "type": "string"
                 },
                 "status": {
-                  "type": "string"
+                  "type": "string",
+                  "enum": [
+                    "INITIATED",
+                    "PROCESSED",
+                    "FAILED"
+                  ]
+                },
+                "gatewayRefundId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "failureReason": {
+                  "type": "string",
+                  "nullable": true
                 },
                 "createdAt": {
                   "type": "string",
                   "format": "date-time"
+                },
+                "processedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "creditNote": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "number": {
+                      "type": "string"
+                    },
+                    "issuedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "pdfReady": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "issuedAt",
+                    "pdfReady"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true
                 }
               },
               "required": [
@@ -26468,7 +26699,11 @@
                 "amount",
                 "reason",
                 "status",
-                "createdAt"
+                "gatewayRefundId",
+                "failureReason",
+                "createdAt",
+                "processedAt",
+                "creditNote"
               ],
               "additionalProperties": false
             }
@@ -26513,8 +26748,88 @@
           "customerName",
           "customerEmail",
           "customerMobile",
+          "refundable",
           "refunds",
           "invoice"
+        ],
+        "additionalProperties": false
+      },
+      "Refund": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "INITIATED",
+              "PROCESSED",
+              "FAILED"
+            ]
+          },
+          "gatewayRefundId": {
+            "type": "string",
+            "nullable": true
+          },
+          "failureReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "processedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "creditNote": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "number": {
+                "type": "string"
+              },
+              "issuedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "pdfReady": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "issuedAt",
+              "pdfReady"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "amount",
+          "reason",
+          "status",
+          "gatewayRefundId",
+          "failureReason",
+          "createdAt",
+          "processedAt",
+          "creditNote"
         ],
         "additionalProperties": false
       },
@@ -26814,6 +27129,74 @@
                   ],
                   "additionalProperties": false,
                   "nullable": true
+                },
+                "refunds": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "amount": {
+                        "type": "integer"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "INITIATED",
+                          "PROCESSED",
+                          "FAILED"
+                        ]
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "processedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                      },
+                      "creditNote": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "number": {
+                            "type": "string"
+                          },
+                          "issuedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "pdfReady": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "number",
+                          "issuedAt",
+                          "pdfReady"
+                        ],
+                        "additionalProperties": false,
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "amount",
+                      "status",
+                      "createdAt",
+                      "processedAt",
+                      "creditNote"
+                    ],
+                    "additionalProperties": false
+                  }
                 }
               },
               "required": [
@@ -26824,7 +27207,8 @@
                 "gateway",
                 "createdAt",
                 "order",
-                "invoice"
+                "invoice",
+                "refunds"
               ],
               "additionalProperties": false
             }

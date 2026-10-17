@@ -27,6 +27,7 @@ export class NotificationEventsListener implements OnModuleInit {
     this.events.on('payment.succeeded', (e) => this.handlePaymentSucceeded(e.payload));
     this.events.on('payment.failed', (e) => this.handlePaymentFailed(e.payload));
     this.events.on('invoice.issued', (e) => this.handleInvoiceIssued(e.payload));
+    this.events.on('refund.processed', (e) => this.handleRefundProcessed(e.payload));
     this.events.on('document.requested', (e) => this.handleDocumentRequested(e.payload));
     this.events.on('document.approved', (e) => this.handleDocumentApproved(e.payload));
     this.events.on('document.rejected', (e) => this.handleDocumentRejected(e.payload));
@@ -139,6 +140,36 @@ export class NotificationEventsListener implements OnModuleInit {
       await this.dispatchForEvent('invoice.issued', customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling invoice.issued: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async handleRefundProcessed(payload: DomainEventPayloads['refund.processed']): Promise<void> {
+    try {
+      if (!payload.customerId) return;
+      const customer = await this.prisma.user.findUnique({
+        where: { id: payload.customerId },
+        select: { id: true, name: true, email: true, mobile: true },
+      });
+      if (!customer) {
+        this.logger.warn(`Customer ${payload.customerId} not found for refund.processed`);
+        return;
+      }
+
+      const order = payload.orderId ? await this.prisma.order.findUnique({ where: { id: payload.orderId }, select: { code: true } }) : null;
+      const orderCode = order?.code ?? payload.orderId ?? '';
+      const link = `${env().PUBLIC_WEB_URL}/dashboard/payments`;
+
+      const variables: Record<string, unknown> = {
+        customerName: customer.name,
+        orderId: orderCode,
+        orderCode,
+        amount: formatINR(payload.amount),
+        link,
+      };
+
+      await this.dispatchForEvent('refund.processed', customer, variables, link);
+    } catch (err) {
+      this.logger.error(`Error handling refund.processed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

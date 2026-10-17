@@ -171,6 +171,16 @@ describe('customer payments schemas (M5.10)', () => {
         id: 'd0000000-0000-0000-0000-000000000001',
         number: 'BN/2627/000001',
       },
+      refunds: [
+        {
+          id: 'e0000000-0000-0000-0000-000000000001',
+          amount: 25000,
+          status: 'PROCESSED',
+          createdAt: '2026-10-17T10:00:00.000Z',
+          processedAt: '2026-10-17T11:00:00.000Z',
+          creditNote: { id: 'f0000000-0000-0000-0000-000000000001', number: 'CN/2627/000001', issuedAt: '2026-10-17T11:00:00.000Z', pdfReady: true },
+        },
+      ],
     };
     expect(customerPaymentRowSchema.safeParse(validRow).success).toBe(true);
     expect(

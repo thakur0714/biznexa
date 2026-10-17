@@ -20,6 +20,8 @@ export interface InvoicePrint {
   amountInWords: string;
   orderCode: string;
   payment: { reference: string | null; method: string | null; paidAt: Date | null };
+  /** Set for a credit note (M4.13): printed as a credit note against this invoice, the amounts being what is credited. */
+  creditNote?: { invoiceNumber: string; invoiceDate: Date; reason: string };
 }
 
 /** Escapes text for HTML content and attribute values. Every value from the database goes through this. */
@@ -74,6 +76,9 @@ function stateWithCode(state: string | null): string {
  * with its state code; per line the description, SAC, value, discount, taxable value, rate and CGST + SGST or
  * IGST; government fees as their own lines outside GST; the total in figures and words; reverse charge "No";
  * and the supplier's authorised signatory. Without a seller GSTIN it is titled "Invoice", not "Tax Invoice".
+ *
+ * A credit note (M4.13, `inv.creditNote`) is the same page titled "Credit Note", with its own number and date,
+ * the original invoice's number and date (rule 53), the refund and its reason in place of the payment.
  */
 export function invoiceHtml(inv: InvoicePrint): string {
   const s = inv.seller;
@@ -84,7 +89,9 @@ export function invoiceHtml(inv: InvoicePrint): string {
   const taxCols = igst ? 2 : 4;
   const cols = 5 + (anyDiscount ? 1 : 0) + taxCols;
   const sellerName = s.legalName || s.name || '';
-  const title = s.gstin ? 'Tax Invoice' : 'Invoice';
+  const cn = inv.creditNote;
+  const title = cn ? 'Credit Note' : s.gstin ? 'Tax Invoice' : 'Invoice';
+  const doc = cn ? 'Credit note' : 'Invoice';
 
   const rows = inv.lines
     .map((l, i) => {
@@ -191,8 +198,14 @@ footer { display: flex; justify-content: space-between; align-items: flex-end; g
     <div class="title">${esc(title)}</div>
     <div class="copy">Original for recipient</div>
     <table class="meta">
-      <tr><th>Invoice no.</th><td>${esc(inv.number)}</td></tr>
-      <tr><th>Invoice date</th><td>${esc(formatDate(inv.issuedAt))}</td></tr>
+      <tr><th>${doc} no.</th><td>${esc(inv.number)}</td></tr>
+      <tr><th>${doc} date</th><td>${esc(formatDate(inv.issuedAt))}</td></tr>${
+        cn
+          ? `
+      <tr><th>Against invoice</th><td>${esc(cn.invoiceNumber)}</td></tr>
+      <tr><th>Invoice date</th><td>${esc(formatDate(cn.invoiceDate))}</td></tr>`
+          : ''
+      }
       <tr><th>Order</th><td>${esc(inv.orderCode)}</td></tr>
       <tr><th>Place of supply</th><td>${stateWithCode(inv.placeOfSupply)}</td></tr>
       <tr><th>Reverse charge</th><td>No</td></tr>
@@ -210,9 +223,10 @@ footer { display: flex; justify-content: space-between; align-items: flex-end; g
     <div class="muted">${[b.email, b.mobile].filter(Boolean).map(esc).join(' · ')}</div>
   </div>
   <div class="party">
-    <h2>Payment</h2>
-    <div class="name">${money(inv.total)} received</div>
-    ${paid ? `<div>${paid}</div>` : ''}
+    <h2>${cn ? 'Refund' : 'Payment'}</h2>
+    <div class="name">${money(inv.total)} ${cn ? 'refunded' : 'received'}</div>
+    ${cn ? `<div>Reason: ${esc(cn.reason)}</div>` : ''}
+    ${paid ? `<div>${cn ? 'Original payment: ' : ''}${paid}</div>` : ''}
     <div class="muted">${igst ? 'Inter-state supply: IGST' : 'Intra-state supply: CGST + SGST'}</div>
   </div>
 </section>
@@ -243,13 +257,13 @@ ${rows || `<tr><td colspan="${cols}">—</td></tr>`}
   </div>
   <table class="totals">
     ${totals}
-    <tr class="grand"><th>Total</th><td>${money(inv.total)}</td></tr>
+    <tr class="grand"><th>${cn ? 'Total credited' : 'Total'}</th><td>${money(inv.total)}</td></tr>
   </table>
 </section>
 
 <footer>
   <div class="note">
-    This is a computer-generated invoice.<br>
+    This is a computer-generated ${cn ? 'credit note' : 'invoice'}.<br>
     Tax is not payable on reverse charge basis.
   </div>
   <div class="sign">
