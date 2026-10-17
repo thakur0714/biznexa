@@ -1,8 +1,9 @@
 import { Controller, Get, Param } from '@nestjs/common';
-import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   publicConsultantDirectoryQuerySchema,
   publicConsultantDirectorySchema,
+  publicConsultantProfileSchema,
   publicConsultantSlotsSchema,
   publicSlotsQuerySchema,
   type PublicConsultantDirectoryQuery,
@@ -44,5 +45,13 @@ export class PublicConsultantsController {
   @Get(':slug/slots')
   slots(@Param('slug') slug: string, @ZodQuery(publicSlotsQuerySchema) query: PublicSlotsQuery) {
     return this.availability.publicSlots(slug, query);
+  }
+
+  @ApiZodResponse('PublicConsultantProfile', publicConsultantProfileSchema)
+  @ApiParam({ name: 'slug', description: 'Approved consultant profile slug' })
+  @ApiResponse({ status: 404, description: 'No approved consultant with this slug' })
+  @Get(':slug')
+  profile(@Param('slug') slug: string) {
+    return this.consultants.getPublic(slug);
   }
 }

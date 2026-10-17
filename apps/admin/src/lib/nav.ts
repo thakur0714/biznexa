@@ -59,10 +59,19 @@ export const NAV: NavGroup[] = [
   },
 ];
 
+const CONSULTANT_PORTAL_NAV: NavGroup[] = [{
+  label: 'Consultant portal',
+  items: [
+    { slug: 'consultant/profile', label: 'My profile', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
+    { slug: 'consultant/availability', label: 'Availability', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
+  ],
+}];
+
 export const canSee = (item: NavItem, perms: readonly string[]) => hasPermissions(perms, item.requires);
 
 /** Groups and items the user may see; empty groups are dropped. */
-export function visibleNav(perms: readonly string[], nav: NavGroup[] = NAV): NavGroup[] {
+export function visibleNav(perms: readonly string[], nav: NavGroup[] = NAV, roles: readonly string[] = []): NavGroup[] {
+  if (roles.includes('CONSULTANT')) return CONSULTANT_PORTAL_NAV.map((g) => ({ ...g, items: g.items.filter((i) => canSee(i, perms)) })).filter((g) => g.items.length > 0);
   return nav.map((g) => ({ ...g, items: g.items.filter((i) => canSee(i, perms)) })).filter((g) => g.items.length > 0);
 }
 

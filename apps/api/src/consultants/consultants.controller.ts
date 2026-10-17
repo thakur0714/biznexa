@@ -1,7 +1,7 @@
-import { Controller, Post } from '@nestjs/common';
+import { Controller, Get, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { consultantApplicationInputSchema, consultantApplicationResponseSchema, type ConsultantApplicationInput } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { consultantApplicationInputSchema, consultantApplicationResponseSchema, consultantOwnProfileSchema, consultantProfileInputSchema, PERMS, type ConsultantApplicationInput, type ConsultantProfileInput } from '@biznexa/types';
+import { AuthUser, CurrentUser, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { ConsultantsService } from './consultants.service';
 
@@ -20,5 +20,19 @@ export class ConsultantsController {
     @ZodBody(consultantApplicationInputSchema) body: ConsultantApplicationInput,
   ) {
     return this.consultants.apply(user.id, body);
+  }
+
+  @ApiZodResponse('ConsultantOwnProfile', consultantOwnProfileSchema)
+  @RequirePermissions(PERMS.ADMIN_ACCESS)
+  @Get('me/profile')
+  ownProfile(@CurrentUser() user: AuthUser) {
+    return this.consultants.getOwnProfile(user.id);
+  }
+
+  @ApiZodResponse('ConsultantOwnProfile', consultantOwnProfileSchema)
+  @RequirePermissions(PERMS.ADMIN_ACCESS)
+  @Put('me/profile')
+  updateOwnProfile(@CurrentUser() user: AuthUser, @ZodBody(consultantProfileInputSchema) body: ConsultantProfileInput) {
+    return this.consultants.updateOwnProfile(user.id, body);
   }
 }
