@@ -51,7 +51,7 @@ export async function collectExport(prisma: PrismaService, userId: string, now =
       application: { select: { code: true } },
       booking: { select: { code: true } },
       ticket: { select: { code: true } },
-      messages: { orderBy: { createdAt: 'asc' } },
+      messages: { orderBy: { createdAt: 'asc' }, include: { messageAttachments: { select: { file: { select: { originalName: true } } } } } },
     },
   });
 
@@ -178,7 +178,7 @@ export async function collectExport(prisma: PrismaService, userId: string, now =
       messages: c.messages.map((m) => ({
         from: m.senderId === userId ? 'you' : 'BizNexa',
         body: m.body,
-        attachments: Array.isArray(m.attachments) ? (m.attachments as { fileName?: string }[]).map((a) => a.fileName ?? 'file') : [],
+        attachments: m.messageAttachments.map((a) => a.file.originalName),
         sentAt: m.createdAt,
       })),
     })),

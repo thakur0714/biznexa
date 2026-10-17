@@ -114,7 +114,7 @@ export async function anonymiseAccount(tx: Prisma.TransactionClient, userId: str
   await tx.application.updateMany({ where: mine, data: { formData: {} } });
   await tx.applicationDocument.updateMany({ where: { application: mine }, data: { fileName: null } });
   await tx.storedFile.updateMany({ where: { ownerId: userId, deletedAt: null }, data: { originalName: 'deleted', deletedAt: now } });
-  await tx.message.updateMany({ where: { senderId: userId }, data: { body: DELETED_TEXT, attachments: Prisma.DbNull } });
+  await tx.message.updateMany({ where: { senderId: userId }, data: { body: DELETED_TEXT } });
   await tx.ticket.updateMany({ where: mine, data: { subject: DELETED_TEXT, description: DELETED_TEXT } });
   await tx.booking.updateMany({ where: mine, data: { notes: null } });
   await tx.review.updateMany({ where: { booking: mine }, data: { text: null } });

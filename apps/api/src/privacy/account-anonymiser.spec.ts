@@ -89,7 +89,7 @@ describe('anonymiseAccount', () => {
     expect(find('application.updateMany')[0].args).toEqual({ where: { customerId: USER }, data: { formData: {} } });
     expect(find('applicationDocument.updateMany')[0].args).toEqual({ where: { application: { customerId: USER } }, data: { fileName: null } });
     expect(find('storedFile.updateMany')[0].args).toEqual({ where: { ownerId: USER, deletedAt: null }, data: { originalName: 'deleted', deletedAt: NOW } });
-    expect(find('message.updateMany')[0].args).toEqual({ where: { senderId: USER }, data: { body: DELETED_TEXT, attachments: Prisma.DbNull } });
+    expect(find('message.updateMany')[0].args).toEqual({ where: { senderId: USER }, data: { body: DELETED_TEXT } });
     expect(find('ticket.updateMany')[0].args.where).toEqual({ customerId: USER });
     expect(find('booking.updateMany')[0].args).toEqual({ where: { customerId: USER }, data: { notes: null } });
     expect(find('review.updateMany')[0].args).toEqual({ where: { booking: { customerId: USER } }, data: { text: null } });
