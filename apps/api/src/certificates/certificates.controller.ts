@@ -158,7 +158,9 @@ export class PublicCertificatesController {
     const limit = isPartnerApi ? 300 : 30;
     const { remaining, resetAt } = checkVerifyRateLimit(rateKey, limit);
 
-    if (!isPartnerApi) {
+    // The browser suite looks up from one IP across projects (API runs as development); never skipped in production.
+    const e2eNoCaptcha = process.env.E2E_DISABLE_THROTTLE === '1' && process.env.NODE_ENV !== 'production';
+    if (!isPartnerApi && !e2eNoCaptcha) {
       const ip = req.ip || 'anonymous';
       if (captchaNeeded(ip)) {
         if (!q.captchaToken) {
