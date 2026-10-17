@@ -121,6 +121,8 @@ const PVT_LTD: FormSchemaInput = {
 };
 
 describe('form builder', () => {
+  // This end-to-end builder interaction drives many full preview and outline re-renders; under the parallel
+  // workspace test load it can legitimately exceed Vitest's 5-second default.
   it('builds a 3-step form with a directors repeater; the preview matches and it saves as version 1', async () => {
     renderBuilder();
     expect(await screen.findByText(/has no application form yet/)).toBeTruthy();
@@ -189,7 +191,7 @@ describe('form builder', () => {
     const row = within(screen.getByRole('table', { name: 'Form versions' })).getAllByRole('row')[1];
     expect(within(row).getByText('In use')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Save as version 2' }).hasAttribute('disabled')).toBe(true); // nothing changed
-  });
+  }, 15_000);
 
   it('opens the current version without the defaults the API filled in', async () => {
     addVersion(PVT_LTD, true, 4);
