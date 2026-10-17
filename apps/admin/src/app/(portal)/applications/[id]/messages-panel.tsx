@@ -92,7 +92,7 @@ export function MessagesPanel({ applicationId }: { applicationId: string }) {
       const created = await api.call<Message>((c) =>
         c.POST('/api/admin/applications/{applicationId}/messages', {
           params: { path: { applicationId } },
-          body: { body: trimmed, fileIds: fileIds.length > 0 ? fileIds : undefined },
+          body: { body: trimmed || undefined, fileIds: fileIds.length > 0 ? fileIds : undefined },
         }),
       );
       setMessages((prev) => [...prev, created]);

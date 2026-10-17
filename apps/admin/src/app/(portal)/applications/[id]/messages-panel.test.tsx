@@ -44,7 +44,7 @@ const fakeClient = {
     }
     if (url === '/api/files') {
       return {
-        data: { id: 'file-1234' },
+        data: { id: '77777777-7777-4777-8777-777777777777' },
         response: new Response(null, { status: 201 }),
       };
     }
@@ -60,14 +60,16 @@ const fakeClient = {
   }),
 };
 
-vi.mock('@biznexa/api-client/react', () => ({
-  useApi: () => ({
+vi.mock('@biznexa/api-client/react', () => {
+  // One stable object, like the real hook: a new one each render would re-run the panel's load effect.
+  const api = {
     call: async (fn: (c: typeof fakeClient) => Promise<{ data: unknown }>) => {
       const res = await fn(fakeClient);
       return res.data;
     },
-  }),
-}));
+  };
+  return { useApi: () => api };
+});
 
 beforeEach(() => {
   calls = [];
@@ -154,7 +156,7 @@ describe('MessagesPanel (M4.11)', () => {
           createdAt: '2026-10-15T06:30:00.000Z',
           readAt: null,
           attachments: [
-            { id: 'att-1', fileName: 'document.pdf', mimeType: 'application/pdf', sizeBytes: 2048 },
+            { id: '88888888-8888-4888-8888-888888888888', fileName: 'document.pdf', mimeType: 'application/pdf', sizeBytes: 2048 },
           ],
         },
       ],
@@ -190,7 +192,7 @@ describe('MessagesPanel (M4.11)', () => {
 
     await waitFor(() => {
       expect(calls.some(c => c.url === '/api/files' && c.method === 'POST')).toBe(true);
-      expect(calls.some(c => c.url.includes('/messages') && c.method === 'POST' && (c.options as any)?.body?.fileIds?.includes('file-1234'))).toBe(true);
+      expect(calls.some(c => c.url.includes('/messages') && c.method === 'POST' && (c.options as any)?.body?.fileIds?.includes('77777777-7777-4777-8777-777777777777'))).toBe(true);
     });
 
     await screen.findByText('attached.pdf');
