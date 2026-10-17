@@ -14,6 +14,8 @@ describe('Featured consultants (Public & Admin API)', () => {
   let app: NestExpressApplication;
   let prisma: PrismaService;
   const runId = randomUUID();
+  // A language only this run uses keeps other suites' approved consultants out of the directory results.
+  const runLanguage = `Featured-${runId.slice(0, 8)}`;
   const userIds: string[] = [];
   const consultantIds: string[] = [];
   const http = () => request(app.getHttpServer());
@@ -33,7 +35,7 @@ describe('Featured consultants (Public & Admin API)', () => {
       data: {
         userId: user.id, slug: `featured-${runId}-${label}`, category: 'CA',
         qualification: 'Verified qualification', experienceYears: 10,
-        expertise: ['Tax'], languages: ['English'], city: 'Pune', state: 'Maharashtra',
+        expertise: ['Tax'], languages: ['English', runLanguage], city: 'Pune', state: 'Maharashtra',
         area: 'Kothrud', feePerSession: 150_000, consultationTypes: ['AUDIO', 'VIDEO'],
         rating: 5, reviewCount: 10, verificationStatus: status, isFeatured,
         minNoticeMinutes: 0,
@@ -103,7 +105,7 @@ describe('Featured consultants (Public & Admin API)', () => {
     await makeConsultant('public-not-featured-1', 'APPROVED', false);
 
     const resFeatured = await http()
-      .get(`/api/public/consultants?featured=true`)
+      .get(`/api/public/consultants?featured=true&language=${runLanguage}`)
       .expect(200);
 
     const featuredNames = resFeatured.body.items.map((item: { name: string }) => item.name);
@@ -111,7 +113,7 @@ describe('Featured consultants (Public & Admin API)', () => {
     expect(featuredNames).not.toContain('public-not-featured-1 consultant');
 
     const resNotFeatured = await http()
-      .get(`/api/public/consultants?featured=false`)
+      .get(`/api/public/consultants?featured=false&language=${runLanguage}`)
       .expect(200);
 
     const notFeaturedNames = resNotFeatured.body.items.map((item: { name: string }) => item.name);
