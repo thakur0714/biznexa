@@ -4,6 +4,7 @@
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
+import { randomInt, randomUUID } from 'node:crypto';
 import { businessEntityListSchema, businessEntitySchema, gstinCheckChar, MAX_BUSINESS_ENTITIES, type BusinessEntity, type BusinessEntityInput } from '@biznexa/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
@@ -15,7 +16,8 @@ let prisma: PrismaService;
 let alice: string;
 let bob: string;
 
-const run = Date.now().toString().slice(-7);
+const run = randomUUID();
+const mobileRun = String(randomInt(1_000_000, 10_000_000));
 const base = '/api/business-entities';
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
 const gstinFor = (stateCode: string, pan: string) => `${stateCode}${pan}1Z${gstinCheckChar(`${stateCode}${pan}1Z`)}`;
@@ -33,7 +35,7 @@ const acme: BusinessEntityInput = {
 async function register(n: number) {
   const res = await http
     .post('/api/auth/register')
-    .send({ name: 'Business Test', mobile: `7${run}${String(n).padStart(2, '0')}`, email: `e2e-be-${run}-${n}@example.com`, password: 'secret123', consent: true })
+    .send({ name: 'Business Test', mobile: `7${mobileRun}${String(n).padStart(2, '0')}`, email: `e2e-be-${run}-${n}@example.com`, password: 'secret123', consent: true })
     .expect(201);
   return res.body.accessToken as string;
 }
@@ -150,10 +152,17 @@ describe('business entities (M3.7)', () => {
 
   it(`keeps to ${MAX_BUSINESS_ENTITIES} businesses per customer, even when saved at once`, async () => {
     const carol = await register(3);
-    const results = await Promise.all(
-      Array.from({ length: MAX_BUSINESS_ENTITIES + 5 }, (_, i) => create(carol, { legalName: `Shop ${i}`, entityType: 'PROPRIETORSHIP' })),
-    );
-    expect(results.filter((r) => r.status === 201)).toHaveLength(MAX_BUSINESS_ENTITIES);
+    const carolId = (await prisma.user.findUniqueOrThrow({ where: { email: `e2e-be-${run}-3@example.com` }, select: { id: true } })).id;
+    // Seed the customer close to the cap directly so the simultaneous requests focus on the lock-protected limit.
+    await prisma.businessEntity.createMany({
+      data: Array.from({ length: MAX_BUSINESS_ENTITIES - 5 }, (_, i) => ({
+        ownerId: carolId,
+        legalName: `Existing Shop ${i} ${run}`,
+        entityType: 'PROPRIETORSHIP' as const,
+      })),
+    });
+    const results = await Promise.all(Array.from({ length: 10 }, (_, i) => create(carol, { legalName: `Shop ${i} ${run}`, entityType: 'PROPRIETORSHIP' })));
+    expect(results.filter((r) => r.status === 201)).toHaveLength(5);
     expect(results.filter((r) => r.status === 400)).toHaveLength(5);
     expect((await http.get(base).set(as(carol)).expect(200)).body.items).toHaveLength(MAX_BUSINESS_ENTITIES);
   });
