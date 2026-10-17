@@ -1,9 +1,13 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMS, type AdminCouponRow } from '@biznexa/types';
-import { ToastProvider } from '@biznexa/ui';
 import { ApiProvider } from '@biznexa/api-client/react';
 import { CouponsView } from './coupons-view';
+
+vi.mock('@biznexa/ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@biznexa/ui')>();
+  return { ...actual, useToast: () => vi.fn() };
+});
 
 const auth = vi.hoisted(() => ({ permissions: [] as string[], refresh: vi.fn(async () => 'renewed-token') }));
 vi.mock('@/lib/auth', () => ({
@@ -85,9 +89,7 @@ beforeEach(() => {
 const renderView = () =>
   render(
     <ApiProvider token="token" refresh={auth.refresh}>
-      <ToastProvider>
-        <CouponsView />
-      </ToastProvider>
+      <CouponsView />
     </ApiProvider>,
   );
 

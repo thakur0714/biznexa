@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { randomInt, randomUUID } from 'node:crypto';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
@@ -14,8 +15,10 @@ let userA: { token: string; id: string };
 let userB: { token: string; id: string };
 let admin: string;
 
-const run = Date.now().toString().slice(-7);
-const prefix = `CUST-CERT-${run}`;
+const run = randomUUID();
+const shortRun = String(randomInt(100_000, 1_000_000));
+const mobileRun = String(randomInt(1_000_000, 10_000_000));
+const prefix = `CUST-CERT-${run.slice(0, 8).toUpperCase()}`;
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
 
 async function registerUser(n: number) {
@@ -23,7 +26,7 @@ async function registerUser(n: number) {
     .post('/api/auth/register')
     .send({
       name: `Cust Cert User ${n}`,
-      mobile: `8${run}${String(10 + n).padStart(2, '0')}`,
+      mobile: `8${mobileRun}${String(10 + n).padStart(2, '0')}`,
       email: `e2e-custcert-${run}-${n}@example.com`,
       password: 'secretPassword123!',
       consent: true,
@@ -93,6 +96,7 @@ afterAll(async () => {
   const certs = await prisma.certificate.findMany({
     where: {
       OR: [
+        { certificationBodyId: testBody.id },
         { certificateNumber: { startsWith: prefix } },
         { certificationBody: { name: { startsWith: prefix } } },
         { organizationName: { contains: prefix } },
@@ -132,7 +136,7 @@ describe('customer certificates page API (M7.6)', () => {
     const c1 = await prisma.certificate.create({
       data: {
         certificateNumber: `${prefix}-A1`,
-        verificationId: `V${run}A1`,
+        verificationId: `V${shortRun}A1`,
         type: 'ISO 9001:2015',
         organizationName: `${prefix} Acme Pvt Ltd`,
         issueDate: new Date('2026-01-01'),
@@ -148,7 +152,7 @@ describe('customer certificates page API (M7.6)', () => {
     const c2 = await prisma.certificate.create({
       data: {
         certificateNumber: `${prefix}-EXP`,
-        verificationId: `V${run}EXP`,
+        verificationId: `V${shortRun}EXP`,
         type: 'ISO 27001:2022',
         organizationName: `${prefix} Acme Pvt Ltd`,
         issueDate: new Date('2023-01-01'),
@@ -171,7 +175,7 @@ describe('customer certificates page API (M7.6)', () => {
     const cb = await prisma.certificate.create({
       data: {
         certificateNumber: `${prefix}-B1`,
-        verificationId: `V${run}B1`,
+        verificationId: `V${shortRun}B1`,
         type: 'ISO 14001:2015',
         organizationName: `${prefix} Beta Ltd`,
         issueDate: new Date('2026-01-01'),

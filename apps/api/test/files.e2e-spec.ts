@@ -3,6 +3,7 @@
  * scanner) and a throwaway UPLOAD_DIR (see setup-env.js). Each run uses unique users so it can be repeated.
  */
 import { Test } from '@nestjs/testing';
+import { randomInt, randomUUID } from 'node:crypto';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { readdir, rm } from 'node:fs/promises';
@@ -26,7 +27,8 @@ let bob: string; // another customer
 let admin: string;
 let pdfOnly: string; // requirement id: PDF only, 1 MB
 
-const run = Date.now().toString().slice(-7);
+const run = randomUUID();
+const mobileRun = String(randomInt(1_000_000, 10_000_000));
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(2048, 1)]);
 const PDF = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(4096, 0x20)]);
 const MB = 1024 * 1024;
@@ -34,7 +36,7 @@ const MB = 1024 * 1024;
 async function register(n: number) {
   const res = await http
     .post('/api/auth/register')
-    .send({ name: 'Files Test', mobile: `8${run}${String(n).padStart(2, '0')}`, email: `e2e-files-${run}-${n}@example.com`, password: 'secret123', consent: true })
+    .send({ name: 'Files Test', mobile: `8${mobileRun}${String(n).padStart(2, '0')}`, email: `e2e-files-${run}-${n}@example.com`, password: 'secret123', consent: true })
     .expect(201);
   return res.body.accessToken as string;
 }
@@ -52,13 +54,30 @@ const ownUsers = { email: { startsWith: `e2e-files-${run}` } };
 const upload = (token: string, name: string, data: Buffer, query = '') =>
   http.post(`/api/files${query}`).set('authorization', `Bearer ${token}`).attach('file', data, name);
 
-/** Poll until the background virus scan has a result. */
-async function scanned(token: string, id: string): Promise<string> {
-  for (const deadline = Date.now() + 15_000; Date.now() < deadline; await new Promise((r) => setTimeout(r, 100))) {
-    const { scanStatus } = (await http.get(`/api/files/${id}`).set('authorization', `Bearer ${token}`).expect(200)).body;
-    if (scanStatus !== 'PENDING') return scanStatus;
-  }
-  throw new Error(`File ${id} was not scanned in time`);
+const scanResults = new Map<string, string>();
+const scanWaiters = new Map<string, Set<(status: string) => void>>();
+
+// Scans run in the shared queue and may wait behind other API workers during the full parallel suite.
+function scanned(id: string, ms = 60_000): Promise<string> {
+  const ready = scanResults.get(id);
+  if (ready) return Promise.resolve(ready);
+
+  return new Promise((resolve, reject) => {
+    const waiters = scanWaiters.get(id) ?? new Set<(status: string) => void>();
+    const finish = (status: string) => {
+      clearTimeout(timeout);
+      waiters.delete(finish);
+      if (!waiters.size) scanWaiters.delete(id);
+      resolve(status);
+    };
+    waiters.add(finish);
+    scanWaiters.set(id, waiters);
+    const timeout = setTimeout(() => {
+      waiters.delete(finish);
+      if (!waiters.size) scanWaiters.delete(id);
+      reject(new Error(`File ${id} was not scanned within ${ms} ms`));
+    }, ms);
+  });
 }
 
 beforeAll(async () => {
@@ -68,6 +87,10 @@ beforeAll(async () => {
   await app.init();
   http = request(app.getHttpServer()) as unknown as ReturnType<typeof request>;
   prisma = app.get(PrismaService);
+  app.get(EventBus).on('file.scanned', (event) => {
+    scanResults.set(event.payload.fileId, event.payload.status);
+    for (const resolve of scanWaiters.get(event.payload.fileId) ?? []) resolve(event.payload.status);
+  });
 
   [alice, bob] = [await register(1), await register(2)];
   admin = (await staffSession(http, prisma, 'ADMIN', `e2e-files-${run}-admin@example.com`)).accessToken;
@@ -158,8 +181,8 @@ describe('download', () => {
   let fileId: string;
   beforeAll(async () => {
     fileId = (await upload(alice, 'Address proof.pdf', PDF, `?requirementId=${pdfOnly}`).expect(201)).body.id;
-    expect(await scanned(alice, fileId)).toBe('CLEAN');
-  });
+    expect(await scanned(fileId)).toBe('CLEAN');
+  }, 90_000);
 
   it('gives the owner a 5-minute signed link that streams the file with safe headers', async () => {
     const link = await http.post(`/api/files/${fileId}/link`).set('authorization', `Bearer ${alice}`).expect(200);
@@ -204,7 +227,7 @@ describe('download', () => {
     await http.get(inline.pathname + inline.search).expect(403);
 
     const other = (await upload(bob, 'bob.png', PNG).expect(201)).body.id;
-    await scanned(bob, other);
+    await scanned(other);
     await http.get(`/api/files/${other}/download${u.search}`).expect(403);
 
     await http.get(`/api/files/${fileId}/download`).expect(403);
@@ -225,7 +248,7 @@ describe('virus scan', () => {
     expect(res.body.scanStatus).toBe('PENDING');
     const row = await prisma.storedFile.findUniqueOrThrow({ where: { id: res.body.id } });
 
-    expect(await scanned(alice, res.body.id)).toBe('INFECTED');
+    expect(await scanned(res.body.id)).toBe('INFECTED');
     off();
     const after = await prisma.storedFile.findUniqueOrThrow({ where: { id: res.body.id } });
     expect(after).toMatchObject({ scanStatus: 'INFECTED', scanSignature: 'Eicar-Test-Signature' });
@@ -239,17 +262,17 @@ describe('virus scan', () => {
     await http.post(`/api/files/${res.body.id}/link`).set('authorization', `Bearer ${bob}`).expect(404);
     // A correctly signed link is refused too.
     await http.get(signedPath(res.body.id, Math.floor(Date.now() / 1000) + 60, 'attachment')).expect(410);
-  });
+  }, 90_000);
 
   it('gives no link while the scan is pending', async () => {
     const id = (await upload(alice, 'pending.pdf', PDF).expect(201)).body.id;
-    expect(await scanned(alice, id)).toBe('CLEAN');
+    expect(await scanned(id)).toBe('CLEAN');
     await prisma.storedFile.update({ where: { id }, data: { scanStatus: 'PENDING' } });
 
     const res = await http.post(`/api/files/${id}/link`).set('authorization', `Bearer ${alice}`).expect(409);
     expect(res.body.message).toMatch(/still being checked/);
     await http.get(signedPath(id, Math.floor(Date.now() / 1000) + 60, 'attachment')).expect(409);
-  });
+  }, 90_000);
 
   it('shows scan status only to people who may read the file', async () => {
     const id = (await upload(alice, 'status.png', PNG).expect(201)).body.id;
