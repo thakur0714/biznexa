@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import type { DomainEventPayloads } from '@biznexa/types';
+import { formatDate, type DomainEventPayloads } from '@biznexa/types';
 import { QueueService } from '../queue/queue.service';
 import { EventBus } from '../events/event-bus';
 import { PrismaService } from '../prisma/prisma.service';
@@ -17,14 +17,14 @@ export class BookingConfirmationService implements OnModuleInit {
 
   onModuleInit() {
     this.events.on('booking.confirmed', (e) => this.confirmed(e.payload));
+    this.events.on('booking.status_changed', (e) => (e.payload.to === 'CANCELLED' ? this.cancelled(e.payload.bookingId, e.payload.reason) : undefined));
     this.queues.process<Reminder>(QUEUE, async (job) => this.remind(job.data));
   }
 
   async confirmed(payload: DomainEventPayloads['booking.confirmed']) {
-    const booking = await this.prisma.booking.findUnique({ where: { id: payload.bookingId }, select: { id: true, code: true, status: true, startAt: true, endAt: true, meetingLink: true, customer: { select: { id: true, name: true, email: true, mobile: true } }, consultant: { select: { user: { select: { name: true } } } } } });
+    const booking = await this.load(payload.bookingId);
     if (!booking || booking.status !== 'CONFIRMED') return;
-    const vars = this.variables(booking);
-    await this.dispatch('consultation.booked', booking.customer, vars, `${env().PUBLIC_WEB_URL}/dashboard/consultations`);
+    await this.dispatch('consultation.booked', booking.customer, this.variables(booking), `${env().PUBLIC_WEB_URL}/dashboard/consultations`);
     await this.replaceReminders(booking.id, booking.startAt, booking.status);
   }
 
@@ -41,16 +41,28 @@ export class BookingConfirmationService implements OnModuleInit {
   }
 
   private async remind(data: Reminder) {
-    const booking = await this.prisma.booking.findUnique({ where: { id: data.bookingId }, select: { id: true, code: true, status: true, startAt: true, endAt: true, meetingLink: true, customer: { select: { id: true, name: true, email: true, mobile: true } }, consultant: { select: { user: { select: { name: true } } } } } });
+    const booking = await this.load(data.bookingId);
     if (!booking || booking.status !== 'CONFIRMED' || booking.startAt.toISOString() !== data.expectedStartAt) return;
-    await this.dispatch('consultation.reminder', booking.customer, { ...this.variables(booking), hours: data.offset }, `${env().PUBLIC_WEB_URL}/dashboard/consultations`);
+    await this.dispatch('consultation.reminder', booking.customer, { ...this.variables(booking), minutesBefore: data.offset * 60 }, `${env().PUBLIC_WEB_URL}/dashboard/consultations`);
   }
 
-  private variables(b: { code: string; startAt: Date; endAt: Date; meetingLink: string | null; customer: { name: string }; consultant: { user: { name: string } } }) {
-    return { customerName: b.customer.name, bookingCode: b.code, consultantName: b.consultant.user.name, startAt: b.startAt.toISOString(), endAt: b.endAt.toISOString(), meetingLink: b.meetingLink ?? '', link: `${env().PUBLIC_WEB_URL}/dashboard/consultations` };
+  async cancelled(bookingId: string, reason?: string) {
+    const booking = await this.load(bookingId);
+    if (!booking || booking.status !== 'CANCELLED') return;
+    await this.dispatch('consultation.cancelled', booking.customer, { ...this.variables(booking), reason: reason ?? 'Cancelled at your request' }, `${env().PUBLIC_WEB_URL}/dashboard/consultations`);
   }
 
-  private async dispatch(event: 'consultation.booked' | 'consultation.reminder', recipient: { id: string; name: string; email: string | null; mobile: string | null }, variables: Record<string, unknown>, link: string) {
+  private load(id: string) {
+    return this.prisma.booking.findUnique({ where: { id }, select: { id: true, code: true, status: true, startAt: true, endAt: true, meetingLink: true, customer: { select: { id: true, name: true, email: true, mobile: true } }, consultant: { select: { user: { select: { name: true } } } } } });
+  }
+
+  /** The names the seeded consultation.* templates use (seed-notifications.ts); a missing one stops the message. */
+  private variables(b: { code: string; startAt: Date; meetingLink: string | null; customer: { name: string }; consultant: { user: { name: string } } }) {
+    const time = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true }).format(b.startAt);
+    return { customerName: b.customer.name, expertName: b.consultant.user.name, bookingCode: b.code, date: formatDate(b.startAt), time, meetingLink: b.meetingLink ?? '' };
+  }
+
+  private async dispatch(event: 'consultation.booked' | 'consultation.reminder' | 'consultation.cancelled', recipient: { id: string; name: string; email: string | null; mobile: string | null }, variables: Record<string, unknown>, link: string) {
     const templates = await this.prisma.notificationTemplate.findMany({ where: { event, isActive: true } });
     for (const template of templates) try {
       const rendered = this.templates.render(template, variables);

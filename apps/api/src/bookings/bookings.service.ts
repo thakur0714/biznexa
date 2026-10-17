@@ -134,12 +134,13 @@ export class BookingsService {
   }
 
   async cancel(customerId: string, id: string, reason?: string, now = new Date()): Promise<BookingView> {
-    const row = await this.prisma.booking.findFirst({ where: { id, customerId }, select: { id: true, code: true, status: true, startAt: true, endAt: true, customerId: true, consultantId: true } });
+    const row = await this.prisma.booking.findFirst({ where: { id, customerId }, select: { id: true, code: true, startAt: true, endAt: true, consultantId: true } });
     if (!row) throw new NotFoundException('Booking not found');
-    if (row.status !== 'CONFIRMED' || row.startAt.getTime() - now.getTime() < 24 * 3600_000) throw new ConflictException('Bookings can be cancelled up to 24 hours before the session.');
-    assertTransition('booking', row.status, 'CANCELLED');
     await this.prisma.$transaction(async (tx) => {
-      await tx.booking.update({ where: { id }, data: { status: 'CANCELLED' } });
+      // Re-checked inside the transaction: two cancels at once change the row (and write history) only once.
+      const { count } = await tx.booking.updateMany({ where: { id, status: 'CONFIRMED', startAt: { gte: new Date(now.getTime() + 24 * 3600_000) } }, data: { status: 'CANCELLED' } });
+      if (!count) throw new ConflictException('Bookings can be cancelled up to 24 hours before the session.');
+      assertTransition('booking', 'CONFIRMED', 'CANCELLED');
       await tx.bookingStatusHistory.create({ data: { bookingId: id, fromStatus: 'CONFIRMED', toStatus: 'CANCELLED', actorId: customerId, reason } });
       await this.audit.log({ actorId: customerId, action: 'booking.cancelled', entityType: 'Booking', entityId: id, before: { status: 'CONFIRMED' }, after: { status: 'CANCELLED', reason } }, tx);
     });
@@ -149,35 +150,47 @@ export class BookingsService {
   }
 
   async reschedule(customerId: string, id: string, startAt: Date, now = new Date()): Promise<BookingView> {
-    const row = await this.prisma.booking.findFirst({ where: { id, customerId }, select: { id: true, code: true, type: true, status: true, startAt: true, endAt: true, consultantId: true, customerId: true, meetingLink: true, consultant: { select: { sessionMinutes: true } } } });
+    const row = await this.prisma.booking.findFirst({ where: { id, customerId }, select: { id: true, code: true, consultantId: true } });
     if (!row) throw new NotFoundException('Booking not found');
-    if (row.status !== 'CONFIRMED' || row.startAt.getTime() - now.getTime() < 24 * 3600_000 || startAt.getTime() <= now.getTime()) throw new ConflictException('Bookings can be rescheduled up to 24 hours before the session.');
-    const date = istDate(startAt);
-    const rules = await this.availability.rules(this.prisma, row.consultantId, date, date);
-    const endAt = new Date(startAt.getTime() + row.consultant.sessionMinutes * 60_000);
-    const busy = await this.availability.busy(this.prisma, row.consultantId, date, date, now);
-    if (!generateSlots(rules, { from: date, to: date, now, busy: busy.filter((b) => b.startAt.getTime() !== row.startAt.getTime()) }).some((s) => s.startAt.getTime() === startAt.getTime())) throw new ConflictException('That slot is no longer available. Pick another time.');
-    assertTransition('booking', 'CONFIRMED', 'RESCHEDULED');
-    assertTransition('booking', 'RESCHEDULED', 'CONFIRMED');
-    await this.prisma.$transaction(async (tx) => {
-      await tx.booking.update({ where: { id }, data: { status: 'RESCHEDULED' } });
-      await tx.bookingStatusHistory.create({ data: { bookingId: id, fromStatus: 'CONFIRMED', toStatus: 'RESCHEDULED', actorId: customerId, metadata: { fromStartAt: row.startAt.toISOString(), toStartAt: startAt.toISOString() } } });
-      await tx.booking.update({ where: { id }, data: { status: 'CONFIRMED', startAt, endAt } });
-      await tx.bookingStatusHistory.create({ data: { bookingId: id, fromStatus: 'RESCHEDULED', toStatus: 'CONFIRMED', actorId: customerId, metadata: { startAt: startAt.toISOString(), endAt: endAt.toISOString() } } });
-      await this.audit.log({ actorId: customerId, action: 'booking.rescheduled', entityType: 'Booking', entityId: id, before: { status: 'CONFIRMED', startAt: row.startAt.toISOString(), endAt: row.endAt.toISOString() }, after: { status: 'CONFIRMED', startAt: startAt.toISOString(), endAt: endAt.toISOString() } }, tx);
-    });
+    const tooLate = 'Bookings can be rescheduled up to 24 hours before the session.';
+    const taken = 'That slot is no longer available. Pick another time.';
+    let moved: { endAt: Date };
+    try {
+      moved = await this.prisma.$transaction(async (tx) => {
+        // Same lock as creating a hold and confirming a payment, so the new slot cannot be taken in between.
+        await lockConsultant(tx, row.consultantId);
+        const current = await tx.booking.findUniqueOrThrow({ where: { id }, select: { status: true, startAt: true, endAt: true } });
+        if (current.status !== 'CONFIRMED' || current.startAt.getTime() - now.getTime() < 24 * 3600_000 || startAt.getTime() <= now.getTime()) throw new ConflictException(tooLate);
+        const date = istDate(startAt);
+        const rules = await this.availability.rules(tx, row.consultantId, date, date);
+        const endAt = new Date(startAt.getTime() + rules.sessionMinutes * 60_000);
+        await expireStaleHolds(tx, row.consultantId, startAt, endAt, now);
+        const busy = (await this.availability.busy(tx, row.consultantId, date, date, now)).filter((b) => !(b.startAt.getTime() === current.startAt.getTime() && b.endAt.getTime() === current.endAt.getTime()));
+        if (!generateSlots(rules, { from: date, to: date, now, busy }).some((s) => s.startAt.getTime() === startAt.getTime())) throw new ConflictException(taken);
+        assertTransition('booking', 'CONFIRMED', 'RESCHEDULED');
+        assertTransition('booking', 'RESCHEDULED', 'CONFIRMED');
+        await tx.booking.update({ where: { id }, data: { status: 'CONFIRMED', startAt, endAt } });
+        await tx.bookingStatusHistory.create({ data: { bookingId: id, fromStatus: 'CONFIRMED', toStatus: 'RESCHEDULED', actorId: customerId, metadata: { fromStartAt: current.startAt.toISOString(), toStartAt: startAt.toISOString() } } });
+        await tx.bookingStatusHistory.create({ data: { bookingId: id, fromStatus: 'RESCHEDULED', toStatus: 'CONFIRMED', actorId: customerId, metadata: { startAt: startAt.toISOString(), endAt: endAt.toISOString() } } });
+        await this.audit.log({ actorId: customerId, action: 'booking.rescheduled', entityType: 'Booking', entityId: id, before: { status: 'CONFIRMED', startAt: current.startAt.toISOString(), endAt: current.endAt.toISOString() }, after: { status: 'CONFIRMED', startAt: startAt.toISOString(), endAt: endAt.toISOString() } }, tx);
+        return { endAt };
+      });
+    } catch (e) {
+      if (isOverlapViolation(e)) throw new ConflictException(taken);
+      throw e;
+    }
     await this.confirmation.replaceReminders(id, startAt, 'CONFIRMED');
-    await this.events.emit('booking.status_changed', { bookingId: id, code: row.code, from: 'CONFIRMED', to: 'RESCHEDULED', actorId: customerId, customerId, consultantId: row.consultantId, startAt: startAt.toISOString(), endAt: endAt.toISOString() });
+    await this.events.emit('booking.status_changed', { bookingId: id, code: row.code, from: 'CONFIRMED', to: 'RESCHEDULED', actorId: customerId, customerId, consultantId: row.consultantId, startAt: startAt.toISOString(), endAt: moved.endAt.toISOString() });
     return this.view(id);
   }
 
   async consultantOutcome(userId: string, id: string, status: 'COMPLETED' | 'NO_SHOW', now = new Date()): Promise<BookingView> {
-    const row = await this.prisma.booking.findFirst({ where: { id, consultant: { userId } }, select: { id: true, code: true, status: true, startAt: true, endAt: true, customerId: true, consultantId: true } });
+    const row = await this.prisma.booking.findFirst({ where: { id, consultant: { userId } }, select: { id: true, code: true, startAt: true, endAt: true, customerId: true, consultantId: true } });
     if (!row) throw new NotFoundException('Booking not found');
-    if (row.status !== 'CONFIRMED' || row.endAt > now) throw new ConflictException('The session must have ended before recording its outcome.');
-    assertTransition('booking', row.status, status);
     await this.prisma.$transaction(async (tx) => {
-      await tx.booking.update({ where: { id }, data: { status } });
+      const { count } = await tx.booking.updateMany({ where: { id, status: 'CONFIRMED', endAt: { lte: now } }, data: { status } });
+      if (!count) throw new ConflictException('The session must have ended before recording its outcome.');
+      assertTransition('booking', 'CONFIRMED', status);
       await tx.bookingStatusHistory.create({ data: { bookingId: id, fromStatus: 'CONFIRMED', toStatus: status, actorId: userId } });
       await this.audit.log({ actorId: userId, action: `booking.${status.toLowerCase()}`, entityType: 'Booking', entityId: id, before: { status: 'CONFIRMED' }, after: { status } }, tx);
     });
