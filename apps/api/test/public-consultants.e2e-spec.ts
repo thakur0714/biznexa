@@ -6,6 +6,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { istDate } from '@biznexa/types';
 
 const registerSchema = z.object({ accessToken: z.string() });
 
@@ -21,7 +22,7 @@ describe('Public consultant directory (M8.3)', () => {
   async function makeConsultant(label: string, status: 'APPROVED' | 'PENDING' | 'SUSPENDED', options: {
     category: 'CA' | 'CS'; city: string; state: string; area: string | null; feePerSession: number;
     rating: number; experienceYears: number; languages: string[]; consultationTypes: ('AUDIO' | 'VIDEO' | 'CHAT' | 'MEETING')[];
-    availableToday?: boolean;
+    availableToday?: boolean; marker?: boolean;
   }) {
     const email = `consultant-directory-${runId}-${label}@example.com`;
     await http().post('/api/auth/register').send({
@@ -36,10 +37,11 @@ describe('Public consultant directory (M8.3)', () => {
         userId: user.id, slug: `directory-${runId}-${label}`, category: options.category,
         qualification: 'Verified qualification', experienceYears: options.experienceYears,
         // A language only this run uses keeps other suites' approved consultants out of the totals.
-        expertise: ['Tax'], languages: [...options.languages, runLanguage], city: options.city, state: options.state,
+        expertise: ['Tax'], languages: options.marker === false ? options.languages : [...options.languages, runLanguage], city: options.city, state: options.state,
         area: options.area, feePerSession: options.feePerSession, consultationTypes: options.consultationTypes,
         rating: options.rating, reviewCount: 10, verificationStatus: status,
-        availability: options.availableToday ? { create: [{ weekday: currentIstWeekday(), startTime: '23:59', endTime: '24:00', isBlocked: false }] } : undefined,
+        minNoticeMinutes: 0,
+        availability: options.availableToday ? { create: [{ weekday: currentIstWeekday(), startTime: '00:00', endTime: '24:00', isBlocked: false }] } : undefined,
       },
       select: { id: true },
     });
@@ -73,6 +75,14 @@ describe('Public consultant directory (M8.3)', () => {
       category: 'CA', city: 'Pune', state: 'Maharashtra', area: 'Kothrud', feePerSession: 100_000,
       rating: 5, experienceYears: 15, languages: ['Hindi'], consultationTypes: ['VIDEO'], availableToday: true,
     });
+    const blockedId = await makeConsultant('blocked-today', 'APPROVED', {
+      category: 'CA', city: 'Pune', state: 'Maharashtra', area: null, feePerSession: 50_000,
+      rating: 3.8, experienceYears: 2, languages: ['Blocked-language'], consultationTypes: ['AUDIO'],
+      availableToday: true, marker: false,
+    });
+    await prisma.availabilitySlot.create({
+      data: { consultantId: blockedId, date: new Date(`${istDate(new Date())}T00:00:00Z`), startTime: '00:00', endTime: '24:00', isBlocked: true },
+    });
   });
 
   afterAll(async () => {
@@ -104,5 +114,24 @@ describe('Public consultant directory (M8.3)', () => {
     const descending = await http().get(`/api/public/consultants?sort=fee_high&availableToday=false&language=${runLanguage}`).expect(200);
     expect(descending.body.items.map((item: { name: string }) => item.name)).toEqual(['approved-two consultant']);
     await http().get('/api/public/consultants?minFee=200000&maxFee=100000').expect(400);
+  });
+
+  it('excludes fully blocked exceptions from available-today results', async () => {
+    const available = await http().get('/api/public/consultants?availableToday=true&language=Blocked-language').expect(200);
+    expect(available.body.total).toBe(0);
+    const unavailable = await http().get('/api/public/consultants?availableToday=false&language=Blocked-language').expect(200);
+    expect(unavailable.body.items[0]).toMatchObject({ name: 'blocked-today consultant', availableToday: false });
+  });
+
+  it('serves only approved public profiles and returns a 404 for pending or unknown slugs', async () => {
+    const response = await http().get(`/api/public/consultants/directory-${runId}-approved-one`).expect(200);
+    expect(response.body).toMatchObject({
+      name: 'approved-one consultant', category: 'CA', expertise: ['Tax'], languages: ['English', 'Hindi', runLanguage],
+      ratingSummary: { average: 4.8, reviewCount: 10, breakdown: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 } },
+      services: [], verifiedReviews: [],
+    });
+    expect(response.body).not.toHaveProperty('email');
+    await http().get(`/api/public/consultants/directory-${runId}-pending`).expect(404);
+    await http().get('/api/public/consultants/no-such-consultant').expect(404);
   });
 });
