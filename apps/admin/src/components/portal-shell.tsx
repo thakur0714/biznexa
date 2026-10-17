@@ -20,15 +20,21 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const pendingTwoFactor = needsTwoFactor(user?.twoFactor);
+  const consultantOnly = user?.roles.includes('CONSULTANT') ?? false;
+  const outsideConsultantPortal = consultantOnly && !['/consultant/profile', '/consultant/availability'].includes(pathname);
 
   useEffect(() => {
+    if (ready && user && !pendingTwoFactor && outsideConsultantPortal) {
+      router.replace('/consultant/profile');
+      return;
+    }
     if (!ready || (user && !pendingTwoFactor)) return;
     const here = sp.toString() ? `${pathname}?${sp}` : pathname;
     const to = user ? '/two-factor' : '/login';
     router.replace(here === '/' ? to : `${to}?next=${encodeURIComponent(here)}`);
-  }, [ready, user, pendingTwoFactor, router, pathname, sp]);
+  }, [ready, user, pendingTwoFactor, outsideConsultantPortal, router, pathname, sp]);
 
-  if (!ready || !user || pendingTwoFactor) {
+  if (!ready || !user || pendingTwoFactor || outsideConsultantPortal) {
     return (
       <div className="px-6 py-24 text-center text-muted" role="status">
         Checking your session…
@@ -47,7 +53,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-rule bg-white px-4 lg:hidden">
-        <Logo tag="Admin" label="BizNexa admin home" />
+        <Logo tag={consultantOnly ? 'Consultant' : 'Admin'} label={consultantOnly ? 'BizNexa consultant home' : 'BizNexa admin home'} />
         <Button variant="outline" size="sm" aria-expanded={menuOpen} aria-controls="admin-sidebar" onClick={() => setMenuOpen((o) => !o)}>
           {menuOpen ? 'Close' : 'Menu'}
         </Button>
@@ -61,10 +67,10 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-ink text-white transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${menuOpen ? 'translate-x-0' : 'invisible -translate-x-full lg:visible'}`}
       >
         <div className="hidden h-16 items-center px-5 lg:flex">
-          <Logo inverted tag="Admin" label="BizNexa admin home" />
+          <Logo inverted tag={consultantOnly ? 'Consultant' : 'Admin'} label={consultantOnly ? 'BizNexa consultant home' : 'BizNexa admin home'} />
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-4 lg:py-2">
-          <SidebarNav permissions={user.permissions} onNavigate={close} />
+          <SidebarNav permissions={user.permissions} roles={user.roles} onNavigate={close} />
         </div>
         <div className="border-t border-white/10 p-4">
           <p className="truncate text-sm font-semibold">{user.name}</p>

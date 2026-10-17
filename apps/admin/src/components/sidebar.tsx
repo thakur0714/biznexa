@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation';
 import { visibleNav } from '@/lib/nav';
 
 /** Sections the signed-in user's permissions allow (see lib/nav.ts). */
-export function SidebarNav({ permissions, onNavigate }: { permissions: string[]; onNavigate?: () => void }) {
+export function SidebarNav({ permissions, roles = [], onNavigate }: { permissions: string[]; roles?: string[]; onNavigate?: () => void }) {
   const pathname = usePathname();
-  const groups = visibleNav(permissions);
+  const groups = visibleNav(permissions, undefined, roles);
 
   return (
     <nav aria-label="Admin sections" className="space-y-6">

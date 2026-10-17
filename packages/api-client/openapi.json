@@ -6235,6 +6235,16 @@
             "description": "Optional API key alias"
           },
           {
+            "name": "captchaToken",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "description": "Captcha token, required after 5 lookups from one IP in 10 minutes"
+          },
+          {
             "name": "X-API-Key",
             "in": "header",
             "description": "Optional partner API key for higher rate limits",
@@ -9541,13 +9551,17 @@
                 "properties": {
                   "body": {
                     "type": "string",
-                    "minLength": 1,
                     "maxLength": 4000
+                  },
+                  "fileIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 5
                   }
                 },
-                "required": [
-                  "body"
-                ],
                 "additionalProperties": false
               }
             }
@@ -9722,13 +9736,17 @@
                 "properties": {
                   "body": {
                     "type": "string",
-                    "minLength": 1,
                     "maxLength": 4000
+                  },
+                  "fileIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 5
                   }
                 },
-                "required": [
-                  "body"
-                ],
                 "additionalProperties": false
               }
             }
@@ -13165,6 +13183,167 @@
         ]
       }
     },
+    "/api/consultants/me/profile": {
+      "get": {
+        "operationId": "ConsultantsController_ownProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantOwnProfile"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultants"
+        ]
+      },
+      "put": {
+        "operationId": "ConsultantsController_updateOwnProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "CA",
+                      "CS",
+                      "LAWYER",
+                      "TAX_CONSULTANT",
+                      "TRADEMARK_CONSULTANT",
+                      "ISO_CONSULTANT",
+                      "BUSINESS_CONSULTANT",
+                      "TECHNOLOGY_CONSULTANT"
+                    ]
+                  },
+                  "qualification": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "membershipNo": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "nullable": true
+                  },
+                  "experienceYears": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60
+                  },
+                  "expertise": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "minItems": 1,
+                    "maxItems": 20
+                  },
+                  "languages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "minItems": 1,
+                    "maxItems": 20
+                  },
+                  "city": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "state": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "area": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "nullable": true
+                  },
+                  "bio": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "nullable": true
+                  },
+                  "feePerSession": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000000,
+                    "description": "Consultation fee in paise"
+                  },
+                  "consultationTypes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "AUDIO",
+                        "VIDEO",
+                        "CHAT",
+                        "MEETING"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "category",
+                  "qualification",
+                  "experienceYears",
+                  "expertise",
+                  "languages",
+                  "city",
+                  "state",
+                  "feePerSession",
+                  "consultationTypes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantOwnProfile"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultants"
+        ]
+      }
+    },
     "/api/admin/consultants": {
       "get": {
         "operationId": "AdminConsultantsController_list",
@@ -13534,6 +13713,113 @@
         ]
       }
     },
+    "/api/admin/consultants/{id}/fee-requests/{requestId}/approve": {
+      "post": {
+        "operationId": "AdminConsultantsController_approveFeeChange",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requestId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantFeeChangeAction"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · consultants"
+        ]
+      }
+    },
+    "/api/admin/consultants/{id}/fee-requests/{requestId}/reject": {
+      "post": {
+        "operationId": "AdminConsultantsController_rejectFeeChange",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requestId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantFeeChangeAction"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · consultants"
+        ]
+      }
+    },
     "/api/public/consultants": {
       "get": {
         "operationId": "PublicConsultantsController_list",
@@ -13760,6 +14046,40 @@
           },
           "400": {
             "description": "Bad dates, `to` before `from`, or more than 14 days"
+          },
+          "404": {
+            "description": "No approved consultant with this slug"
+          }
+        },
+        "tags": [
+          "public · consultants"
+        ]
+      }
+    },
+    "/api/public/consultants/{slug}": {
+      "get": {
+        "operationId": "PublicConsultantsController_profile",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "description": "Approved consultant profile slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicConsultantProfile"
+                }
+              }
+            }
           },
           "404": {
             "description": "No approved consultant with this slug"
@@ -27607,7 +27927,8 @@
                   "format": "uuid"
                 },
                 "body": {
-                  "type": "string"
+                  "type": "string",
+                  "nullable": true
                 },
                 "sender": {
                   "type": "object",
@@ -27629,6 +27950,35 @@
                     "isStaff"
                   ],
                   "additionalProperties": false
+                },
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "fileName": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "sizeBytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "fileName",
+                      "mimeType",
+                      "sizeBytes"
+                    ],
+                    "additionalProperties": false
+                  }
                 },
                 "createdAt": {
                   "type": "string",
@@ -27679,7 +28029,8 @@
             "format": "uuid"
           },
           "body": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "sender": {
             "type": "object",
@@ -27701,6 +28052,35 @@
               "isStaff"
             ],
             "additionalProperties": false
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "fileName": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "id",
+                "fileName",
+                "mimeType",
+                "sizeBytes"
+              ],
+              "additionalProperties": false
+            }
           },
           "createdAt": {
             "type": "string",
@@ -29907,7 +30287,8 @@
                       "format": "uuid"
                     },
                     "body": {
-                      "type": "string"
+                      "type": "string",
+                      "nullable": true
                     },
                     "sender": {
                       "type": "object",
@@ -29929,6 +30310,35 @@
                         "isStaff"
                       ],
                       "additionalProperties": false
+                    },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mimeType": {
+                            "type": "string"
+                          },
+                          "sizeBytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fileName",
+                          "mimeType",
+                          "sizeBytes"
+                        ],
+                        "additionalProperties": false
+                      }
                     },
                     "createdAt": {
                       "type": "string",
@@ -29981,7 +30391,8 @@
                   "format": "uuid"
                 },
                 "body": {
-                  "type": "string"
+                  "type": "string",
+                  "nullable": true
                 },
                 "sender": {
                   "type": "object",
@@ -30003,6 +30414,35 @@
                     "isStaff"
                   ],
                   "additionalProperties": false
+                },
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "fileName": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "sizeBytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "fileName",
+                      "mimeType",
+                      "sizeBytes"
+                    ],
+                    "additionalProperties": false
+                  }
                 },
                 "createdAt": {
                   "type": "string",
@@ -30515,7 +30955,8 @@
                       "format": "uuid"
                     },
                     "body": {
-                      "type": "string"
+                      "type": "string",
+                      "nullable": true
                     },
                     "sender": {
                       "type": "object",
@@ -30537,6 +30978,35 @@
                         "isStaff"
                       ],
                       "additionalProperties": false
+                    },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mimeType": {
+                            "type": "string"
+                          },
+                          "sizeBytes": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fileName",
+                          "mimeType",
+                          "sizeBytes"
+                        ],
+                        "additionalProperties": false
+                      }
                     },
                     "createdAt": {
                       "type": "string",
@@ -30589,7 +31059,8 @@
                   "format": "uuid"
                 },
                 "body": {
-                  "type": "string"
+                  "type": "string",
+                  "nullable": true
                 },
                 "sender": {
                   "type": "object",
@@ -30611,6 +31082,35 @@
                     "isStaff"
                   ],
                   "additionalProperties": false
+                },
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "fileName": {
+                        "type": "string"
+                      },
+                      "mimeType": {
+                        "type": "string"
+                      },
+                      "sizeBytes": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "fileName",
+                      "mimeType",
+                      "sizeBytes"
+                    ],
+                    "additionalProperties": false
+                  }
                 },
                 "createdAt": {
                   "type": "string",
@@ -31751,6 +32251,56 @@
               ],
               "additionalProperties": false
             }
+          },
+          "feeChangeRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "requestedFee": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "PENDING",
+                    "APPROVED",
+                    "REJECTED"
+                  ]
+                },
+                "decisionReason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "decidedBy": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "requestedFee",
+                "status",
+                "decisionReason",
+                "createdAt",
+                "decidedAt",
+                "decidedBy"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -31775,7 +32325,8 @@
           "consultationTypes",
           "rejectionReason",
           "updatedAt",
-          "documents"
+          "documents",
+          "feeChangeRequests"
         ],
         "additionalProperties": false
       },
@@ -31802,6 +32353,41 @@
         ],
         "additionalProperties": false
       },
+      "ConsultantFeeChangeAction": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "consultantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestedFee": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "decisionReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "consultantId",
+          "requestedFee",
+          "status",
+          "decisionReason"
+        ],
+        "additionalProperties": false
+      },
       "ConsultantApplicationResponse": {
         "type": "object",
         "properties": {
@@ -31819,6 +32405,148 @@
         "required": [
           "id",
           "verificationStatus"
+        ],
+        "additionalProperties": false
+      },
+      "ConsultantOwnProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "CA",
+              "CS",
+              "LAWYER",
+              "TAX_CONSULTANT",
+              "TRADEMARK_CONSULTANT",
+              "ISO_CONSULTANT",
+              "BUSINESS_CONSULTANT",
+              "TECHNOLOGY_CONSULTANT"
+            ]
+          },
+          "qualification": {
+            "type": "string"
+          },
+          "membershipNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "experienceYears": {
+            "type": "integer"
+          },
+          "expertise": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "area": {
+            "type": "string",
+            "nullable": true
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "feePerSession": {
+            "type": "integer"
+          },
+          "consultationTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "AUDIO",
+                "VIDEO",
+                "CHAT",
+                "MEETING"
+              ]
+            }
+          },
+          "pendingFeeRequest": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "consultantId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "requestedFee": {
+                "type": "integer"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "PENDING",
+                  "APPROVED",
+                  "REJECTED"
+                ]
+              },
+              "decisionReason": {
+                "type": "string",
+                "nullable": true
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "decidedAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "consultantId",
+              "requestedFee",
+              "status",
+              "decisionReason",
+              "createdAt",
+              "decidedAt"
+            ],
+            "additionalProperties": false,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "category",
+          "qualification",
+          "membershipNo",
+          "experienceYears",
+          "expertise",
+          "languages",
+          "city",
+          "state",
+          "area",
+          "bio",
+          "feePerSession",
+          "consultationTypes",
+          "pendingFeeRequest"
         ],
         "additionalProperties": false
       },
@@ -32057,6 +32785,228 @@
           "from",
           "to",
           "slots"
+        ],
+        "additionalProperties": false
+      },
+      "PublicConsultantProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "CA",
+              "CS",
+              "LAWYER",
+              "TAX_CONSULTANT",
+              "TRADEMARK_CONSULTANT",
+              "ISO_CONSULTANT",
+              "BUSINESS_CONSULTANT",
+              "TECHNOLOGY_CONSULTANT"
+            ]
+          },
+          "qualification": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "area": {
+            "type": "string",
+            "nullable": true
+          },
+          "expertise": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "feePerSession": {
+            "type": "integer",
+            "description": "Consultation fee in paise"
+          },
+          "sessionMinutes": {
+            "type": "integer"
+          },
+          "consultationTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "AUDIO",
+                "VIDEO",
+                "CHAT",
+                "MEETING"
+              ]
+            }
+          },
+          "rating": {
+            "type": "number"
+          },
+          "reviewCount": {
+            "type": "integer"
+          },
+          "isOnline": {
+            "type": "boolean"
+          },
+          "experienceYears": {
+            "type": "integer"
+          },
+          "ratingSummary": {
+            "type": "object",
+            "properties": {
+              "average": {
+                "type": "number"
+              },
+              "reviewCount": {
+                "type": "integer"
+              },
+              "breakdown": {
+                "type": "object",
+                "properties": {
+                  "1": {
+                    "type": "integer"
+                  },
+                  "2": {
+                    "type": "integer"
+                  },
+                  "3": {
+                    "type": "integer"
+                  },
+                  "4": {
+                    "type": "integer"
+                  },
+                  "5": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "1",
+                  "2",
+                  "3",
+                  "4",
+                  "5"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "average",
+              "reviewCount",
+              "breakdown"
+            ],
+            "additionalProperties": false
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name",
+                "category"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "verifiedReviews": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "rating": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5
+                },
+                "text": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "rating",
+                "text",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "category",
+          "qualification",
+          "city",
+          "state",
+          "area",
+          "expertise",
+          "languages",
+          "bio",
+          "photoUrl",
+          "feePerSession",
+          "sessionMinutes",
+          "consultationTypes",
+          "rating",
+          "reviewCount",
+          "isOnline",
+          "experienceYears",
+          "ratingSummary",
+          "services",
+          "verifiedReviews"
         ],
         "additionalProperties": false
       },

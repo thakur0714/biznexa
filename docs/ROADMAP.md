@@ -325,18 +325,24 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 
 ## Milestone 8 — Consultants
 
-- [ ] **M8.1 — Consultant onboarding form (public).** `[Sonnet]` Apply with profile fields + documents (qualification, ICAI/ICSI/Bar Council no., ID) → status PENDING.
-- [ ] **M8.2 — Admin consultant review.** `[Sonnet]` Approve/reject with reason, edit, suspend; approval grants consultant role.
-- [ ] **M8.3 — Directory API.** `[Sonnet]` Filters: category, state/city/area, rating, experience, fee range, language, consultation type, available today; sorts; pagination; indexes for filters.
-- [ ] **M8.4 — Directory page `/consultants`.** `[Sonnet]` Cards + filter chips + URL-synced filters, SEO.
-- [ ] **M8.5 — Profile page.** `[Sonnet]` Details, services, rating breakdown, verified reviews, availability calendar, JSON-LD.
+- [x] **M8.1 — Consultant onboarding form (public).** `[Sonnet]` Apply with profile fields + documents (qualification, ICAI/ICSI/Bar Council no., ID) → status PENDING.
+  - Done: public onboarding captures the profile and verification documents for review.
+- [x] **M8.2 — Admin consultant review.** `[Sonnet]` Approve/reject with reason, edit, suspend; approval grants consultant role.
+  - Done: admins can review applications and manage approval status.
+- [x] **M8.3 — Directory API.** `[Sonnet]` Filters: category, state/city/area, rating, experience, fee range, language, consultation type, available today; sorts; pagination; indexes for filters.
+  - Done: public directory filtering, sorting, pagination, and bookable-today results are available.
+- [x] **M8.4 — Directory page `/consultants`.** `[Sonnet]` Cards + filter chips + URL-synced filters, SEO.
+  - Done: responsive directory cards, URL-driven filters, sorting, pagination, SEO, and request states are in place.
+- [x] **M8.5 — Profile page.** `[Sonnet]` Details, services, rating breakdown, verified reviews, availability calendar, JSON-LD.
+  - Done: public profiles show details, services, rating summary, upcoming slots, booking links, and JSON-LD.
 - [x] **M8.6 — Availability model.** `[Opus]` Weekly recurring slots + date exceptions; slot generation function (IST, duration, buffer) with unit tests incl. DST-free IST edge cases and past times.
   - *Done 17-Oct-2026 (Claude):* `generateSlots` in `packages/types/src/availability.ts` (weekly + exceptions, session + buffer, min notice, busy time; unit tests for IST midnight, window ends, buffer, blocked/extra hours). `AvailabilitySlot.date` is an IST `DATE` with CHECK constraints; `Consultant.bufferMinutes` / `minNoticeMinutes`. Consultant API `/api/consultants/me/availability` (GET/PUT, exceptions POST/DELETE, audited) and public `GET /api/public/consultants/:slug/slots` (≤ 14 days). D57.
-  - *Follow-ups:* the directory's "available today" still checks windows only (no blocked hours or bookings) — switch it to `generateSlots`; availability editor UI is M8.7.
-- [ ] **M8.7 — Consultant portal scaffold** `[Sonnet]` (in `apps/admin`, consultant role): profile edit (fee changes need admin approval), availability editor.
+  - *Follow-ups:* availability editing is delivered by M8.7.
+- [x] **M8.7 — Consultant portal scaffold** `[Sonnet]` (in `apps/admin`, consultant role): profile edit (fee changes need admin approval), availability editor.
+  - Done: consultants have profile and availability pages; fee changes require admin approval.
 - [x] **M8.8 — Booking hold + payment.** `[Opus]` Pick type/date/slot → slot locked for 10 min (no double booking under concurrency — test) → pay via M3.15 → webhook → CONFIRMED.
   - *Done 17-Oct-2026 (Claude):* `POST /api/bookings` → PENDING_PAYMENT hold for 10 min (`holdExpiresAt`) under the consultant row lock + `Booking_no_overlap` exclusion constraint (btree_gist); status EXPIRED; one live hold per customer; cron tidies expired holds. Pay via `POST /api/bookings/:id/payment` (+ callback) reusing the payment rules; webhook → CONFIRMED + `booking.confirmed`; late payment with the slot taken → `slot_taken`, money kept for refund. Customer `GET /api/bookings`, `/:id` (own only). Web `/consultants/[slug]/book` (type → date → slot → hold → pay; mock gateway via dev `POST /api/payments/mock/:paymentId/pay`), checked at 360 px. e2e: 5 parallel bookings → one hold, expiry, webhook confirm + duplicate, isolation, 403s. D58.
-  - *Follow-ups:* no invoice / GST for consultation payments yet (`payment.succeeded` is order-only); booking payments don't show in `/dashboard/payments` (it lists order payments); `payment.failed` notification for bookings; link to the booking page from the directory/profile (M8.4/M8.5); confirmation link/.ics/notifications are M8.9.
+   - *Follow-ups:* no invoice / GST for consultation payments yet (`payment.succeeded` is order-only); booking payments don't show in `/dashboard/payments` (it lists order payments); `payment.failed` notification for bookings; confirmation link/.ics/notifications are M8.9.
 - [ ] **M8.9 — Booking confirmation.** `[Sonnet]` Meeting link (consultant-provided or generated), `.ics` file, notifications, reminders 24h and 1h before (queue delayed jobs).
 - [ ] **M8.10 — Booking lifecycle.** `[Sonnet]` Reschedule/cancel per policy, COMPLETED / NO_SHOW by consultant, state machine tests.
 - [ ] **M8.11 — Customer Consultations page.** `[Sonnet]` Upcoming/past, join link, reschedule/cancel, leave review.
@@ -398,7 +404,9 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 
 - [ ] **M12.1 — Security review.** `[Opus]` OWASP Top 10 pass, dependency audit, CSRF, CORS allow-list, HSTS, secure headers, rate limits on all sensitive routes.
 - [ ] **M12.2 — Sensitive data.** `[Opus]` Field encryption (PAN etc.) verified, Aadhaar never stored in plain text, PII scrub in logs.
-- [ ] **M12.3 — CAPTCHA on verification** `[Sonnet]` after repeated lookups (closes D2).
+- [x] **M12.3 — CAPTCHA on verification** `[Sonnet]` after repeated lookups (closes D2).
+  - *Done 17-Oct-2026 (Jules, finished by Claude):* `GET /api/public/certificates/verify` counts anonymous lookups per IP (`captchaLookupMap`, 10 min): after 5, the next one needs `captchaToken`, else 429 `{ captchaRequired: true }`; a valid token restarts **only that IP's** count. Partner API keys never see it. `CaptchaVerifier` (`apps/api/src/captcha`): `turnstile` (server-side siteverify, 5 s timeout, any error = not verified) or `mock` (token `pass`), chosen by `CAPTCHA_PROVIDER`; mock refused and `TURNSTILE_SECRET_KEY` required in production. Web `/verify`: the page forwards `captchaToken` to the API; the form shows the Turnstile widget (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `@marsidev/react-turnstile`) and repeats the lookup with the token; without a key it shows a development shortcut (non-production only). Claude's fixes to Jules's patch: solving a captcha reset every IP's limit; the token never reached the API (endless captcha); a Cloudflare test site key was the production fallback.
+  - *Follow-ups:* the counter is per API instance (like the M7.7 limiter); the QR page `/verify/{id}` shows the captcha message but no widget; set the Turnstile keys before launch.
 - [ ] **M12.4 — Authorization test sweep.** `[Opus]` Every route × every role matrix test (acceptance: ops/customer isolation).
 - [ ] **M12.5 — Performance.** `[Opus]` API p95 < 300 ms (load test with k6), slow-query review, caching, Lighthouse ≥ 90 on homepage + service page.
 - [ ] **M12.6 — Accessibility audit** `[Sonnet]` (WCAG 2.1 AA, keyboard, screen reader) and fixes.
