@@ -5,11 +5,15 @@ import {
   bookingCheckoutSchema,
   bookingListSchema,
   bookingMeetingLinkSchema,
+  bookingCancelInputSchema,
+  bookingRescheduleInputSchema,
+  bookingConsultantOutcomeSchema,
   bookingViewSchema,
   createBookingInputSchema,
   paymentCallbackInput,
   type CreateBookingInput,
   type BookingMeetingLinkInput,
+  type BookingConsultantOutcomeInput,
   type PaymentCallbackInput,
 } from '@biznexa/types';
 import { AuthUser, CurrentUser, PERMS, RequirePermissions } from '../common/auth.decorators';
@@ -61,6 +65,25 @@ export class BookingsController {
   @Put(':id/meeting-link')
   setMeetingLink(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(bookingMeetingLinkSchema) body: BookingMeetingLinkInput, @CurrentUser() u: AuthUser) {
     return this.bookings.setMeetingLink(u.id, id, body.meetingLink);
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(200)
+  cancel(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(bookingCancelInputSchema) body: { reason?: string }, @CurrentUser() u: AuthUser) {
+    return this.bookings.cancel(u.id, id, body.reason);
+  }
+
+  @Post(':id/reschedule')
+  @HttpCode(200)
+  reschedule(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(bookingRescheduleInputSchema) body: { startAt: string }, @CurrentUser() u: AuthUser) {
+    return this.bookings.reschedule(u.id, id, new Date(body.startAt));
+  }
+
+  @RequirePermissions(PERMS.ADMIN_ACCESS)
+  @Post(':id/outcome')
+  @HttpCode(200)
+  outcome(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(bookingConsultantOutcomeSchema) body: BookingConsultantOutcomeInput, @CurrentUser() u: AuthUser) {
+    return this.bookings.consultantOutcome(u.id, id, body.status);
   }
 
   /** Creates (or reuses) the payment and gateway order for the booking's fee while the hold lasts. */

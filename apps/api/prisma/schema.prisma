@@ -233,6 +233,7 @@ model User {
   tickets           Ticket[]          @relation("TicketCustomer")
   assignedTickets   Ticket[]          @relation("TicketAssignee")
   bookings          Booking[]
+  bookingStatusHistory BookingStatusHistory[]
   auditLogs         AuditLog[]
   internalNotes     InternalNote[]
   messages          Message[]
@@ -992,10 +993,25 @@ model Booking {
   payments     Payment[]
   review       Review?
   conversations Conversation[]
+  history      BookingStatusHistory[]
 
   @@index([consultantId, startAt])
   @@index([customerId, startAt])
   @@index([status, holdExpiresAt])
+}
+
+model BookingStatusHistory {
+  id          String        @id @default(uuid())
+  bookingId   String
+  fromStatus  BookingStatus
+  toStatus    BookingStatus
+  actorId     String?
+  reason      String?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  booking     Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor       User?          @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([bookingId, createdAt])
 }
 
 model Review {
