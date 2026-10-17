@@ -140,6 +140,7 @@ export class BookingPaymentsService {
 
     const meetingLink = `https://meet.jit.si/BizNexa-${randomUUID()}`;
     await tx.booking.update({ where: { id: booking.id }, data: { status: 'CONFIRMED', holdExpiresAt: null, meetingLink } });
+    await tx.bookingStatusHistory.create({ data: { bookingId: booking.id, fromStatus: booking.status, toStatus: 'CONFIRMED', actorId: null, metadata: { paymentId } } });
     await this.audit.log(
       {
         actorId: null,

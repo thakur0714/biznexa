@@ -76,3 +76,6 @@ Initial assignment sets SLA due based on service `estimatedDaysMax`. If an appli
 
 **D56: M4.6 Status updates (14-Oct-2026)**
 Staff cancelling applications explicitly requires the `APPLICATIONS_VIEW_ALL` permission. An explicit reason must be captured within the transition payload.
+
+**D59: Consultation booking cancellation and reschedule policy (17-Oct-2026)**
+Customers may cancel or reschedule a confirmed consultation until 24 hours before its start. The booking fee is not automatically refunded by cancellation; refund handling remains a manual support/payment workflow until a refund policy is agreed. Rescheduling keeps the paid booking and fee, requires an available future slot, and records a RESCHEDULED → CONFIRMED history pair. Consultants may mark COMPLETED or NO_SHOW only after the scheduled end time.
