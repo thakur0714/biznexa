@@ -8656,6 +8656,8 @@ export interface operations {
                 apiKey?: string;
                 /** @description Optional API key alias */
                 key?: string;
+                /** @description Captcha token, required after 5 lookups from one IP in 10 minutes */
+                captchaToken?: string;
             };
             header?: {
                 /** @description Optional partner API key for higher rate limits */
