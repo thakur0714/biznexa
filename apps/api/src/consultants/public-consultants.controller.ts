@@ -1,19 +1,23 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param } from '@nestjs/common';
+import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   publicConsultantDirectoryQuerySchema,
   publicConsultantDirectorySchema,
+  publicConsultantSlotsSchema,
+  publicSlotsQuerySchema,
   type PublicConsultantDirectoryQuery,
+  type PublicSlotsQuery,
 } from '@biznexa/types';
 import { ApiZodResponse, ZodQuery } from '../common/openapi';
 import { Public } from '../common/auth.decorators';
 import { ConsultantsService } from './consultants.service';
+import { AvailabilityService } from './availability.service';
 
 @ApiTags('public · consultants')
 @Public()
 @Controller('public/consultants')
 export class PublicConsultantsController {
-  constructor(private readonly consultants: ConsultantsService) {}
+  constructor(private readonly consultants: ConsultantsService, private readonly availability: AvailabilityService) {}
 
   @ApiZodResponse('PublicConsultantDirectory', publicConsultantDirectorySchema)
   @ApiQuery({ name: 'category', required: false })
@@ -31,5 +35,14 @@ export class PublicConsultantsController {
   @Get()
   list(@ZodQuery(publicConsultantDirectoryQuerySchema) query: PublicConsultantDirectoryQuery) {
     return this.consultants.listPublic(query);
+  }
+
+  /** Bookable slots (IST) of an approved consultant, `from`..`to` inclusive (default: the next 7 days), at most 14 days. */
+  @ApiZodResponse('PublicConsultantSlots', publicConsultantSlotsSchema)
+  @ApiResponse({ status: 400, description: 'Bad dates, `to` before `from`, or more than 14 days' })
+  @ApiResponse({ status: 404, description: 'No approved consultant with this slug' })
+  @Get(':slug/slots')
+  slots(@Param('slug') slug: string, @ZodQuery(publicSlotsQuerySchema) query: PublicSlotsQuery) {
+    return this.availability.publicSlots(slug, query);
   }
 }

@@ -1908,6 +1908,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payments/mock/{paymentId}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MockCheckoutController_pay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/invoices": {
         parameters: {
             query?: never;
@@ -2478,6 +2494,134 @@ export interface paths {
         get: operations["PublicConsultantsController_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/consultants/{slug}/slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicConsultantsController_slots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantAvailabilityController_get"];
+        put: operations["ConsultantAvailabilityController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/availability/exceptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConsultantAvailabilityController_addException"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/availability/exceptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["ConsultantAvailabilityController_removeException"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BookingsController_list"];
+        put?: never;
+        post: operations["BookingsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BookingsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}/payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BookingsController_pay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}/payment/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BookingsController_callback"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5447,6 +5591,11 @@ export interface components {
                 plan: "FULL" | "ADVANCE" | "BALANCE" | null;
             } | null;
         };
+        MockPaymentResult: {
+            gatewayOrderId: string;
+            gatewayPaymentId: string;
+            signature: string;
+        };
         CustomerPaymentList: {
             items: {
                 /** Format: uuid */
@@ -6098,6 +6247,131 @@ export interface components {
             total: number;
             page: number;
             limit: number;
+        };
+        PublicConsultantSlots: {
+            consultant: {
+                slug: string;
+                name: string;
+                category: string;
+                qualification: string;
+                feePerSession: number;
+                sessionMinutes: number;
+                consultationTypes: ("AUDIO" | "VIDEO" | "CHAT" | "MEETING")[];
+            };
+            /** @enum {string} */
+            timezone: "Asia/Kolkata";
+            from: string;
+            to: string;
+            slots: {
+                /** Format: date-time */
+                startAt: string;
+                /** Format: date-time */
+                endAt: string;
+                date: string;
+                time: string;
+            }[];
+        };
+        ConsultantAvailability: {
+            sessionMinutes: number;
+            bufferMinutes: number;
+            minNoticeMinutes: number;
+            weekly: {
+                /** Format: uuid */
+                id: string;
+                weekday: number;
+                startTime: string;
+                endTime: string;
+            }[];
+            exceptions: {
+                /** Format: uuid */
+                id: string;
+                date: string;
+                startTime: string;
+                endTime: string;
+                isBlocked: boolean;
+            }[];
+        };
+        BookingView: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            /** @enum {string} */
+            status: "PENDING_PAYMENT" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "RESCHEDULED" | "EXPIRED";
+            /** @enum {string} */
+            type: "AUDIO" | "VIDEO" | "CHAT" | "MEETING";
+            /** Format: date-time */
+            startAt: string;
+            /** Format: date-time */
+            endAt: string;
+            fee: number;
+            /** Format: date-time */
+            holdExpiresAt: string | null;
+            consultant: {
+                slug: string;
+                name: string;
+            };
+            payment: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                status: "CREATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUND_INITIATED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+                amount: number;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        BookingList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                code: string;
+                /** @enum {string} */
+                status: "PENDING_PAYMENT" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "NO_SHOW" | "RESCHEDULED" | "EXPIRED";
+                /** @enum {string} */
+                type: "AUDIO" | "VIDEO" | "CHAT" | "MEETING";
+                /** Format: date-time */
+                startAt: string;
+                /** Format: date-time */
+                endAt: string;
+                fee: number;
+                /** Format: date-time */
+                holdExpiresAt: string | null;
+                consultant: {
+                    slug: string;
+                    name: string;
+                };
+                payment: {
+                    /** Format: uuid */
+                    id: string;
+                    /** @enum {string} */
+                    status: "CREATED" | "PENDING" | "SUCCESS" | "FAILED" | "REFUND_INITIATED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+                    amount: number;
+                } | null;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+        };
+        BookingCheckout: {
+            /** Format: uuid */
+            paymentId: string;
+            /** @enum {string} */
+            gateway: "RAZORPAY" | "MOCK";
+            key: string;
+            gatewayOrderId: string;
+            amount: number;
+            /** @enum {string} */
+            currency: "INR";
+            /** Format: uuid */
+            bookingId: string;
+            bookingCode: string;
+            /** Format: date-time */
+            holdExpiresAt: string;
+            description: string;
+            prefill: {
+                name: string | null;
+                email: string | null;
+                contact: string | null;
+            };
         };
     };
     responses: never;
@@ -10702,6 +10976,41 @@ export interface operations {
             };
         };
     };
+    MockCheckoutController_pay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                paymentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MockPaymentResult"];
+                };
+            };
+            /** @description Not using the mock gateway, or no such open payment of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The mock gateway no longer knows this order (the API restarted); start the payment again */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     InvoicesController_list: {
         parameters: {
             query?: {
@@ -11823,6 +12132,391 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PublicConsultantDirectory"];
                 };
+            };
+        };
+    };
+    PublicConsultantsController_slots: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicConsultantSlots"];
+                };
+            };
+            /** @description Bad dates, `to` before `from`, or more than 14 days */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No approved consultant with this slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConsultantAvailabilityController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantAvailability"];
+                };
+            };
+            /** @description Not signed in to the portal, or no approved consultant profile */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConsultantAvailabilityController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    sessionMinutes: number;
+                    bufferMinutes: number;
+                    minNoticeMinutes: number;
+                    weekly: {
+                        weekday: number;
+                        startTime: string;
+                        endTime: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantAvailability"];
+                };
+            };
+            /** @description Bad times, overlapping windows on one day, or an odd session length */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in to the portal, or no approved consultant profile */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConsultantAvailabilityController_addException: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    date: string;
+                    isBlocked: boolean;
+                    startTime?: string;
+                    endTime?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantAvailability"];
+                };
+            };
+            /** @description Bad date or times, or a date in the past */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in to the portal, or no approved consultant profile */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The same exception is already saved */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ConsultantAvailabilityController_removeException: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantAvailability"];
+                };
+            };
+            /** @description Not signed in to the portal, or no approved consultant profile */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such exception among yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BookingsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingList"];
+                };
+            };
+        };
+    };
+    BookingsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    consultantSlug: string;
+                    /** @enum {string} */
+                    type: "AUDIO" | "VIDEO" | "CHAT" | "MEETING";
+                    /** Format: date-time */
+                    startAt: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingView"];
+                };
+            };
+            /** @description Bad body, a type the consultant doesn’t offer, or booking yourself */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No approved consultant with this slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The slot is not offered or already held / booked */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BookingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingView"];
+                };
+            };
+            /** @description No such booking among yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BookingsController_pay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingCheckout"];
+                };
+            };
+            /** @description No such booking among yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already paid, or the hold ran out (pick a slot again) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The payment gateway refused the order; try again */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The payment gateway could not be reached; try again */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BookingsController_callback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    paymentId: string;
+                    gatewayOrderId: string;
+                    gatewayPaymentId: string;
+                    signature: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingView"];
+                };
+            };
+            /** @description Bad body, or the signature or ids don’t match a payment of this booking */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such booking among yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

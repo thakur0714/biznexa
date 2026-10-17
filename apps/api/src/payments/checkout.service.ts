@@ -64,7 +64,8 @@ export class CheckoutService {
     if (opened.started) {
       await this.events.emit('application.status_changed', { applicationId: opened.application.id, from: 'DRAFT', to: 'PAYMENT_PENDING', actorId: customerId });
     }
-    const gatewayOrderId = opened.payment.gatewayOrderId ?? (await this.attachGatewayOrder(opened));
+    const notes = { paymentId: opened.payment.id, orderCode: opened.orderCode, applicationCode: opened.application.code, plan: opened.plan };
+    const gatewayOrderId = opened.payment.gatewayOrderId ?? (await this.attachGatewayOrder(opened.payment, notes));
     return {
       paymentId: opened.payment.id,
       gateway: this.gateway.name,
@@ -236,18 +237,17 @@ export class CheckoutService {
     return this.status(customerId, applicationId);
   }
 
-  /** Creates the gateway order for a payment that has none yet; the first one attached wins. */
-  private async attachGatewayOrder({ payment, plan, application, orderCode }: Opened): Promise<string> {
+  /**
+   * Creates the gateway order for a payment that has none yet; the first one attached wins. Also used for
+   * booking payments (M8.8), so both follow the same no-lock-across-the-network, compare-and-set rules.
+   */
+  async attachGatewayOrder(payment: { id: string; amount: number }, notes: Record<string, string>): Promise<string> {
     let gatewayOrder;
     try {
-      gatewayOrder = await this.gateway.createOrder({
-        amount: payment.amount,
-        receipt: payment.id,
-        notes: { paymentId: payment.id, orderCode, applicationCode: application.code, plan },
-      });
+      gatewayOrder = await this.gateway.createOrder({ amount: payment.amount, receipt: payment.id, notes });
     } catch (e) {
       if (!(e instanceof PaymentGatewayError)) throw e;
-      // The payment stays CREATED and the application PAYMENT_PENDING: calling again retries with the same payment.
+      // The payment stays CREATED (and the application PAYMENT_PENDING): calling again retries with the same payment.
       this.log.warn(`Gateway order for payment ${payment.id} failed (${e.retryable ? 'retryable' : 'refused'}): ${e.message}`);
       if (e.retryable) throw new ServiceUnavailableException('We couldn’t reach the payment service. Please try again in a moment.');
       throw new BadGatewayException('The payment service didn’t accept this payment. Please try again, or contact us if it keeps happening.');

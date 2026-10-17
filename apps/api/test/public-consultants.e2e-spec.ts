@@ -13,6 +13,7 @@ describe('Public consultant directory (M8.3)', () => {
   let app: NestExpressApplication;
   let prisma: PrismaService;
   const runId = randomUUID();
+  const runLanguage = `Lang-${runId.slice(0, 8)}`;
   const userIds: string[] = [];
   const consultantIds: string[] = [];
   const http = () => request(app.getHttpServer());
@@ -34,10 +35,11 @@ describe('Public consultant directory (M8.3)', () => {
       data: {
         userId: user.id, slug: `directory-${runId}-${label}`, category: options.category,
         qualification: 'Verified qualification', experienceYears: options.experienceYears,
-        expertise: ['Tax'], languages: options.languages, city: options.city, state: options.state,
+        // A language only this run uses keeps other suites' approved consultants out of the totals.
+        expertise: ['Tax'], languages: [...options.languages, runLanguage], city: options.city, state: options.state,
         area: options.area, feePerSession: options.feePerSession, consultationTypes: options.consultationTypes,
         rating: options.rating, reviewCount: 10, verificationStatus: status,
-        availability: options.availableToday ? { create: [{ weekday: currentIstWeekday(), startTime: '23:59', endTime: '23:59', isBlocked: false }] } : undefined,
+        availability: options.availableToday ? { create: [{ weekday: currentIstWeekday(), startTime: '23:59', endTime: '24:00', isBlocked: false }] } : undefined,
       },
       select: { id: true },
     });
@@ -92,14 +94,14 @@ describe('Public consultant directory (M8.3)', () => {
     expect(filtered.body.items[0]).not.toHaveProperty('userId');
     expect(filtered.body.items[0]).not.toHaveProperty('email');
 
-    const ascending = await http().get('/api/public/consultants?sort=fee_low&page=1&limit=1').expect(200);
+    const ascending = await http().get(`/api/public/consultants?sort=fee_low&page=1&limit=1&language=${runLanguage}`).expect(200);
     expect(ascending.body.total).toBe(2);
     expect(ascending.body.items).toHaveLength(1);
     expect(ascending.body.items[0].name).toBe('approved-two consultant');
-    const secondPage = await http().get('/api/public/consultants?sort=fee_low&page=2&limit=1').expect(200);
+    const secondPage = await http().get(`/api/public/consultants?sort=fee_low&page=2&limit=1&language=${runLanguage}`).expect(200);
     expect(secondPage.body.items[0].name).toBe('approved-one consultant');
 
-    const descending = await http().get('/api/public/consultants?sort=fee_high&availableToday=false').expect(200);
+    const descending = await http().get(`/api/public/consultants?sort=fee_high&availableToday=false&language=${runLanguage}`).expect(200);
     expect(descending.body.items.map((item: { name: string }) => item.name)).toEqual(['approved-two consultant']);
     await http().get('/api/public/consultants?minFee=200000&maxFee=100000').expect(400);
   });

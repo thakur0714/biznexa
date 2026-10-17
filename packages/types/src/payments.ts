@@ -346,3 +346,14 @@ export const customerPaymentListResponseSchema = z.object({
   outstandingBalance: z.number().int(),
 });
 export type CustomerPaymentListResponse = z.infer<typeof customerPaymentListResponseSchema>;
+
+/**
+ * `POST /api/payments/mock/{paymentId}/pay` (dev/test only, mock gateway): what Checkout's `handler` would have
+ * received, after the mock gateway captured the payment and delivered its signed webhook (M8.8).
+ */
+export const mockPaymentResultSchema = z.object({
+  gatewayOrderId: z.string(),
+  gatewayPaymentId: z.string(),
+  signature: z.string(),
+});
+export type MockPaymentResult = z.infer<typeof mockPaymentResultSchema>;
