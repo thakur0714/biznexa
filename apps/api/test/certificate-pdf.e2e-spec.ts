@@ -56,7 +56,14 @@ async function waitForPdf(certId: string, ms = 20_000) {
   const until = Date.now() + ms;
   while (Date.now() < until) {
     const cert = await prisma.certificate.findUnique({ where: { id: certId }, select: { pdfKey: true } });
-    if (cert?.pdfKey) return cert.pdfKey;
+    if (cert?.pdfKey) {
+      try {
+        await storage.read(cert.pdfKey);
+        return cert.pdfKey;
+      } catch {
+        // file still being written to disk
+      }
+    }
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error(`PDF was not attached to certificate ${certId} within ${ms} ms`);

@@ -2420,6 +2420,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/reports/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReportsController_exportReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports/export/{id}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReportsController_linkExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports/export/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_downloadExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/consultants": {
         parameters: {
             query?: never;
@@ -6282,6 +6330,14 @@ export interface components {
                 firstResponseHours: number | null;
                 resolutionHours: number | null;
             }[];
+        };
+        ReportExportJob: {
+            id: string;
+            /** @enum {string} */
+            type: "sales" | "customers" | "services" | "consultants" | "support";
+            /** @enum {string} */
+            status: "PENDING" | "COMPLETED" | "FAILED";
+            createdAt: string;
         };
         AdminConsultantList: {
             items: {
@@ -12102,6 +12158,100 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReportSupport"];
                 };
+            };
+        };
+    };
+    ReportsController_exportReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    type: "sales" | "customers" | "services" | "consultants" | "support";
+                    preset?: string;
+                    from?: string;
+                    to?: string;
+                    serviceId?: string;
+                    categoryId?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportJob"];
+                };
+            };
+        };
+    };
+    ReportsController_linkExport: {
+        parameters: {
+            query?: {
+                /** @description inline = open in the browser */
+                disposition?: "attachment" | "inline";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileLink"];
+                };
+            };
+            /** @description Export not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Your export is still being prepared. Please try again shortly. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_downloadExport: {
+        parameters: {
+            query: {
+                /** @description Signature */
+                s: unknown;
+                d?: "attachment" | "inline";
+                /** @description Expiry (unix seconds) */
+                e: unknown;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

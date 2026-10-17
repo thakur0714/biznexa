@@ -1,9 +1,22 @@
-import { Injectable } from '@nestjs/common';
 import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  OnApplicationBootstrap,
+  Optional,
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
+import {
+  type FileLinkResult,
   type ReportConsultantsResponse,
   type ReportCustomersResponse,
   type ReportDashboardResponse,
   type ReportDateRangeQuery,
+  type ReportExportJob,
+  type ReportExportRequest,
+  type ReportExportType,
   type ReportSalesResponse,
   type ReportServicesResponse,
   type ReportSupportResponse,
@@ -11,8 +24,30 @@ import {
   istDay,
   resolveReportDateRange,
 } from '@biznexa/types';
+import type { AuthUser } from '../common/auth.decorators';
+import {
+  checkSignedLink,
+  contentDisposition,
+  signedLink,
+  type Disposition,
+} from '../files/files.service';
+import { newFileKey, StorageService } from '../files/storage.service';
+import { QueueService } from '../queue/queue.service';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  generateConsultantsCsv,
+  generateCustomersCsv,
+  generateSalesCsv,
+  generateServicesCsv,
+  generateSupportCsv,
+} from './report-csv';
+
+interface ReportExportJobPayload {
+  id: string;
+  input: ReportExportRequest;
+  actorId: string;
+}
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -47,8 +82,31 @@ const TICKET_STATUS_LABELS: Record<string, string> = {
 };
 
 @Injectable()
-export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+export class ReportsService implements OnApplicationBootstrap {
+  private readonly exportCache = new Map<string, {
+    id: string;
+    type: ReportExportType;
+    status: 'PENDING' | 'COMPLETED' | 'FAILED';
+    createdAt: string;
+    fileKey?: string;
+    fileName?: string;
+    size?: number;
+    error?: string;
+  }>();
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly queues?: QueueService,
+    @Optional() private readonly storage?: StorageService,
+  ) {}
+
+  onApplicationBootstrap() {
+    if (this.queues) {
+      this.queues.process('report-export', async (job) => {
+        return this.processExportJob(job.data as { id: string; input: ReportExportRequest; actorId: string });
+      });
+    }
+  }
 
   /**
    * Builds the dashboard KPIs, series, and needs-attention queue.
@@ -920,6 +978,163 @@ export class ReportsService {
       recentTickets,
     };
   }
+
+  /**
+   * Enqueues an export job for a report.
+   */
+  async enqueueExport(input: ReportExportRequest, actorId: string): Promise<ReportExportJob> {
+    const id = randomUUID();
+    const jobRecord: ReportExportJob = {
+      id,
+      type: input.type,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+    };
+    this.exportCache.set(id, { ...jobRecord });
+
+    if (this.queues) {
+      await this.queues.queue('report-export').add(input.type, { id, input, actorId }, {
+        jobId: id,
+        removeOnComplete: { age: 24 * 3600, count: 1000 },
+      });
+    } else {
+      // In synchronous/mock environments without queues, process directly
+      await this.processExportJob({ id, input, actorId });
+    }
+
+    return jobRecord;
+  }
+
+  /**
+   * Processes a queued export job: queries report data, converts to CSV with formula escaping,
+   * stores to StorageService, and marks completed.
+   */
+  async processExportJob(data: { id: string; input: ReportExportRequest; actorId: string }) {
+    try {
+      let csv = '';
+      const { input } = data;
+      switch (input.type) {
+        case 'sales': {
+          const res = await this.getSalesReport(input);
+          csv = generateSalesCsv(res);
+          break;
+        }
+        case 'customers': {
+          const res = await this.getCustomersReport(input);
+          csv = generateCustomersCsv(res);
+          break;
+        }
+        case 'services': {
+          const res = await this.getServicesReport(input);
+          csv = generateServicesCsv(res);
+          break;
+        }
+        case 'consultants': {
+          const res = await this.getConsultantsReport(input);
+          csv = generateConsultantsCsv(res);
+          break;
+        }
+        case 'support': {
+          const res = await this.getSupportReport(input);
+          csv = generateSupportCsv(res);
+          break;
+        }
+      }
+
+      const fileKey = newFileKey();
+      const fileName = `${input.type}-report-${new Date().toISOString().slice(0, 10)}.csv`;
+      const buffer = Buffer.from(csv, 'utf8');
+      if (this.storage) {
+        await this.storage.write(fileKey, Readable.from(buffer));
+      }
+      const size = buffer.length;
+
+      const result = { fileKey, fileName, size };
+      this.exportCache.set(data.id, {
+        id: data.id,
+        type: input.type,
+        status: 'COMPLETED',
+        createdAt: this.exportCache.get(data.id)?.createdAt ?? new Date().toISOString(),
+        ...result,
+      });
+      return result;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Export failed';
+      this.exportCache.set(data.id, {
+        id: data.id,
+        type: data.input.type,
+        status: 'FAILED',
+        createdAt: this.exportCache.get(data.id)?.createdAt ?? new Date().toISOString(),
+        error: message,
+      });
+      throw err;
+    }
+  }
+
+  private async getExportMetadata(id: string) {
+    const cached = this.exportCache.get(id);
+    if (cached) return cached;
+    if (this.queues) {
+      const job = await this.queues.queue<ReportExportJobPayload>('report-export').getJob(id);
+      if (!job) return null;
+      const state = await job.getState();
+      const jobType = (job.data?.input?.type ?? 'sales') as ReportExportType;
+      if (state === 'completed') {
+        const val = job.returnvalue as { fileKey: string; fileName: string; size: number };
+        return {
+          id,
+          type: jobType,
+          status: 'COMPLETED' as const,
+          createdAt: new Date(job.timestamp).toISOString(),
+          ...val,
+        };
+      }
+      if (state === 'failed') {
+        return {
+          id,
+          type: jobType,
+          status: 'FAILED' as const,
+          createdAt: new Date(job.timestamp).toISOString(),
+        };
+      }
+      return {
+        id,
+        type: jobType,
+        status: 'PENDING' as const,
+        createdAt: new Date(job.timestamp).toISOString(),
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Generates a signed download link valid for 24 hours.
+   */
+  async createExportLink(id: string, user: AuthUser, disposition: Disposition = 'attachment'): Promise<FileLinkResult> {
+    const meta = await this.getExportMetadata(id);
+    if (!meta) throw new NotFoundException('Export not found');
+    if (meta.status === 'FAILED') throw new BadRequestException('Export failed');
+    if (meta.status === 'PENDING') throw new ConflictException('Your export is still being prepared. Please try again shortly.');
+
+    // 24 hours TTL (86400 seconds)
+    return signedLink('report-exports', id, disposition, Date.now(), 24 * 3600);
+  }
+
+  /**
+   * Verifies signed link signature & expiry and streams the exported CSV from private storage.
+   */
+  async openExportLinked(id: string, q: { e?: string; d?: string; s?: string }, now = Date.now()) {
+    const disposition = checkSignedLink('report-exports', id, q, now);
+    const meta = await this.getExportMetadata(id);
+    if (!meta?.fileKey || !this.storage) throw new NotFoundException('Export file not found');
+    const { stream, size } = await this.storage.read(meta.fileKey);
+    return {
+      stream,
+      size,
+      disposition: contentDisposition(disposition, meta.fileName ?? `report-${id}.csv`),
+    };
+  }
 }
+
 
 

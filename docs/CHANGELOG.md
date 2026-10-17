@@ -107,3 +107,28 @@ Admin applications list and detail, assignment, status updates and the document 
 ### Before going live
 - In the Razorpay dashboard, add the `refund.processed` and `refund.failed` events to the webhook.
 
+## Milestone 10 — Reports & Analytics (17-Oct-2026)
+
+### Built and tested
+
+**Services Report (M10.5)**
+- API endpoint `GET /api/admin/reports/services` with IST date-range filtering and SQL aggregations (`groupBy`, `aggregate`, `$queryRaw`).
+- Metrics: popular services (orders count and total revenue in paise), applications by status, average turnaround time (submittedAt → completedAt, days), and SLA breaches per service.
+- Admin portal page `/reports/services` with date range filter, summary metric cards, popular services table, application status breakdown, and SLA breach monitor.
+
+**Consultants Report (M10.6)**
+- API endpoint `GET /api/admin/reports/consultants` with IST date-range filtering.
+- Metrics: total consultants, active consultants count, verification status breakdown (Pending, Verified, Rejected), bookings count, booking revenue from SUCCESS payments, and average rating.
+- Admin portal page `/reports/consultants` with verification breakdown, revenue metrics, and consultant performance table.
+
+**Support Report (M10.7)**
+- API endpoint `GET /api/admin/reports/support` with IST date-range filtering.
+- Metrics: tickets by status (Open, In Progress, Waiting Customer, Resolved, Closed), average first staff response time (minutes), average resolution time (hours), and priority distribution.
+- Admin portal page `/reports/support` with status metrics, response/resolution KPI cards, and ticket details table.
+
+**Background CSV Report Export (M10.8)**
+- Reusable "Export CSV" button across all report pages (`sales`, `customers`, `services`, `consultants`, `support`).
+- BullMQ queue job (`report-export`) generating CSV asynchronously with MinIO/S3 object storage upload.
+- Secure 24-hour HMAC-signed download links with tamper and expiration validation.
+- RFC 4180 CSV compliance with formula injection defense (prefixing `=`, `+`, `-`, `@` with `'`).
+- RBAC: `reports.view` permission strictly enforced on export enqueue and signed link generation.

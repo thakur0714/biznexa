@@ -7,6 +7,8 @@ import {
   normalizeReportPreset,
   presetDateRange,
   resolveReportDateRange,
+  reportExportRequestSchema,
+  reportExportJobSchema,
 } from './reports';
 
 describe('Reports Date & IST Boundary Helpers', () => {
@@ -264,6 +266,27 @@ describe('Reports Date & IST Boundary Helpers', () => {
 
       const parsed = reportSupportResponseSchema.safeParse(valid);
       expect(parsed.success).toBe(true);
+    });
+
+    it('validates reportExportRequestSchema and reportExportJobSchema', () => {
+      const validReq = {
+        type: 'sales',
+        preset: 'today',
+      };
+      expect(reportExportRequestSchema.safeParse(validReq).success).toBe(true);
+
+      const invalidReq = {
+        type: 'unknown-type',
+      };
+      expect(reportExportRequestSchema.safeParse(invalidReq).success).toBe(false);
+
+      const validJob = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        type: 'consultants',
+        status: 'PENDING',
+        createdAt: '2026-10-17T12:00:00.000Z',
+      };
+      expect(reportExportJobSchema.safeParse(validJob).success).toBe(true);
     });
   });
 });

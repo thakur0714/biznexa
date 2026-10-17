@@ -114,7 +114,7 @@ beforeEach(() => {
 });
 
 afterAll(async () => {
-  if (sellerSetting) await prisma.setting.update({ where: { key: SELLER_STATE_KEY }, data: { value: sellerSetting.value as object } });
+  if (sellerSetting) await prisma.setting.upsert({ where: { key: SELLER_STATE_KEY }, update: { value: sellerSetting.value as object }, create: { key: SELLER_STATE_KEY, value: sellerSetting.value as object } });
   else await prisma.setting.deleteMany({ where: { key: SELLER_STATE_KEY } });
   await prisma.auditLog.deleteMany({ where: { actor: users } });
   await prisma.invoice.deleteMany({ where: { order: { customer: users } } });

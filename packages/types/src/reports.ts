@@ -395,5 +395,27 @@ export const reportSupportResponseSchema = z.object({
 });
 export type ReportSupportResponse = z.infer<typeof reportSupportResponseSchema>;
 
+export const reportExportTypeSchema = z.enum(['sales', 'customers', 'services', 'consultants', 'support']);
+export type ReportExportType = z.infer<typeof reportExportTypeSchema>;
+
+export const reportExportRequestSchema = z.object({
+  type: reportExportTypeSchema,
+  preset: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  serviceId: z.string().optional(),
+  categoryId: z.string().optional(),
+});
+export type ReportExportRequest = z.infer<typeof reportExportRequestSchema>;
+
+export const reportExportJobSchema = z.object({
+  id: z.string(),
+  type: reportExportTypeSchema,
+  status: z.enum(['PENDING', 'COMPLETED', 'FAILED']),
+  createdAt: z.string(),
+});
+export type ReportExportJob = z.infer<typeof reportExportJobSchema>;
+
+
 
 

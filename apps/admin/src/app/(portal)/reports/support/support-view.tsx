@@ -6,6 +6,7 @@ import { PERMS, type ReportSupportResponse } from '@biznexa/types';
 import { Badge, EmptyState } from '@biznexa/ui';
 import { useAuth } from '@/lib/auth';
 import { ReportsNav } from '../reports-nav';
+import { ExportButton } from '../export-button';
 
 const PRESETS = [
   { label: 'Today', value: 'today' },
@@ -135,22 +136,25 @@ export function SupportReportView() {
           </p>
         </div>
 
-        {/* Date Filter Presets */}
-        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-rule bg-paper p-1">
-          {PRESETS.map((p) => (
-            <button
-              key={p.value}
-              type="button"
-              onClick={() => setPreset(p.value)}
-              className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                preset === p.value
-                  ? 'bg-night text-paper shadow-xs'
-                  : 'text-muted hover:bg-paper/80 hover:text-night'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Date Filter Presets */}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-rule bg-paper p-1">
+            {PRESETS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                onClick={() => setPreset(p.value)}
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                  preset === p.value
+                    ? 'bg-night text-paper shadow-xs'
+                    : 'text-muted hover:bg-paper/80 hover:text-night'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <ExportButton type="support" preset={preset} />
         </div>
       </div>
 

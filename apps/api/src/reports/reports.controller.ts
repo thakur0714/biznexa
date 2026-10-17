@@ -1,24 +1,47 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  StreamableFile,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiProduces, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { z } from 'zod';
+import {
+  type FileLinkResult,
+  type ReportConsultantsResponse,
   type ReportCustomersResponse,
   type ReportDashboardResponse,
   type ReportDateRangeQuery,
+  type ReportExportJob,
+  type ReportExportRequest,
   type ReportSalesResponse,
   type ReportServicesResponse,
-  type ReportConsultantsResponse,
   type ReportSupportResponse,
+  fileLinkSchema,
+  reportConsultantsResponseSchema,
   reportCustomersResponseSchema,
   reportDashboardResponseSchema,
   reportDateRangeQuerySchema,
+  reportExportJobSchema,
+  reportExportRequestSchema,
   reportSalesResponseSchema,
   reportServicesResponseSchema,
-  reportConsultantsResponseSchema,
   reportSupportResponseSchema,
 } from '@biznexa/types';
-import { PERMS, RequirePermissions } from '../common/auth.decorators';
-import { ApiZodResponse, ZodQuery } from '../common/openapi';
+import { AuthUser, CurrentUser, PERMS, Public, RequirePermissions } from '../common/auth.decorators';
+import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
+import type { Disposition } from '../files/files.service';
 import { ReportsService } from './reports.service';
+
+const linkQuery = z.object({
+  disposition: z.enum(['attachment', 'inline']).default('attachment').describe('inline = open in the browser'),
+});
 
 @ApiTags('admin · reports')
 @ApiBearerAuth()
@@ -62,6 +85,43 @@ export class ReportsController {
   getSupport(@ZodQuery(reportDateRangeQuerySchema) query: ReportDateRangeQuery): Promise<ReportSupportResponse> {
     return this.reportsService.getSupportReport(query);
   }
+
+  @ApiZodResponse('ReportExportJob', reportExportJobSchema, 201)
+  @Post('export')
+  exportReport(
+    @ZodBody(reportExportRequestSchema) body: ReportExportRequest,
+    @CurrentUser() user: AuthUser,
+  ): Promise<ReportExportJob> {
+    return this.reportsService.enqueueExport(body, user.id);
+  }
+
+  @ApiZodResponse('FileLink', fileLinkSchema)
+  @ApiResponse({ status: 404, description: 'Export not found' })
+  @ApiResponse({ status: 409, description: 'Your export is still being prepared. Please try again shortly.' })
+  @HttpCode(200)
+  @Post('export/:id/link')
+  linkExport(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ZodQuery(linkQuery) q: z.infer<typeof linkQuery>,
+    @CurrentUser() user: AuthUser,
+  ): Promise<FileLinkResult> {
+    return this.reportsService.createExportLink(id, user, q.disposition as Disposition);
+  }
+
+  @Public()
+  @ApiQuery({ name: 'e', description: 'Expiry (unix seconds)' })
+  @ApiQuery({ name: 'd', required: false, enum: ['attachment', 'inline'] })
+  @ApiQuery({ name: 's', description: 'Signature' })
+  @ApiProduces('text/csv')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Header('Cache-Control', 'private, no-store')
+  @Header('Content-Security-Policy', "default-src 'none'; sandbox")
+  @Get('export/:id/download')
+  async downloadExport(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query() q: { e?: string; d?: string; s?: string },
+  ) {
+    const { stream, size, disposition } = await this.reportsService.openExportLinked(id, q);
+    return new StreamableFile(stream, { type: 'text/csv; charset=utf-8', length: size, disposition });
+  }
 }
-
-

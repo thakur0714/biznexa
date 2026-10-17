@@ -479,6 +479,50 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
       });
     });
   });
+
+  describe('Report Export Lifecycle', () => {
+    it('enqueues export and generates valid 24h download link', async () => {
+      const mockStorage = {
+        write: jest.fn().mockResolvedValue(undefined),
+        read: jest.fn().mockImplementation(async (key: string) => ({
+          stream: (async function* () {
+            yield Buffer.from('--- SALES REPORT SUMMARY ---');
+          })(),
+          size: 28,
+        })),
+        remove: jest.fn(),
+      };
+
+      const exportService = new ReportsService(mockPrisma, undefined, mockStorage as any);
+      const user = { id: 'admin-1', roles: ['ADMIN'], permissions: ['reports.view'], twoFactorPending: false };
+
+      const job = await exportService.enqueueExport({ type: 'sales', preset: 'today' }, user.id);
+      expect(job.id).toBeDefined();
+      expect(job.type).toBe('sales');
+      expect(job.status).toBe('PENDING');
+
+      // Since no queue was provided, it processed synchronously into exportCache
+      const link = await exportService.createExportLink(job.id, user);
+      expect(link.url).toMatch(new RegExp(`^/api/admin/reports/export/${job.id}/download\\?`));
+
+      const now = Date.now();
+      const expiresAt = new Date(link.expiresAt).getTime();
+      // Should be ~24 hours (86400 seconds) in the future
+      expect(expiresAt - now).toBeGreaterThan(23 * 3600 * 1000);
+      expect(expiresAt - now).toBeLessThanOrEqual(24 * 3600 * 1000 + 5000);
+
+      // Verify opening the signed download
+      const queryParams = Object.fromEntries(new URL(`http://localhost${link.url}`).searchParams);
+      const streamRes = await exportService.openExportLinked(job.id, queryParams);
+      expect(streamRes.size).toBe(28);
+      expect(streamRes.disposition).toContain('attachment;');
+    });
+
+    it('throws 404 if export does not exist', async () => {
+      const user = { id: 'admin-1', roles: ['ADMIN'], permissions: ['reports.view'], twoFactorPending: false };
+      await expect(service.createExportLink('non-existent-id', user)).rejects.toThrow('Export not found');
+    });
+  });
 });
 
 
