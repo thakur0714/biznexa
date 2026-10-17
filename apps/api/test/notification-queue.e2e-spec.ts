@@ -103,6 +103,25 @@ afterAll(async () => {
   await app.close();
 });
 
+it('sends to an address given with the notification (anonymised account), then drops it from the log', async () => {
+  const sourceKey = randomUUID();
+  const to = `gone-${run}@example.com`;
+  await app.get(NotificationQueueService).enqueue({
+    userId: customerId,
+    channel: 'EMAIL',
+    event: 'privacy.account_deleted',
+    sourceKey,
+    title: 'Account deleted',
+    body: 'Your account was deleted',
+    payload: { customerName: 'Gone' },
+    recipient: { email: to },
+  });
+  const [row] = await settled(sourceKey, 1);
+  expect(row.status).toBe('SENT');
+  expect(emailsTo(to)).toBe(1);
+  expect(JSON.stringify(row.content)).not.toContain(to);
+});
+
 it('queues one job per channel and logs each outcome', async () => {
   const paymentId = randomUUID();
   const before = emailsTo(customerEmail);

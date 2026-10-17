@@ -4,10 +4,16 @@ process.env.NODE_ENV = 'test';
 // a scan job is handled by the worker whose folder holds the file, and files.e2e-spec's "rejected
 // uploads leave nothing behind" check is not upset by other suites uploading in parallel.
 const worker = process.env.JEST_WORKER_ID ?? '1';
-process.env.QUEUE_PREFIX = `bn-test-${worker}`;
+// Several checkouts (git worktrees) may run their suites at once against the same Redis: a short hash of this
+// checkout's path keeps their queues and upload folders apart.
+const checkout = require('node:crypto').createHash('sha1').update(__dirname).digest('hex').slice(0, 6);
+process.env.QUEUE_PREFIX = `bn-test-${checkout}-${worker}`;
 // Uploads go to a throwaway folder, never the dev uploads directory.
-process.env.UPLOAD_DIR = require('node:path').join(require('node:os').tmpdir(), `bn-test-uploads-${worker}`);
-process.env.MEDIA_DIR = require('node:path').join(require('node:os').tmpdir(), `bn-test-media-${worker}`);
+process.env.UPLOAD_DIR = require('node:path').join(require('node:os').tmpdir(), `bn-test-uploads-${checkout}-${worker}`);
+// Public media (M9.4) likewise.
+process.env.MEDIA_DIR = require('node:path').join(require('node:os').tmpdir(), `bn-test-media-${checkout}-${worker}`);
+// Suites share one database: an app must not pick up other suites' leftover PDFs / scans on start (see env.ts).
+process.env.QUEUE_BOOT_SWEEP = 'false';
 process.env.EMAIL_PROVIDER = 'console';
 process.env.FCM_PROVIDER = 'fake';
 // Partner keys for the public verify API tests; any other key is refused.

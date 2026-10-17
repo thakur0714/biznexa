@@ -76,6 +76,8 @@ function send(w: { body: string; headers: Record<string, string> }) {
   eventIds.push(w.headers['x-razorpay-event-id']);
   return http.post(hook).set(w.headers).send(w.body);
 }
+const eventsFor = (s: { id: string; paymentId: string }) =>
+  events.filter((event) => ('paymentId' in event.payload && event.payload.paymentId === s.paymentId) || ('applicationId' in event.payload && event.payload.applicationId === s.id));
 const captured = (payment: GatewayPayment, eventId?: string) => gateway.webhook('payment.captured', payment, eventId);
 
 async function state(id: string, orderId: string) {
@@ -200,7 +202,7 @@ describe('payment webhook (M3.17)', () => {
         after: { status: 'SUBMITTED', orderStatus: 'PAID', paymentId: s.paymentId, amount: discounted, gatewayPaymentId: paid.id },
       },
     ]);
-    expect(events.map((e) => [e.name, e.payload])).toEqual([
+    expect(eventsFor(s).map((e) => [e.name, e.payload])).toEqual([
       ['application.status_changed', { applicationId: s.id, from: 'PAYMENT_PENDING', to: 'SUBMITTED', actorId: null }],
       ['payment.succeeded', { paymentId: s.paymentId, orderId: s.orderId, customerId: aliceId, applicationIds: [s.id], amount: discounted, gateway: 'MOCK', gatewayPaymentId: paid.id }],
       // Issued by the invoice listener (M3.21).
@@ -221,12 +223,12 @@ describe('payment webhook (M3.17)', () => {
     expect(once).toMatchObject({ application: 'SUBMITTED', order: 'PAID', amountPaid: s.amount, usedCount: 1, hooks: [{ event: 'payment.captured', outcome: 'applied' }] });
     expect(once.history).toHaveLength(1);
     expect(once.redemptions).toHaveLength(1);
-    expect(events.filter((e) => e.name === 'payment.succeeded')).toHaveLength(1);
-    expect(events.filter((e) => e.name === 'application.status_changed')).toHaveLength(1);
+    expect(eventsFor(s).filter((e) => e.name === 'payment.succeeded')).toHaveLength(1);
+    expect(eventsFor(s).filter((e) => e.name === 'application.status_changed')).toHaveLength(1);
 
     await Promise.all([send(w), send(w), send(w)].map((r) => r.expect(200)));
     expect(await state(s.id, s.orderId)).toEqual(once);
-    expect(events.filter((e) => e.name === 'payment.succeeded')).toHaveLength(1);
+    expect(eventsFor(s).filter((e) => e.name === 'payment.succeeded')).toHaveLength(1);
   });
 
   it('three concurrent first deliveries, and the same payment under a new event id, still apply once', async () => {
@@ -243,7 +245,7 @@ describe('payment webhook (M3.17)', () => {
     expect(after.history).toHaveLength(1);
     expect(after.redemptions).toHaveLength(1);
     expect(after.hooks.map((h) => h.outcome)).toEqual(['applied', 'duplicate']);
-    expect(events.filter((e) => e.name === 'payment.succeeded')).toHaveLength(1);
+    expect(eventsFor(s).filter((e) => e.name === 'payment.succeeded')).toHaveLength(1);
   });
 
   it('goes on to DOCUMENTS_PENDING when a mandatory document is missing', async () => {
@@ -259,7 +261,7 @@ describe('payment webhook (M3.17)', () => {
         { status: 'DOCUMENTS_PENDING', note: 'Waiting for 1 required document', changedById: null },
       ],
     });
-    expect(events.filter((e) => e.name === 'application.status_changed').map((e) => e.payload)).toEqual([
+    expect(eventsFor(s).filter((e) => e.name === 'application.status_changed').map((e) => e.payload)).toEqual([
       { applicationId: s.id, from: 'PAYMENT_PENDING', to: 'SUBMITTED', actorId: null },
       { applicationId: s.id, from: 'SUBMITTED', to: 'DOCUMENTS_PENDING', actorId: null },
     ]);
@@ -280,7 +282,7 @@ describe('payment webhook (M3.17)', () => {
       history: [],
       hooks: [{ event: 'payment.failed', outcome: 'applied' }],
     });
-    expect(events.map((e) => [e.name, e.payload])).toEqual([
+    expect(eventsFor(s).map((e) => [e.name, e.payload])).toEqual([
       ['payment.failed', { paymentId: s.paymentId, orderId: s.orderId, customerId: aliceId, amount: s.amount, reason: 'Card declined by the bank' }],
     ]);
 

@@ -30,6 +30,7 @@ export const PERMISSIONS: Record<string, string> = {
   'audit.view': 'View the audit log',
   'leads.view': 'View enquiries from the website',
   'notifications.view': 'View the notification delivery log and retry failed deliveries',
+  'privacy.manage': 'Handle data export and account deletion requests',
 };
 
 export const ROLES: RoleDefinition[] = [

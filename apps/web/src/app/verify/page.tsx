@@ -29,8 +29,10 @@ export default async function VerifyPage({ searchParams }: { searchParams: SP })
   const number = one(sp.number);
   const id = one(sp.id);
   const organization = one(sp.organization);
+  // Not trimmed to 100 like the others: Turnstile tokens are long. Used for this one lookup only.
+  const captchaToken = (Array.isArray(sp.captchaToken) ? sp.captchaToken[0] : sp.captchaToken)?.slice(0, 2048) || undefined;
 
-  const result = number || id ? await verifyCertificate({ number, id }) : null;
+  const result = number || id ? await verifyCertificate({ number, id, captchaToken }) : null;
   const orgs = !result && organization ? await searchOrganization(organization) : null;
   const mode = id ? 'id' : organization ? 'organization' : 'number';
 
@@ -40,7 +42,12 @@ export default async function VerifyPage({ searchParams }: { searchParams: SP })
       <p className="mt-2 max-w-[60ch] text-muted">Confirm that a certificate issued through BizNexa is genuine and still valid. No login needed.</p>
 
       <div className="mt-8 rounded-xl border border-rule bg-white p-6 sm:p-8">
-        <VerifyForm initialMode={mode} initialValue={number ?? id ?? organization ?? ''} />
+        <VerifyForm
+          initialMode={mode}
+          initialValue={number ?? id ?? organization ?? ''}
+          captchaRequired={result?.ok === false && !!result.captchaRequired}
+          turnstileSiteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+        />
         <div className="mt-6 border-t border-rule pt-5">
           <QrScanner />
         </div>

@@ -16,5 +16,6 @@ module.exports = {
   transformIgnorePatterns: [`/node_modules/(?!(?:\\.pnpm/)?${ESM_ONLY}[@/])`],
   moduleFileExtensions: ['ts', 'js', 'json'],
   testTimeout: 30000,
+  maxWorkers: 3,
   setupFiles: ['<rootDir>/test/setup-env.js'],
 };

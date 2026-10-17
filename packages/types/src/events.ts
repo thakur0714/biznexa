@@ -200,6 +200,30 @@ export interface DomainEventPayloads {
     customerId: string;
     resolution?: string;
   };
+  /** A customer's data export ZIP is ready to download (M5.12). */
+  'privacy.export_ready': {
+    requestId: string;
+    userId: string;
+    expiresAt: string;
+  };
+  /** Staff turned down a data export or deletion request (M5.12). */
+  'privacy.request_rejected': {
+    requestId: string;
+    userId: string;
+    type: 'EXPORT' | 'DELETION';
+    reason: string;
+  };
+  /**
+   * An account was anonymised (M5.12). Carries the contact details as they were, since the user row no longer
+   * has them: the goodbye message goes by email/SMS only.
+   */
+  'privacy.account_deleted': {
+    requestId: string;
+    userId: string;
+    name: string;
+    email: string | null;
+    mobile: string | null;
+  };
 }
 
 export type DomainEventName = keyof DomainEventPayloads;
