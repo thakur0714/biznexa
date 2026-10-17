@@ -54,7 +54,8 @@ class InspectingStorage implements StorageEngine {
   }
 }
 
-function toHttpError(err: unknown, policy: UploadPolicy): HttpException {
+/** Multer and content-check failures as the 4xx the client should see. Also used by the media upload. */
+export function toHttpError(err: unknown, policy: Pick<UploadPolicy, 'maxBytes'>): HttpException {
   if (err instanceof HttpException) return err;
   if (err instanceof FileContentMismatchError) return new UnsupportedMediaTypeException(err.message);
   if (err instanceof MulterError) {

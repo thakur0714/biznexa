@@ -13,6 +13,7 @@
   "dependencies": {
     "@biznexa/api-client": "workspace:*",
     "@biznexa/config": "workspace:*",
+    "@biznexa/rich-text": "workspace:*",
     "@biznexa/types": "workspace:*",
     "@biznexa/ui": "workspace:*",
     "@fontsource-variable/instrument-sans": "^5.2.0",

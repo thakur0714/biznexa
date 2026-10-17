@@ -7,6 +7,7 @@ const worker = process.env.JEST_WORKER_ID ?? '1';
 process.env.QUEUE_PREFIX = `bn-test-${worker}`;
 // Uploads go to a throwaway folder, never the dev uploads directory.
 process.env.UPLOAD_DIR = require('node:path').join(require('node:os').tmpdir(), `bn-test-uploads-${worker}`);
+process.env.MEDIA_DIR = require('node:path').join(require('node:os').tmpdir(), `bn-test-media-${worker}`);
 process.env.EMAIL_PROVIDER = 'console';
 process.env.FCM_PROVIDER = 'fake';
 // Partner keys for the public verify API tests; any other key is refused.
