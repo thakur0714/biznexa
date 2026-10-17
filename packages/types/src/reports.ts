@@ -271,3 +271,151 @@ export const reportCustomersResponseSchema = z.object({
   activeLast90Days: z.number(),
 });
 export type ReportCustomersResponse = z.infer<typeof reportCustomersResponseSchema>;
+
+export const reportServicePopularItemSchema = z.object({
+  serviceId: z.string(),
+  serviceName: z.string(),
+  categoryName: z.string(),
+  orders: z.number(),
+  revenue: z.number(), // paise
+  avgTurnaroundDays: z.number().nullable(),
+  slaBreaches: z.number(),
+});
+export type ReportServicePopularItem = z.infer<typeof reportServicePopularItemSchema>;
+
+export const reportApplicationStatusItemSchema = z.object({
+  status: z.string(),
+  label: z.string(),
+  count: z.number(),
+});
+export type ReportApplicationStatusItem = z.infer<typeof reportApplicationStatusItemSchema>;
+
+export const reportSlaBreachPerServiceItemSchema = z.object({
+  serviceId: z.string(),
+  serviceName: z.string(),
+  categoryName: z.string(),
+  breachCount: z.number(),
+});
+export type ReportSlaBreachPerServiceItem = z.infer<typeof reportSlaBreachPerServiceItemSchema>;
+
+export const reportServicesResponseSchema = z.object({
+  range: z.object({
+    from: z.string(),
+    to: z.string(),
+    preset: z.string().optional(),
+  }),
+  summary: z.object({
+    totalOrders: z.number(),
+    totalRevenue: z.number(), // paise
+    avgTurnaroundDays: z.number(),
+    totalSlaBreaches: z.number(),
+  }),
+  popularServices: z.array(reportServicePopularItemSchema),
+  applicationsByStatus: z.array(reportApplicationStatusItemSchema),
+  slaBreaches: z.array(reportSlaBreachPerServiceItemSchema),
+});
+export type ReportServicesResponse = z.infer<typeof reportServicesResponseSchema>;
+
+export const reportConsultantItemSchema = z.object({
+  consultantId: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  category: z.string(),
+  verificationStatus: z.string(),
+  rating: z.number(),
+  reviewCount: z.number(),
+  bookingsCount: z.number(),
+  bookingRevenue: z.number(), // paise
+});
+export type ReportConsultantItem = z.infer<typeof reportConsultantItemSchema>;
+
+export const reportConsultantsStatusCountSchema = z.object({
+  status: z.string(),
+  label: z.string(),
+  count: z.number(),
+});
+export type ReportConsultantsStatusCount = z.infer<typeof reportConsultantsStatusCountSchema>;
+
+export const reportConsultantsResponseSchema = z.object({
+  range: z.object({
+    from: z.string(),
+    to: z.string(),
+    preset: z.string().optional(),
+  }),
+  summary: z.object({
+    total: z.number(),
+    active: z.number(),
+    bookingsCount: z.number(),
+    bookingRevenue: z.number(), // paise
+    averageRating: z.number(),
+  }),
+  byVerificationStatus: z.array(reportConsultantsStatusCountSchema),
+  consultants: z.array(reportConsultantItemSchema),
+});
+export type ReportConsultantsResponse = z.infer<typeof reportConsultantsResponseSchema>;
+
+export const reportTicketStatusCountSchema = z.object({
+  status: z.string(),
+  label: z.string(),
+  count: z.number(),
+});
+export type ReportTicketStatusCount = z.infer<typeof reportTicketStatusCountSchema>;
+
+export const reportSupportTicketItemSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  subject: z.string(),
+  status: z.string(),
+  priority: z.string(),
+  customerName: z.string(),
+  assignedToName: z.string().nullable(),
+  createdAt: z.string(),
+  firstResponseAt: z.string().nullable(),
+  resolvedAt: z.string().nullable(),
+  firstResponseHours: z.number().nullable(),
+  resolutionHours: z.number().nullable(),
+});
+export type ReportSupportTicketItem = z.infer<typeof reportSupportTicketItemSchema>;
+
+export const reportSupportResponseSchema = z.object({
+  range: z.object({
+    from: z.string(),
+    to: z.string(),
+    preset: z.string().optional(),
+  }),
+  summary: z.object({
+    totalTickets: z.number(),
+    openTickets: z.number(),
+    resolvedTickets: z.number(),
+    avgFirstResponseHours: z.number(),
+    avgResolutionHours: z.number(),
+  }),
+  byStatus: z.array(reportTicketStatusCountSchema),
+  recentTickets: z.array(reportSupportTicketItemSchema),
+});
+export type ReportSupportResponse = z.infer<typeof reportSupportResponseSchema>;
+
+export const reportExportTypeSchema = z.enum(['sales', 'customers', 'services', 'consultants', 'support']);
+export type ReportExportType = z.infer<typeof reportExportTypeSchema>;
+
+export const reportExportRequestSchema = z.object({
+  type: reportExportTypeSchema,
+  preset: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  serviceId: z.string().optional(),
+  categoryId: z.string().optional(),
+});
+export type ReportExportRequest = z.infer<typeof reportExportRequestSchema>;
+
+export const reportExportJobSchema = z.object({
+  id: z.string(),
+  type: reportExportTypeSchema,
+  status: z.enum(['PENDING', 'COMPLETED', 'FAILED']),
+  createdAt: z.string(),
+});
+export type ReportExportJob = z.infer<typeof reportExportJobSchema>;
+
+
+
+

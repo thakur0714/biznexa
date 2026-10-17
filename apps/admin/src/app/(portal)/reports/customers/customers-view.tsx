@@ -12,6 +12,7 @@ import {
 } from '@biznexa/types';
 import { useAuth } from '@/lib/auth';
 import { ReportsNav } from '../reports-nav';
+import { ExportButton } from '../export-button';
 
 const PRESETS: { id: ReportPreset; label: string }[] = [
   { id: 'today', label: 'Today' },
@@ -93,27 +94,30 @@ export function CustomersReportView() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-rule bg-white p-1">
-          {PRESETS.map((p) => {
-            const active = preset === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  setPreset(p.id);
-                  setLoading(true);
-                }}
-                className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
-                  active
-                    ? 'bg-ink text-white shadow-xs'
-                    : 'text-muted hover:bg-paper hover:text-night'
-                }`}
-              >
-                {p.label}
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-rule bg-white p-1">
+            {PRESETS.map((p) => {
+              const active = preset === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setPreset(p.id);
+                    setLoading(true);
+                  }}
+                  className={`rounded-md px-3 py-1 text-xs font-semibold transition-colors ${
+                    active
+                      ? 'bg-ink text-white shadow-xs'
+                      : 'text-muted hover:bg-paper hover:text-night'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+          <ExportButton type="customers" preset={preset} />
         </div>
       </div>
 
