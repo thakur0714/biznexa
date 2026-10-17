@@ -11,6 +11,7 @@ export const NOTIFICATION_EVENTS = [
   'payment.succeeded',
   'payment.failed',
   'invoice.issued',
+  'refund.processed',
   'document.requested',
   'document.approved',
   'document.rejected',

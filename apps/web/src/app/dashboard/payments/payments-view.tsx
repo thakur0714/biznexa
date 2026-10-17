@@ -6,6 +6,7 @@ import {
   formatDate,
   formatINR,
   type CustomerPaymentListResponse,
+  type CustomerRefundView,
 } from '@biznexa/types';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
@@ -50,6 +51,45 @@ function paymentStatusLabel(status: string): string {
   }
 }
 
+const REFUND_STATUS: Record<CustomerRefundView['status'], string> = {
+  INITIATED: 'Refund in progress',
+  PROCESSED: 'Refunded',
+  FAILED: 'Refund failed',
+};
+
+/** Refunds of one payment (M4.13): amount, where it stands, and the credit note once it is ready. */
+function RefundList({ refunds, onCreditNote, busyId }: { refunds: CustomerRefundView[]; onCreditNote: (id: string) => void; busyId: string | null }) {
+  if (!refunds.length) return null;
+  return (
+    <ul className="mt-1.5 space-y-1" aria-label="Refunds">
+      {refunds.map((r) => (
+        <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span className={r.status === 'FAILED' ? 'text-danger' : r.status === 'PROCESSED' ? 'text-emerald-700' : 'text-amber-700'}>
+            {REFUND_STATUS[r.status]}: <span className="num font-semibold">{formatINR(r.amount, r.amount % 100 !== 0)}</span>
+            {r.status === 'PROCESSED' && r.processedAt ? ` on ${formatDate(r.processedAt)}` : ''}
+            {r.status === 'INITIATED' ? ' · usually 5–7 working days' : ''}
+          </span>
+          {r.creditNote &&
+            (r.creditNote.pdfReady ? (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 font-medium text-ink hover:underline disabled:opacity-60"
+                onClick={() => onCreditNote(r.creditNote!.id)}
+                disabled={busyId === r.creditNote.id}
+                title={`Download Credit Note ${r.creditNote.number}`}
+              >
+                <Icon name="download" size={12} />
+                {busyId === r.creditNote.id ? 'Loading…' : `Credit note ${r.creditNote.number}`}
+              </button>
+            ) : (
+              <span className="text-muted">Credit note being prepared</span>
+            ))}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function CustomerPaymentsView() {
   const api = useApi();
   const [data, setData] = useState<CustomerPaymentListResponse | null>(null);
@@ -89,25 +129,26 @@ export function CustomerPaymentsView() {
     };
   }, [api, page, refreshKey]);
 
-  const handleDownloadInvoice = async (invoiceId: string) => {
-    setDownloadingId(invoiceId);
+  const download = async (kind: 'invoice' | 'credit note', id: string) => {
+    setDownloadingId(id);
     setDownloadError(null);
     try {
+      const params = { path: { id }, query: { disposition: 'attachment' as const } };
       const res = await api.call<{ url: string }>((c) =>
-        c.POST('/api/invoices/{id}/link', {
-          params: { path: { id: invoiceId }, query: { disposition: 'attachment' } },
-        }),
+        kind === 'invoice' ? c.POST('/api/invoices/{id}/link', { params }) : c.POST('/api/credit-notes/{id}/link', { params }),
       );
       if (res?.url) {
         window.open(res.url, '_blank');
       }
     } catch (err: unknown) {
-      const msg = err instanceof ClientApiError ? err.message : 'Unable to download invoice PDF. Please try again.';
-      setDownloadError({ id: invoiceId, message: msg });
+      const msg = err instanceof ClientApiError ? err.message : `Unable to download the ${kind} PDF. Please try again.`;
+      setDownloadError({ id, message: msg });
     } finally {
       setDownloadingId(null);
     }
   };
+  const handleDownloadInvoice = (invoiceId: string) => download('invoice', invoiceId);
+  const handleDownloadCreditNote = (creditNoteId: string) => download('credit note', creditNoteId);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
 
@@ -117,7 +158,7 @@ export function CustomerPaymentsView() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-night sm:text-3xl">Payments</h1>
         <p className="mt-1 text-sm text-muted">
-          Track your payments, download tax invoices, and clear pending balances.
+          Track your payments and refunds, download tax invoices and credit notes, and clear pending balances.
         </p>
       </div>
 
@@ -131,9 +172,18 @@ export function CustomerPaymentsView() {
             </div>
           </div>
           <div className="num mt-3 text-2xl font-bold text-emerald-700 sm:text-3xl">
-            {data ? formatINR(data.totalPaid) : '—'}
+            {data ? formatINR(data.totalPaid - data.totalRefunded, (data.totalPaid - data.totalRefunded) % 100 !== 0) : '—'}
           </div>
-          <p className="mt-1 text-xs text-muted">Successful payments across all orders</p>
+          <p className="mt-1 text-xs text-muted">
+            {data && data.totalRefunded > 0 ? (
+              <>
+                Paid <span className="num">{formatINR(data.totalPaid)}</span>, refunded{' '}
+                <span className="num">{formatINR(data.totalRefunded, data.totalRefunded % 100 !== 0)}</span>
+              </>
+            ) : (
+              'Successful payments across all orders'
+            )}
+          </p>
         </div>
 
         <div className="rounded-lg border border-rule bg-white p-5 shadow-sm">
@@ -264,6 +314,7 @@ export function CustomerPaymentsView() {
                               Balance: {formatINR(item.order.balance)}
                             </div>
                           )}
+                          <RefundList refunds={item.refunds} onCreditNote={handleDownloadCreditNote} busyId={downloadingId} />
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-xs uppercase text-muted">
                           {item.method ?? item.gateway}
@@ -353,6 +404,8 @@ export function CustomerPaymentsView() {
                         )}
                       </div>
                     </div>
+
+                    <RefundList refunds={item.refunds} onCreditNote={handleDownloadCreditNote} busyId={downloadingId} />
 
                     {/* Actions */}
                     <div className="flex flex-wrap items-center justify-end gap-2 pt-1">

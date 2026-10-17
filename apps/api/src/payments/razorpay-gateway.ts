@@ -38,6 +38,17 @@ export interface RazorpayPayment {
   created_at: number;
 }
 
+/** The fields we read from Razorpay's refund entity (REST answers and `refund.*` webhook payloads). */
+export interface RazorpayRefund {
+  id: string;
+  payment_id: string;
+  amount: number;
+  status: GatewayRefund['status'];
+  receipt?: string | null;
+  notes?: Record<string, string> | unknown[];
+  error_description?: string | null;
+}
+
 /** Only ids made of these characters are put into a URL path. */
 const SAFE_ID = /^[A-Za-z0-9_]+$/;
 
@@ -93,12 +104,8 @@ export class RazorpayGateway extends PaymentGateway {
     const body: Record<string, unknown> = { notes: input.notes ?? {} };
     if (input.amount !== undefined) body.amount = input.amount;
     if (input.receipt) body.receipt = input.receipt;
-    const r = await this.request<{ id: string; payment_id: string; amount: number; status: GatewayRefund['status'] }>(
-      'POST',
-      `/v1/payments/${safeId(input.paymentId)}/refund`,
-      body,
-    );
-    return { id: r.id, paymentId: r.payment_id, amount: r.amount, status: r.status };
+    const r = await this.request<RazorpayRefund>('POST', `/v1/payments/${safeId(input.paymentId)}/refund`, body);
+    return toGatewayRefund(r);
   }
 
   private async request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
@@ -146,6 +153,12 @@ export function toGatewayPayment(p: RazorpayPayment): GatewayPayment {
   };
 }
 
+export function toGatewayRefund(r: RazorpayRefund): GatewayRefund {
+  // Razorpay sends empty notes as `[]`.
+  const notes = r.notes && !Array.isArray(r.notes) ? (r.notes as Record<string, string>) : {};
+  return { id: r.id, paymentId: r.payment_id, amount: r.amount, status: r.status, receipt: r.receipt ?? null, notes, failureReason: r.error_description ?? null };
+}
+
 const header = (headers: IncomingHttpHeaders, name: string) => {
   const v = headers[name];
   return Array.isArray(v) ? v[0] : v;
@@ -154,7 +167,7 @@ const header = (headers: IncomingHttpHeaders, name: string) => {
 /**
  * Razorpay webhooks: `X-Razorpay-Signature` is the webhook-secret HMAC of the raw body and
  * `X-Razorpay-Event-Id` is repeated on every redelivery. The body is
- * `{ event, payload: { payment?: { entity } }, created_at, … }`.
+ * `{ event, payload: { payment?: { entity }, refund?: { entity } }, created_at, … }`.
  */
 export function readRazorpayWebhook(
   rawBody: Buffer,
@@ -163,7 +176,7 @@ export function readRazorpayWebhook(
 ): GatewayWebhookEvent | null {
   if (!verify(rawBody, header(headers, 'x-razorpay-signature'))) return null;
 
-  let body: { event?: unknown; payload?: { payment?: { entity?: Partial<RazorpayPayment> } } };
+  let body: { event?: unknown; payload?: { payment?: { entity?: Partial<RazorpayPayment> }; refund?: { entity?: Partial<RazorpayRefund> } } };
   try {
     body = JSON.parse(rawBody.toString('utf8'));
   } catch {
@@ -176,9 +189,12 @@ export function readRazorpayWebhook(
     entity && typeof entity.id === 'string' && Number.isInteger(entity.amount) && typeof entity.status === 'string'
       ? toGatewayPayment({ amount_refunded: 0, currency: 'INR', method: null, error_description: null, order_id: null, created_at: 0, ...entity } as RazorpayPayment)
       : null;
-  // Without the header (never seen from Razorpay), the event name and payment id still identify it.
-  const id = header(headers, 'x-razorpay-event-id') ?? `${body.event}:${payment?.id ?? hmacHex('event', rawBody)}`;
-  return { id, type: body.event, payment, body };
+  const r = body.payload?.refund?.entity;
+  const refund =
+    r && typeof r.id === 'string' && typeof r.payment_id === 'string' && Number.isInteger(r.amount) && typeof r.status === 'string' ? toGatewayRefund(r as RazorpayRefund) : null;
+  // Without the header (never seen from Razorpay), the event name and payment/refund id still identify it.
+  const id = header(headers, 'x-razorpay-event-id') ?? `${body.event}:${refund?.id ?? payment?.id ?? hmacHex('event', rawBody)}`;
+  return { id, type: body.event, payment, refund, body };
 }
 
 function safeId(id: string): string {

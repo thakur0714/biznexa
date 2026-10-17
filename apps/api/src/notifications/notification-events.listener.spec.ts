@@ -91,6 +91,7 @@ describe('NotificationEventsListener (M6.8)', () => {
       expect(events.on).toHaveBeenCalledWith('payment.succeeded', expect.any(Function));
       expect(events.on).toHaveBeenCalledWith('payment.failed', expect.any(Function));
       expect(events.on).toHaveBeenCalledWith('invoice.issued', expect.any(Function));
+      expect(events.on).toHaveBeenCalledWith('refund.processed', expect.any(Function));
       expect(events.on).toHaveBeenCalledWith('document.requested', expect.any(Function));
       expect(events.on).toHaveBeenCalledWith('document.approved', expect.any(Function));
       expect(events.on).toHaveBeenCalledWith('document.rejected', expect.any(Function));
@@ -144,6 +145,24 @@ describe('NotificationEventsListener (M6.8)', () => {
           recipient: { email: 'alice@example.com', mobile: '9876543210' },
         }),
       );
+    });
+  });
+
+  describe('refund.processed (M4.13)', () => {
+    it('tells the customer the refunded amount for their order', async () => {
+      (prisma.user!.findUnique as jest.Mock).mockResolvedValue({ id: 'cust-1', name: 'Alice Sharma', email: 'alice@example.com' });
+      (prisma.order!.findUnique as jest.Mock).mockResolvedValue({ code: 'ORD-2026-0001' });
+
+      await listener.handleRefundProcessed({ refundId: 'r-1', paymentId: 'pay-1', orderId: 'ord-1', customerId: 'cust-1', amount: 284000, paymentStatus: 'PARTIALLY_REFUNDED' });
+
+      expect(prisma.notificationTemplate!.findMany).toHaveBeenCalledWith({ where: { event: 'refund.processed', isActive: true } });
+      expect(templateEngine.render).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ customerName: 'Alice Sharma', orderId: 'ORD-2026-0001', amount: formatINR(284000) }));
+      expect(dispatcher.dispatch).toHaveBeenCalledWith(expect.objectContaining({ userId: 'cust-1', event: 'refund.processed' }));
+    });
+
+    it('does nothing for a payment without a customer', async () => {
+      await listener.handleRefundProcessed({ refundId: 'r-1', paymentId: 'pay-1', orderId: null, customerId: null, amount: 100, paymentStatus: 'REFUNDED' });
+      expect(dispatcher.dispatch).not.toHaveBeenCalled();
     });
   });
 

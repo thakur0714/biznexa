@@ -56,6 +56,11 @@ export interface GatewayRefund {
   paymentId: string;
   amount: number;
   status: 'pending' | 'processed' | 'failed';
+  /** What we sent as `receipt` (our `Refund` id), when the gateway echoes it. */
+  receipt?: string | null;
+  notes?: Record<string, string>;
+  /** The gateway's reason for a failed refund. */
+  failureReason?: string | null;
 }
 
 /** A webhook whose signature passed, normalised. */
@@ -66,6 +71,8 @@ export interface GatewayWebhookEvent {
   type: string;
   /** The payment the event is about, when it is about one. */
   payment: GatewayPayment | null;
+  /** The refund a `refund.*` event is about (M4.13). */
+  refund: GatewayRefund | null;
   /** The parsed body, to store as received. */
   body: unknown;
 }

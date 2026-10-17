@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import { formatDate, formatINR, type AdminPaymentDetail, type AdminPaymentRow, type PaymentStatus } from '@biznexa/types';
+import { formatDate, formatINR, PERMS, type AdminPaymentDetail, type AdminPaymentRow, type PaymentStatus, type RefundStatus } from '@biznexa/types';
 import { Badge, Button, Dialog, EmptyState, Field, Notice, useToast, type Tone } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
 import { DataTable } from '@/components/data-table';
 import { NotAllowed } from '@/components/portal-shell';
 import { useAuth } from '@/lib/auth';
 import { canSee, findNavItem } from '@/lib/nav';
+import { money, RefundDialog } from './refund-dialog';
 
 export function PaymentsView() {
   const { user } = useAuth();
@@ -28,11 +29,21 @@ const STATUS_BADGES: Record<PaymentStatus, { label: string; tone: Tone }> = {
   PARTIALLY_REFUNDED: { label: 'Partially Refunded', tone: 'warning' },
 };
 
+const REFUND_BADGES: Record<RefundStatus, { label: string; tone: Tone }> = {
+  INITIATED: { label: 'In progress', tone: 'info' },
+  PROCESSED: { label: 'Processed', tone: 'success' },
+  FAILED: { label: 'Failed', tone: 'danger' },
+};
+
 type StatusGroup = 'all' | 'success' | 'failed' | 'pending';
 
 function PaymentsList() {
   const api = useApi();
   const toast = useToast();
+  const { user } = useAuth();
+  const canRefund = !!user?.permissions.includes(PERMS.PAYMENTS_REFUND);
+  const [refunding, setRefunding] = useState(false);
+  const [refundOpenings, setRefundOpenings] = useState(0);
   const [data, setData] = useState<{ items: AdminPaymentRow[]; total: number } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -104,6 +115,19 @@ function PaymentsList() {
       const link = await api.call<{ url: string }>((c) =>
         c.POST('/api/invoices/{id}/link', {
           params: { path: { id: invoiceId }, query: { disposition: 'attachment' } },
+        }),
+      );
+      window.open(link.url, '_blank');
+    } catch (err) {
+      toast((err as Error).message, 'error');
+    }
+  };
+
+  const downloadCreditNote = async (creditNoteId: string) => {
+    try {
+      const link = await api.call<{ url: string }>((c) =>
+        c.POST('/api/credit-notes/{id}/link', {
+          params: { path: { id: creditNoteId }, query: { disposition: 'attachment' } },
         }),
       );
       window.open(link.url, '_blank');
@@ -363,7 +387,21 @@ function PaymentsList() {
                 <p className="text-xs text-muted">Amount</p>
                 <p className="text-2xl font-bold text-night">{formatINR(detail.amount)}</p>
               </div>
-              <Badge tone={STATUS_BADGES[detail.status]?.tone ?? 'neutral'}>{STATUS_BADGES[detail.status]?.label ?? detail.status}</Badge>
+              <div className="flex items-center gap-2">
+                <Badge tone={STATUS_BADGES[detail.status]?.tone ?? 'neutral'}>{STATUS_BADGES[detail.status]?.label ?? detail.status}</Badge>
+                {canRefund && detail.refundable > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setRefundOpenings((n) => n + 1);
+                      setRefunding(true);
+                    }}
+                  >
+                    Refund
+                  </Button>
+                )}
+              </div>
             </div>
 
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -430,15 +468,35 @@ function PaymentsList() {
 
             {detail.refunds.length > 0 && (
               <div className="border-t border-rule pt-3">
-                <p className="font-semibold text-sm text-night">Refunds (Read-only)</p>
-                <ul className="mt-2 divide-y divide-rule rounded-md border border-rule bg-white">
+                <p className="font-semibold text-sm text-night">Refunds</p>
+                <ul className="mt-2 divide-y divide-rule rounded-md border border-rule bg-white" aria-label="Refunds">
                   {detail.refunds.map((r) => (
-                    <li key={r.id} className="p-3 text-sm flex justify-between items-center">
-                      <div>
-                        <p className="font-semibold text-night">{formatINR(r.amount)}</p>
-                        <p className="text-xs text-muted">{r.reason} · {formatDate(r.createdAt)}</p>
+                    <li key={r.id} className="p-3 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-night">{money(r.amount)}</p>
+                          <p className="text-xs text-muted">
+                            {r.reason} · {formatDate(r.createdAt)}
+                            {r.processedAt ? ` · processed ${formatDate(r.processedAt)}` : ''}
+                          </p>
+                          {r.status === 'FAILED' && r.failureReason && <p className="mt-0.5 text-xs text-danger">{r.failureReason}</p>}
+                        </div>
+                        <Badge tone={REFUND_BADGES[r.status].tone}>{REFUND_BADGES[r.status].label}</Badge>
                       </div>
-                      <Badge tone="info">{r.status}</Badge>
+                      {r.creditNote && (
+                        <div className="mt-2 flex items-center justify-between gap-3 text-xs">
+                          <span className="text-muted">
+                            Credit note <span className="font-mono text-night">{r.creditNote.number}</span>
+                          </span>
+                          {r.creditNote.pdfReady ? (
+                            <Button variant="ghost" size="sm" onClick={() => downloadCreditNote(r.creditNote!.id)} aria-label={`Download credit note ${r.creditNote.number}`}>
+                              Download
+                            </Button>
+                          ) : (
+                            <span className="text-muted">PDF being prepared…</span>
+                          )}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -447,6 +505,21 @@ function PaymentsList() {
           </div>
         ) : null}
       </Dialog>
+
+      {detail && canRefund && (
+        <RefundDialog
+          key={refundOpenings}
+          payment={detail}
+          open={refunding}
+          onClose={() => setRefunding(false)}
+          onRefunded={(r) => {
+            setRefunding(false);
+            toast(r.status === 'FAILED' ? 'The refund failed.' : `Refund of ${money(r.amount)} started. It completes when the gateway confirms it.`, r.status === 'FAILED' ? 'error' : 'success');
+            void loadPaymentDetail(detail.id);
+            setReload((n) => n + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { PaymentWebhookService } from './payment-webhook.service';
 /**
  * The payment gateway's webhook (M3.17). Public: the signature over the raw body is the authentication.
  * Not rate limited, so a burst of gateway retries is never refused. Configure in the Razorpay dashboard as
- * `https://<api>/api/payments/webhook` with the `payment.captured` and `payment.failed` events.
+ * `https://<api>/api/payments/webhook` with the `payment.captured`, `payment.failed`, `refund.processed` and `refund.failed` events.
  */
 @ApiTags('payments')
 @SkipThrottle()

@@ -103,6 +103,44 @@ export interface DomainEventPayloads {
     /** Integer paise; equals the payment. */
     total: number;
   };
+  /** An admin started a refund (M4.13); the gateway confirms it later with `refund.processed` or `refund.failed`. */
+  'refund.initiated': {
+    refundId: string;
+    paymentId: string;
+    orderId: string | null;
+    customerId: string | null;
+    /** Integer paise. */
+    amount: number;
+    actorId: string;
+  };
+  /** The gateway confirmed the refund (M4.13). The credit note and the customer's notification listen to this. */
+  'refund.processed': {
+    refundId: string;
+    paymentId: string;
+    orderId: string | null;
+    customerId: string | null;
+    amount: number;
+    /** The payment's status now: REFUNDED or PARTIALLY_REFUNDED (REFUND_INITIATED while another is in flight). */
+    paymentStatus: string;
+  };
+  /** The gateway refused or failed the refund (M4.13); the payment is back where it was. */
+  'refund.failed': {
+    refundId: string;
+    paymentId: string;
+    orderId: string | null;
+    customerId: string | null;
+    amount: number;
+    reason: string | null;
+  };
+  /** A credit note was issued for a processed refund (M4.13); its PDF listens to this. */
+  'credit_note.issued': {
+    creditNoteId: string;
+    number: string;
+    refundId: string;
+    customerId: string;
+    /** Integer paise; equals the refund. */
+    total: number;
+  };
   /**
    * A PDF was rendered and stored (M3.22): `kind` is the registered document kind (`invoice`, `certificate`…),
    * `id` its record, `fileKey` the `StorageService` key now saved on that record.

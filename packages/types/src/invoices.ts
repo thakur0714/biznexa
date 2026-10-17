@@ -261,6 +261,106 @@ function splitShare(total: number, weights: number[]): number[] {
   return parts;
 }
 
+// ---------------------------------------------------------------------------------------------------------
+// Credit notes (M4.13, D53): a processed refund reverses (part of) the refunded payment's invoice.
+
+/** Credit notes have their own series: `CN/2627/000001` (14 characters, within GST rule 46's 16). */
+export const CREDIT_NOTE_PREFIX = 'CN';
+export const CREDIT_NOTE_NUMBER_PATTERN = /^CN\/\d{4}\/\d{6}$/;
+
+/** `CN/2627/000045`, the 45th credit note of FY 2026-27. Restarts at 1 every 1 April (IST), like invoices. */
+export function formatCreditNoteNumber(fy: string, sequence: number): string {
+  return formatInvoiceNumber(CREDIT_NOTE_PREFIX, fy, sequence);
+}
+
+type Credit = { professionalFee: number; discount: number; taxableValue: number; cgst: number; sgst: number; igst: number; total: number };
+
+/**
+ * What a refund of `amount` paise credits, line by line, against `invoice` (the refunded payment's invoice
+ * lines). `previous` are the lines of that invoice's earlier credit notes.
+ *
+ * - Refunding everything not yet credited takes exactly what is left of every line, so an invoice's credit
+ *   notes never add up to more (or less) than the invoice, to the paisa.
+ * - A smaller refund takes the **professional fee + GST first** (a share of each service line in proportion to
+ *   what is left of it) and government fees only with what remains, as those are usually already paid out to
+ *   the government (the reverse of D48's advance); the GST in a service line's share is worked back out at its rate, split
+ *   CGST/SGST as the invoice was (or IGST), and the discount follows the taxable value.
+ *
+ * Throws when the refund is more than is left to credit.
+ */
+export function creditNoteLines(invoice: InvoiceLine[], previous: InvoiceLine[], amount: number, taxType: InvoiceTaxType): InvoiceAmounts {
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error(`Not a refund amount: ${amount}`);
+  const key = (l: InvoiceLine) => `${l.kind}:${l.orderItemId}`;
+  const left: Credit[] = invoice.map((l) => {
+    const before = previous.filter((p) => key(p) === key(l));
+    const sum = (k: keyof Credit) => before.reduce((a, p) => a + (p.kind === 'SERVICE' ? p[k] : k === 'total' ? p.total : 0), 0);
+    const rest: Credit =
+      l.kind === 'SERVICE'
+        ? {
+            professionalFee: l.professionalFee - sum('professionalFee'),
+            discount: l.discount - sum('discount'),
+            taxableValue: l.taxableValue - sum('taxableValue'),
+            cgst: l.cgst - sum('cgst'),
+            sgst: l.sgst - sum('sgst'),
+            igst: l.igst - sum('igst'),
+            total: l.total - sum('total'),
+          }
+        : { professionalFee: 0, discount: 0, taxableValue: 0, cgst: 0, sgst: 0, igst: 0, total: l.total - sum('total') };
+    if (Object.values(rest).some((v) => v < 0)) throw new Error(`Invoice line ${key(l)} is credited beyond its amount`);
+    return rest;
+  });
+  const owed = left.reduce((a, r) => a + r.total, 0);
+  if (amount > owed) throw new Error(`Refund of ${amount} paise is more than the ${owed} paise left to credit`);
+
+  let parts = left;
+  if (amount < owed) {
+    // Professional fee + GST first, government fees only once that is used up: they are usually already paid out.
+    const isService = invoice.map((l) => l.kind === 'SERVICE');
+    const serviceLeft = left.reduce((a, r, i) => a + (isService[i] ? r.total : 0), 0);
+    const fromService = splitShare(Math.min(amount, serviceLeft), left.map((r, i) => (isService[i] ? r.total : 0)));
+    const fromGovt = splitShare(amount - Math.min(amount, serviceLeft), left.map((r, i) => (isService[i] ? 0 : r.total)));
+    const shares = fromService.map((s, i) => s + fromGovt[i]);
+    parts = left.map((r, i) => {
+      const g = shares[i];
+      const line = invoice[i];
+      if (line.kind === 'GOVERNMENT_FEE') return { ...r, total: g };
+      const leftTax = r.cgst + r.sgst + r.igst;
+      // The share's GST at the line's rate, kept within what is left of both the tax and the taxable value.
+      const tax = Math.min(leftTax, Math.max(taxIn(g, line.gstRate), g - r.taxableValue));
+      const taxableValue = g - tax;
+      const discount = r.taxableValue > 0 ? Math.min(r.discount, Math.round((r.discount * taxableValue) / r.taxableValue)) : 0;
+      // Halves that keep what is left of CGST and SGST within a paisa of each other, so later credit notes
+      // (and the last one, which takes the rest) split evenly too: an odd paisa goes to the half that has more left.
+      const odd = tax % 2 === 0 ? 0 : r.cgst > r.sgst ? 1 : -1;
+      const cgst = taxType === 'CGST_SGST' ? Math.min(r.cgst, Math.max((tax + odd) / 2, tax - r.sgst)) : 0;
+      const sgst = taxType === 'CGST_SGST' ? tax - cgst : 0;
+      return { professionalFee: taxableValue + discount, discount, taxableValue, cgst, sgst, igst: taxType === 'IGST' ? tax : 0, total: g };
+    });
+  }
+
+  const lines: InvoiceLine[] = [];
+  for (const [i, p] of parts.entries()) {
+    const l = invoice[i];
+    if (!p.total && !p.professionalFee) continue;
+    lines.push(l.kind === 'SERVICE' ? { ...l, ...pick(p), total: p.total } : { ...l, total: p.total });
+  }
+  const sum = (k: 'professionalFee' | 'discount' | 'taxableValue' | 'cgst' | 'sgst' | 'igst') =>
+    lines.reduce((a, l) => a + (l.kind === 'SERVICE' ? l[k] : 0), 0);
+  const result: InvoiceAmounts = {
+    lines,
+    professionalFee: sum('professionalFee'),
+    discount: sum('discount'),
+    taxableValue: sum('taxableValue'),
+    cgst: sum('cgst'),
+    sgst: sum('sgst'),
+    igst: sum('igst'),
+    govtFees: lines.reduce((a, l) => a + (l.kind === 'GOVERNMENT_FEE' ? l.total : 0), 0),
+    total: lines.reduce((a, l) => a + l.total, 0),
+  };
+  if (result.total !== amount) throw new Error(`Credit note lines add up to ${result.total} paise, not the ${amount} refunded`);
+  return result;
+}
+
 /** The seller as printed on the invoice: copied from Settings (M3.14) when it is issued, as they can change later. */
 export interface InvoiceSeller {
   name: string | null;
