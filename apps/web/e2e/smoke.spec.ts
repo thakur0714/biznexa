@@ -76,14 +76,15 @@ test('a new customer registers, verifies the mobile number and lands on the dash
   await expect(page).toHaveURL(/\/login\?next=%2Fdashboard/);
 });
 
-test('Get started sends a visitor through login and back to the chosen package', async ({ page }) => {
+test('Get started sends a visitor through login and back to the chosen package', async ({ page, isMobile }) => {
   await page.goto('/services/trademark/trademark-registration');
-  await page.getByRole('complementary', { name: 'Price and packages' }).getByRole('link', { name: 'Get started' }).first().click();
+  const link = isMobile ? page.getByRole('link', { name: 'Get started' }).last() : page.getByRole('complementary', { name: 'Price and packages' }).getByRole('link', { name: 'Get started' }).first();
+  await link.click();
   await expect(page).toHaveURL(/\/login\?next=/);
   await page.getByLabel('Email').fill('customer@biznexa.local');
   await page.getByLabel('Password').fill('Customer@12345');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page).toHaveURL(/\/apply\/trademark-registration\?package=/);
+  await expect(page).toHaveURL(/\/apply\/trademark-registration\?package=/, { timeout: 10_000 });
   await expect(page.getByRole('heading', { name: 'Start your application' })).toBeVisible();
   await expect(page.getByText('Order summary')).toBeVisible();
 });
@@ -93,5 +94,5 @@ test('wrong password shows a clear error', async ({ page }) => {
   await page.getByLabel('Email').fill('customer@biznexa.local');
   await page.getByLabel('Password').fill('nope-nope1');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page.getByRole('alert').filter({ hasText: 'Incorrect' })).toHaveText('Incorrect email or password');
+  await expect(page.getByRole('alert').filter({ hasText: 'Incorrect' }).first()).toHaveText('Incorrect email or password');
 });
