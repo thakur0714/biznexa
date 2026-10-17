@@ -128,3 +128,33 @@ describe('invoice template (M3.23)', () => {
     expect(gstStateCode('Atlantis')).toBeNull();
   });
 });
+
+describe('credit note template (M4.13)', () => {
+  const note: InvoicePrint = {
+    ...intra,
+    number: 'CN/2627/000007',
+    issuedAt: new Date('2026-10-17T06:30:00Z'),
+    creditNote: { invoiceNumber: 'BN/2627/000123', invoiceDate: new Date('2026-10-11T06:30:00Z'), reason: 'Service <cancelled>' },
+  };
+
+  it('is titled Credit Note and refers to the original invoice, the refund and its reason', () => {
+    const t = text(note);
+    expect(t).toContain('Credit Note');
+    expect(t).not.toContain('Tax Invoice');
+    expect(t).toContain('Credit note no.');
+    expect(t).toContain('CN/2627/000007');
+    expect(t).toContain('Against invoice');
+    expect(t).toContain('BN/2627/000123');
+    expect(t).toContain('refunded');
+    expect(t).toContain('Total credited');
+    expect(t).toContain('computer-generated credit note');
+    expect(invoiceHtml(note)).toContain('Reason: Service &lt;cancelled&gt;');
+  });
+
+  it('leaves invoices as they were', () => {
+    const t = text(intra);
+    expect(t).toContain('Invoice no.');
+    expect(t).not.toContain('Against invoice');
+    expect(t).not.toContain('Total credited');
+  });
+});

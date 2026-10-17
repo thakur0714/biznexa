@@ -7,6 +7,7 @@ import { EventBus } from '../events/event-bus';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
 import { type GatewayPayment, type GatewayWebhookEvent, PaymentGateway, PaymentGatewayError } from './payment-gateway';
+import { type RefundOutcome, RefundsService } from './refunds.service';
 
 /**
  * What a webhook did, stored on its `PaymentWebhookEvent` row:
@@ -17,10 +18,10 @@ import { type GatewayPayment, type GatewayWebhookEvent, PaymentGateway, PaymentG
  * a second time or for an order that can't take it; `overpaid` — it would take the order past its total
  * (e.g. the full amount after the advance was paid in another window). These three need a refund.
  */
-type Outcome = 'applied' | 'duplicate' | 'ignored' | 'stale' | 'unknown_order' | 'amount_mismatch' | 'extra_capture' | 'order_not_pending' | 'overpaid';
+type Outcome = 'applied' | 'duplicate' | 'ignored' | 'stale' | 'unknown_order' | 'amount_mismatch' | 'extra_capture' | 'order_not_pending' | 'overpaid' | RefundOutcome;
 
 /** Logged as errors: someone has to look at these (refund, reconcile). */
-const NEEDS_ATTENTION = new Set<Outcome>(['unknown_order', 'amount_mismatch', 'extra_capture', 'order_not_pending', 'overpaid']);
+const NEEDS_ATTENTION = new Set<Outcome>(['unknown_order', 'amount_mismatch', 'extra_capture', 'order_not_pending', 'overpaid', 'unknown_refund', 'processed_after_failure']);
 const SUCCEEDED = new Set<string>(['SUCCESS', 'REFUND_INITIATED', 'REFUNDED', 'PARTIALLY_REFUNDED']);
 
 type Emit = { [K in DomainEventName]: [K, DomainEventPayloads[K]] }[DomainEventName];
@@ -63,6 +64,7 @@ interface Receipt {
  * Part payments (M3.19): an advance makes the order PARTIALLY_PAID and does everything else above; the
  * balance then makes it PAID and only adds to `amountPaid` (audit `order.balance_received`).
  * `payment.failed` → Payment FAILED (order stays PAYMENT_PENDING for another try); `payment.failed`.
+ * `refund.processed` / `refund.failed` → `RefundsService.applyWebhook` (M4.13), in the same transaction.
  * Any signed event answers 200 so the gateway stops retrying; problems are kept on the event row and logged.
  */
 @Injectable()
@@ -75,6 +77,7 @@ export class PaymentWebhookService {
     private readonly documents: ApplicationDocumentsService,
     private readonly audit: AuditService,
     private readonly events: EventBus,
+    private readonly refunds: RefundsService,
   ) {}
 
   async handle(rawBody: Buffer | undefined, headers: IncomingHttpHeaders): Promise<{ outcome: Outcome }> {
@@ -96,7 +99,9 @@ export class PaymentWebhookService {
     const received = event;
     const result = await this.prisma.$transaction((tx) => this.apply(tx, received));
     if (NEEDS_ATTENTION.has(result.outcome)) {
-      this.log.error(`Webhook ${event.id} (${event.type}, gateway payment ${event.payment?.id ?? '-'}, payment ${result.paymentId ?? '-'}): ${result.outcome}`);
+      this.log.error(
+        `Webhook ${event.id} (${event.type}, gateway payment ${event.payment?.id ?? event.refund?.paymentId ?? '-'}${event.refund ? `, gateway refund ${event.refund.id}` : ''}, payment ${result.paymentId ?? '-'}): ${result.outcome}`,
+      );
     }
     for (const [name, payload] of result.events) await this.events.emit(name, payload as never);
     return { outcome: result.outcome };
@@ -105,12 +110,12 @@ export class PaymentWebhookService {
   private async apply(tx: Prisma.TransactionClient, event: GatewayWebhookEvent): Promise<Result> {
     const key = { gateway: this.gateway.name, eventId: event.id };
     const claimed = await tx.paymentWebhookEvent.createMany({
-      data: [{ ...key, event: event.type, gatewayPaymentId: event.payment?.id ?? null, payload: event.body as Prisma.InputJsonValue }],
+      data: [{ ...key, event: event.type, gatewayPaymentId: event.payment?.id ?? event.refund?.paymentId ?? null, payload: event.body as Prisma.InputJsonValue }],
       skipDuplicates: true,
     });
     if (claimed.count === 0) return { outcome: 'duplicate', events: [] };
 
-    const result = await this.applyToPayment(tx, event);
+    const result = event.type.startsWith('refund.') ? await this.refunds.applyWebhook(tx, event) : await this.applyToPayment(tx, event);
     await tx.paymentWebhookEvent.update({ where: { gateway_eventId: key }, data: { outcome: result.outcome, paymentId: result.paymentId ?? null } });
     return result;
   }

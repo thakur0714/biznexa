@@ -142,6 +142,16 @@ describe('RazorpayGateway', () => {
       id: 'evt_2',
       type: 'refund.processed',
       payment: null,
+      refund: null,
+    });
+    const refund = JSON.stringify({
+      event: 'refund.failed',
+      payload: { refund: { entity: { id: 'rfnd_2', entity: 'refund', payment_id: 'pay_456', amount: 5000, status: 'failed', receipt: 'our-refund-id', notes: [] } } },
+    });
+    expect(g.readWebhook(Buffer.from(refund), { 'x-razorpay-signature': sign('hook-secret', refund) })).toMatchObject({
+      id: 'refund.failed:rfnd_2',
+      payment: null,
+      refund: { id: 'rfnd_2', paymentId: 'pay_456', amount: 5000, status: 'failed', receipt: 'our-refund-id', notes: {}, failureReason: null },
     });
     for (const bad of ['not json', '{"payload":{}}']) {
       expect(() => g.readWebhook(Buffer.from(bad), { 'x-razorpay-signature': sign('hook-secret', bad) })).toThrow(PaymentGatewayError);
@@ -180,7 +190,7 @@ describe('RazorpayGateway', () => {
       body: { id: 'rfnd_1', entity: 'refund', payment_id: 'pay_456', amount: (req.body as { amount?: number }).amount ?? 118000, status: 'processed' },
     }));
     expect(await g.refund({ paymentId: 'pay_456', amount: 50000, receipt: 'refund-1', notes: { reason: 'Service cancelled' } })).toEqual({
-      id: 'rfnd_1', paymentId: 'pay_456', amount: 50000, status: 'processed',
+      id: 'rfnd_1', paymentId: 'pay_456', amount: 50000, status: 'processed', receipt: null, notes: {}, failureReason: null,
     });
     expect(await g.refund({ paymentId: 'pay_456' })).toMatchObject({ amount: 118000 });
     expect(fake!.requests.map((r) => [r.url, r.body])).toEqual([
@@ -242,7 +252,7 @@ describe('MockPaymentGateway', () => {
   it('refunds partly, then the rest, and refuses more than was captured', async () => {
     const g = new MockPaymentGateway();
     const { paymentId } = g.pay((await g.createOrder({ amount: 10000, receipt: 'pay-3' })).id);
-    expect(await g.refund({ paymentId, amount: 4000 })).toMatchObject({ amount: 4000, status: 'processed' });
+    expect(await g.refund({ paymentId, amount: 4000 })).toMatchObject({ amount: 4000, status: 'pending' });
     expect(await g.fetchPayment(paymentId)).toMatchObject({ status: 'captured', amountRefunded: 4000 });
     await expect(g.refund({ paymentId, amount: 6001 })).rejects.toMatchObject({ retryable: false, status: 400 });
     expect(await g.refund({ paymentId })).toMatchObject({ amount: 6000 });

@@ -32,7 +32,7 @@ export class MockPaymentGateway extends PaymentGateway {
 
   readonly orders = new Map<string, GatewayOrder & { notes: Record<string, string> }>();
   readonly payments = new Map<string, GatewayPayment>();
-  readonly refunds = new Map<string, GatewayRefund & { receipt?: string }>();
+  readonly refunds = new Map<string, GatewayRefund>();
   /** Makes the next gateway call throw this error (e.g. to test retries). */
   failNextCall: PaymentGatewayError | null = null;
 
@@ -75,9 +75,10 @@ export class MockPaymentGateway extends PaymentGateway {
       throw new PaymentGatewayError('The refund amount provided is greater than amount captured', false, 400, 'BAD_REQUEST_ERROR');
     payment.amountRefunded += amount;
     if (payment.amountRefunded === payment.amount) payment.status = 'refunded';
-    const refund = { id: id('rfnd'), paymentId: payment.id, amount, status: 'processed' as const, receipt: input.receipt };
+    // Like Razorpay's normal-speed refunds: pending now, `refund.processed` / `refund.failed` arrives later.
+    const refund: GatewayRefund = { id: id('rfnd'), paymentId: payment.id, amount, status: 'pending', receipt: input.receipt ?? null, notes: input.notes ?? {}, failureReason: null };
     this.refunds.set(refund.id, refund);
-    return { id: refund.id, paymentId: refund.paymentId, amount, status: refund.status };
+    return { ...refund };
   }
 
   /** The customer completes checkout: a captured payment and what the browser callback receives. */
@@ -121,6 +122,41 @@ export class MockPaymentGateway extends PaymentGateway {
       created_at: Math.floor(payment.createdAt.getTime() / 1000),
     };
     const body = JSON.stringify({ entity: 'event', account_id: 'acc_mock', event, contains: ['payment'], payload: { payment: { entity } }, created_at: Math.floor(Date.now() / 1000) });
+    return { body, headers: { 'content-type': 'application/json', 'x-razorpay-signature': this.signWebhook(body), 'x-razorpay-event-id': eventId } };
+  }
+
+  /**
+   * The `refund.processed` / `refund.failed` webhook Razorpay would send about `refund` (from `refund()`),
+   * signed, with the refund and its payment in the payload. Pass the same `eventId` to play a redelivery.
+   */
+  refundWebhook(event: 'refund.processed' | 'refund.failed', refund: GatewayRefund, eventId = `evt_mock${randomUUID().replace(/-/g, '').slice(0, 14)}`) {
+    const status = event === 'refund.processed' ? 'processed' : 'failed';
+    const stored = this.refunds.get(refund.id);
+    if (stored) {
+      stored.status = status;
+      // A failed refund gives the money back to what can be refunded.
+      const payment = this.payments.get(refund.paymentId);
+      if (status === 'failed' && payment) {
+        payment.amountRefunded -= refund.amount;
+        payment.status = 'captured';
+      }
+    }
+    const entity = {
+      id: refund.id,
+      entity: 'refund',
+      amount: refund.amount,
+      currency: 'INR',
+      payment_id: refund.paymentId,
+      notes: refund.notes && Object.keys(refund.notes).length ? refund.notes : [],
+      receipt: refund.receipt ?? null,
+      status,
+      speed_processed: 'normal',
+      created_at: Math.floor(Date.now() / 1000),
+    };
+    const payment = this.payments.get(refund.paymentId);
+    const payload: Record<string, unknown> = { refund: { entity } };
+    if (payment) payload.payment = { entity: { id: payment.id, entity: 'payment', amount: payment.amount, currency: payment.currency, status: payment.status, order_id: payment.orderId, amount_refunded: payment.amountRefunded } };
+    const body = JSON.stringify({ entity: 'event', account_id: 'acc_mock', event, contains: Object.keys(payload), payload, created_at: Math.floor(Date.now() / 1000) });
     return { body, headers: { 'content-type': 'application/json', 'x-razorpay-signature': this.signWebhook(body), 'x-razorpay-event-id': eventId } };
   }
 

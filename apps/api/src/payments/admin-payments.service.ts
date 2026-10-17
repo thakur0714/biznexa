@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import type { AdminPaymentDetail, AdminPaymentListQuery } from '@biznexa/types';
+import { refundableAmount, REFUNDABLE_PAYMENT_STATUSES, type AdminPaymentDetail, type AdminPaymentListQuery } from '@biznexa/types';
+import { refundSelect, toRefundView } from './refunds.service';
 
 function escapeCsvCell(val: string | number | null | undefined): string {
   if (val == null) return '""';
@@ -129,10 +130,7 @@ export class AdminPaymentsService {
             applications: { take: 1, orderBy: { createdAt: 'asc' }, select: { code: true } },
           },
         },
-        refunds: {
-          orderBy: { createdAt: 'desc' },
-          select: { id: true, amount: true, reason: true, status: true, createdAt: true },
-        },
+        refunds: { orderBy: { createdAt: 'desc' }, select: refundSelect },
         invoice: { select: { id: true, number: true, issuedAt: true } },
       },
     });
@@ -155,13 +153,8 @@ export class AdminPaymentsService {
       customerName: p.order?.customer.name ?? null,
       customerEmail: p.order?.customer.email ?? null,
       customerMobile: p.order?.customer.mobile ?? null,
-      refunds: p.refunds.map((r) => ({
-        id: r.id,
-        amount: r.amount,
-        reason: r.reason,
-        status: r.status,
-        createdAt: r.createdAt.toISOString(),
-      })),
+      refundable: REFUNDABLE_PAYMENT_STATUSES.includes(p.status) ? refundableAmount(p.amount, p.refunds) : 0,
+      refunds: p.refunds.map(toRefundView),
       invoice: p.invoice
         ? {
             id: p.invoice.id,
