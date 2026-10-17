@@ -6,7 +6,7 @@ const consultant = {
   id: '11111111-1111-4111-8111-111111111111', slug: 'asha-rao', name: 'Asha Rao', category: 'CA' as const,
   qualification: 'Chartered Accountant', city: 'Pune', state: 'Maharashtra', area: 'Kothrud', expertise: ['GST', 'Tax'],
   languages: ['English', 'Hindi'], bio: null, photoUrl: null, feePerSession: 120000, sessionMinutes: 30,
-  consultationTypes: ['VIDEO' as const], rating: 4.8, reviewCount: 12, isOnline: true, availableToday: true, isFeatured: false,
+  consultationTypes: ['VIDEO' as const], rating: 4.8, reviewCount: 12, isOnline: true, availableToday: true,
 };
 
 describe('ConsultantCard', () => {
