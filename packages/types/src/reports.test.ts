@@ -7,6 +7,8 @@ import {
   normalizeReportPreset,
   presetDateRange,
   resolveReportDateRange,
+  reportExportRequestSchema,
+  reportExportJobSchema,
 } from './reports';
 
 describe('Reports Date & IST Boundary Helpers', () => {
@@ -128,4 +130,165 @@ describe('Reports Date & IST Boundary Helpers', () => {
       expect(res.to.toISOString()).toBe('2026-10-17T18:29:59.999Z');
     });
   });
+
+  describe('Services Report Schema', () => {
+    it('validates a complete ReportServicesResponse object', async () => {
+      const { reportServicesResponseSchema } = await import('./reports');
+      const valid = {
+        range: {
+          from: '2026-10-10T18:30:00.000Z',
+          to: '2026-10-17T18:29:59.999Z',
+          preset: 'last 7 days',
+        },
+        summary: {
+          totalOrders: 10,
+          totalRevenue: 5000000,
+          avgTurnaroundDays: 2.5,
+          totalSlaBreaches: 1,
+        },
+        popularServices: [
+          {
+            serviceId: 'svc-1',
+            serviceName: 'Private Limited',
+            categoryName: 'Startup',
+            orders: 10,
+            revenue: 5000000,
+            avgTurnaroundDays: 2.5,
+            slaBreaches: 1,
+          },
+        ],
+        applicationsByStatus: [
+          {
+            status: 'COMPLETED',
+            label: 'Completed',
+            count: 8,
+          },
+          {
+            status: 'IN_PROGRESS',
+            label: 'In Progress',
+            count: 2,
+          },
+        ],
+        slaBreaches: [
+          {
+            serviceId: 'svc-1',
+            serviceName: 'Private Limited',
+            categoryName: 'Startup',
+            breachCount: 1,
+          },
+        ],
+      };
+
+      const parsed = reportServicesResponseSchema.safeParse(valid);
+      expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('Consultants Report Schema', () => {
+    it('validates a complete ReportConsultantsResponse object', async () => {
+      const { reportConsultantsResponseSchema } = await import('./reports');
+      const valid = {
+        range: {
+          from: '2026-10-10T18:30:00.000Z',
+          to: '2026-10-17T18:29:59.999Z',
+          preset: 'last 7 days',
+        },
+        summary: {
+          total: 10,
+          active: 8,
+          bookingsCount: 25,
+          bookingRevenue: 12500000,
+          averageRating: 4.8,
+        },
+        byVerificationStatus: [
+          { status: 'APPROVED', label: 'Approved', count: 8 },
+          { status: 'PENDING', label: 'Pending Review', count: 2 },
+        ],
+        consultants: [
+          {
+            consultantId: 'c-1',
+            name: 'Priya Sharma',
+            slug: 'priya-sharma',
+            category: 'CA',
+            verificationStatus: 'APPROVED',
+            rating: 4.9,
+            reviewCount: 15,
+            bookingsCount: 20,
+            bookingRevenue: 10000000,
+          },
+        ],
+      };
+
+      const parsed = reportConsultantsResponseSchema.safeParse(valid);
+      expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('Support Report Schema', () => {
+    it('validates a complete ReportSupportResponse object', async () => {
+      const { reportSupportResponseSchema } = await import('./reports');
+      const valid = {
+        range: {
+          from: '2026-10-10T18:30:00.000Z',
+          to: '2026-10-17T18:29:59.999Z',
+          preset: 'last 7 days',
+        },
+        summary: {
+          totalTickets: 15,
+          openTickets: 5,
+          resolvedTickets: 10,
+          avgFirstResponseHours: 1.5,
+          avgResolutionHours: 12.0,
+        },
+        byStatus: [
+          { status: 'OPEN', label: 'Open', count: 2 },
+          { status: 'IN_PROGRESS', label: 'In Progress', count: 3 },
+          { status: 'RESOLVED', label: 'Resolved', count: 8 },
+          { status: 'CLOSED', label: 'Closed', count: 2 },
+        ],
+        recentTickets: [
+          {
+            id: 't-1',
+            code: 'TICK-101',
+            subject: 'Issue with GST application',
+            status: 'RESOLVED',
+            priority: 'HIGH',
+            customerName: 'Rahul Verma',
+            assignedToName: 'Support Agent 1',
+            createdAt: '2026-10-12T10:00:00.000Z',
+            firstResponseAt: '2026-10-12T11:30:00.000Z',
+            resolvedAt: '2026-10-12T22:00:00.000Z',
+            firstResponseHours: 1.5,
+            resolutionHours: 12.0,
+          },
+        ],
+      };
+
+      const parsed = reportSupportResponseSchema.safeParse(valid);
+      expect(parsed.success).toBe(true);
+    });
+
+    it('validates reportExportRequestSchema and reportExportJobSchema', () => {
+      const validReq = {
+        type: 'sales',
+        preset: 'today',
+      };
+      expect(reportExportRequestSchema.safeParse(validReq).success).toBe(true);
+
+      const invalidReq = {
+        type: 'unknown-type',
+      };
+      expect(reportExportRequestSchema.safeParse(invalidReq).success).toBe(false);
+
+      const validJob = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        type: 'consultants',
+        status: 'PENDING',
+        createdAt: '2026-10-17T12:00:00.000Z',
+      };
+      expect(reportExportJobSchema.safeParse(validJob).success).toBe(true);
+    });
+  });
 });
+
+
