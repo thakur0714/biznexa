@@ -56,4 +56,12 @@ describe('ConsultantProfileEditor', () => {
     expect(await screen.findByText('Fee change awaiting approval')).toBeTruthy();
     expect((screen.getByLabelText('Fee per session (₹)') as HTMLInputElement).disabled).toBe(true);
   });
+
+  it('shows the verified identity fields as read-only with support guidance', async () => {
+    render(<ConsultantProfileEditor />);
+    expect(await screen.findByText('Contact support to change your category, qualification or membership number.')).toBeTruthy();
+    expect((screen.getByLabelText('Category') as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Qualification') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText('Professional membership number') as HTMLInputElement).disabled).toBe(true);
+  });
 });

@@ -233,6 +233,13 @@ export class ConsultantsService {
       const before = await tx.consultant.findFirst({ where: { userId, verificationStatus: 'APPROVED' } });
       if (!before) throw new ForbiddenException('Only an approved consultant can edit their profile');
       await tx.$queryRaw`SELECT id FROM "Consultant" WHERE id = ${before.id} FOR UPDATE`;
+      if (
+        input.category !== before.category
+        || input.qualification !== before.qualification
+        || (input.membershipNo ?? null) !== before.membershipNo
+      ) {
+        throw new ConflictException('Contact support to change your category, qualification or membership number.');
+      }
       const pending = await tx.consultantFeeChangeRequest.findFirst({ where: { consultantId: before.id, status: 'PENDING' }, select: { id: true } });
       if (pending && input.feePerSession !== before.feePerSession) {
         throw new ConflictException('Your fee change is awaiting admin review. You can still save other profile changes.');

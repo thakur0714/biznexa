@@ -148,6 +148,23 @@ describe('consultant portal profile and fee approval (M8.7)', () => {
 
     const current = (await http.get(profileUrl).set(as(consultant.token)).expect(200)).body;
     expect(current).toMatchObject({ id: consultant.id, feePerSession: 50_000, pendingFeeRequest: null });
+    const rejectedFields = [
+      { category: 'CS' },
+      { qualification: 'CPA' },
+      { membershipNo: 'NEW-MEMBERSHIP-1' },
+    ];
+    const consultantInput = {
+      category: current.category, qualification: current.qualification, membershipNo: current.membershipNo,
+      experienceYears: current.experienceYears, expertise: current.expertise, languages: current.languages,
+      city: current.city, state: current.state, area: current.area, bio: current.bio,
+      feePerSession: current.feePerSession, consultationTypes: current.consultationTypes,
+    };
+    for (const changedField of rejectedFields) {
+      const response = await http.put(profileUrl).set(as(consultant.token)).send({ ...consultantInput, ...changedField }).expect(409);
+      expect(response.body.message).toBe('Contact support to change your category, qualification or membership number.');
+    }
+    const unchanged = (await http.get(profileUrl).set(as(consultant.token)).expect(200)).body;
+    expect(unchanged).toMatchObject({ category: current.category, qualification: current.qualification, membershipNo: current.membershipNo, city: current.city });
     const updated = (await http.put(profileUrl).set(as(consultant.token)).send({
       category: current.category, qualification: current.qualification, membershipNo: current.membershipNo,
       experienceYears: current.experienceYears, expertise: ['GST', 'Audit'], languages: current.languages,
@@ -175,6 +192,14 @@ describe('consultant portal profile and fee approval (M8.7)', () => {
     const detail = (await http.get(`/api/admin/consultants/${consultant.id}`).set(as(admin.token)).expect(200)).body;
     expect(detail.feeChangeRequests.map((request: { status: string }) => request.status)).toEqual(['REJECTED', 'APPROVED']);
     await prisma.consultant.update({ where: { id: consultant.id }, data: { feePerSession: 50_000 } });
+
+    const adminEdit = (await http.patch(`/api/admin/consultants/${consultant.id}/profile`).set(as(admin.token)).send({
+      category: 'CS', qualification: 'CPA', membershipNo: 'ADMIN-UPDATED',
+      experienceYears: detail.experienceYears, expertise: detail.expertise, languages: detail.languages,
+      city: detail.city, state: detail.state, area: detail.area, bio: detail.bio,
+      feePerSession: 50_000, consultationTypes: detail.consultationTypes,
+    }).expect(200)).body;
+    expect(adminEdit).toMatchObject({ category: 'CS', qualification: 'CPA', membershipNo: 'ADMIN-UPDATED' });
   });
 });
 
