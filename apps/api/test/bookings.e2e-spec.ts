@@ -119,6 +119,21 @@ describe('booking hold (M8.8)', () => {
     expect((await http.get('/api/bookings').set(as(alice.token)).expect(200)).body.items.map((b: { id: string }) => b.id)).toEqual([res.body.id]);
   });
 
+  it('confirms with a generated meeting link and serves an owner-only iCalendar file', async () => {
+    const alice = customers[0];
+    const held = (await book(alice, '09:00').expect(201)).body;
+    const pay = (await http.post(`/api/bookings/${held.id}/payment`).set(as(alice.token)).expect(200)).body;
+    const paid = gateway.pay(pay.gatewayOrderId);
+    await send(captured(paid.payment));
+    const confirmed = (await http.get(`/api/bookings/${held.id}`).set(as(alice.token)).expect(200)).body;
+    expect(confirmed.meetingLink).toMatch(/^https:\/\/meet\.jit\.si\/BizNexa-/);
+    const calendar = await http.get(`/api/bookings/${held.id}/calendar.ics`).set(as(alice.token)).expect(200);
+    expect(calendar.headers['content-type']).toContain('text/calendar');
+    expect(calendar.text).toContain(`UID:${held.id}@biznexa`);
+    expect(calendar.text).toContain(confirmed.meetingLink);
+    await http.get(`/api/bookings/${held.id}/calendar.ics`).set(as(customers[1].token)).expect(404);
+  });
+
   it('refuses slots that are not offered, types not offered, booking yourself, and anonymous callers', async () => {
     const [, bob] = customers;
     await book(bob, '09:10').expect(409); // off the slot grid

@@ -110,6 +110,24 @@ export class BookingsService {
     return toBookingView(row);
   }
 
+  async calendar(customerId: string, id: string): Promise<string> {
+    const row = await this.prisma.booking.findFirst({ where: { id, customerId, status: 'CONFIRMED' }, select: { code: true, startAt: true, endAt: true, meetingLink: true, consultant: { select: { user: { select: { name: true } } } } } });
+    if (!row) throw new NotFoundException('Booking not found');
+    const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const escape = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+    return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//BizNexa//Consultation//EN','BEGIN:VEVENT',`UID:${id}@biznexa`,`DTSTAMP:${stamp(new Date())}`,`DTSTART:${stamp(row.startAt)}`,`DTEND:${stamp(row.endAt)}`,`SUMMARY:${escape(`BizNexa consultation ${row.code}`)}`,`DESCRIPTION:${escape(`Consultation with ${row.consultant.user.name}${row.meetingLink ? `\\nJoin: ${row.meetingLink}` : ''}`)}`, ...(row.meetingLink ? [`URL:${row.meetingLink}`] : []),'END:VEVENT','END:VCALENDAR',''].join('\r\n');
+  }
+
+  async setMeetingLink(userId: string, id: string, meetingLink: string): Promise<BookingView> {
+    const row = await this.prisma.booking.findFirst({ where: { id, status: 'CONFIRMED', consultant: { userId } }, select: { id: true, meetingLink: true } });
+    if (!row) throw new NotFoundException('Booking not found');
+    await this.prisma.$transaction(async (tx) => {
+      await tx.booking.update({ where: { id }, data: { meetingLink } });
+      await this.audit.log({ actorId: userId, action: 'booking.meeting_link_updated', entityType: 'Booking', entityId: id, before: { meetingLink: row.meetingLink }, after: { meetingLink } }, tx);
+    });
+    return this.view(id);
+  }
+
   private async view(id: string): Promise<BookingView> {
     return toBookingView(await this.prisma.booking.findUniqueOrThrow({ where: { id }, select: bookingViewSelect }));
   }

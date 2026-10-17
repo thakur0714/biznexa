@@ -1,15 +1,18 @@
-import { Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   bookingCheckoutSchema,
   bookingListSchema,
+  bookingMeetingLinkSchema,
   bookingViewSchema,
   createBookingInputSchema,
   paymentCallbackInput,
   type CreateBookingInput,
+  type BookingMeetingLinkInput,
   type PaymentCallbackInput,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, PERMS, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { BookingPaymentsService } from '../payments/booking-payments.service';
 import { BookingsService } from './bookings.service';
@@ -43,6 +46,21 @@ export class BookingsController {
   @Get(':id')
   get(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() u: AuthUser) {
     return this.bookings.get(u.id, id);
+  }
+
+  @Get(':id/calendar.ics')
+  async calendar(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() u: AuthUser, @Res() res: Response) {
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="booking-${id}.ics"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(await this.bookings.calendar(u.id, id));
+  }
+
+  @RequirePermissions(PERMS.ADMIN_ACCESS)
+  @ApiZodResponse('BookingView', bookingViewSchema)
+  @Put(':id/meeting-link')
+  setMeetingLink(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(bookingMeetingLinkSchema) body: BookingMeetingLinkInput, @CurrentUser() u: AuthUser) {
+    return this.bookings.setMeetingLink(u.id, id, body.meetingLink);
   }
 
   /** Creates (or reuses) the payment and gateway order for the booking's fee while the hold lasts. */
