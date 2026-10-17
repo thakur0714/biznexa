@@ -61,7 +61,7 @@ jobs:
       - name: Build API, web and admin
         run: |
           pnpm --filter @biznexa/api build
-          (cd apps/api && NODE_ENV=development node dist/main.js &) && sleep 6
+          (cd apps/api && NODE_ENV=development E2E_DISABLE_THROTTLE=1 node dist/main.js &) && sleep 6
           pnpm --filter @biznexa/web build
           pnpm --filter @biznexa/admin build
       - name: Browser tests

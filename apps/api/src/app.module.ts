@@ -56,7 +56,10 @@ class HealthController {
     ThrottlerModule.forRoot({
       throttlers: [{ name: 'default', ttl: 60_000, limit: 120 }],
       // Automated tests make many auth calls from one IP; rate limits are covered by OTP rules and staging tests.
-      skipIf: () => process.env.NODE_ENV === 'test',
+      // E2E_DISABLE_THROTTLE lets the browser suite (API runs as development) do the same; never honoured in production.
+      skipIf: () =>
+        process.env.NODE_ENV === 'test' ||
+        (process.env.E2E_DISABLE_THROTTLE === '1' && process.env.NODE_ENV !== 'production'),
     }),
     ScheduleModule.forRoot(),
     PrismaModule,
