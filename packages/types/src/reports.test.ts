@@ -181,5 +181,46 @@ describe('Reports Date & IST Boundary Helpers', () => {
       expect(parsed.success).toBe(true);
     });
   });
+
+  describe('Consultants Report Schema', () => {
+    it('validates a complete ReportConsultantsResponse object', async () => {
+      const { reportConsultantsResponseSchema } = await import('./reports');
+      const valid = {
+        range: {
+          from: '2026-10-10T18:30:00.000Z',
+          to: '2026-10-17T18:29:59.999Z',
+          preset: 'last 7 days',
+        },
+        summary: {
+          total: 10,
+          active: 8,
+          bookingsCount: 25,
+          bookingRevenue: 12500000,
+          averageRating: 4.8,
+        },
+        byVerificationStatus: [
+          { status: 'APPROVED', label: 'Approved', count: 8 },
+          { status: 'PENDING', label: 'Pending Review', count: 2 },
+        ],
+        consultants: [
+          {
+            consultantId: 'c-1',
+            name: 'Priya Sharma',
+            slug: 'priya-sharma',
+            category: 'CA',
+            verificationStatus: 'APPROVED',
+            rating: 4.9,
+            reviewCount: 15,
+            bookingsCount: 20,
+            bookingRevenue: 10000000,
+          },
+        ],
+      };
+
+      const parsed = reportConsultantsResponseSchema.safeParse(valid);
+      expect(parsed.success).toBe(true);
+    });
+  });
 });
+
 

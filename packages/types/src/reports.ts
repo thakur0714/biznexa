@@ -316,3 +316,42 @@ export const reportServicesResponseSchema = z.object({
 });
 export type ReportServicesResponse = z.infer<typeof reportServicesResponseSchema>;
 
+export const reportConsultantItemSchema = z.object({
+  consultantId: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  category: z.string(),
+  verificationStatus: z.string(),
+  rating: z.number(),
+  reviewCount: z.number(),
+  bookingsCount: z.number(),
+  bookingRevenue: z.number(), // paise
+});
+export type ReportConsultantItem = z.infer<typeof reportConsultantItemSchema>;
+
+export const reportConsultantsStatusCountSchema = z.object({
+  status: z.string(),
+  label: z.string(),
+  count: z.number(),
+});
+export type ReportConsultantsStatusCount = z.infer<typeof reportConsultantsStatusCountSchema>;
+
+export const reportConsultantsResponseSchema = z.object({
+  range: z.object({
+    from: z.string(),
+    to: z.string(),
+    preset: z.string().optional(),
+  }),
+  summary: z.object({
+    total: z.number(),
+    active: z.number(),
+    bookingsCount: z.number(),
+    bookingRevenue: z.number(), // paise
+    averageRating: z.number(),
+  }),
+  byVerificationStatus: z.array(reportConsultantsStatusCountSchema),
+  consultants: z.array(reportConsultantItemSchema),
+});
+export type ReportConsultantsResponse = z.infer<typeof reportConsultantsResponseSchema>;
+
+

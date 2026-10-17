@@ -10,7 +10,9 @@ export function ReportsNav() {
     { label: 'Sales', href: '/reports/sales' },
     { label: 'Customers', href: '/reports/customers' },
     { label: 'Services', href: '/reports/services' },
+    { label: 'Consultants', href: '/reports/consultants' },
   ];
+
 
 
   return (

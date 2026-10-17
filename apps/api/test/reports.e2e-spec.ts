@@ -30,9 +30,12 @@ const redemptionIds: string[] = [];
 const paymentIds: string[] = [];
 const refundIds: string[] = [];
 const applicationIds: string[] = [];
+const consultantIds: string[] = [];
+const bookingIds: string[] = [];
 
 let testServiceId: string;
 let testCategoryId: string;
+let testConsultantId: string;
 
 beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -191,13 +194,73 @@ beforeAll(async () => {
     },
   });
   applicationIds.push(completedApp.id);
-});
 
+  // 9. Consultant user, consultant profile, booking, and payment
+  const consultantUser = await prisma.user.create({
+    data: {
+      name: `Consultant Rep ${runId}`,
+      email: `consultant-rep-${runId}@example.com`,
+      mobile: `8${randomInt(100000000, 999999999)}`,
+      passwordHash: 'dummy-hash',
+    },
+  });
+  userIds.push(consultantUser.id);
+
+  const consultant = await prisma.consultant.create({
+    data: {
+      userId: consultantUser.id,
+      slug: `report-consultant-${runId}`,
+      category: 'CA',
+      qualification: 'Chartered Accountant',
+      experienceYears: 10,
+      expertise: ['GST', 'Income Tax'],
+      languages: ['English', 'Hindi'],
+      city: 'Delhi',
+      state: 'Delhi',
+      feePerSession: 50000,
+      consultationTypes: ['VIDEO'],
+      verificationStatus: 'APPROVED',
+      rating: 4.8,
+      reviewCount: 1,
+    },
+  });
+  consultantIds.push(consultant.id);
+  testConsultantId = consultant.id;
+
+  const booking = await prisma.booking.create({
+    data: {
+      code: `BK-REP-${runId}`,
+      customerId,
+      consultantId: consultant.id,
+      type: 'VIDEO',
+      startAt: new Date(),
+      endAt: new Date(Date.now() + 1800 * 1000),
+      fee: 50000,
+      status: 'CONFIRMED',
+    },
+  });
+  bookingIds.push(booking.id);
+
+  const bookingPayment = await prisma.payment.create({
+    data: {
+      bookingId: booking.id,
+      amount: 50000,
+      status: 'SUCCESS',
+      paidAt: new Date(),
+      gateway: 'MOCK',
+      gatewayOrderId: `gw_b_ord_${runId}`,
+      gatewayPaymentId: `gw_b_pay_${runId}`,
+    },
+  });
+  paymentIds.push(bookingPayment.id);
+});
 
 afterAll(async () => {
   // Safe cleanup: delete strictly rows created by this test, in dependency order
   if (refundIds.length) await prisma.refund.deleteMany({ where: { id: { in: refundIds } } });
   if (paymentIds.length) await prisma.payment.deleteMany({ where: { id: { in: paymentIds } } });
+  if (bookingIds.length) await prisma.booking.deleteMany({ where: { id: { in: bookingIds } } });
+  if (consultantIds.length) await prisma.consultant.deleteMany({ where: { id: { in: consultantIds } } });
   if (redemptionIds.length) await prisma.couponRedemption.deleteMany({ where: { id: { in: redemptionIds } } });
   if (applicationIds.length) await prisma.application.deleteMany({ where: { id: { in: applicationIds } } });
   if (itemIds.length) await prisma.orderItem.deleteMany({ where: { id: { in: itemIds } } });
@@ -242,6 +305,11 @@ describe('Reports API Endpoints (M10)', () => {
     it('GET /api/admin/reports/services returns 403 for Operations and 200 for Admin', async () => {
       await http.get('/api/admin/reports/services').set(as(opsToken)).expect(403);
       await http.get('/api/admin/reports/services').set(as(adminToken)).expect(200);
+    });
+
+    it('GET /api/admin/reports/consultants returns 403 for Operations and 200 for Admin', async () => {
+      await http.get('/api/admin/reports/consultants').set(as(opsToken)).expect(403);
+      await http.get('/api/admin/reports/consultants').set(as(adminToken)).expect(200);
     });
   });
 
@@ -344,6 +412,31 @@ describe('Reports API Endpoints (M10)', () => {
           breachCount: 1,
         },
       ]);
+    });
+
+    it('Consultants Report returns accurate consultant metrics and scoped consultant breakdown', async () => {
+      const res = await http
+        .get('/api/admin/reports/consultants?preset=today')
+        .set(as(adminToken))
+        .expect(200);
+
+      expect(res.body.range).toBeDefined();
+      expect(res.body.summary.total).toBeGreaterThanOrEqual(1);
+      expect(res.body.summary.active).toBeGreaterThanOrEqual(1);
+      expect(res.body.summary.bookingsCount).toBeGreaterThanOrEqual(1);
+      expect(res.body.summary.bookingRevenue).toBeGreaterThanOrEqual(50000);
+      expect(res.body.summary.averageRating).toBeGreaterThanOrEqual(1);
+
+      const consultantEntry = res.body.consultants.find((c: any) => c.consultantId === testConsultantId);
+      expect(consultantEntry).toBeDefined();
+      expect(consultantEntry.name).toBe(`Consultant Rep ${runId}`);
+      expect(consultantEntry.slug).toBe(`report-consultant-${runId}`);
+      expect(consultantEntry.category).toBe('CA');
+      expect(consultantEntry.verificationStatus).toBe('APPROVED');
+      expect(consultantEntry.rating).toBe(4.8);
+      expect(consultantEntry.reviewCount).toBe(1);
+      expect(consultantEntry.bookingsCount).toBe(1);
+      expect(consultantEntry.bookingRevenue).toBe(50000);
     });
   });
 });

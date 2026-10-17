@@ -12688,6 +12688,73 @@
         ]
       }
     },
+    "/api/admin/reports/consultants": {
+      "get": {
+        "operationId": "ReportsController_getConsultants",
+        "parameters": [
+          {
+            "name": "preset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportConsultants"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · reports"
+        ]
+      }
+    },
     "/api/consultants": {
       "post": {
         "operationId": "ConsultantsController_apply",
@@ -30874,6 +30941,135 @@
           "popularServices",
           "applicationsByStatus",
           "slaBreaches"
+        ],
+        "additionalProperties": false
+      },
+      "ReportConsultants": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "preset": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number"
+              },
+              "active": {
+                "type": "number"
+              },
+              "bookingsCount": {
+                "type": "number"
+              },
+              "bookingRevenue": {
+                "type": "number"
+              },
+              "averageRating": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "total",
+              "active",
+              "bookingsCount",
+              "bookingRevenue",
+              "averageRating"
+            ],
+            "additionalProperties": false
+          },
+          "byVerificationStatus": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "status",
+                "label",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "consultants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "consultantId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string"
+                },
+                "verificationStatus": {
+                  "type": "string"
+                },
+                "rating": {
+                  "type": "number"
+                },
+                "reviewCount": {
+                  "type": "number"
+                },
+                "bookingsCount": {
+                  "type": "number"
+                },
+                "bookingRevenue": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "consultantId",
+                "name",
+                "slug",
+                "category",
+                "verificationStatus",
+                "rating",
+                "reviewCount",
+                "bookingsCount",
+                "bookingRevenue"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "range",
+          "summary",
+          "byVerificationStatus",
+          "consultants"
         ],
         "additionalProperties": false
       },

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  type ReportConsultantsResponse,
   type ReportCustomersResponse,
   type ReportDashboardResponse,
   type ReportDateRangeQuery,
@@ -27,6 +28,13 @@ const STATUS_LABELS: Record<string, string> = {
   COMPLETED: 'Completed',
   DELIVERED: 'Delivered',
   CANCELLED: 'Cancelled',
+};
+
+const VERIFICATION_LABELS: Record<string, string> = {
+  PENDING: 'Pending Review',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  SUSPENDED: 'Suspended',
 };
 
 @Injectable()
@@ -682,5 +690,116 @@ export class ReportsService {
       })),
     };
   }
+
+  /**
+   * Builds the Consultants report (M10.6): total, by verification status,
+   * active, bookings count and booking revenue (Booking + its SUCCESS payments),
+   * average rating. All sums and metrics computed in SQL.
+   */
+  async getConsultantsReport(query: ReportDateRangeQuery, now = new Date()): Promise<ReportConsultantsResponse> {
+    const { from, to, preset } = resolveReportDateRange(query, now);
+
+    const [total, active, statusCounts, avgRatingRows, consultantRows] = await Promise.all([
+      // 1. Total consultants
+      this.prisma.consultant.count(),
+
+      // 2. Active approved consultants with active user account
+      this.prisma.consultant.count({
+        where: {
+          verificationStatus: 'APPROVED',
+          user: { status: 'ACTIVE' },
+        },
+      }),
+
+      // 3. By verification status (SQL groupBy)
+      this.prisma.consultant.groupBy({
+        by: ['verificationStatus'],
+        _count: { _all: true },
+      }),
+
+      // 4. Overall average rating of approved consultants (computed in SQL)
+      this.prisma.$queryRaw<Array<{ avgRating: number | null }>>`
+        SELECT
+          COALESCE(ROUND(AVG(NULLIF(rating, 0))::numeric, 1), 0)::float AS "avgRating"
+        FROM "Consultant"
+        WHERE "verificationStatus" = 'APPROVED'
+      `,
+
+      // 5. Individual consultants breakdown: bookings count and booking revenue (Booking + SUCCESS payments) in range
+      this.prisma.$queryRaw<
+        Array<{
+          consultantId: string;
+          name: string;
+          slug: string;
+          category: string;
+          verificationStatus: string;
+          rating: number;
+          reviewCount: number;
+          bookingsCount: number;
+          bookingRevenue: bigint | number;
+        }>
+      >`
+        SELECT
+          c.id AS "consultantId",
+          u.name AS "name",
+          c.slug AS "slug",
+          c.category::text AS "category",
+          c."verificationStatus"::text AS "verificationStatus",
+          c.rating::float AS "rating",
+          c."reviewCount"::int AS "reviewCount",
+          COUNT(DISTINCT b.id)::int AS "bookingsCount",
+          COALESCE(SUM(p.amount), 0)::bigint AS "bookingRevenue"
+        FROM "Consultant" c
+        JOIN "User" u ON u.id = c."userId"
+        LEFT JOIN "Booking" b ON b."consultantId" = c.id
+          AND b."createdAt" >= ${from} AND b."createdAt" <= ${to}
+        LEFT JOIN "Payment" p ON p."bookingId" = b.id AND p.status = 'SUCCESS'
+        GROUP BY c.id, u.name, c.slug, c.category, c."verificationStatus", c.rating, c."reviewCount"
+        ORDER BY "bookingRevenue" DESC, "bookingsCount" DESC, c.rating DESC
+      `,
+    ]);
+
+    const byVerificationStatus = statusCounts
+      .map((sc) => ({
+        status: sc.verificationStatus,
+        label: VERIFICATION_LABELS[sc.verificationStatus] ?? sc.verificationStatus,
+        count: sc._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const consultants = consultantRows.map((r) => ({
+      consultantId: r.consultantId,
+      name: r.name,
+      slug: r.slug,
+      category: r.category,
+      verificationStatus: r.verificationStatus,
+      rating: Number(r.rating),
+      reviewCount: Number(r.reviewCount),
+      bookingsCount: Number(r.bookingsCount),
+      bookingRevenue: Number(r.bookingRevenue),
+    }));
+
+    const bookingsCount = consultants.reduce((sum, c) => sum + c.bookingsCount, 0);
+    const bookingRevenue = consultants.reduce((sum, c) => sum + c.bookingRevenue, 0);
+    const averageRating = Number(avgRatingRows[0]?.avgRating ?? 0);
+
+    return {
+      range: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        preset,
+      },
+      summary: {
+        total,
+        active,
+        bookingsCount,
+        bookingRevenue,
+        averageRating,
+      },
+      byVerificationStatus,
+      consultants,
+    };
+  }
 }
+
 

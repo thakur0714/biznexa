@@ -176,8 +176,36 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
             },
           ];
         }
+        if (sql.includes('AVG(NULLIF(rating, 0))')) {
+          return [{ avgRating: 4.8 }];
+        }
+        if (sql.includes('c."consultantId"') || sql.includes('c.id AS "consultantId"')) {
+          return [
+            {
+              consultantId: 'c-1',
+              name: 'Priya Sharma',
+              slug: 'priya-sharma',
+              category: 'CA',
+              verificationStatus: 'APPROVED',
+              rating: 4.9,
+              reviewCount: 15,
+              bookingsCount: 20,
+              bookingRevenue: 10000000n,
+            },
+          ];
+        }
         return [];
       }),
+      consultant: {
+        count: jest.fn().mockImplementation(async (args?: any) => {
+          if (args?.where?.verificationStatus === 'APPROVED') return 8;
+          return 10;
+        }),
+        groupBy: jest.fn().mockResolvedValue([
+          { verificationStatus: 'APPROVED', _count: { _all: 8 } },
+          { verificationStatus: 'PENDING', _count: { _all: 2 } },
+        ]),
+      },
     };
     mockPrisma.application.groupBy = jest.fn().mockResolvedValue([
       { status: 'COMPLETED', _count: { _all: 3 } },
@@ -186,6 +214,7 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
 
     service = new ReportsService(mockPrisma);
   });
+
 
 
   describe('IST Boundary Handling in Dashboard KPIs', () => {
@@ -350,5 +379,40 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
       ]);
     });
   });
+
+  describe('Consultants Report aggregations (M10.6)', () => {
+    it('returns total, active, by verification status, bookings count, revenue, and average rating', async () => {
+      const res = await service.getConsultantsReport({
+        from: '2026-10-01',
+        to: '2026-10-31',
+      });
+
+      expect(res.range).toBeDefined();
+      expect(res.summary.total).toBe(10);
+      expect(res.summary.active).toBe(8);
+      expect(res.summary.bookingsCount).toBe(20);
+      expect(res.summary.bookingRevenue).toBe(10000000);
+      expect(res.summary.averageRating).toBe(4.8);
+
+      expect(res.byVerificationStatus).toEqual([
+        { status: 'APPROVED', label: 'Approved', count: 8 },
+        { status: 'PENDING', label: 'Pending Review', count: 2 },
+      ]);
+
+      expect(res.consultants).toHaveLength(1);
+      expect(res.consultants[0]).toEqual({
+        consultantId: 'c-1',
+        name: 'Priya Sharma',
+        slug: 'priya-sharma',
+        category: 'CA',
+        verificationStatus: 'APPROVED',
+        rating: 4.9,
+        reviewCount: 15,
+        bookingsCount: 20,
+        bookingRevenue: 10000000,
+      });
+    });
+  });
 });
+
 
