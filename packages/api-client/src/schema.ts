@@ -5433,13 +5433,20 @@ export interface components {
             items: {
                 /** Format: uuid */
                 id: string;
-                body: string;
+                body: string | null;
                 sender: {
                     /** Format: uuid */
                     id: string;
                     name: string;
                     isStaff: boolean;
                 };
+                attachments?: {
+                    /** Format: uuid */
+                    id: string;
+                    fileName: string;
+                    mimeType: string;
+                    sizeBytes: number;
+                }[];
                 /** Format: date-time */
                 createdAt: string;
                 /** Format: date-time */
@@ -5452,13 +5459,20 @@ export interface components {
         Message: {
             /** Format: uuid */
             id: string;
-            body: string;
+            body: string | null;
             sender: {
                 /** Format: uuid */
                 id: string;
                 name: string;
                 isStaff: boolean;
             };
+            attachments?: {
+                /** Format: uuid */
+                id: string;
+                fileName: string;
+                mimeType: string;
+                sizeBytes: number;
+            }[];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -6024,13 +6038,20 @@ export interface components {
                 items: {
                     /** Format: uuid */
                     id: string;
-                    body: string;
+                    body: string | null;
                     sender: {
                         /** Format: uuid */
                         id: string;
                         name: string;
                         isStaff: boolean;
                     };
+                    attachments?: {
+                        /** Format: uuid */
+                        id: string;
+                        fileName: string;
+                        mimeType: string;
+                        sizeBytes: number;
+                    }[];
                     /** Format: date-time */
                     createdAt: string;
                     /** Format: date-time */
@@ -6043,13 +6064,20 @@ export interface components {
             messages: {
                 /** Format: uuid */
                 id: string;
-                body: string;
+                body: string | null;
                 sender: {
                     /** Format: uuid */
                     id: string;
                     name: string;
                     isStaff: boolean;
                 };
+                attachments?: {
+                    /** Format: uuid */
+                    id: string;
+                    fileName: string;
+                    mimeType: string;
+                    sizeBytes: number;
+                }[];
                 /** Format: date-time */
                 createdAt: string;
                 /** Format: date-time */
@@ -6193,13 +6221,20 @@ export interface components {
                 items: {
                     /** Format: uuid */
                     id: string;
-                    body: string;
+                    body: string | null;
                     sender: {
                         /** Format: uuid */
                         id: string;
                         name: string;
                         isStaff: boolean;
                     };
+                    attachments?: {
+                        /** Format: uuid */
+                        id: string;
+                        fileName: string;
+                        mimeType: string;
+                        sizeBytes: number;
+                    }[];
                     /** Format: date-time */
                     createdAt: string;
                     /** Format: date-time */
@@ -6212,13 +6247,20 @@ export interface components {
             messages: {
                 /** Format: uuid */
                 id: string;
-                body: string;
+                body: string | null;
                 sender: {
                     /** Format: uuid */
                     id: string;
                     name: string;
                     isStaff: boolean;
                 };
+                attachments?: {
+                    /** Format: uuid */
+                    id: string;
+                    fileName: string;
+                    mimeType: string;
+                    sizeBytes: number;
+                }[];
                 /** Format: date-time */
                 createdAt: string;
                 /** Format: date-time */
@@ -10602,7 +10644,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    body: string;
+                    body?: string;
+                    fileIds?: string[];
                 };
             };
         };
@@ -10695,7 +10738,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    body: string;
+                    body?: string;
+                    fileIds?: string[];
                 };
             };
         };

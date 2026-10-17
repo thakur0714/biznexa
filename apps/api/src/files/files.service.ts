@@ -135,6 +135,34 @@ export class FilesService {
     });
     if (customerDeliverable) return true;
 
+    const messageAttachment = await this.prisma.messageAttachment.findUnique({
+      where: { fileId: file.id },
+      include: { message: { include: { conversation: { select: { applicationId: true } } } } },
+    });
+
+    if (messageAttachment?.message.conversation.applicationId) {
+      if (
+        user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ALL) ||
+        user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED)
+      ) {
+        const app = await this.prisma.application.findFirst({
+          where: {
+            id: messageAttachment.message.conversation.applicationId,
+            ...applicationScope(user),
+          },
+        });
+        if (app) return true;
+      } else {
+        const app = await this.prisma.application.findFirst({
+          where: {
+            id: messageAttachment.message.conversation.applicationId,
+            customerId: user.id,
+          },
+        });
+        if (app) return true;
+      }
+    }
+
     return false;
   }
 
