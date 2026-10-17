@@ -3,6 +3,7 @@
  * Each run uses unique emails/mobiles so it can be repeated safely.
  */
 import { Test } from '@nestjs/testing';
+import { randomInt, randomUUID } from 'node:crypto';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
@@ -22,6 +23,7 @@ import {
 import { buildOpenApiDocument, configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { qrSignature } from '../src/certificates/certificates.service';
+import { captchaLookupMap } from '../src/certificates/certificates.controller';
 import { EventBus } from '../src/events/event-bus';
 import { staffSession } from './staff';
 
@@ -31,8 +33,14 @@ let prisma: PrismaService;
 /** 2FA-verified staff sessions created for this run (D27). */
 let adminToken: string;
 let opsToken: string;
+let verificationFixtureBodyId: string;
+let verificationFixtureIds: string[] = [];
+let verificationNumbers: { active: string; expired: string; suspended: string; activeId: string };
+let categoryCountFixtureId: string;
 
 const run = Date.now().toString().slice(-7);
+const verifyPrefix = `E2E-VERIFY-${randomUUID().slice(0, 8).toUpperCase()}`;
+const verifyId = `V${randomInt(100_000, 1_000_000)}`;
 const mobile = (n: number) => `9${run}${String(n).padStart(2, '0')}`;
 const email = (n: number) => `e2e-${run}-${n}@example.com`;
 
@@ -49,11 +57,47 @@ beforeAll(async () => {
   prisma = app.get(PrismaService);
   adminToken = (await staffSession(http, prisma, 'ADMIN', email(90))).accessToken;
   opsToken = (await staffSession(http, prisma, 'OPERATIONS', email(91))).accessToken;
+
+  // Verification tests own their records instead of depending on global demo certificates from db:seed.
+  const body = await prisma.certificationBody.create({ data: { name: `${verifyPrefix} Body` } });
+  verificationFixtureBodyId = body.id;
+  const rows = await Promise.all(
+    [
+      { suffix: 'ACTIVE', status: 'ACTIVE' as const, validUntil: new Date('2028-03-31') },
+      { suffix: 'EXPIRED', status: 'ACTIVE' as const, validUntil: new Date('2024-03-31') },
+      { suffix: 'SUSPENDED', status: 'SUSPENDED' as const, validUntil: new Date('2028-03-31') },
+    ].map(({ suffix, status, validUntil }) =>
+      prisma.certificate.create({
+        data: {
+          certificateNumber: `${verifyPrefix}-${suffix}`,
+          verificationId: `${verifyId}${suffix.slice(0, 3)}`,
+          type: 'ISO 9001:2015',
+          organizationName: `Demo Organization ${verifyPrefix}`,
+          issueDate: new Date('2023-04-01'),
+          validFrom: new Date('2023-04-01'),
+          validUntil,
+          status,
+          certificationBodyId: body.id,
+          pdfKey: `e2e/${verifyPrefix}/${suffix}.pdf`,
+        },
+        select: { id: true, certificateNumber: true, verificationId: true },
+      }),
+    ),
+  );
+  verificationFixtureIds = rows.map((row) => row.id);
+  verificationNumbers = { active: rows[0].certificateNumber, expired: rows[1].certificateNumber, suspended: rows[2].certificateNumber, activeId: rows[0].verificationId };
 });
 
 afterAll(async () => {
+  await prisma.certificateLookup.deleteMany({ where: { certificateId: { in: verificationFixtureIds } } });
+  await prisma.certificate.deleteMany({ where: { id: { in: verificationFixtureIds } } });
+  if (verificationFixtureBodyId) await prisma.certificationBody.deleteMany({ where: { id: verificationFixtureBodyId } });
   await prisma.user.deleteMany({ where: { email: { startsWith: `e2e-${run}` } } });
   await prisma.service.deleteMany({ where: { slug: { startsWith: `e2e-${run}` } } });
+  if (categoryCountFixtureId) {
+    await prisma.service.deleteMany({ where: { categoryId: categoryCountFixtureId } });
+    await prisma.category.deleteMany({ where: { id: categoryCountFixtureId } });
+  }
   await app.close();
 });
 
@@ -386,29 +430,40 @@ describe('catalogue', () => {
 
   it('lists every category with service counts for admins only', async () => {
     const admin = adminToken;
+    // The seeded licenses category is shared with concurrent catalogue tests that create and delete services.
+    // Give this assertion its own category so its count has a stable, test-owned source of truth.
+    const category = await prisma.category.create({ data: { slug: `e2e-counts-${randomUUID()}`, name: 'E2E Count Fixture' } });
+    categoryCountFixtureId = category.id;
+    await prisma.service.createMany({
+      data: [
+        { slug: `e2e-counts-${run}-active`, categoryId: category.id, name: 'Active count fixture', shortDescription: 'Test', benefits: [], isActive: true },
+        { slug: `e2e-counts-${run}-inactive`, categoryId: category.id, name: 'Inactive count fixture', shortDescription: 'Test', benefits: [], isActive: false },
+      ],
+    });
     const res = await http.get('/api/admin/catalogue/categories').set('authorization', `Bearer ${admin}`).expect(200);
     expect(adminCategoryListSchema.safeParse(res.body).error).toBeUndefined();
-    const licenses = res.body.find((c: { slug: string }) => c.slug === 'licenses');
-    const total = await prisma.service.count({ where: { category: { slug: 'licenses' }, deletedAt: null } });
-    expect(licenses.services).toBe(total);
-    expect(licenses.activeServices).toBeLessThanOrEqual(total);
+    const fixture = res.body.find((c: { id: string }) => c.id === category.id);
+    expect(fixture).toMatchObject({ services: 2, activeServices: 1 });
     await http.get('/api/admin/catalogue/categories').expect(401);
   });
 });
 
 describe('certificate verification', () => {
+  // Many lookups from one IP: keep the M12.3 captcha gate out of these tests (covered in public-verify-api).
+  beforeEach(() => captchaLookupMap.clear());
+
   it('verifies by certificate number and by verification ID (case-insensitive)', async () => {
-    const byNumber = await http.get('/api/public/certificates/verify?number=bnc-demo-000001').expect(200);
+    const byNumber = await http.get(`/api/public/certificates/verify?number=${verificationNumbers.active.toLowerCase()}`).expect(200);
     expect(byNumber.body.found).toBe(true);
     expect(byNumber.body.certificate.status).toBe('ACTIVE');
-    const byId = await http.get('/api/public/certificates/verify?id=demq9001actv').expect(200);
-    expect(byId.body.certificate.certificateNumber).toBe('BNC-DEMO-000001');
+    const byId = await http.get(`/api/public/certificates/verify?id=${verificationNumbers.activeId.toLowerCase()}`).expect(200);
+    expect(byId.body.certificate.certificateNumber).toBe(verificationNumbers.active);
   });
 
   it('shows suspended and expired certificates clearly', async () => {
-    const s = await http.get('/api/public/certificates/verify?number=BNC-DEMO-000003').expect(200);
+    const s = await http.get(`/api/public/certificates/verify?number=${verificationNumbers.suspended}`).expect(200);
     expect(s.body.certificate.status).toBe('SUSPENDED');
-    const e = await http.get('/api/public/certificates/verify?number=BNC-DEMO-000002').expect(200);
+    const e = await http.get(`/api/public/certificates/verify?number=${verificationNumbers.expired}`).expect(200);
     expect(e.body.certificate.status).toBe('EXPIRED');
   });
 
@@ -421,11 +476,11 @@ describe('certificate verification', () => {
 
   it('issues a certificate whose QR link is verifiable, and enforces status rules', async () => {
     const admin = adminToken;
-    const body = await prisma.certificationBody.findFirstOrThrow();
+    const bodyId = verificationFixtureBodyId;
     const issued = await http
       .post('/api/admin/certificates')
       .set('authorization', `Bearer ${admin}`)
-      .send({ type: 'ISO 27001:2022', organizationName: `E2E Org ${run}`, issueDate: '2026-01-01', validFrom: '2026-01-01', validUntil: '2029-01-01', certificationBodyId: body.id })
+      .send({ type: 'ISO 27001:2022', organizationName: `E2E Org ${run}`, issueDate: '2026-01-01', validFrom: '2026-01-01', validUntil: '2029-01-01', certificationBodyId: bodyId })
       .expect(201);
     expect(issued.body.verificationId).toMatch(/^[A-Z2-9]{12}$/);
     expect(issued.body.qrUrl).toContain(`/verify/${issued.body.verificationId}?t=`);
@@ -446,14 +501,14 @@ describe('certificate verification', () => {
   it('publishes domain events from the service to listeners, and not for refused changes', async () => {
     const admin = adminToken;
     const adminUser = await prisma.user.findUniqueOrThrow({ where: { email: email(90) } });
-    const body = await prisma.certificationBody.findFirstOrThrow();
+    const bodyId = verificationFixtureBodyId;
     const seen: AnyDomainEvent[] = [];
     const off = app.get(EventBus).onAny((e) => void seen.push(e));
     try {
       const issued = await http
         .post('/api/admin/certificates')
         .set('authorization', `Bearer ${admin}`)
-        .send({ type: 'ISO 9001:2015', organizationName: `E2E Events ${run}`, issueDate: '2026-01-01', validFrom: '2026-01-01', validUntil: '2029-01-01', certificationBodyId: body.id })
+        .send({ type: 'ISO 9001:2015', organizationName: `E2E Events ${run}`, issueDate: '2026-01-01', validFrom: '2026-01-01', validUntil: '2029-01-01', certificationBodyId: bodyId })
         .expect(201);
       const id = issued.body.id as string;
       const mine = () => seen.filter((e) => 'certificateId' in e.payload && e.payload.certificateId === id);
@@ -478,6 +533,8 @@ describe('certificate verification', () => {
 });
 
 describe('OpenAPI document', () => {
+  beforeEach(() => captchaLookupMap.clear());
+
   it('lists every route the API serves', () => {
     const doc = buildOpenApiDocument(app);
     const documented = new Set(Object.entries(doc.paths).flatMap(([path, ops]) => Object.keys(ops).map((m) => `${m.toUpperCase()} ${path}`)));
@@ -496,11 +553,11 @@ describe('OpenAPI document', () => {
   });
 
   it('real responses match the published response schemas', async () => {
-    for (const q of ['number=BNC-DEMO-000001', 'number=BNC-DEMO-000003', 'number=DOES-NOT-EXIST']) {
+    for (const q of [`number=${verificationNumbers.active}`, `number=${verificationNumbers.suspended}`, 'number=DOES-NOT-EXIST']) {
       const res = await http.get(`/api/public/certificates/verify?${q}`).expect(200);
       expect(certificateVerifyResultSchema.strict().safeParse(res.body).error).toBeUndefined();
     }
-    const orgs = await http.get('/api/public/certificates/search?organization=demo').expect(200);
+    const orgs = await http.get(`/api/public/certificates/search?organization=${verifyPrefix}`).expect(200);
     expect(certificateOrgResultSchema.safeParse(orgs.body).error).toBeUndefined();
   });
 });

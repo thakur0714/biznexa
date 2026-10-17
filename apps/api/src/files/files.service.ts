@@ -135,6 +135,34 @@ export class FilesService {
     });
     if (customerDeliverable) return true;
 
+    const messageAttachment = await this.prisma.messageAttachment.findUnique({
+      where: { fileId: file.id },
+      include: { message: { include: { conversation: { select: { applicationId: true } } } } },
+    });
+
+    if (messageAttachment?.message.conversation.applicationId) {
+      if (
+        user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ALL) ||
+        user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED)
+      ) {
+        const app = await this.prisma.application.findFirst({
+          where: {
+            id: messageAttachment.message.conversation.applicationId,
+            ...applicationScope(user),
+          },
+        });
+        if (app) return true;
+      } else {
+        const app = await this.prisma.application.findFirst({
+          where: {
+            id: messageAttachment.message.conversation.applicationId,
+            customerId: user.id,
+          },
+        });
+        if (app) return true;
+      }
+    }
+
     return false;
   }
 
@@ -170,6 +198,7 @@ export class FilesService {
 
 /** Only files the virus scan passed can be downloaded: not while PENDING, never when INFECTED. */
 function assertClean(file: StoredFile) {
+  if (file.deletedAt) throw new GoneException('This file was deleted with the customer’s account.');
   if (file.scanStatus === 'INFECTED') throw new GoneException('This file was blocked because a virus was found in it. Please upload a clean copy.');
   if (file.scanStatus !== 'CLEAN') throw new ConflictException('This file is still being checked for viruses. Please try again in a minute.');
 }
@@ -178,7 +207,7 @@ function assertClean(file: StoredFile) {
  * What a signed link opens: `/api/<scope>/<id>/download`. Stored files (D17) and invoice PDFs (M3.23) share
  * the secret; the scope is part of what is signed, so a link for one can never open the other.
  */
-export type LinkScope = 'files' | 'invoices' | 'certificates' | 'credit-notes';
+export type LinkScope = 'files' | 'invoices' | 'certificates' | 'credit-notes' | 'data-exports' | 'report-exports';
 
 function sign(scope: LinkScope, id: string, expires: number, disposition: Disposition) {
   // Files sign the bare id, as they did before invoices had links.
@@ -188,12 +217,19 @@ function sign(scope: LinkScope, id: string, expires: number, disposition: Dispos
 
 export function signedPath(id: string, expires: number, disposition: Disposition, scope: LinkScope = 'files') {
   const q = new URLSearchParams({ e: String(expires), d: disposition, s: sign(scope, id, expires, disposition) });
-  return `/api/${scope}/${id}/download?${q}`;
+  const prefix = scope === 'report-exports' ? 'admin/reports/export' : scope;
+  return `/api/${prefix}/${id}/download?${q}`;
 }
 
-/** A signed download link valid for 5 minutes. Check permission first: the link itself is the permission. */
-export function signedLink(scope: LinkScope, id: string, disposition: Disposition, now = Date.now()): FileLinkResult {
-  const expires = Math.floor(now / 1000) + LINK_TTL_SECONDS;
+/** A signed download link. Check permission first: the link itself is the permission. */
+export function signedLink(
+  scope: LinkScope,
+  id: string,
+  disposition: Disposition,
+  now = Date.now(),
+  ttlSeconds = LINK_TTL_SECONDS,
+): FileLinkResult {
+  const expires = Math.floor(now / 1000) + ttlSeconds;
   return { url: signedPath(id, expires, disposition, scope), expiresAt: new Date(expires * 1000).toISOString() };
 }
 

@@ -33,6 +33,7 @@ import { TicketsModule } from './tickets/tickets.module';
 import { ReportsModule } from './reports/reports.module';
 import { ConsultantsModule } from './consultants/consultants.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { PrivacyModule } from './privacy/privacy.module';
 
 @ApiTags('health')
 @Controller('health')
@@ -90,6 +91,7 @@ class HealthController {
     ReportsModule,
     ConsultantsModule,
     BookingsModule,
+    PrivacyModule,
   ],
   controllers: [HealthController],
   providers: [

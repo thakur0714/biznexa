@@ -5,10 +5,11 @@
  * else gets 404, and a tampered, expired or re-targeted link is refused. Uses the configured renderer
  * (headless Chromium unless PDF_RENDERER=stub). Invoices are dated in a far-future year of this run's own.
  */
+import { randomInt, randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { financialYear, SELLER_SETTING_KEYS } from '@biznexa/types';
+import { financialYear, type SellerSettings } from '@biznexa/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -17,6 +18,7 @@ import { signedPath } from '../src/files/files.service';
 import { InvoicesService } from '../src/invoices/invoices.service';
 import { PaymentGateway } from '../src/payments/payment-gateway';
 import { MockPaymentGateway } from '../src/payments/mock-payment-gateway';
+import { SettingsService } from '../src/settings/settings.service';
 import { staffSession } from './staff';
 
 let app: NestExpressApplication;
@@ -29,9 +31,10 @@ let bob: string;
 let support: string;
 let operations: string;
 let packageId: string;
-let savedSettings: { key: string; value: unknown }[] = [];
 
-const run = Date.now().toString().slice(-7);
+const run = randomUUID();
+const invoicePrefix = `P${run.slice(0, 3).toUpperCase()}`;
+const mobileRun = String(randomInt(1_000_000, 10_000_000));
 const base = '/api/applications';
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
 const users = { email: { startsWith: `e2e-ipdf-${run}` } };
@@ -41,21 +44,22 @@ const eventIds: string[] = [];
 const AT = new Date(`${2900 + Math.floor(Math.random() * 100)}-07-01T06:30:00Z`);
 const FY = financialYear(AT);
 
-const SELLER = {
-  [SELLER_SETTING_KEYS.name]: 'BizNexa',
-  [SELLER_SETTING_KEYS.legalName]: 'BizNexa Services Private Limited',
-  [SELLER_SETTING_KEYS.gstin]: '03AAACB1234C1ZV',
-  [SELLER_SETTING_KEYS.email]: 'billing@example.com',
-  [SELLER_SETTING_KEYS.phone]: '',
-  [SELLER_SETTING_KEYS.address]: { line1: '12 Mall Road', city: 'Ludhiana', state: 'Punjab', pincode: '141001' },
-  [SELLER_SETTING_KEYS.state]: 'Punjab',
-  [SELLER_SETTING_KEYS.invoicePrefix]: 'TST',
+const SELLER: SellerSettings = {
+  name: 'BizNexa',
+  legalName: 'BizNexa Services Private Limited',
+  gstin: '03AAACB1234C1ZV',
+  email: 'billing@example.com',
+  phone: null,
+  address: { line1: '12 Mall Road', city: 'Ludhiana', state: 'Punjab', pincode: '141001' },
+  state: 'Punjab',
+  invoicePrefix,
+  updatedAt: null,
 };
 
 async function register(n: number) {
   const res = await http
     .post('/api/auth/register')
-    .send({ name: `Invoice PDF ${n}`, mobile: `7${run}${String(70 + n)}`, email: `e2e-ipdf-${run}-${n}@example.com`, password: 'secret123', consent: true })
+    .send({ name: `Invoice PDF ${n}`, mobile: `7${mobileRun}${String(70 + n)}`, email: `e2e-ipdf-${run}-${n}@example.com`, password: 'secret123', consent: true })
     .expect(201);
   return res.body.accessToken as string;
 }
@@ -107,14 +111,13 @@ beforeAll(async () => {
   const invoices = app.get(InvoicesService);
   const issue = invoices.issue.bind(invoices);
   jest.spyOn(invoices, 'issue').mockImplementation((paymentId) => issue(paymentId, AT));
+  jest.spyOn(app.get(SettingsService), 'seller').mockResolvedValue(SELLER);
 
   alice = await register(1);
   bob = await register(2);
   support = (await staffSession(http, prisma, 'SUPPORT', `e2e-ipdf-${run}-support@example.com`)).accessToken;
   operations = (await staffSession(http, prisma, 'OPERATIONS', `e2e-ipdf-${run}-ops@example.com`)).accessToken;
 
-  savedSettings = await prisma.setting.findMany({ where: { key: { in: Object.keys(SELLER) } }, select: { key: true, value: true } });
-  for (const [key, value] of Object.entries(SELLER)) await prisma.setting.upsert({ where: { key }, update: { value }, create: { key, value } });
 
   const cat = await prisma.category.findUniqueOrThrow({ where: { slug: 'licenses' } });
   const service = await prisma.service.create({
@@ -134,8 +137,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   jest.restoreAllMocks();
-  await prisma.setting.deleteMany({ where: { key: { in: Object.keys(SELLER) } } });
-  for (const s of savedSettings) await prisma.setting.create({ data: { key: s.key, value: s.value as object } });
   const orders = { customer: users };
   const invoices = await prisma.invoice.findMany({ where: { order: orders }, select: { pdfKey: true } });
   for (const { pdfKey } of invoices) if (pdfKey) await storage.remove(pdfKey);

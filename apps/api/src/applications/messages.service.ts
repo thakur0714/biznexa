@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   MarkMessagesReadResponse,
   Message,
@@ -53,17 +53,27 @@ export class MessagesService {
       createdAt: Date;
       readAt: Date | null;
       sender: { id: string; name: string };
+      messageAttachments?: {
+        fileId: string;
+        file: { originalName: string; mimeType: string; sizeBytes: number };
+      }[];
     },
     customerId: string,
   ): Message {
     return {
       id: m.id,
-      body: m.body ?? '',
+      body: m.body,
       sender: {
         id: m.sender.id,
         name: m.sender.name,
         isStaff: m.senderId !== customerId,
       },
+      attachments: m.messageAttachments?.map((a) => ({
+        id: a.fileId,
+        fileName: a.file.originalName,
+        mimeType: a.file.mimeType,
+        sizeBytes: a.file.sizeBytes,
+      })) ?? [],
       createdAt: m.createdAt.toISOString(),
       readAt: m.readAt ? m.readAt.toISOString() : null,
     };
@@ -83,7 +93,16 @@ export class MessagesService {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (q.page - 1) * q.limit,
         take: q.limit,
-        include: { sender: { select: { id: true, name: true } } },
+        include: {
+          sender: { select: { id: true, name: true } },
+          messageAttachments: {
+            select: {
+              fileId: true,
+              file: { select: { originalName: true, mimeType: true, sizeBytes: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
       }),
       this.prisma.message.count({ where }),
     ]);
@@ -117,36 +136,92 @@ export class MessagesService {
     return this.listThread(app, q);
   }
 
+  private async checkAttachments(
+    tx: Prisma.TransactionClient,
+    fileIds: string[] | undefined,
+    senderId: string,
+  ) {
+    if (!fileIds || !fileIds.length) return [];
+
+    const files = await tx.storedFile.findMany({ where: { id: { in: fileIds } } });
+    if (files.length !== fileIds.length) {
+      throw new BadRequestException('One or more files could not be found.');
+    }
+
+    for (const file of files) {
+      if (file.ownerId !== senderId) {
+        throw new BadRequestException('One or more files belong to another user.');
+      }
+      if (file.scanStatus === 'INFECTED') {
+        throw new BadRequestException('A virus was found in one of the files. Please upload a clean copy.');
+      }
+
+      const doc = await tx.applicationDocument.findFirst({ where: { fileKey: file.fileKey } });
+      if (doc) throw new BadRequestException('One or more files are already used by a document.');
+
+      const deliv = await tx.finalDeliverable.findFirst({ where: { fileKey: file.fileKey } });
+      if (deliv) throw new BadRequestException('One or more files are already used by a deliverable.');
+
+      const cDoc = await tx.consultantDocument.findFirst({ where: { fileId: file.id } });
+      if (cDoc) throw new BadRequestException('One or more files are already used by a consultant document.');
+
+      const msgAttach = await tx.messageAttachment.findFirst({ where: { fileId: file.id } });
+      if (msgAttach) throw new BadRequestException('One or more files are already attached to another message.');
+    }
+
+    return fileIds;
+  }
+
   async postStaff(
     applicationId: string,
     input: PostMessageInput,
     u: AuthUser,
   ): Promise<Message> {
-    const { msg, app } = await this.prisma.$transaction(async (tx) => {
-      const visibleApp = await findVisibleApplication(tx, u, applicationId, {
-        id: true,
-        customerId: true,
+    try {
+      const { msg, app } = await this.prisma.$transaction(async (tx) => {
+        const visibleApp = await findVisibleApplication(tx, u, applicationId, {
+          id: true,
+          customerId: true,
+        });
+        const validFileIds = await this.checkAttachments(tx, input.fileIds, u.id);
+        const conv = await this.ensureConversation(tx, visibleApp.id);
+        const created = await tx.message.create({
+          data: {
+            conversationId: conv.id,
+            senderId: u.id,
+            body: input.body,
+            messageAttachments: {
+              create: validFileIds.map((fileId) => ({ fileId })),
+            },
+          },
+          include: {
+            sender: { select: { id: true, name: true } },
+            messageAttachments: {
+              select: {
+                fileId: true,
+                file: { select: { originalName: true, mimeType: true, sizeBytes: true } },
+              },
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        });
+        return { msg: created, app: visibleApp };
       });
-      const conv = await this.ensureConversation(tx, visibleApp.id);
-      const created = await tx.message.create({
-        data: {
-          conversationId: conv.id,
-          senderId: u.id,
-          body: input.body,
-        },
-        include: { sender: { select: { id: true, name: true } } },
+
+      await this.events.emit('message.created', {
+        messageId: msg.id,
+        applicationId: app.id,
+        senderId: u.id,
+        fromStaff: true,
       });
-      return { msg: created, app: visibleApp };
-    });
 
-    await this.events.emit('message.created', {
-      messageId: msg.id,
-      applicationId: app.id,
-      senderId: u.id,
-      fromStaff: true,
-    });
-
-    return this.toMessageDto(msg, app.customerId);
+      return this.toMessageDto(msg, app.customerId);
+    } catch (error: any) {
+      if (error?.code === 'P2002' && error?.meta?.target?.includes('fileId')) {
+        throw new BadRequestException('One or more files are already attached to another message.');
+      }
+      throw error;
+    }
   }
 
   async postCustomer(
@@ -154,28 +229,48 @@ export class MessagesService {
     input: PostMessageInput,
     u: AuthUser,
   ): Promise<Message> {
-    const { msg, app } = await this.prisma.$transaction(async (tx) => {
-      const ownedApp = await this.findCustomerApplication(tx, u.id, applicationId);
-      const conv = await this.ensureConversation(tx, ownedApp.id);
-      const created = await tx.message.create({
-        data: {
-          conversationId: conv.id,
-          senderId: u.id,
-          body: input.body,
-        },
-        include: { sender: { select: { id: true, name: true } } },
+    try {
+      const { msg, app } = await this.prisma.$transaction(async (tx) => {
+        const ownedApp = await this.findCustomerApplication(tx, u.id, applicationId);
+        const validFileIds = await this.checkAttachments(tx, input.fileIds, u.id);
+        const conv = await this.ensureConversation(tx, ownedApp.id);
+        const created = await tx.message.create({
+          data: {
+            conversationId: conv.id,
+            senderId: u.id,
+            body: input.body,
+            messageAttachments: {
+              create: validFileIds.map((fileId) => ({ fileId })),
+            },
+          },
+          include: {
+            sender: { select: { id: true, name: true } },
+            messageAttachments: {
+              select: {
+                fileId: true,
+                file: { select: { originalName: true, mimeType: true, sizeBytes: true } },
+              },
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        });
+        return { msg: created, app: ownedApp };
       });
-      return { msg: created, app: ownedApp };
-    });
 
-    await this.events.emit('message.created', {
-      messageId: msg.id,
-      applicationId: app.id,
-      senderId: u.id,
-      fromStaff: false,
-    });
+      await this.events.emit('message.created', {
+        messageId: msg.id,
+        applicationId: app.id,
+        senderId: u.id,
+        fromStaff: false,
+      });
 
-    return this.toMessageDto(msg, app.customerId);
+      return this.toMessageDto(msg, app.customerId);
+    } catch (error: any) {
+      if (error?.code === 'P2002' && error?.meta?.target?.includes('fileId')) {
+        throw new BadRequestException('One or more files are already attached to another message.');
+      }
+      throw error;
+    }
   }
 
   async markReadStaff(

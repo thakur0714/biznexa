@@ -52,10 +52,19 @@ const baseSchema = z
     RAZORPAY_WEBHOOK_SECRET: z.string().optional().default(''),
     COMPANY_STATE_CODE: z.string().length(2).default('PB'),
     REDIS_URL: z.string().url().default('redis://localhost:6379'),
+    /** CAPTCHA on public certificate verification after repeated lookups (M12.3). `mock` accepts the token `pass`. */
+    CAPTCHA_PROVIDER: z.enum(['mock', 'turnstile']).default('mock'),
+    TURNSTILE_SECRET_KEY: z.string().optional().default(''),
     /** HTML → PDF (M3.22): headless Chromium through Playwright, or a plain-text stub where Chromium isn't installed. */
     PDF_RENDERER: z.enum(['playwright', 'stub']).default('playwright'),
     /** Redis key prefix for queues; tests use their own so a running dev API never picks up test jobs. */
     QUEUE_PREFIX: z.string().min(1).default('bn'),
+    /**
+     * On start, queue work left over from before (PDFs not yet generated, files not yet scanned). Off in the API
+     * tests: the suites share one database, so one suite's app would pick up another's records and write files
+     * into its own upload folder.
+     */
+    QUEUE_BOOT_SWEEP: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** Comma-separated list of approved partner API keys for public certificate verification */
     CERT_VERIFY_API_KEYS: z.string().optional().default(''),
   });
@@ -101,6 +110,12 @@ function validateProductionProviders(v: RawEnv, ctx: z.RefinementCtx): void {
   }
   if (v.PDF_RENDERER === 'stub') {
     ctx.addIssue({ code: 'custom', path: ['PDF_RENDERER'], message: 'Stub PDF renderer is not allowed in production' });
+  }
+  if (v.CAPTCHA_PROVIDER === 'mock') {
+    ctx.addIssue({ code: 'custom', path: ['CAPTCHA_PROVIDER'], message: 'Mock captcha provider is not allowed in production' });
+  }
+  if (v.CAPTCHA_PROVIDER === 'turnstile' && !v.TURNSTILE_SECRET_KEY) {
+    ctx.addIssue({ code: 'custom', path: ['TURNSTILE_SECRET_KEY'], message: 'TURNSTILE_SECRET_KEY is required when CAPTCHA_PROVIDER=turnstile' });
   }
   if (v.PAYMENT_GATEWAY === 'mock') {
     ctx.addIssue({ code: 'custom', path: ['PAYMENT_GATEWAY'], message: 'Mock payment gateway is not allowed in production' });

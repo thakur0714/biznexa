@@ -2436,6 +2436,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/reports/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_getServices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports/consultants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_getConsultants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports/support": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_getSupport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReportsController_exportReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports/export/{id}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReportsController_linkExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports/export/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_downloadExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/consultants": {
         parameters: {
             query?: never;
@@ -2750,6 +2846,118 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["BookingsController_callback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/privacy/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PrivacyController_list"];
+        put?: never;
+        post: operations["PrivacyController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/privacy/otp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PrivacyController_otp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/privacy/requests/{id}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PrivacyController_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/data-exports/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DataExportsController_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/privacy/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPrivacyController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/privacy/requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPrivacyController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/privacy/requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPrivacyController_reject"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5451,13 +5659,20 @@ export interface components {
             items: {
                 /** Format: uuid */
                 id: string;
-                body: string;
+                body: string | null;
                 sender: {
                     /** Format: uuid */
                     id: string;
                     name: string;
                     isStaff: boolean;
                 };
+                attachments?: {
+                    /** Format: uuid */
+                    id: string;
+                    fileName: string;
+                    mimeType: string;
+                    sizeBytes: number;
+                }[];
                 /** Format: date-time */
                 createdAt: string;
                 /** Format: date-time */
@@ -5470,13 +5685,20 @@ export interface components {
         Message: {
             /** Format: uuid */
             id: string;
-            body: string;
+            body: string | null;
             sender: {
                 /** Format: uuid */
                 id: string;
                 name: string;
                 isStaff: boolean;
             };
+            attachments?: {
+                /** Format: uuid */
+                id: string;
+                fileName: string;
+                mimeType: string;
+                sizeBytes: number;
+            }[];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -5862,7 +6084,7 @@ export interface components {
                 email: string | null;
                 mobile: string | null;
                 /** @enum {string} */
-                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION" | "DELETED";
                 /** Format: date-time */
                 createdAt: string;
                 applicationCount: number;
@@ -5879,7 +6101,7 @@ export interface components {
                 email: string | null;
                 mobile: string | null;
                 /** @enum {string} */
-                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION" | "DELETED";
                 /** Format: date-time */
                 createdAt: string;
             };
@@ -5927,7 +6149,7 @@ export interface components {
             email: string | null;
             mobile: string | null;
             /** @enum {string} */
-            status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+            status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION" | "DELETED";
             /** Format: date-time */
             createdAt: string;
             applicationCount: number;
@@ -6042,13 +6264,20 @@ export interface components {
                 items: {
                     /** Format: uuid */
                     id: string;
-                    body: string;
+                    body: string | null;
                     sender: {
                         /** Format: uuid */
                         id: string;
                         name: string;
                         isStaff: boolean;
                     };
+                    attachments?: {
+                        /** Format: uuid */
+                        id: string;
+                        fileName: string;
+                        mimeType: string;
+                        sizeBytes: number;
+                    }[];
                     /** Format: date-time */
                     createdAt: string;
                     /** Format: date-time */
@@ -6061,13 +6290,20 @@ export interface components {
             messages: {
                 /** Format: uuid */
                 id: string;
-                body: string;
+                body: string | null;
                 sender: {
                     /** Format: uuid */
                     id: string;
                     name: string;
                     isStaff: boolean;
                 };
+                attachments?: {
+                    /** Format: uuid */
+                    id: string;
+                    fileName: string;
+                    mimeType: string;
+                    sizeBytes: number;
+                }[];
                 /** Format: date-time */
                 createdAt: string;
                 /** Format: date-time */
@@ -6211,13 +6447,20 @@ export interface components {
                 items: {
                     /** Format: uuid */
                     id: string;
-                    body: string;
+                    body: string | null;
                     sender: {
                         /** Format: uuid */
                         id: string;
                         name: string;
                         isStaff: boolean;
                     };
+                    attachments?: {
+                        /** Format: uuid */
+                        id: string;
+                        fileName: string;
+                        mimeType: string;
+                        sizeBytes: number;
+                    }[];
                     /** Format: date-time */
                     createdAt: string;
                     /** Format: date-time */
@@ -6230,13 +6473,20 @@ export interface components {
             messages: {
                 /** Format: uuid */
                 id: string;
-                body: string;
+                body: string | null;
                 sender: {
                     /** Format: uuid */
                     id: string;
                     name: string;
                     isStaff: boolean;
                 };
+                attachments?: {
+                    /** Format: uuid */
+                    id: string;
+                    fileName: string;
+                    mimeType: string;
+                    sizeBytes: number;
+                }[];
                 /** Format: date-time */
                 createdAt: string;
                 /** Format: date-time */
@@ -6332,6 +6582,110 @@ export interface components {
             total: number;
             newInRange: number;
             activeLast90Days: number;
+        };
+        ReportServices: {
+            range: {
+                from: string;
+                to: string;
+                preset?: string;
+            };
+            summary: {
+                totalOrders: number;
+                totalRevenue: number;
+                avgTurnaroundDays: number;
+                totalSlaBreaches: number;
+            };
+            popularServices: {
+                serviceId: string;
+                serviceName: string;
+                categoryName: string;
+                orders: number;
+                revenue: number;
+                avgTurnaroundDays: number | null;
+                slaBreaches: number;
+            }[];
+            applicationsByStatus: {
+                status: string;
+                label: string;
+                count: number;
+            }[];
+            slaBreaches: {
+                serviceId: string;
+                serviceName: string;
+                categoryName: string;
+                breachCount: number;
+            }[];
+        };
+        ReportConsultants: {
+            range: {
+                from: string;
+                to: string;
+                preset?: string;
+            };
+            summary: {
+                total: number;
+                active: number;
+                bookingsCount: number;
+                bookingRevenue: number;
+                averageRating: number;
+            };
+            byVerificationStatus: {
+                status: string;
+                label: string;
+                count: number;
+            }[];
+            consultants: {
+                consultantId: string;
+                name: string;
+                slug: string;
+                category: string;
+                verificationStatus: string;
+                rating: number;
+                reviewCount: number;
+                bookingsCount: number;
+                bookingRevenue: number;
+            }[];
+        };
+        ReportSupport: {
+            range: {
+                from: string;
+                to: string;
+                preset?: string;
+            };
+            summary: {
+                totalTickets: number;
+                openTickets: number;
+                resolvedTickets: number;
+                avgFirstResponseHours: number;
+                avgResolutionHours: number;
+            };
+            byStatus: {
+                status: string;
+                label: string;
+                count: number;
+            }[];
+            recentTickets: {
+                id: string;
+                code: string;
+                subject: string;
+                status: string;
+                priority: string;
+                customerName: string;
+                assignedToName: string | null;
+                createdAt: string;
+                firstResponseAt: string | null;
+                resolvedAt: string | null;
+                firstResponseHours: number | null;
+                resolutionHours: number | null;
+            }[];
+        };
+        ReportExportJob: {
+            id: string;
+            /** @enum {string} */
+            type: "sales" | "customers" | "services" | "consultants" | "support";
+            /** @enum {string} */
+            status: "PENDING" | "COMPLETED" | "FAILED";
+            createdAt: string;
         };
         AdminConsultantList: {
             items: {
@@ -6671,6 +7025,128 @@ export interface components {
                 email: string | null;
                 contact: string | null;
             };
+        };
+        DataRequestList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                type: "EXPORT" | "DELETION";
+                /** @enum {string} */
+                status: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED";
+                reason: string | null;
+                rejectionReason: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                handledAt: string | null;
+                /** Format: date-time */
+                completedAt: string | null;
+                /** Format: date-time */
+                expiresAt: string | null;
+                downloadable: boolean;
+            }[];
+            reauth: {
+                password: boolean;
+                /** @enum {string|null} */
+                otpChannel: "MOBILE" | "EMAIL" | null;
+            };
+        };
+        DataRequest: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            type: "EXPORT" | "DELETION";
+            /** @enum {string} */
+            status: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED";
+            reason: string | null;
+            rejectionReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            handledAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            downloadable: boolean;
+        };
+        PrivacyOtp: {
+            /** @enum {string} */
+            channel: "MOBILE" | "EMAIL";
+            sentTo: string;
+            expiresIn: number;
+            resendAfter: number;
+            devCode?: string;
+        };
+        AdminDataRequestList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                type: "EXPORT" | "DELETION";
+                /** @enum {string} */
+                status: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED";
+                reason: string | null;
+                rejectionReason: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                handledAt: string | null;
+                /** Format: date-time */
+                completedAt: string | null;
+                /** Format: date-time */
+                expiresAt: string | null;
+                user: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                    email: string | null;
+                    mobile: string | null;
+                    deleted: boolean;
+                };
+                handledBy: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                } | null;
+                blockers: string[];
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        AdminDataRequestRow: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            type: "EXPORT" | "DELETION";
+            /** @enum {string} */
+            status: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED";
+            reason: string | null;
+            rejectionReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            handledAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            user: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                email: string | null;
+                mobile: string | null;
+                deleted: boolean;
+            };
+            handledBy: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            } | null;
+            blockers: string[];
         };
     };
     responses: never;
@@ -8904,6 +9380,8 @@ export interface operations {
                 apiKey?: string;
                 /** @description Optional API key alias */
                 key?: string;
+                /** @description Captcha token, required after 5 lookups from one IP in 10 minutes */
+                captchaToken?: string;
             };
             header?: {
                 /** @description Optional partner API key for higher rate limits */
@@ -10614,7 +11092,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    body: string;
+                    body?: string;
+                    fileIds?: string[];
                 };
             };
         };
@@ -10707,7 +11186,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    body: string;
+                    body?: string;
+                    fileIds?: string[];
                 };
             };
         };
@@ -11580,7 +12060,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
-                status?: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+                status?: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION" | "DELETED";
                 page?: number;
                 limit?: number;
             };
@@ -12300,6 +12780,175 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReportCustomers"];
                 };
+            };
+        };
+    };
+    ReportsController_getServices: {
+        parameters: {
+            query?: {
+                preset?: string;
+                from?: string;
+                to?: string;
+                serviceId?: string;
+                categoryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportServices"];
+                };
+            };
+        };
+    };
+    ReportsController_getConsultants: {
+        parameters: {
+            query?: {
+                preset?: string;
+                from?: string;
+                to?: string;
+                serviceId?: string;
+                categoryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportConsultants"];
+                };
+            };
+        };
+    };
+    ReportsController_getSupport: {
+        parameters: {
+            query?: {
+                preset?: string;
+                from?: string;
+                to?: string;
+                serviceId?: string;
+                categoryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSupport"];
+                };
+            };
+        };
+    };
+    ReportsController_exportReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    type: "sales" | "customers" | "services" | "consultants" | "support";
+                    preset?: string;
+                    from?: string;
+                    to?: string;
+                    serviceId?: string;
+                    categoryId?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportJob"];
+                };
+            };
+        };
+    };
+    ReportsController_linkExport: {
+        parameters: {
+            query?: {
+                /** @description inline = open in the browser */
+                disposition?: "attachment" | "inline";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileLink"];
+                };
+            };
+            /** @description Export not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Your export is still being prepared. Please try again shortly. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReportsController_downloadExport: {
+        parameters: {
+            query: {
+                /** @description Signature */
+                s: unknown;
+                d?: "attachment" | "inline";
+                /** @description Expiry (unix seconds) */
+                e: unknown;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -13066,6 +13715,251 @@ export interface operations {
             };
             /** @description No such booking among yours */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PrivacyController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataRequestList"];
+                };
+            };
+        };
+    };
+    PrivacyController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    type: "EXPORT" | "DELETION";
+                    reason?: string;
+                    /** @description Deletion only: the customer ticked "I understand" */
+                    confirm?: boolean;
+                    /** @description Deletion only */
+                    password?: string;
+                    /** @description Deletion only */
+                    otp?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataRequest"];
+                };
+            };
+            /** @description Deletion: wrong password or code */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Deletion: staff and consultant accounts */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A request of this type is already open */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PrivacyController_otp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivacyOtp"];
+                };
+            };
+        };
+    };
+    PrivacyController_link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileLink"];
+                };
+            };
+            /** @description No such export among yours (another customer’s looks the same) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Still being prepared */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Expired and deleted — ask for a new export */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DataExportsController_download: {
+        parameters: {
+            query: {
+                /** @description Signature */
+                s: unknown;
+                d?: "attachment";
+                /** @description Expiry (unix seconds) */
+                e: unknown;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPrivacyController_list: {
+        parameters: {
+            query?: {
+                type?: "EXPORT" | "DELETION";
+                status?: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDataRequestList"];
+                };
+            };
+        };
+    };
+    AdminPrivacyController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDataRequestRow"];
+                };
+            };
+            /** @description Not a pending deletion, or an application is in progress, a balance is due or a booking is upcoming */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPrivacyController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDataRequestRow"];
+                };
+            };
+            /** @description Not pending */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

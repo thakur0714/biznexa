@@ -5,6 +5,7 @@ import { EventBus } from '../events/event-bus';
 import { QueueService } from '../queue/queue.service';
 import { newFileKey, StorageService } from '../files/storage.service';
 import { PdfRenderError, PdfRenderer, type PdfOptions } from './pdf-renderer';
+import { env } from '../config/env';
 
 export const PDF_QUEUE = 'pdf';
 
@@ -68,7 +69,14 @@ export class PdfService implements OnApplicationBootstrap, OnModuleDestroy {
    */
   async onApplicationBootstrap() {
     this.queues.process<PdfJob>(PDF_QUEUE, (job: Job<PdfJob>) => this.generate(job.data.kind, job.data.id), { concurrency: 2 });
-    for (const [kind, doc] of this.documents) {
+    if (env().QUEUE_BOOT_SWEEP) await this.queueMissing();
+  }
+
+  /** Queue every record of these kinds (default all) that still has no PDF. */
+  async queueMissing(kinds: string[] = [...this.documents.keys()]) {
+    for (const kind of kinds) {
+      const doc = this.documents.get(kind);
+      if (!doc) throw new Error(`Unknown PDF kind ${kind}`);
       const ids = (await doc.missing?.().catch((e) => (this.log.error(`Could not list ${kind} records without a PDF: ${e}`), []))) ?? [];
       for (const id of ids) this.enqueue(kind, id);
       if (ids.length) this.log.log(`Queued ${ids.length} ${kind} PDF(s) still to generate`);

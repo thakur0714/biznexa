@@ -142,10 +142,109 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
           },
         ]),
       },
+      $queryRaw: jest.fn().mockImplementation(async (query: any) => {
+        const sql = Array.isArray(query?.strings) ? query.strings.join(' ') : String(query);
+        if (sql.includes('COUNT(DISTINCT o.id)')) {
+          return [
+            {
+              serviceId: 'svc-1',
+              serviceName: 'Private Limited',
+              categoryName: 'Start',
+              orders: 1,
+              revenue: 100000n,
+            },
+          ];
+        }
+        if (sql.includes('avgTurnaroundDays') && sql.includes('GROUP BY a."serviceId"')) {
+          return [
+            {
+              serviceId: 'svc-1',
+              avgTurnaroundDays: 2.5,
+            },
+          ];
+        }
+        if (sql.includes('avgTurnaroundDays')) {
+          return [{ avgTurnaroundDays: 2.5 }];
+        }
+        if (sql.includes('breachCount')) {
+          return [
+            {
+              serviceId: 'svc-1',
+              serviceName: 'Private Limited',
+              categoryName: 'Start',
+              breachCount: 1,
+            },
+          ];
+        }
+        if (sql.includes('AVG(NULLIF(rating, 0))')) {
+          return [{ avgRating: 4.8 }];
+        }
+        if (sql.includes('c."consultantId"') || sql.includes('c.id AS "consultantId"')) {
+          return [
+            {
+              consultantId: 'c-1',
+              name: 'Priya Sharma',
+              slug: 'priya-sharma',
+              category: 'CA',
+              verificationStatus: 'APPROVED',
+              rating: 4.9,
+              reviewCount: 15,
+              bookingsCount: 20,
+              bookingRevenue: 10000000n,
+            },
+          ];
+        }
+        if (sql.includes('avgFirstResponseHours')) {
+          return [
+            {
+              avgFirstResponseHours: 1.5,
+              avgResolutionHours: 12.0,
+              totalTickets: 4,
+            },
+          ];
+        }
+        return [];
+      }),
+      consultant: {
+        count: jest.fn().mockImplementation(async (args?: any) => {
+          if (args?.where?.verificationStatus === 'APPROVED') return 8;
+          return 10;
+        }),
+        groupBy: jest.fn().mockResolvedValue([
+          { verificationStatus: 'APPROVED', _count: { _all: 8 } },
+          { verificationStatus: 'PENDING', _count: { _all: 2 } },
+        ]),
+      },
+      ticket: {
+        groupBy: jest.fn().mockResolvedValue([
+          { status: 'RESOLVED', _count: { _all: 3 } },
+          { status: 'OPEN', _count: { _all: 1 } },
+        ]),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 't-1',
+            code: 'TICK-1',
+            subject: 'Issue with payment',
+            status: 'RESOLVED',
+            priority: 'HIGH',
+            customer: { id: 'cust-1', name: 'John Doe' },
+            assignedTo: { id: 'staff-1', name: 'Support Staff' },
+            createdAt: new Date('2026-10-15T10:00:00.000Z'),
+            firstResponseAt: new Date('2026-10-15T11:30:00.000Z'),
+            resolvedAt: new Date('2026-10-15T22:00:00.000Z'),
+          },
+        ]),
+      },
     };
+    mockPrisma.application.groupBy = jest.fn().mockResolvedValue([
+      { status: 'COMPLETED', _count: { _all: 3 } },
+      { status: 'IN_PROGRESS', _count: { _all: 1 } },
+    ]);
 
     service = new ReportsService(mockPrisma);
   });
+
+
 
   describe('IST Boundary Handling in Dashboard KPIs', () => {
     it('Day 17 range includes payment at 23:59 IST and excludes payment at 00:01 IST next day', async () => {
@@ -268,4 +367,162 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
       expect(res.activeLast90Days).toBe(42);
     });
   });
+
+  describe('Services Report aggregations (M10.5)', () => {
+    it('returns popular services, turnaround, applications by status, and SLA breaches', async () => {
+      const res = await service.getServicesReport({
+        from: '2026-10-01',
+        to: '2026-10-31',
+      });
+
+      expect(res.range).toBeDefined();
+      expect(res.summary.totalOrders).toBe(1);
+      expect(res.summary.totalRevenue).toBe(100000);
+      expect(res.summary.avgTurnaroundDays).toBe(2.5);
+      expect(res.summary.totalSlaBreaches).toBe(1);
+
+      expect(res.popularServices).toEqual([
+        {
+          serviceId: 'svc-1',
+          serviceName: 'Private Limited',
+          categoryName: 'Start',
+          orders: 1,
+          revenue: 100000,
+          avgTurnaroundDays: 2.5,
+          slaBreaches: 1,
+        },
+      ]);
+
+      expect(res.applicationsByStatus).toEqual([
+        { status: 'COMPLETED', label: 'Completed', count: 3 },
+        { status: 'IN_PROGRESS', label: 'In Progress', count: 1 },
+      ]);
+
+      expect(res.slaBreaches).toEqual([
+        {
+          serviceId: 'svc-1',
+          serviceName: 'Private Limited',
+          categoryName: 'Start',
+          breachCount: 1,
+        },
+      ]);
+    });
+  });
+
+  describe('Consultants Report aggregations (M10.6)', () => {
+    it('returns total, active, by verification status, bookings count, revenue, and average rating', async () => {
+      const res = await service.getConsultantsReport({
+        from: '2026-10-01',
+        to: '2026-10-31',
+      });
+
+      expect(res.range).toBeDefined();
+      expect(res.summary.total).toBe(10);
+      expect(res.summary.active).toBe(8);
+      expect(res.summary.bookingsCount).toBe(20);
+      expect(res.summary.bookingRevenue).toBe(10000000);
+      expect(res.summary.averageRating).toBe(4.8);
+
+      expect(res.byVerificationStatus).toEqual([
+        { status: 'APPROVED', label: 'Approved', count: 8 },
+        { status: 'PENDING', label: 'Pending Review', count: 2 },
+      ]);
+
+      expect(res.consultants).toHaveLength(1);
+      expect(res.consultants[0]).toEqual({
+        consultantId: 'c-1',
+        name: 'Priya Sharma',
+        slug: 'priya-sharma',
+        category: 'CA',
+        verificationStatus: 'APPROVED',
+        rating: 4.9,
+        reviewCount: 15,
+        bookingsCount: 20,
+        bookingRevenue: 10000000,
+      });
+    });
+  });
+
+  describe('Support Report aggregations (M10.7)', () => {
+    it('returns tickets by status, avg first response time, avg resolution time, and recent tickets', async () => {
+      const res = await service.getSupportReport({
+        from: '2026-10-01',
+        to: '2026-10-31',
+      });
+
+      expect(res.range).toBeDefined();
+      expect(res.summary.totalTickets).toBe(4);
+      expect(res.summary.openTickets).toBe(1);
+      expect(res.summary.resolvedTickets).toBe(3);
+      expect(res.summary.avgFirstResponseHours).toBe(1.5);
+      expect(res.summary.avgResolutionHours).toBe(12.0);
+
+      expect(res.byStatus).toEqual([
+        { status: 'RESOLVED', label: 'Resolved', count: 3 },
+        { status: 'OPEN', label: 'Open', count: 1 },
+      ]);
+
+      expect(res.recentTickets).toHaveLength(1);
+      expect(res.recentTickets[0]).toEqual({
+        id: 't-1',
+        code: 'TICK-1',
+        subject: 'Issue with payment',
+        status: 'RESOLVED',
+        priority: 'HIGH',
+        customerName: 'John Doe',
+        assignedToName: 'Support Staff',
+        createdAt: '2026-10-15T10:00:00.000Z',
+        firstResponseAt: '2026-10-15T11:30:00.000Z',
+        resolvedAt: '2026-10-15T22:00:00.000Z',
+        firstResponseHours: 1.5,
+        resolutionHours: 12.0,
+      });
+    });
+  });
+
+  describe('Report Export Lifecycle', () => {
+    it('enqueues export and generates valid 24h download link', async () => {
+      const mockStorage = {
+        write: jest.fn().mockResolvedValue(undefined),
+        read: jest.fn().mockImplementation(async (key: string) => ({
+          stream: (async function* () {
+            yield Buffer.from('--- SALES REPORT SUMMARY ---');
+          })(),
+          size: 28,
+        })),
+        remove: jest.fn(),
+      };
+
+      const exportService = new ReportsService(mockPrisma, undefined, mockStorage as any);
+      const user = { id: 'admin-1', roles: ['ADMIN'], permissions: ['reports.view'], twoFactorPending: false };
+
+      const job = await exportService.enqueueExport({ type: 'sales', preset: 'today' }, user.id);
+      expect(job.id).toBeDefined();
+      expect(job.type).toBe('sales');
+      expect(job.status).toBe('PENDING');
+
+      // Since no queue was provided, it processed synchronously into exportCache
+      const link = await exportService.createExportLink(job.id, user);
+      expect(link.url).toMatch(new RegExp(`^/api/admin/reports/export/${job.id}/download\\?`));
+
+      const now = Date.now();
+      const expiresAt = new Date(link.expiresAt).getTime();
+      // Should be ~24 hours (86400 seconds) in the future
+      expect(expiresAt - now).toBeGreaterThan(23 * 3600 * 1000);
+      expect(expiresAt - now).toBeLessThanOrEqual(24 * 3600 * 1000 + 5000);
+
+      // Verify opening the signed download
+      const queryParams = Object.fromEntries(new URL(`http://localhost${link.url}`).searchParams);
+      const streamRes = await exportService.openExportLinked(job.id, queryParams);
+      expect(streamRes.size).toBe(28);
+      expect(streamRes.disposition).toContain('attachment;');
+    });
+
+    it('throws 404 if export does not exist', async () => {
+      const user = { id: 'admin-1', roles: ['ADMIN'], permissions: ['reports.view'], twoFactorPending: false };
+      await expect(service.createExportLink('non-existent-id', user)).rejects.toThrow('Export not found');
+    });
+  });
 });
+
+
