@@ -21,6 +21,7 @@ export function ConsultantDetailView({ id }: { id: string }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [reason, setReason] = useState('');
+  const [feeReason, setFeeReason] = useState('');
   const [form, setForm] = useState<AdminConsultantProfileInput | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
 
@@ -73,6 +74,22 @@ export function ConsultantDetailView({ id }: { id: string }) {
     finally { setSaving(false); }
   }
 
+  async function decideFeeChange(requestId: string, decision: 'approve' | 'reject') {
+    if (saving || (decision === 'reject' && feeReason.trim().length < 3)) return;
+    setSaving(true); setError(''); setSuccess('');
+    try {
+      if (decision === 'approve') {
+        await api.call((client) => client.POST('/api/admin/consultants/{id}/fee-requests/{requestId}/approve', { params: { path: { id, requestId } } }));
+      } else {
+        await api.call((client) => client.POST('/api/admin/consultants/{id}/fee-requests/{requestId}/reject', { params: { path: { id, requestId } }, body: { reason: feeReason.trim() } }));
+      }
+      setSuccess(`Fee change ${decision === 'approve' ? 'approved' : 'rejected'}.`);
+      setLoading(true);
+      setRefreshCount((count) => count + 1);
+    } catch (cause: unknown) { setError(cause instanceof Error ? cause.message : `Could not ${decision} this fee change.`); }
+    finally { setSaving(false); }
+  }
+
   async function openFile(fileId: string) {
     setError('');
     const tab = window.open('', '_blank');
@@ -120,6 +137,15 @@ export function ConsultantDetailView({ id }: { id: string }) {
           <div className="flex flex-wrap gap-2"><Button variant="ink" disabled={saving} onClick={() => void action('approve')}>Approve</Button><Button variant="outline" disabled={saving} onClick={() => void action('suspend')}>Suspend</Button></div>
           <label className="block text-sm font-medium">Rejection reason<textarea className={`${controlClass} mt-1 min-h-20`} value={reason} onChange={(event) => setReason(event.target.value)} /></label>
           <Button variant="outline" disabled={saving || reason.trim().length < 3} onClick={() => void action('reject')}>Reject application</Button>
+        </section>
+        <section className="space-y-3 rounded-lg border border-rule bg-white p-4" aria-labelledby="consultant-fee-requests-heading">
+          <h2 id="consultant-fee-requests-heading" className="text-lg font-semibold">Fee change requests</h2>
+          {detail.feeChangeRequests.length ? <ul className="divide-y divide-rule">{detail.feeChangeRequests.map((request) => <li key={request.id} className="space-y-3 py-3 first:pt-0 last:pb-0">
+            <div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-medium">{formatINR(request.requestedFee)} requested · {request.status}</p><p className="text-sm text-muted">Submitted {new Date(request.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}{request.decidedBy ? ` · decided by ${request.decidedBy}` : ''}</p>{request.decisionReason && <p className="text-sm text-muted">Reason: {request.decisionReason}</p>}</div>
+              {request.status === 'PENDING' && <div className="flex gap-2"><Button size="sm" variant="ink" disabled={saving} onClick={() => void decideFeeChange(request.id, 'approve')}>Approve fee</Button><Button size="sm" variant="outline" disabled={saving || feeReason.trim().length < 3} onClick={() => void decideFeeChange(request.id, 'reject')}>Reject fee</Button></div>}
+            </div>
+            {request.status === 'PENDING' && <label className="block text-sm font-medium">Fee rejection reason<textarea className={`${controlClass} mt-1 min-h-16`} value={feeReason} onChange={(event) => setFeeReason(event.target.value)} /></label>}
+          </li>)}</ul> : <p className="text-sm text-muted">No fee change requests.</p>}
         </section>
       </>}
     </main>
