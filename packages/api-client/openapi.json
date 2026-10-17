@@ -12195,6 +12195,173 @@
           "admin-tickets"
         ]
       }
+    },
+    "/api/consultants": {
+      "post": {
+        "operationId": "ConsultantsController_apply",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "CA",
+                      "CS",
+                      "LAWYER",
+                      "TAX_CONSULTANT",
+                      "TRADEMARK_CONSULTANT",
+                      "ISO_CONSULTANT",
+                      "BUSINESS_CONSULTANT",
+                      "TECHNOLOGY_CONSULTANT"
+                    ]
+                  },
+                  "qualification": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "membershipNo": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "nullable": true
+                  },
+                  "experienceYears": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60
+                  },
+                  "expertise": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "minItems": 1,
+                    "maxItems": 20
+                  },
+                  "languages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "minItems": 1,
+                    "maxItems": 20
+                  },
+                  "city": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "state": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "area": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "nullable": true
+                  },
+                  "bio": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "nullable": true
+                  },
+                  "feePerSession": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000000,
+                    "description": "Consultation fee in paise"
+                  },
+                  "consultationTypes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "AUDIO",
+                        "VIDEO",
+                        "CHAT",
+                        "MEETING"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "documents": {
+                    "type": "object",
+                    "properties": {
+                      "qualificationProofId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "membershipProofId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "idProofId": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    },
+                    "required": [
+                      "qualificationProofId",
+                      "membershipProofId",
+                      "idProofId"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "category",
+                  "qualification",
+                  "experienceYears",
+                  "expertise",
+                  "languages",
+                  "city",
+                  "state",
+                  "feePerSession",
+                  "consultationTypes",
+                  "documents"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantApplicationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A proof file is missing, duplicated, or does not belong to the applicant."
+          },
+          "409": {
+            "description": "The user already has a consultant application."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultants"
+        ]
+      }
     }
   },
   "info": {
@@ -28354,6 +28521,26 @@
           "updatedAt",
           "thread",
           "messages"
+        ],
+        "additionalProperties": false
+      },
+      "ConsultantApplicationResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "verificationStatus"
         ],
         "additionalProperties": false
       }

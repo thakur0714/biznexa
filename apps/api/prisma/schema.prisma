@@ -96,6 +96,12 @@ enum ConsultantCategory {
   TECHNOLOGY_CONSULTANT
 }
 
+enum ConsultantDocumentKind {
+  QUALIFICATION_PROOF
+  MEMBERSHIP_PROOF
+  ID_PROOF
+}
+
 enum VerificationStatus {
   PENDING
   APPROVED
@@ -798,6 +804,7 @@ model Consultant {
   availability       AvailabilitySlot[]
   bookings           Booking[]
   reviews            Review[]
+  documents          ConsultantDocument[]
 
   @@index([category, city, rating])
 }
@@ -809,6 +816,19 @@ model ConsultantService {
   service      Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@id([consultantId, serviceId])
+}
+
+model ConsultantDocument {
+  id           String                @id @default(uuid())
+  consultantId String
+  kind         ConsultantDocumentKind
+  fileId       String                @unique
+  createdAt    DateTime              @default(now())
+  consultant   Consultant            @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  file         StoredFile            @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@unique([consultantId, kind])
+  @@index([consultantId])
 }
 
 model AvailabilitySlot {
@@ -1149,6 +1169,7 @@ model StoredFile {
   owner         User                        @relation(fields: [ownerId], references: [id])
   requirement   ServiceDocumentRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
   document      ApplicationDocument?
+  consultantDocument ConsultantDocument?
 
   @@index([ownerId])
   @@index([scanStatus])
