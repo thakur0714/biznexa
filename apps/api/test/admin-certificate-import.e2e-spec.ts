@@ -166,8 +166,10 @@ ${prefix}-REJECT-2,ISO 9001:2015,,,,2026-01-01,2026-01-01,2029-01-01,${testBody.
   });
 
   it('POST /api/admin/certificates/import imports valid rows in one transaction and logs audit', async () => {
+    const sequence = await prisma.certificateSequence.findUniqueOrThrow({ where: { year: new Date().getFullYear() } });
+    const typedNumber = `BNC-${new Date().getFullYear()}-${String(sequence.lastNumber + 5).padStart(6, '0')}`;
     const validCsv = `Certificate Number,Certificate Type,Organization Name,Scope,Address,Issue Date,Valid From,Valid Until,Certification Body,Allow Public Download
-${prefix}-TX-1,ISO 9001:2015,TX Company 1,Scope 1,Addr 1,2026-01-01,2026-01-01,2029-01-01,${testBody.name},true
+${typedNumber},ISO 9001:2015,TX Company 1,Scope 1,Addr 1,2026-01-01,2026-01-01,2029-01-01,${testBody.name},true
 ,ISO 27001:2022,TX Company 2,Scope 2,Addr 2,2026-02-01,2026-02-01,2029-02-01,${testBody.id},false`;
 
     const res = await http
@@ -182,7 +184,7 @@ ${prefix}-TX-1,ISO 9001:2015,TX Company 1,Scope 1,Addr 1,2026-01-01,2026-01-01,2
 
     const c1 = await prisma.certificate.findUnique({ where: { id: res.body.certificateIds[0] } });
     expect(c1).not.toBeNull();
-    expect(c1?.certificateNumber).toBe(`${prefix}-TX-1`);
+    expect(c1?.certificateNumber).toBe(typedNumber);
     expect(c1?.organizationName).toBe('TX Company 1');
     expect(c1?.showPdfPublicly).toBe(true);
     expect(c1?.verificationId).toHaveLength(12);
@@ -190,7 +192,7 @@ ${prefix}-TX-1,ISO 9001:2015,TX Company 1,Scope 1,Addr 1,2026-01-01,2026-01-01,2
 
     const c2 = await prisma.certificate.findUnique({ where: { id: res.body.certificateIds[1] } });
     expect(c2).not.toBeNull();
-    expect(c2?.certificateNumber).toMatch(/^BNC-\d{4}-\d{6}$/);
+    expect(c2?.certificateNumber).toBe(`BNC-${new Date().getFullYear()}-${String(sequence.lastNumber + 6).padStart(6, '0')}`);
     expect(c2?.organizationName).toBe('TX Company 2');
     expect(c2?.showPdfPublicly).toBe(false);
 
