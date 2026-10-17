@@ -63,7 +63,7 @@ CREATE UNIQUE INDEX "CreditNote_financialYear_sequence_key" ON "CreditNote"("fin
 CREATE UNIQUE INDEX "Refund_gatewayRefundId_key" ON "Refund"("gatewayRefundId");
 
 -- CreateIndex
-CREATE INDEX "Refund_paymentId_idx" ON "Refund"("paymentId");
+CREATE INDEX IF NOT EXISTS "Refund_paymentId_idx" ON "Refund"("paymentId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Refund_paymentId_idempotencyKey_key" ON "Refund"("paymentId", "idempotencyKey");
