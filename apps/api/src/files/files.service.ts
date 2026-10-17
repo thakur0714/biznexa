@@ -141,7 +141,10 @@ export class FilesService {
     });
 
     if (messageAttachment?.message.conversation.applicationId) {
-      if (user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED)) {
+      if (
+        user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ALL) ||
+        user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED)
+      ) {
         const app = await this.prisma.application.findFirst({
           where: {
             id: messageAttachment.message.conversation.applicationId,

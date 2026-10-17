@@ -514,5 +514,28 @@ describe('MessagesController (e2e, M4.11)', () => {
         .set(auth(customer2Token))
         .expect(404); // Or 403, our API throws 404 for findReadable
     });
+
+    it('an admin (view_all) can download the customer attachment', async () => {
+      const res = await http
+        .post(`/api/files/${f1Id}/link`)
+        .set(auth(adminToken))
+        .expect(200);
+      expect(res.body.url).toBeDefined();
+    });
+
+    it('assigned ops can download the customer attachment', async () => {
+      const res = await http
+        .post(`/api/files/${f1Id}/link`)
+        .set(auth(assignedOpsToken))
+        .expect(200);
+      expect(res.body.url).toBeDefined();
+    });
+
+    it('unassigned ops cannot download the customer attachment', async () => {
+      await http
+        .post(`/api/files/${f1Id}/link`)
+        .set(auth(unassignedOpsToken))
+        .expect(404);
+    });
   });
 });
