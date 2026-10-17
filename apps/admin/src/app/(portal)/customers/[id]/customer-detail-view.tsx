@@ -16,6 +16,7 @@ const USER_STATUS_BADGES: Record<string, { label: string; tone: Tone }> = {
   BLOCKED: { label: 'Blocked', tone: 'danger' },
   DEACTIVATED: { label: 'Deactivated', tone: 'neutral' },
   PENDING_DELETION: { label: 'Pending Deletion', tone: 'warning' },
+  DELETED: { label: 'Deleted', tone: 'neutral' },
 };
 
 const APPLICATION_STATUS_BADGES: Record<string, { label: string; tone: Tone }> = {

@@ -645,6 +645,96 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     channel: 'WHATSAPP',
     body: 'Hello {{recipientName}}, you have a new message from {{senderName}} on application {{applicationCode}}.',
   },
+
+  // ────────────────── privacy.export_ready (M5.12) ──────────────────
+  {
+    event: 'privacy.export_ready',
+    channel: 'EMAIL',
+    subject: 'Your BizNexa data export is ready',
+    body: '<p>Hello {{customerName}},</p><p>The copy of your data you asked for is ready. Download it from your Privacy page before <strong>{{expiresOn}}</strong>, after which it is deleted.</p><p><a href="{{link}}">Open the Privacy page</a></p>',
+  },
+  {
+    event: 'privacy.export_ready',
+    channel: 'IN_APP',
+    subject: 'Your data export is ready',
+    body: 'Download it from the Privacy page before {{expiresOn}}.',
+  },
+  {
+    event: 'privacy.export_ready',
+    channel: 'SMS',
+    body: 'Your BizNexa data export is ready. Download it from your Privacy page before {{expiresOn}}.',
+  },
+  {
+    event: 'privacy.export_ready',
+    channel: 'PUSH',
+    subject: 'Your data export is ready',
+    body: 'Download it before {{expiresOn}}.',
+  },
+  {
+    event: 'privacy.export_ready',
+    channel: 'WHATSAPP',
+    body: 'Hello {{customerName}}, your BizNexa data export is ready. Download it from your Privacy page before {{expiresOn}}.',
+  },
+
+  // ────────────────── privacy.request_rejected (M5.12) ──────────────────
+  {
+    event: 'privacy.request_rejected',
+    channel: 'EMAIL',
+    subject: 'About your {{requestType}} request',
+    body: '<p>Hello {{customerName}},</p><p>We could not complete your {{requestType}} request. Reason: {{reason}}</p><p>You can ask again from your Privacy page once this is sorted, or reply to this email if you have questions.</p><p><a href="{{link}}">Open the Privacy page</a></p>',
+  },
+  {
+    event: 'privacy.request_rejected',
+    channel: 'SMS',
+    body: 'BizNexa could not complete your {{requestType}} request. Please check your Privacy page for the reason.',
+  },
+  {
+    event: 'privacy.request_rejected',
+    channel: 'PUSH',
+    subject: 'Request not completed',
+    body: 'Your {{requestType}} request was not completed: {{reason}}',
+  },
+  {
+    event: 'privacy.request_rejected',
+    channel: 'IN_APP',
+    subject: 'Request not completed',
+    body: 'Your {{requestType}} request was not completed. Reason: {{reason}}',
+  },
+  {
+    event: 'privacy.request_rejected',
+    channel: 'WHATSAPP',
+    body: 'Hello {{customerName}}, we could not complete your {{requestType}} request. Reason: {{reason}}',
+  },
+
+  // ────────────────── privacy.account_deleted (M5.12) — sent by email/SMS only ──────────────────
+  {
+    event: 'privacy.account_deleted',
+    channel: 'EMAIL',
+    subject: 'Your BizNexa account has been deleted',
+    body: '<p>Hello {{customerName}},</p><p>As you asked, your BizNexa account has been deleted and your personal details removed. Invoices, payments, credit notes and certificates are kept as the law requires.</p><p>Thank you for using BizNexa.</p>',
+  },
+  {
+    event: 'privacy.account_deleted',
+    channel: 'SMS',
+    body: 'Your BizNexa account has been deleted as you asked. Thank you for using BizNexa.',
+  },
+  {
+    event: 'privacy.account_deleted',
+    channel: 'PUSH',
+    subject: 'Account deleted',
+    body: 'Your BizNexa account has been deleted.',
+  },
+  {
+    event: 'privacy.account_deleted',
+    channel: 'IN_APP',
+    subject: 'Account deleted',
+    body: 'Your BizNexa account has been deleted.',
+  },
+  {
+    event: 'privacy.account_deleted',
+    channel: 'WHATSAPP',
+    body: 'Hello {{customerName}}, your BizNexa account has been deleted as you asked.',
+  },
 ];
 
 export async function seedNotificationTemplates(prisma: PrismaClient): Promise<{ count: number }> {

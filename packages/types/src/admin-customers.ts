@@ -4,7 +4,7 @@ import { PAYMENT_STATUSES } from './payments';
 
 const isoDate = z.string().datetime();
 
-export const USER_STATUSES = ['ACTIVE', 'BLOCKED', 'DEACTIVATED', 'PENDING_DELETION'] as const;
+export const USER_STATUSES = ['ACTIVE', 'BLOCKED', 'DEACTIVATED', 'PENDING_DELETION', 'DELETED'] as const;
 export const ORDER_STATUSES = ['CREATED', 'PAYMENT_PENDING', 'PARTIALLY_PAID', 'PAID', 'CANCELLED', 'REFUNDED'] as const;
 
 export const adminCustomerListQuerySchema = z.object({
