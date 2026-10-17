@@ -123,3 +123,54 @@ export const adminConsultantActionResponseSchema = z.object({
   verificationStatus: z.enum(consultantVerificationStatuses),
 });
 export type AdminConsultantActionResponse = z.infer<typeof adminConsultantActionResponseSchema>;
+
+export const publicConsultantDirectoryQuerySchema = z.object({
+  category: z.enum(consultantCategories).optional(),
+  state: z.string().trim().min(1).max(100).optional(),
+  city: z.string().trim().min(1).max(100).optional(),
+  area: z.string().trim().min(1).max(120).optional(),
+  minRating: z.coerce.number().min(0).max(5).optional(),
+  minExperience: z.coerce.number().int().min(0).max(60).optional(),
+  minFee: z.coerce.number().int().min(0).max(100_000_000).optional().describe('Minimum session fee in paise'),
+  maxFee: z.coerce.number().int().min(0).max(100_000_000).optional().describe('Maximum session fee in paise'),
+  language: z.string().trim().min(1).max(40).optional(),
+  consultationType: z.enum(consultationTypes).optional(),
+  availableToday: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
+  sort: z.enum(['rating', 'experience', 'fee_low', 'fee_high']).default('rating'),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(12),
+}).refine((query) => query.minFee === undefined || query.maxFee === undefined || query.minFee <= query.maxFee, {
+  message: 'Minimum fee must not exceed maximum fee', path: ['minFee'],
+});
+export type PublicConsultantDirectoryQuery = z.infer<typeof publicConsultantDirectoryQuerySchema>;
+
+export const publicConsultantCardSchema = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  name: z.string(),
+  category: consultantCategorySchema,
+  qualification: z.string(),
+  city: z.string(),
+  state: z.string(),
+  area: z.string().nullable(),
+  expertise: z.array(z.string()),
+  languages: z.array(z.string()),
+  bio: z.string().nullable(),
+  photoUrl: z.string().nullable(),
+  feePerSession: z.number().int().describe('Consultation fee in paise'),
+  sessionMinutes: z.number().int(),
+  consultationTypes: z.array(consultationTypeSchema),
+  rating: z.number(),
+  reviewCount: z.number().int(),
+  isOnline: z.boolean(),
+  availableToday: z.boolean(),
+});
+export type PublicConsultantCard = z.infer<typeof publicConsultantCardSchema>;
+
+export const publicConsultantDirectorySchema = z.object({
+  items: z.array(publicConsultantCardSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+});
+export type PublicConsultantDirectory = z.infer<typeof publicConsultantDirectorySchema>;

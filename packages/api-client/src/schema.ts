@@ -2372,6 +2372,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/consultants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicConsultantsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5810,6 +5826,35 @@ export interface components {
             id: string;
             /** @enum {string} */
             verificationStatus: "PENDING";
+        };
+        PublicConsultantDirectory: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+                /** @enum {string} */
+                category: "CA" | "CS" | "LAWYER" | "TAX_CONSULTANT" | "TRADEMARK_CONSULTANT" | "ISO_CONSULTANT" | "BUSINESS_CONSULTANT" | "TECHNOLOGY_CONSULTANT";
+                qualification: string;
+                city: string;
+                state: string;
+                area: string | null;
+                expertise: string[];
+                languages: string[];
+                bio: string | null;
+                photoUrl: string | null;
+                /** @description Consultation fee in paise */
+                feePerSession: number;
+                sessionMinutes: number;
+                consultationTypes: ("AUDIO" | "VIDEO" | "CHAT" | "MEETING")[];
+                rating: number;
+                reviewCount: number;
+                isOnline: boolean;
+                availableToday: boolean;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
         };
     };
     responses: never;
@@ -11308,6 +11353,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminConsultantActionResponse"];
+                };
+            };
+        };
+    };
+    PublicConsultantsController_list: {
+        parameters: {
+            query?: {
+                category?: "CA" | "CS" | "LAWYER" | "TAX_CONSULTANT" | "TRADEMARK_CONSULTANT" | "ISO_CONSULTANT" | "BUSINESS_CONSULTANT" | "TECHNOLOGY_CONSULTANT";
+                state?: string;
+                city?: string;
+                area?: string;
+                minRating?: number;
+                minExperience?: number;
+                /** @description Minimum session fee in paise */
+                minFee?: number;
+                /** @description Maximum session fee in paise */
+                maxFee?: number;
+                language?: string;
+                consultationType?: "AUDIO" | "VIDEO" | "CHAT" | "MEETING";
+                availableToday?: "true" | "false";
+                sort?: "rating" | "experience" | "fee_low" | "fee_high";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicConsultantDirectory"];
                 };
             };
         };

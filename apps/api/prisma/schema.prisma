@@ -808,6 +808,14 @@ model Consultant {
   documents          ConsultantDocument[]
 
   @@index([category, city, rating])
+  @@index([state, city, area])
+  @@index([city])
+  @@index([area])
+  @@index([rating])
+  @@index([experienceYears])
+  @@index([feePerSession])
+  @@index([languages], type: Gin)
+  @@index([consultationTypes], type: Gin)
 }
 
 model ConsultantService {
@@ -841,6 +849,9 @@ model AvailabilitySlot {
   endTime      String // "13:00" IST
   isBlocked    Boolean    @default(false)
   consultant   Consultant @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+
+  @@index([consultantId, weekday, isBlocked])
+  @@index([consultantId, date, isBlocked])
 }
 
 model Booking {

@@ -12731,6 +12731,190 @@
           "admin · consultants"
         ]
       }
+    },
+    "/api/public/consultants": {
+      "get": {
+        "operationId": "PublicConsultantsController_list",
+        "parameters": [
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CA",
+                "CS",
+                "LAWYER",
+                "TAX_CONSULTANT",
+                "TRADEMARK_CONSULTANT",
+                "ISO_CONSULTANT",
+                "BUSINESS_CONSULTANT",
+                "TECHNOLOGY_CONSULTANT"
+              ]
+            }
+          },
+          {
+            "name": "state",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "city",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "area",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "minRating",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5
+            }
+          },
+          {
+            "name": "minExperience",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60
+            }
+          },
+          {
+            "name": "minFee",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000000
+            },
+            "description": "Minimum session fee in paise"
+          },
+          {
+            "name": "maxFee",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000000
+            },
+            "description": "Maximum session fee in paise"
+          },
+          {
+            "name": "language",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "consultationType",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "AUDIO",
+                "VIDEO",
+                "CHAT",
+                "MEETING"
+              ]
+            }
+          },
+          {
+            "name": "availableToday",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "rating",
+                "experience",
+                "fee_low",
+                "fee_high"
+              ],
+              "default": "rating"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicConsultantDirectory"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "public · consultants"
+        ]
+      }
     }
   },
   "info": {
@@ -29214,6 +29398,144 @@
         "required": [
           "id",
           "verificationStatus"
+        ],
+        "additionalProperties": false
+      },
+      "PublicConsultantDirectory": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "CA",
+                    "CS",
+                    "LAWYER",
+                    "TAX_CONSULTANT",
+                    "TRADEMARK_CONSULTANT",
+                    "ISO_CONSULTANT",
+                    "BUSINESS_CONSULTANT",
+                    "TECHNOLOGY_CONSULTANT"
+                  ]
+                },
+                "qualification": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "area": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "expertise": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "languages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "bio": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "photoUrl": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "feePerSession": {
+                  "type": "integer",
+                  "description": "Consultation fee in paise"
+                },
+                "sessionMinutes": {
+                  "type": "integer"
+                },
+                "consultationTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "AUDIO",
+                      "VIDEO",
+                      "CHAT",
+                      "MEETING"
+                    ]
+                  }
+                },
+                "rating": {
+                  "type": "number"
+                },
+                "reviewCount": {
+                  "type": "integer"
+                },
+                "isOnline": {
+                  "type": "boolean"
+                },
+                "availableToday": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name",
+                "category",
+                "qualification",
+                "city",
+                "state",
+                "area",
+                "expertise",
+                "languages",
+                "bio",
+                "photoUrl",
+                "feePerSession",
+                "sessionMinutes",
+                "consultationTypes",
+                "rating",
+                "reviewCount",
+                "isOnline",
+                "availableToday"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
         ],
         "additionalProperties": false
       }

@@ -6,6 +6,7 @@ import {
   adminConsultantListSchema,
   adminConsultantSummarySchema,
   consultantApplicationResponseSchema,
+  publicConsultantDirectorySchema,
   type AdminConsultantDetail,
   type AdminConsultantList,
   type AdminConsultantListQuery,
@@ -13,6 +14,8 @@ import {
   type ConsultantApplicationInput,
   type ConsultantApplicationResponse,
   type ConsultantRejectInput,
+  type PublicConsultantDirectory,
+  type PublicConsultantDirectoryQuery,
 } from '@biznexa/types';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -234,5 +237,95 @@ export class ConsultantsService {
       city: consultant.city, state: consultant.state, area: consultant.area, bio: consultant.bio,
       feePerSession: consultant.feePerSession, consultationTypes: consultant.consultationTypes,
     };
+  }
+
+  async listPublic(query: PublicConsultantDirectoryQuery, now = new Date()): Promise<PublicConsultantDirectory> {
+    const ist = new Date(now.getTime() + 330 * 60_000);
+    const weekday = ist.getUTCDay();
+    const startOfToday = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - 330 * 60_000);
+    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60_000);
+    const parts = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(now);
+    const hour = parts.find((part) => part.type === 'hour')?.value ?? '00';
+    const minute = parts.find((part) => part.type === 'minute')?.value ?? '00';
+    const localTime = `${hour}:${minute}`;
+    const availableSlotWhere: Prisma.AvailabilitySlotWhereInput = {
+      isBlocked: false,
+      startTime: { gte: localTime },
+      OR: [
+        { weekday, date: null },
+        { date: { gte: startOfToday, lt: startOfTomorrow } },
+      ],
+    };
+    const where: Prisma.ConsultantWhereInput = {
+      verificationStatus: 'APPROVED',
+      ...(query.category ? { category: query.category } : {}),
+      ...(query.state ? { state: { equals: query.state, mode: 'insensitive' } } : {}),
+      ...(query.city ? { city: { equals: query.city, mode: 'insensitive' } } : {}),
+      ...(query.area ? { area: { equals: query.area, mode: 'insensitive' } } : {}),
+      ...(query.minRating !== undefined ? { rating: { gte: query.minRating } } : {}),
+      ...(query.minExperience !== undefined ? { experienceYears: { gte: query.minExperience } } : {}),
+      ...(query.minFee !== undefined || query.maxFee !== undefined ? {
+        feePerSession: {
+          ...(query.minFee !== undefined ? { gte: query.minFee } : {}),
+          ...(query.maxFee !== undefined ? { lte: query.maxFee } : {}),
+        },
+      } : {}),
+      ...(query.language ? { languages: { has: query.language } } : {}),
+      ...(query.consultationType ? { consultationTypes: { has: query.consultationType } } : {}),
+      ...(query.availableToday === true ? { availability: { some: availableSlotWhere } } : {}),
+      ...(query.availableToday === false ? { availability: { none: availableSlotWhere } } : {}),
+    };
+    const orderBy: Prisma.ConsultantOrderByWithRelationInput[] = query.sort === 'experience'
+      ? [{ experienceYears: 'desc' }, { rating: 'desc' }, { id: 'asc' }]
+      : query.sort === 'fee_low'
+        ? [{ feePerSession: 'asc' }, { rating: 'desc' }, { id: 'asc' }]
+        : query.sort === 'fee_high'
+          ? [{ feePerSession: 'desc' }, { rating: 'desc' }, { id: 'asc' }]
+          : [{ rating: 'desc' }, { reviewCount: 'desc' }, { id: 'asc' }];
+
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.consultant.findMany({
+        where,
+        orderBy,
+        skip: (query.page - 1) * query.limit,
+        take: query.limit,
+        select: {
+          id: true, slug: true, category: true, qualification: true, city: true, state: true, area: true,
+          expertise: true, languages: true, bio: true, photoUrl: true, feePerSession: true,
+          sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true,
+          user: { select: { name: true } },
+          availability: { where: availableSlotWhere, select: { id: true }, take: 1 },
+        },
+      }),
+      this.prisma.consultant.count({ where }),
+    ]);
+    return publicConsultantDirectorySchema.parse({
+      items: rows.map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.user.name,
+        category: row.category,
+        qualification: row.qualification,
+        city: row.city,
+        state: row.state,
+        area: row.area,
+        expertise: row.expertise,
+        languages: row.languages,
+        bio: row.bio,
+        photoUrl: row.photoUrl,
+        feePerSession: row.feePerSession,
+        sessionMinutes: row.sessionMinutes,
+        consultationTypes: row.consultationTypes,
+        rating: row.rating,
+        reviewCount: row.reviewCount,
+        isOnline: row.isOnline,
+        availableToday: row.availability.length > 0,
+      })),
+      total,
+      page: query.page,
+      limit: query.limit,
+    });
   }
 }
