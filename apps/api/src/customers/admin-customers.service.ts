@@ -184,6 +184,7 @@ export class AdminCustomersService {
       const user = await tx.user.findFirst({ where: { id, roles: { some: { role: { key: 'CUSTOMER' } } } }, select });
       if (!user) throw new NotFoundException('Customer not found');
       if (user.status === 'PENDING_DELETION') throw new ConflictException('Cannot change status of a customer pending deletion');
+      if (user.status === 'DELETED') throw new ConflictException('This account was deleted at the customer’s request and cannot be changed');
       if (user.status === input.status) throw new ConflictException(`Customer is already ${input.status}`);
 
       const u = await tx.user.update({ where: { id, status: user.status }, data: { status: input.status }, select });

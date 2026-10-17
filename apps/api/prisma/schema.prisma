@@ -19,6 +19,8 @@ enum UserStatus {
   BLOCKED
   DEACTIVATED
   PENDING_DELETION
+  /// Anonymised after an approved deletion request (M5.12); can never sign in again.
+  DELETED
 }
 
 enum OtpChannel {
@@ -30,6 +32,8 @@ enum OtpPurpose {
   LOGIN
   VERIFY_MOBILE
   RESET_PASSWORD
+  /// Re-check before an account deletion request (M5.12).
+  ACCOUNT_DELETION
 }
 
 enum OrderStatus {
@@ -246,6 +250,8 @@ model User {
   invoices          Invoice[]
   creditNotes       CreditNote[]
   deviceTokens      DeviceToken[]
+  dataRequests      DataRequest[]     @relation("DataRequestUser")
+  handledDataRequests DataRequest[]   @relation("DataRequestHandler")
 
   @@index([createdAt])
 }
@@ -1197,17 +1203,28 @@ model Conversation {
 }
 
 model Message {
-  id             String       @id @default(uuid())
-  conversationId String
-  senderId       String
-  body           String?
-  attachments    Json? // [{fileKey, fileName, mimeType}]
-  readAt         DateTime?
-  createdAt      DateTime     @default(now())
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User         @relation(fields: [senderId], references: [id])
+  id                 String              @id @default(uuid())
+  conversationId     String
+  senderId           String
+  body               String?
+  readAt             DateTime?
+  createdAt          DateTime            @default(now())
+  conversation       Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender             User                @relation(fields: [senderId], references: [id])
+  messageAttachments MessageAttachment[]
 
   @@index([conversationId, createdAt])
+}
+
+model MessageAttachment {
+  id        String     @id @default(uuid())
+  messageId String
+  fileId    String     @unique
+  createdAt DateTime   @default(now())
+  message   Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  file      StoredFile @relation(fields: [fileId], references: [id])
+
+  @@index([messageId])
 }
 
 // ─────────────────────────── CMS & blog ───────────────────────────
@@ -1336,11 +1353,14 @@ model StoredFile {
   scanStatus    FileScanStatus              @default(PENDING) // only CLEAN files can be downloaded
   scanSignature String? // what the scanner found, when INFECTED
   scannedAt     DateTime?
+  /// Bytes deleted with the uploader's account (M5.12); the row stays for the documents that point at it.
+  deletedAt     DateTime?
   createdAt     DateTime                    @default(now())
   owner         User                        @relation(fields: [ownerId], references: [id])
   requirement   ServiceDocumentRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
   document      ApplicationDocument?
   consultantDocument ConsultantDocument?
+  messageAttachment  MessageAttachment?
 
   @@index([ownerId])
   @@index([scanStatus])
@@ -1350,4 +1370,42 @@ enum FileScanStatus {
   PENDING // uploaded, scan job queued or retrying
   CLEAN
   INFECTED // stored bytes deleted, row kept for the record
+}
+
+enum DataRequestType {
+  EXPORT
+  DELETION
+}
+
+enum DataRequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+/// A customer's data export or account deletion request (DPDP Act 2023, M5.12). At most one open
+/// (PENDING/PROCESSING) request per type per user — a partial unique index in the migration.
+model DataRequest {
+  id              String            @id @default(uuid())
+  userId          String
+  type            DataRequestType
+  status          DataRequestStatus @default(PENDING)
+  reason          String? // the customer's, optional
+  rejectionReason String?
+  /// Export only: the ZIP in private storage; cleared when the cleanup job deletes it.
+  fileKey         String?           @unique
+  /// Export only: the file is deleted after this.
+  expiresAt       DateTime?
+  handledById     String?
+  handledAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  user            User              @relation("DataRequestUser", fields: [userId], references: [id])
+  handledBy       User?             @relation("DataRequestHandler", fields: [handledById], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([expiresAt])
 }

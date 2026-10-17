@@ -26,6 +26,8 @@ export const PERMS = {
   LEADS_VIEW: 'leads.view',
   /** Notification delivery log, and retrying a failed delivery (M6.3). */
   NOTIFICATIONS_VIEW: 'notifications.view',
+  /** Handle customers' data export and account deletion requests (DPDP, M5.12). */
+  PRIVACY_MANAGE: 'privacy.manage',
 } as const;
 
 export type Permission = (typeof PERMS)[keyof typeof PERMS];

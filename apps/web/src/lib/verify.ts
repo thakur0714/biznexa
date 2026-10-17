@@ -16,12 +16,18 @@ async function forwardHeaders() {
   return { accept: 'application/json', ...(ip ? { 'x-forwarded-for': ip } : {}), 'user-agent': h.get('user-agent') ?? '' };
 }
 
-export type Lookup<T> = { ok: true; data: T } | { ok: false; message: string };
+export type Lookup<T> = { ok: true; data: T } | { ok: false; message: string; captchaRequired?: boolean };
 
 async function lookup<T>(request: () => Promise<{ data?: T; error?: unknown; response: Response }>): Promise<Lookup<T>> {
   try {
     const { data, error, response } = await request();
-    if (response.status === 429) return { ok: false, message: 'Too many checks from your connection. Please wait a minute and try again.' };
+    if (response.status === 429) {
+      // M12.3: after a few lookups the API asks for a captcha instead of only making the visitor wait.
+      if ((error as { captchaRequired?: boolean } | undefined)?.captchaRequired) {
+        return { ok: false, message: 'Please complete the quick check below to continue.', captchaRequired: true };
+      }
+      return { ok: false, message: 'Too many checks from your connection. Please wait a minute and try again.' };
+    }
     if (data === undefined) {
       const body = (error ?? {}) as { message?: string; errors?: { message: string }[] };
       return { ok: false, message: body.errors?.[0]?.message ?? body.message ?? UNAVAILABLE };
@@ -32,7 +38,7 @@ async function lookup<T>(request: () => Promise<{ data?: T; error?: unknown; res
   }
 }
 
-export function verifyCertificate(query: { number?: string; id?: string; t?: string }) {
+export function verifyCertificate(query: { number?: string; id?: string; t?: string; captchaToken?: string }) {
   return lookup(async () => api.GET('/api/public/certificates/verify', { params: { query }, headers: await forwardHeaders(), cache: 'no-store' }));
 }
 

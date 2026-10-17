@@ -37,6 +37,9 @@ export class NotificationEventsListener implements OnModuleInit {
     this.events.on('ticket.created', (e) => this.handleTicketCreated(e.payload));
     this.events.on('ticket.replied', (e) => this.handleTicketReplied(e.payload));
     this.events.on('ticket.resolved', (e) => this.handleTicketResolved(e.payload));
+    this.events.on('privacy.export_ready', (e) => this.handleExportReady(e.payload));
+    this.events.on('privacy.request_rejected', (e) => this.handlePrivacyRejected(e.payload));
+    this.events.on('privacy.account_deleted', (e) => this.handleAccountDeleted(e.payload));
   }
 
   async handlePaymentSucceeded(payload: DomainEventPayloads['payment.succeeded']): Promise<void> {
@@ -423,6 +426,7 @@ export class NotificationEventsListener implements OnModuleInit {
   /**
    * Queue one delivery per active template (channel). `sourceKey` names this occurrence of the event, so
    * handling the same event again (a replayed webhook, a retried request) sends nothing new (M6.3).
+   * `useGivenAddress`: send to the email / mobile passed here, not the user record (an anonymised account).
    */
   private async dispatchForEvent(
     event: NotificationEvent,
@@ -431,6 +435,7 @@ export class NotificationEventsListener implements OnModuleInit {
     variables: Record<string, unknown>,
     link?: string,
     allowedChannels?: string[],
+    useGivenAddress = false,
   ): Promise<void> {
     let templates = await this.prisma.notificationTemplate.findMany({
       where: {
@@ -456,6 +461,7 @@ export class NotificationEventsListener implements OnModuleInit {
           body: rendered.body,
           payload: variables,
           link,
+          ...(useGivenAddress ? { recipient: { email: recipient.email ?? undefined, mobile: recipient.mobile ?? undefined } } : {}),
         });
       } catch (err) {
         this.logger.error(
@@ -618,5 +624,46 @@ export class NotificationEventsListener implements OnModuleInit {
       this.logger.error(`Error handling ticket.resolved: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-}
 
+  async handleExportReady(payload: DomainEventPayloads['privacy.export_ready']): Promise<void> {
+    try {
+      const customer = await this.prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { id: true, name: true, email: true, mobile: true },
+      });
+      if (!customer) return;
+
+      const link = `${env().PUBLIC_WEB_URL}/dashboard/privacy`;
+      const expiresOn = new Date(payload.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
+      await this.dispatchForEvent('privacy.export_ready', payload.requestId, customer, { customerName: customer.name, expiresOn, link }, link);
+    } catch (err) {
+      this.logger.error(`Error handling privacy.export_ready: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async handlePrivacyRejected(payload: DomainEventPayloads['privacy.request_rejected']): Promise<void> {
+    try {
+      const customer = await this.prisma.user.findUnique({
+        where: { id: payload.userId },
+        select: { id: true, name: true, email: true, mobile: true },
+      });
+      if (!customer) return;
+
+      const link = `${env().PUBLIC_WEB_URL}/dashboard/privacy`;
+      const requestType = payload.type === 'EXPORT' ? 'data export' : 'account deletion';
+      await this.dispatchForEvent('privacy.request_rejected', payload.requestId, customer, { customerName: customer.name, requestType, reason: payload.reason, link }, link);
+    } catch (err) {
+      this.logger.error(`Error handling privacy.request_rejected: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  /** The account is already anonymised: use the contact details carried by the event, and never in-app or push. */
+  async handleAccountDeleted(payload: DomainEventPayloads['privacy.account_deleted']): Promise<void> {
+    try {
+      const recipient = { id: payload.userId, name: payload.name, email: payload.email, mobile: payload.mobile };
+      await this.dispatchForEvent('privacy.account_deleted', payload.requestId, recipient, { customerName: payload.name }, undefined, ['EMAIL', 'SMS'], true);
+    } catch (err) {
+      this.logger.error(`Error handling privacy.account_deleted: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+}

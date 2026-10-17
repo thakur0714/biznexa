@@ -1,20 +1,112 @@
-import { Injectable } from '@nestjs/common';
 import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  OnApplicationBootstrap,
+  Optional,
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
+import {
+  type FileLinkResult,
+  type ReportConsultantsResponse,
   type ReportCustomersResponse,
   type ReportDashboardResponse,
   type ReportDateRangeQuery,
+  type ReportExportJob,
+  type ReportExportRequest,
+  type ReportExportType,
   type ReportSalesResponse,
+  type ReportServicesResponse,
+  type ReportSupportResponse,
   getDaysInISTRange,
   istDay,
   resolveReportDateRange,
 } from '@biznexa/types';
+import type { AuthUser } from '../common/auth.decorators';
+import {
+  checkSignedLink,
+  contentDisposition,
+  signedLink,
+  type Disposition,
+} from '../files/files.service';
+import { newFileKey, StorageService } from '../files/storage.service';
+import { QueueService } from '../queue/queue.service';
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  generateConsultantsCsv,
+  generateCustomersCsv,
+  generateSalesCsv,
+  generateServicesCsv,
+  generateSupportCsv,
+} from './report-csv';
+
+interface ReportExportJobPayload {
+  id: string;
+  input: ReportExportRequest;
+  actorId: string;
+}
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Draft',
+  PAYMENT_PENDING: 'Payment Pending',
+  SUBMITTED: 'Submitted',
+  DOCUMENTS_UNDER_REVIEW: 'Docs Under Review',
+  DOCUMENTS_PENDING: 'Docs Pending',
+  DOCUMENTS_APPROVED: 'Docs Approved',
+  ASSIGNED: 'Assigned',
+  IN_PROGRESS: 'In Progress',
+  ON_HOLD: 'On Hold',
+  COMPLETED: 'Completed',
+  DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled',
+};
+
+const VERIFICATION_LABELS: Record<string, string> = {
+  PENDING: 'Pending Review',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  SUSPENDED: 'Suspended',
+};
+
+const TICKET_STATUS_LABELS: Record<string, string> = {
+  OPEN: 'Open',
+  IN_PROGRESS: 'In Progress',
+  WAITING_FOR_CUSTOMER: 'Waiting for Customer',
+  RESOLVED: 'Resolved',
+  CLOSED: 'Closed',
+};
+
 @Injectable()
-export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+export class ReportsService implements OnApplicationBootstrap {
+  private readonly exportCache = new Map<string, {
+    id: string;
+    type: ReportExportType;
+    status: 'PENDING' | 'COMPLETED' | 'FAILED';
+    createdAt: string;
+    fileKey?: string;
+    fileName?: string;
+    size?: number;
+    error?: string;
+  }>();
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly queues?: QueueService,
+    @Optional() private readonly storage?: StorageService,
+  ) {}
+
+  onApplicationBootstrap() {
+    if (this.queues) {
+      this.queues.process('report-export', async (job) => {
+        return this.processExportJob(job.data as { id: string; input: ReportExportRequest; actorId: string });
+      });
+    }
+  }
 
   /**
    * Builds the dashboard KPIs, series, and needs-attention queue.
@@ -468,4 +560,581 @@ export class ReportsService {
       activeLast90Days,
     };
   }
+
+  /**
+   * Builds the Services report (M10.5): popular services (orders + revenue),
+   * applications by status, average turnaround (submittedAt -> completedAt, days),
+   * SLA breaches per service. All sums and aggregations computed directly in SQL.
+   */
+  async getServicesReport(query: ReportDateRangeQuery, now = new Date()): Promise<ReportServicesResponse> {
+    const { from, to, preset } = resolveReportDateRange(query, now);
+
+    // 1. Popular services (orders + revenue computed in SQL)
+    const popularPromise = this.prisma.$queryRaw<
+      Array<{
+        serviceId: string;
+        serviceName: string;
+        categoryName: string;
+        orders: number;
+        revenue: bigint | number;
+      }>
+    >`
+      SELECT
+        s.id AS "serviceId",
+        s.name AS "serviceName",
+        c.name AS "categoryName",
+        COUNT(DISTINCT o.id)::int AS "orders",
+        COALESCE(SUM(
+          COALESCE(op.net_amount, o.total - COALESCE(o.discount, 0))
+        ), 0)::bigint AS "revenue"
+      FROM "Service" s
+      JOIN "Category" c ON c.id = s."categoryId"
+      JOIN (
+        SELECT DISTINCT sp."serviceId", oi."orderId"
+        FROM "OrderItem" oi
+        JOIN "ServicePackage" sp ON sp.id = oi."packageId"
+      ) os ON os."serviceId" = s.id
+      JOIN "Order" o ON o.id = os."orderId"
+      LEFT JOIN (
+        SELECT
+          p."orderId",
+          SUM(p.amount - COALESCE(rf.refund_sum, 0)) AS net_amount
+        FROM "Payment" p
+        LEFT JOIN (
+          SELECT "paymentId", SUM(amount) AS refund_sum
+          FROM "Refund"
+          WHERE status != 'FAILED'
+          GROUP BY "paymentId"
+        ) rf ON rf."paymentId" = p.id
+        WHERE p.status IN ('SUCCESS', 'REFUND_INITIATED', 'REFUNDED', 'PARTIALLY_REFUNDED')
+        GROUP BY p."orderId"
+      ) op ON op."orderId" = o.id
+      WHERE o."createdAt" >= ${from} AND o."createdAt" <= ${to}
+        ${query.serviceId ? Prisma.sql`AND s.id = ${query.serviceId}` : Prisma.empty}
+        ${query.categoryId ? Prisma.sql`AND c.id = ${query.categoryId}` : Prisma.empty}
+      GROUP BY s.id, s.name, c.name
+      ORDER BY "revenue" DESC, "orders" DESC
+    `;
+
+    // 2. Average turnaround per service (submittedAt -> completedAt in days)
+    const turnaroundByServicePromise = this.prisma.$queryRaw<
+      Array<{
+        serviceId: string;
+        avgTurnaroundDays: number | null;
+      }>
+    >`
+      SELECT
+        a."serviceId",
+        ROUND(AVG(EXTRACT(EPOCH FROM (a."completedAt" - a."submittedAt")) / 86400.0)::numeric, 1)::float AS "avgTurnaroundDays"
+      FROM "Application" a
+      JOIN "Service" s ON s.id = a."serviceId"
+      WHERE a."submittedAt" IS NOT NULL
+        AND a."completedAt" IS NOT NULL
+        AND (
+          (a."completedAt" >= ${from} AND a."completedAt" <= ${to})
+          OR (a."createdAt" >= ${from} AND a."createdAt" <= ${to})
+        )
+        ${query.serviceId ? Prisma.sql`AND a."serviceId" = ${query.serviceId}` : Prisma.empty}
+        ${query.categoryId ? Prisma.sql`AND s."categoryId" = ${query.categoryId}` : Prisma.empty}
+      GROUP BY a."serviceId"
+    `;
+
+    // 3. Overall average turnaround
+    const overallTurnaroundPromise = this.prisma.$queryRaw<
+      Array<{ avgTurnaroundDays: number | null }>
+    >`
+      SELECT
+        COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (a."completedAt" - a."submittedAt")) / 86400.0)::numeric, 1), 0)::float AS "avgTurnaroundDays"
+      FROM "Application" a
+      JOIN "Service" s ON s.id = a."serviceId"
+      WHERE a."submittedAt" IS NOT NULL
+        AND a."completedAt" IS NOT NULL
+        AND (
+          (a."completedAt" >= ${from} AND a."completedAt" <= ${to})
+          OR (a."createdAt" >= ${from} AND a."createdAt" <= ${to})
+        )
+        ${query.serviceId ? Prisma.sql`AND a."serviceId" = ${query.serviceId}` : Prisma.empty}
+        ${query.categoryId ? Prisma.sql`AND s."categoryId" = ${query.categoryId}` : Prisma.empty}
+    `;
+
+    // 4. SLA breaches per service (active open overdue applications)
+    const breachesPromise = this.prisma.$queryRaw<
+      Array<{
+        serviceId: string;
+        serviceName: string;
+        categoryName: string;
+        breachCount: number;
+      }>
+    >`
+      SELECT
+        s.id AS "serviceId",
+        s.name AS "serviceName",
+        c.name AS "categoryName",
+        COUNT(a.id)::int AS "breachCount"
+      FROM "Application" a
+      JOIN "Service" s ON s.id = a."serviceId"
+      JOIN "Category" c ON c.id = s."categoryId"
+      WHERE a.status NOT IN ('DRAFT', 'COMPLETED', 'DELIVERED', 'CANCELLED')
+        AND a."slaDueAt" IS NOT NULL
+        AND a."slaDueAt" < ${now}
+        ${query.serviceId ? Prisma.sql`AND s.id = ${query.serviceId}` : Prisma.empty}
+        ${query.categoryId ? Prisma.sql`AND c.id = ${query.categoryId}` : Prisma.empty}
+      GROUP BY s.id, s.name, c.name
+      ORDER BY "breachCount" DESC
+    `;
+
+    // 5. Applications grouped by status (SQL groupBy)
+    const statusCountsPromise = this.prisma.application.groupBy({
+      by: ['status'],
+      where: {
+        createdAt: { gte: from, lte: to },
+        ...(query.serviceId ? { serviceId: query.serviceId } : {}),
+        ...(query.categoryId ? { service: { categoryId: query.categoryId } } : {}),
+      },
+      _count: { _all: true },
+    });
+
+    const [popularRows, turnaroundRows, overallTurnaround, breachRows, statusCounts] = await Promise.all([
+      popularPromise,
+      turnaroundByServicePromise,
+      overallTurnaroundPromise,
+      breachesPromise,
+      statusCountsPromise,
+    ]);
+
+    const turnaroundMap = new Map<string, number>(
+      turnaroundRows
+        .filter((r) => r.avgTurnaroundDays !== null)
+        .map((r) => [r.serviceId, Number(r.avgTurnaroundDays)]),
+    );
+
+    const breachMap = new Map<string, number>(
+      breachRows.map((r) => [r.serviceId, Number(r.breachCount)]),
+    );
+
+    const popularServices = popularRows.map((r) => ({
+      serviceId: r.serviceId,
+      serviceName: r.serviceName,
+      categoryName: r.categoryName,
+      orders: Number(r.orders),
+      revenue: Number(r.revenue),
+      avgTurnaroundDays: turnaroundMap.get(r.serviceId) ?? null,
+      slaBreaches: breachMap.get(r.serviceId) ?? 0,
+    }));
+
+    const applicationsByStatus = statusCounts
+      .map((sc) => ({
+        status: sc.status,
+        label: STATUS_LABELS[sc.status] ?? sc.status,
+        count: sc._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const totalOrders = popularServices.reduce((sum, s) => sum + s.orders, 0);
+    const totalRevenue = popularServices.reduce((sum, s) => sum + s.revenue, 0);
+    const totalSlaBreaches = breachRows.reduce((sum, b) => sum + Number(b.breachCount), 0);
+    const avgTurnaroundDays = Number(overallTurnaround[0]?.avgTurnaroundDays ?? 0);
+
+    return {
+      range: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        preset,
+      },
+      summary: {
+        totalOrders,
+        totalRevenue,
+        avgTurnaroundDays,
+        totalSlaBreaches,
+      },
+      popularServices,
+      applicationsByStatus,
+      slaBreaches: breachRows.map((b) => ({
+        serviceId: b.serviceId,
+        serviceName: b.serviceName,
+        categoryName: b.categoryName,
+        breachCount: Number(b.breachCount),
+      })),
+    };
+  }
+
+  /**
+   * Builds the Consultants report (M10.6): total, by verification status,
+   * active, bookings count and booking revenue (Booking + its SUCCESS payments),
+   * average rating. All sums and metrics computed in SQL.
+   */
+  async getConsultantsReport(query: ReportDateRangeQuery, now = new Date()): Promise<ReportConsultantsResponse> {
+    const { from, to, preset } = resolveReportDateRange(query, now);
+
+    const [total, active, statusCounts, avgRatingRows, consultantRows] = await Promise.all([
+      // 1. Total consultants
+      this.prisma.consultant.count(),
+
+      // 2. Active approved consultants with active user account
+      this.prisma.consultant.count({
+        where: {
+          verificationStatus: 'APPROVED',
+          user: { status: 'ACTIVE' },
+        },
+      }),
+
+      // 3. By verification status (SQL groupBy)
+      this.prisma.consultant.groupBy({
+        by: ['verificationStatus'],
+        _count: { _all: true },
+      }),
+
+      // 4. Overall average rating of approved consultants (computed in SQL)
+      this.prisma.$queryRaw<Array<{ avgRating: number | null }>>`
+        SELECT
+          COALESCE(ROUND(AVG(NULLIF(rating, 0))::numeric, 1), 0)::float AS "avgRating"
+        FROM "Consultant"
+        WHERE "verificationStatus" = 'APPROVED'
+      `,
+
+      // 5. Individual consultants breakdown: bookings count and booking revenue (Booking + SUCCESS payments) in range
+      this.prisma.$queryRaw<
+        Array<{
+          consultantId: string;
+          name: string;
+          slug: string;
+          category: string;
+          verificationStatus: string;
+          rating: number;
+          reviewCount: number;
+          bookingsCount: number;
+          bookingRevenue: bigint | number;
+        }>
+      >`
+        SELECT
+          c.id AS "consultantId",
+          u.name AS "name",
+          c.slug AS "slug",
+          c.category::text AS "category",
+          c."verificationStatus"::text AS "verificationStatus",
+          c.rating::float AS "rating",
+          c."reviewCount"::int AS "reviewCount",
+          COUNT(DISTINCT b.id)::int AS "bookingsCount",
+          COALESCE(SUM(p.amount), 0)::bigint AS "bookingRevenue"
+        FROM "Consultant" c
+        JOIN "User" u ON u.id = c."userId"
+        LEFT JOIN "Booking" b ON b."consultantId" = c.id
+          AND b."createdAt" >= ${from} AND b."createdAt" <= ${to}
+        LEFT JOIN "Payment" p ON p."bookingId" = b.id AND p.status = 'SUCCESS'
+        GROUP BY c.id, u.name, c.slug, c.category, c."verificationStatus", c.rating, c."reviewCount"
+        ORDER BY "bookingRevenue" DESC, "bookingsCount" DESC, c.rating DESC
+      `,
+    ]);
+
+    const byVerificationStatus = statusCounts
+      .map((sc) => ({
+        status: sc.verificationStatus,
+        label: VERIFICATION_LABELS[sc.verificationStatus] ?? sc.verificationStatus,
+        count: sc._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const consultants = consultantRows.map((r) => ({
+      consultantId: r.consultantId,
+      name: r.name,
+      slug: r.slug,
+      category: r.category,
+      verificationStatus: r.verificationStatus,
+      rating: Number(r.rating),
+      reviewCount: Number(r.reviewCount),
+      bookingsCount: Number(r.bookingsCount),
+      bookingRevenue: Number(r.bookingRevenue),
+    }));
+
+    const bookingsCount = consultants.reduce((sum, c) => sum + c.bookingsCount, 0);
+    const bookingRevenue = consultants.reduce((sum, c) => sum + c.bookingRevenue, 0);
+    const averageRating = Number(avgRatingRows[0]?.avgRating ?? 0);
+
+    return {
+      range: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        preset,
+      },
+      summary: {
+        total,
+        active,
+        bookingsCount,
+        bookingRevenue,
+        averageRating,
+      },
+      byVerificationStatus,
+      consultants,
+    };
+  }
+
+  /**
+   * Builds the Support report (M10.7): tickets by status,
+   * average first staff response time, average resolution time.
+   * All sums and metrics computed in SQL.
+   */
+  async getSupportReport(query: ReportDateRangeQuery, now = new Date()): Promise<ReportSupportResponse> {
+    const { from, to, preset } = resolveReportDateRange(query, now);
+
+    const [statusCounts, avgTimesRows, ticketRows] = await Promise.all([
+      // 1. Tickets grouped by status in range (SQL groupBy)
+      this.prisma.ticket.groupBy({
+        by: ['status'],
+        where: {
+          createdAt: { gte: from, lte: to },
+        },
+        _count: { _all: true },
+      }),
+
+      // 2. Average first staff response time & average resolution time in hours (computed in SQL)
+      this.prisma.$queryRaw<
+        Array<{
+          avgFirstResponseHours: number | null;
+          avgResolutionHours: number | null;
+          totalTickets: number;
+        }>
+      >`
+        SELECT
+          COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ("firstResponseAt" - "createdAt")) / 3600.0)::numeric, 1), 0)::float AS "avgFirstResponseHours",
+          COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM ("resolvedAt" - "createdAt")) / 3600.0)::numeric, 1), 0)::float AS "avgResolutionHours",
+          COUNT(*)::int AS "totalTickets"
+        FROM "Ticket"
+        WHERE "createdAt" >= ${from} AND "createdAt" <= ${to}
+      `,
+
+      // 3. Recent tickets in range with response and resolution times
+      this.prisma.ticket.findMany({
+        where: {
+          createdAt: { gte: from, lte: to },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+        include: {
+          customer: { select: { id: true, name: true } },
+          assignedTo: { select: { id: true, name: true } },
+        },
+      }),
+    ]);
+
+    const byStatus = statusCounts
+      .map((sc) => ({
+        status: sc.status,
+        label: TICKET_STATUS_LABELS[sc.status] ?? sc.status,
+        count: sc._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const openCount = statusCounts
+      .filter((sc) => sc.status === 'OPEN' || sc.status === 'IN_PROGRESS' || sc.status === 'WAITING_FOR_CUSTOMER')
+      .reduce((sum, sc) => sum + sc._count._all, 0);
+
+    const resolvedCount = statusCounts
+      .filter((sc) => sc.status === 'RESOLVED' || sc.status === 'CLOSED')
+      .reduce((sum, sc) => sum + sc._count._all, 0);
+
+    const avgMetrics = avgTimesRows[0];
+    const totalTickets = Number(avgMetrics?.totalTickets ?? 0);
+    const avgFirstResponseHours = Number(avgMetrics?.avgFirstResponseHours ?? 0);
+    const avgResolutionHours = Number(avgMetrics?.avgResolutionHours ?? 0);
+
+    const recentTickets = ticketRows.map((t) => {
+      const firstResponseHours = t.firstResponseAt
+        ? Number(((t.firstResponseAt.getTime() - t.createdAt.getTime()) / (3600 * 1000)).toFixed(1))
+        : null;
+      const resolutionHours = t.resolvedAt
+        ? Number(((t.resolvedAt.getTime() - t.createdAt.getTime()) / (3600 * 1000)).toFixed(1))
+        : null;
+
+      return {
+        id: t.id,
+        code: t.code,
+        subject: t.subject,
+        status: t.status,
+        priority: t.priority,
+        customerName: t.customer?.name ?? 'Unknown Customer',
+        assignedToName: t.assignedTo?.name ?? null,
+        createdAt: t.createdAt.toISOString(),
+        firstResponseAt: t.firstResponseAt ? t.firstResponseAt.toISOString() : null,
+        resolvedAt: t.resolvedAt ? t.resolvedAt.toISOString() : null,
+        firstResponseHours,
+        resolutionHours,
+      };
+    });
+
+    return {
+      range: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        preset,
+      },
+      summary: {
+        totalTickets,
+        openTickets: openCount,
+        resolvedTickets: resolvedCount,
+        avgFirstResponseHours,
+        avgResolutionHours,
+      },
+      byStatus,
+      recentTickets,
+    };
+  }
+
+  /**
+   * Enqueues an export job for a report.
+   */
+  async enqueueExport(input: ReportExportRequest, actorId: string): Promise<ReportExportJob> {
+    const id = randomUUID();
+    const jobRecord: ReportExportJob = {
+      id,
+      type: input.type,
+      status: 'PENDING',
+      createdAt: new Date().toISOString(),
+    };
+    this.exportCache.set(id, { ...jobRecord });
+
+    if (this.queues) {
+      await this.queues.queue('report-export').add(input.type, { id, input, actorId }, {
+        jobId: id,
+        removeOnComplete: { age: 24 * 3600, count: 1000 },
+      });
+    } else {
+      // In synchronous/mock environments without queues, process directly
+      await this.processExportJob({ id, input, actorId });
+    }
+
+    return jobRecord;
+  }
+
+  /**
+   * Processes a queued export job: queries report data, converts to CSV with formula escaping,
+   * stores to StorageService, and marks completed.
+   */
+  async processExportJob(data: { id: string; input: ReportExportRequest; actorId: string }) {
+    try {
+      let csv = '';
+      const { input } = data;
+      switch (input.type) {
+        case 'sales': {
+          const res = await this.getSalesReport(input);
+          csv = generateSalesCsv(res);
+          break;
+        }
+        case 'customers': {
+          const res = await this.getCustomersReport(input);
+          csv = generateCustomersCsv(res);
+          break;
+        }
+        case 'services': {
+          const res = await this.getServicesReport(input);
+          csv = generateServicesCsv(res);
+          break;
+        }
+        case 'consultants': {
+          const res = await this.getConsultantsReport(input);
+          csv = generateConsultantsCsv(res);
+          break;
+        }
+        case 'support': {
+          const res = await this.getSupportReport(input);
+          csv = generateSupportCsv(res);
+          break;
+        }
+      }
+
+      const fileKey = newFileKey();
+      const fileName = `${input.type}-report-${new Date().toISOString().slice(0, 10)}.csv`;
+      const buffer = Buffer.from(csv, 'utf8');
+      if (this.storage) {
+        await this.storage.write(fileKey, Readable.from(buffer));
+      }
+      const size = buffer.length;
+
+      const result = { fileKey, fileName, size };
+      this.exportCache.set(data.id, {
+        id: data.id,
+        type: input.type,
+        status: 'COMPLETED',
+        createdAt: this.exportCache.get(data.id)?.createdAt ?? new Date().toISOString(),
+        ...result,
+      });
+      return result;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Export failed';
+      this.exportCache.set(data.id, {
+        id: data.id,
+        type: data.input.type,
+        status: 'FAILED',
+        createdAt: this.exportCache.get(data.id)?.createdAt ?? new Date().toISOString(),
+        error: message,
+      });
+      throw err;
+    }
+  }
+
+  private async getExportMetadata(id: string) {
+    const cached = this.exportCache.get(id);
+    if (cached) return cached;
+    if (this.queues) {
+      const job = await this.queues.queue<ReportExportJobPayload>('report-export').getJob(id);
+      if (!job) return null;
+      const state = await job.getState();
+      const jobType = (job.data?.input?.type ?? 'sales') as ReportExportType;
+      if (state === 'completed') {
+        const val = job.returnvalue as { fileKey: string; fileName: string; size: number };
+        return {
+          id,
+          type: jobType,
+          status: 'COMPLETED' as const,
+          createdAt: new Date(job.timestamp).toISOString(),
+          ...val,
+        };
+      }
+      if (state === 'failed') {
+        return {
+          id,
+          type: jobType,
+          status: 'FAILED' as const,
+          createdAt: new Date(job.timestamp).toISOString(),
+        };
+      }
+      return {
+        id,
+        type: jobType,
+        status: 'PENDING' as const,
+        createdAt: new Date(job.timestamp).toISOString(),
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Generates a signed download link valid for 24 hours.
+   */
+  async createExportLink(id: string, user: AuthUser, disposition: Disposition = 'attachment'): Promise<FileLinkResult> {
+    const meta = await this.getExportMetadata(id);
+    if (!meta) throw new NotFoundException('Export not found');
+    if (meta.status === 'FAILED') throw new BadRequestException('Export failed');
+    if (meta.status === 'PENDING') throw new ConflictException('Your export is still being prepared. Please try again shortly.');
+
+    // 24 hours TTL (86400 seconds)
+    return signedLink('report-exports', id, disposition, Date.now(), 24 * 3600);
+  }
+
+  /**
+   * Verifies signed link signature & expiry and streams the exported CSV from private storage.
+   */
+  async openExportLinked(id: string, q: { e?: string; d?: string; s?: string }, now = Date.now()) {
+    const disposition = checkSignedLink('report-exports', id, q, now);
+    const meta = await this.getExportMetadata(id);
+    if (!meta?.fileKey || !this.storage) throw new NotFoundException('Export file not found');
+    const { stream, size } = await this.storage.read(meta.fileKey);
+    return {
+      stream,
+      size,
+      disposition: contentDisposition(disposition, meta.fileName ?? `report-${id}.csv`),
+    };
+  }
 }
+
+
+

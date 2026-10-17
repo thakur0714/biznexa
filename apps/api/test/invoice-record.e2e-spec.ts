@@ -4,11 +4,11 @@
  * seller and buyer copied as they were. An advance and its balance each get one, adding up to the order.
  * Invoices are dated in a far-future year of this run's own, so the real counters are never touched.
  */
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { financialYear, INVOICE_NUMBER_PATTERN, SELLER_SETTING_KEYS, type AnyDomainEvent } from '@biznexa/types';
+import { financialYear, INVOICE_NUMBER_PATTERN, type AnyDomainEvent, type SellerSettings } from '@biznexa/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -17,6 +17,7 @@ import { InvoicesService } from '../src/invoices/invoices.service';
 import { PaymentGateway } from '../src/payments/payment-gateway';
 import { MockPaymentGateway } from '../src/payments/mock-payment-gateway';
 import { Prisma } from '../src/generated/prisma/client';
+import { SettingsService } from '../src/settings/settings.service';
 
 let app: NestExpressApplication;
 let http: ReturnType<typeof request>;
@@ -28,9 +29,10 @@ let alice: string;
 let aliceId: string;
 let fullPackageId: string;
 let partPackageId: string;
-let savedSettings: { key: string; value: unknown }[] = [];
 
-const run = Date.now().toString().slice(-7);
+const run = randomUUID();
+const invoicePrefix = `T${run.slice(0, 3).toUpperCase()}`;
+const mobileRun = String(randomInt(1_000_000, 10_000_000));
 const base = '/api/applications';
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
 const users = { email: { startsWith: `e2e-inv-${run}` } };
@@ -47,27 +49,28 @@ const FEE = 100000;
 const GOVT = 450000;
 const SAC = '998231';
 
-const SELLER = {
-  [SELLER_SETTING_KEYS.name]: 'BizNexa',
-  [SELLER_SETTING_KEYS.legalName]: 'BizNexa Services Private Limited',
-  [SELLER_SETTING_KEYS.gstin]: '03AAACB1234C1ZV',
-  [SELLER_SETTING_KEYS.email]: 'billing@example.com',
-  [SELLER_SETTING_KEYS.phone]: '',
-  [SELLER_SETTING_KEYS.address]: { line1: '12 Mall Road', city: 'Ludhiana', state: 'Punjab', pincode: '141001' },
-  [SELLER_SETTING_KEYS.state]: 'Punjab',
-  [SELLER_SETTING_KEYS.invoicePrefix]: 'TST',
+const SELLER: SellerSettings = {
+  name: 'BizNexa',
+  legalName: 'BizNexa Services Private Limited',
+  gstin: '03AAACB1234C1ZV',
+  email: 'billing@example.com',
+  phone: null,
+  address: { line1: '12 Mall Road', city: 'Ludhiana', state: 'Punjab', pincode: '141001' },
+  state: 'Punjab',
+  invoicePrefix,
+  updatedAt: null,
 };
 
 async function register(n: number) {
   const res = await http
     .post('/api/auth/register')
-    .send({ name: `Invoice Test ${n}`, mobile: `8${run}${String(60 + n)}`, email: `e2e-inv-${run}-${n}@example.com`, password: 'secret123', consent: true })
+    .send({ name: `Invoice Test ${n}`, mobile: `8${mobileRun}${String(60 + n)}`, email: `e2e-inv-${run}-${n}@example.com`, password: 'secret123', consent: true })
     .expect(201);
   return { token: res.body.accessToken as string, id: res.body.user.id as string };
 }
 
 async function coupon() {
-  const code = `E2EINV${run}${codes.length}`;
+  const code = `E2EINV${run.slice(0, 8)}${codes.length}`.toUpperCase();
   codes.push(code);
   await prisma.coupon.create({ data: { code, type: 'PERCENTAGE', value: 10, perUserLimit: null } });
   return code;
@@ -89,7 +92,9 @@ async function ready(opts: { pkg?: string; state: string; gstin?: string; coupon
   const draft = await http.post(base).set(as(alice)).send({ packageId: opts.pkg ?? fullPackageId, businessEntityId: business.id }).expect(201);
   const id = draft.body.id as string;
   await http.patch(`${base}/${id}`).set(as(alice)).send({ formData: { note: 'Ready' }, final: true }).expect(200);
-  if (opts.coupon) await http.put(`${base}/${id}/coupon`).set(as(alice)).send({ code: opts.coupon }).expect(200);
+  if (opts.coupon) {
+    await http.put(`${base}/${id}/coupon`).set(as(alice)).send({ code: opts.coupon }).expect(200);
+  }
   return { id, orderId: draft.body.order.id as string, buyerName: business.legalName };
 }
 
@@ -142,8 +147,7 @@ beforeAll(async () => {
   jest.spyOn(invoices, 'issue').mockImplementation(issueAt);
   ({ token: alice, id: aliceId } = await register(1));
 
-  savedSettings = await prisma.setting.findMany({ where: { key: { in: Object.keys(SELLER) } }, select: { key: true, value: true } });
-  for (const [key, value] of Object.entries(SELLER)) await prisma.setting.upsert({ where: { key }, update: { value }, create: { key, value } });
+  jest.spyOn(app.get(SettingsService), 'seller').mockResolvedValue(SELLER);
 
   const cat = await prisma.category.findUniqueOrThrow({ where: { slug: 'licenses' } });
   const form = { create: [{ version: 1, schema: { steps: [{ title: 'About', fields: [{ type: 'text', name: 'note', label: 'Note', required: true }] }] }, isCurrent: true }] };
@@ -164,8 +168,6 @@ beforeEach(() => {
 
 afterAll(async () => {
   jest.restoreAllMocks();
-  await prisma.setting.deleteMany({ where: { key: { in: Object.keys(SELLER) } } });
-  for (const s of savedSettings) await prisma.setting.create({ data: { key: s.key, value: s.value as object } });
   const orders = { customer: users };
   await prisma.auditLog.deleteMany({ where: { OR: [{ actor: users }, { entityType: 'Application', entityId: { in: (await prisma.application.findMany({ where: { order: orders }, select: { id: true } })).map((a) => a.id) } }] } });
   await prisma.invoice.deleteMany({ where: { order: orders } });
@@ -190,7 +192,7 @@ describe('invoice record (M3.21)', () => {
 
     const inv = await invoiceOf(p.paymentId);
     expect(inv.number).toMatch(INVOICE_NUMBER_PATTERN);
-    expect(inv.number.startsWith('TST/')).toBe(true);
+    expect(inv.number.startsWith(`${invoicePrefix}/`)).toBe(true);
     expect(inv).toMatchObject({
       financialYear: FY,
       issuedAt: AT,

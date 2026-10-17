@@ -5,7 +5,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { verifyRateLimitMap } from '../src/certificates/certificates.controller';
+import { CAPTCHA_FREE_LOOKUPS, captchaLookupMap, verifyRateLimitMap } from '../src/certificates/certificates.controller';
 
 let app: NestExpressApplication;
 let http: ReturnType<typeof request>;
@@ -91,6 +91,7 @@ afterAll(async () => {
 describe('Public verify API GET /api/public/certificates/verify (M7.7)', () => {
   beforeEach(() => {
     verifyRateLimitMap.clear();
+    captchaLookupMap.clear();
   });
 
   it('verifies active certificate by number with rate limit headers and logs lookup', async () => {
@@ -200,5 +201,43 @@ describe('Public verify API GET /api/public/certificates/verify (M7.7)', () => {
     const res = await Promise.resolve(http.get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}`));
     expect(res.status).toBe(429);
     expect(res.body.message).toContain('Rate limit exceeded');
+  });
+});
+
+describe('Captcha after repeated lookups (M12.3)', () => {
+  const verify = (extra = '') => http.get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}${extra}`);
+
+  beforeEach(() => {
+    verifyRateLimitMap.clear();
+    captchaLookupMap.clear();
+  });
+
+  it('asks for a captcha after the free lookups, accepts a valid token and then allows more lookups', async () => {
+    for (let i = 0; i < CAPTCHA_FREE_LOOKUPS; i++) await verify().expect(200);
+
+    const blocked = await verify().expect(429);
+    expect(blocked.body.captchaRequired).toBe(true);
+
+    const wrong = await verify('&captchaToken=nope').expect(429);
+    expect(wrong.body.captchaRequired).toBe(true);
+
+    const solved = await verify('&captchaToken=pass').expect(200);
+    expect(solved.body.found).toBe(true);
+    // Solving starts the count again: the solved lookup was the first, so the rest of the free ones work.
+    for (let i = 1; i < CAPTCHA_FREE_LOOKUPS; i++) await verify().expect(200);
+    expect((await verify().expect(429)).body.captchaRequired).toBe(true);
+  });
+
+  it('solving the captcha resets only that IP, not other visitors', async () => {
+    captchaLookupMap.set('203.0.113.9', { count: CAPTCHA_FREE_LOOKUPS, resetAt: Date.now() + 600_000 });
+    for (let i = 0; i < CAPTCHA_FREE_LOOKUPS; i++) await verify().expect(200);
+    await verify('&captchaToken=pass').expect(200);
+    expect(captchaLookupMap.get('203.0.113.9')?.count).toBe(CAPTCHA_FREE_LOOKUPS);
+  });
+
+  it('never asks partner API keys for a captcha', async () => {
+    for (let i = 0; i < CAPTCHA_FREE_LOOKUPS + 3; i++) {
+      await http.get(`/api/public/certificates/verify?number=${activeCert.certificateNumber}`).set('X-API-Key', 'bn_live_partner_acme999').expect(200);
+    }
   });
 });

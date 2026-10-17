@@ -6,7 +6,8 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { istDate } from '@biznexa/types';
+import { istDate, istInstant } from '@biznexa/types';
+import { ConsultantsService } from '../src/consultants/consultants.service';
 
 const registerSchema = z.object({ accessToken: z.string() });
 
@@ -59,6 +60,12 @@ describe('Public consultant directory (M8.3)', () => {
     app = configureApp(moduleRef.createNestApplication<NestExpressApplication>());
     await app.init();
     prisma = app.get(PrismaService);
+    // "Available today" means a slot is still bookable today, so late in the IST evening nothing is. Ask as of
+    // noon IST today, so the result does not depend on when the suite runs.
+    const consultants = app.get(ConsultantsService);
+    const listPublic = consultants.listPublic.bind(consultants);
+    const noonIst = istInstant(istDate(new Date()), 12 * 60);
+    jest.spyOn(consultants, 'listPublic').mockImplementation((query) => listPublic(query, noonIst));
     await makeConsultant('approved-one', 'APPROVED', {
       category: 'CA', city: 'Pune', state: 'Maharashtra', area: 'Kothrud', feePerSession: 150_000,
       rating: 4.8, experienceYears: 8, languages: ['English', 'Hindi'], consultationTypes: ['AUDIO', 'VIDEO'], availableToday: true,
