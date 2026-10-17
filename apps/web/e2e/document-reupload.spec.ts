@@ -35,6 +35,22 @@ function totpCode(secret: string, step = Math.floor(Date.now() / 1000 / 30)): st
   return String(bin % 1000000).padStart(6, '0');
 }
 
+
+async function findInQueue(request: import('@playwright/test').APIRequestContext, apiUrl: string, adminToken: string, applicationCode: string, version?: number) {
+  for (let page = 1; page <= 50; page++) {
+    const res = await request.get(`${apiUrl}/api/admin/documents/review-queue?limit=100&page=${page}`, {
+      headers: { Authorization: `Bearer ${adminToken}` }
+    });
+    const data = await res.json();
+    if (!data.items || data.items.length === 0) break;
+    const item = data.items.find((i: { application: { code: string }, id: string, version: number, fileName: string }) =>
+      i.application.code === applicationCode && (version === undefined || i.version === version)
+    );
+    if (item) return item;
+  }
+  return undefined;
+}
+
 test('rejects -> re-upload -> back to review', async ({ page, request }) => {
   test.setTimeout(120_000);
   const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
@@ -146,13 +162,8 @@ test('rejects -> re-upload -> back to review', async ({ page, request }) => {
   const appIdElement = page.locator('p:text("Application ID") + p');
   await expect(appIdElement).toBeVisible();
   const applicationId = await appIdElement.innerText();
-
   // 7. Find document in admin review queue
-  const queueRes1 = await request.get(`${apiUrl}/api/admin/documents/review-queue`, {
-    headers: { Authorization: `Bearer ${adminToken}` }
-  });
-  const queue1 = await queueRes1.json();
-  const item1 = queue1.items.find((i: { application: { code: string }, id: string, version: number, fileName: string }) => i.application.code === applicationId);
+  const item1 = await findInQueue(request, apiUrl, adminToken, applicationId);
   expect(item1).toBeDefined();
 
   // 8. Reject document
@@ -180,14 +191,9 @@ test('rejects -> re-upload -> back to review', async ({ page, request }) => {
 
   // wait for it to be uploaded
   await expect(page.getByText('Uploaded', { exact: true })).toBeVisible();
-
   // 10. Admin review queue should list it again
-  const queueRes2 = await request.get(`${apiUrl}/api/admin/documents/review-queue`, {
-    headers: { Authorization: `Bearer ${adminToken}` }
-  });
-  const queue2 = await queueRes2.json();
-  const item2 = queue2.items.find((i: { application: { code: string }, id: string, version: number, fileName: string }) => i.application.code === applicationId);
+  const item2 = await findInQueue(request, apiUrl, adminToken, applicationId, 2);
   expect(item2).toBeDefined();
-  expect(item2.version).toBe(2);
-  expect(item2.fileName).toBe(`doc-v2-${runId}.pdf`);
+  expect(item2?.version).toBe(2);
+  expect(item2?.fileName).toBe(`doc-v2-${runId}.pdf`);
 });
