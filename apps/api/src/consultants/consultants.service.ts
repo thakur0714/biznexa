@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import {
+  istDate,
   adminConsultantActionResponseSchema,
   adminConsultantDetailSchema,
   adminConsultantListSchema,
@@ -242,8 +243,8 @@ export class ConsultantsService {
   async listPublic(query: PublicConsultantDirectoryQuery, now = new Date()): Promise<PublicConsultantDirectory> {
     const ist = new Date(now.getTime() + 330 * 60_000);
     const weekday = ist.getUTCDay();
-    const startOfToday = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - 330 * 60_000);
-    const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60_000);
+    // Exception dates are IST calendar dates (`@db.Date`, M8.6).
+    const today = new Date(`${istDate(now)}T00:00:00Z`);
     const parts = new Intl.DateTimeFormat('en-IN', {
       timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
     }).formatToParts(now);
@@ -255,7 +256,7 @@ export class ConsultantsService {
       startTime: { gte: localTime },
       OR: [
         { weekday, date: null },
-        { date: { gte: startOfToday, lt: startOfTomorrow } },
+        { date: today },
       ],
     };
     const where: Prisma.ConsultantWhereInput = {

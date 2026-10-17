@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
 import { type GatewayPayment, type GatewayWebhookEvent, PaymentGateway, PaymentGatewayError } from './payment-gateway';
 import { type RefundOutcome, RefundsService } from './refunds.service';
+import { type BookingOutcome, BookingPaymentsService } from './booking-payments.service';
 
 /**
  * What a webhook did, stored on its `PaymentWebhookEvent` row:
@@ -18,10 +19,13 @@ import { type RefundOutcome, RefundsService } from './refunds.service';
  * a second time or for an order that can't take it; `overpaid` — it would take the order past its total
  * (e.g. the full amount after the advance was paid in another window). These three need a refund.
  */
-type Outcome = 'applied' | 'duplicate' | 'ignored' | 'stale' | 'unknown_order' | 'amount_mismatch' | 'extra_capture' | 'order_not_pending' | 'overpaid' | RefundOutcome;
+type Outcome = 'applied' | 'duplicate' | 'ignored' | 'stale' | 'unknown_order' | 'amount_mismatch' | 'extra_capture' | 'order_not_pending' | 'overpaid' | RefundOutcome | BookingOutcome;
 
 /** Logged as errors: someone has to look at these (refund, reconcile). */
-const NEEDS_ATTENTION = new Set<Outcome>(['unknown_order', 'amount_mismatch', 'extra_capture', 'order_not_pending', 'overpaid', 'unknown_refund', 'processed_after_failure']);
+const NEEDS_ATTENTION = new Set<Outcome>([
+  'unknown_order', 'amount_mismatch', 'extra_capture', 'order_not_pending', 'overpaid', 'unknown_refund', 'processed_after_failure',
+  'slot_taken', 'booking_not_pending',
+]);
 const SUCCEEDED = new Set<string>(['SUCCESS', 'REFUND_INITIATED', 'REFUNDED', 'PARTIALLY_REFUNDED']);
 
 type Emit = { [K in DomainEventName]: [K, DomainEventPayloads[K]] }[DomainEventName];
@@ -65,6 +69,7 @@ interface Receipt {
  * balance then makes it PAID and only adds to `amountPaid` (audit `order.balance_received`).
  * `payment.failed` → Payment FAILED (order stays PAYMENT_PENDING for another try); `payment.failed`.
  * `refund.processed` / `refund.failed` → `RefundsService.applyWebhook` (M4.13), in the same transaction.
+ * A booking's payment (M8.8) → `BookingPaymentsService.applyWebhook`, in the same transaction.
  * Any signed event answers 200 so the gateway stops retrying; problems are kept on the event row and logged.
  */
 @Injectable()
@@ -78,6 +83,7 @@ export class PaymentWebhookService {
     private readonly audit: AuditService,
     private readonly events: EventBus,
     private readonly refunds: RefundsService,
+    private readonly bookings: BookingPaymentsService,
   ) {}
 
   async handle(rawBody: Buffer | undefined, headers: IncomingHttpHeaders): Promise<{ outcome: Outcome }> {
@@ -125,7 +131,9 @@ export class PaymentWebhookService {
     if (!gp || (event.type !== 'payment.captured' && event.type !== 'payment.failed')) return { outcome: 'ignored', events: [] };
     if (!gp.orderId) return { outcome: 'unknown_order', events: [] };
 
-    const found = await tx.payment.findUnique({ where: { gatewayOrderId: gp.orderId }, select: { id: true, orderId: true } });
+    const found = await tx.payment.findUnique({ where: { gatewayOrderId: gp.orderId }, select: { id: true, orderId: true, bookingId: true } });
+    // A consultation booking's payment (M8.8): confirmed under the consultant's lock instead of the order's.
+    if (found?.bookingId) return this.bookings.applyWebhook(tx, event.type, found.id, found.bookingId, gp, event.body);
     if (!found?.orderId) return { outcome: 'unknown_order', events: [] };
 
     // Same lock order as starting a payment: order, then coupon. Everything below is read after the lock.
