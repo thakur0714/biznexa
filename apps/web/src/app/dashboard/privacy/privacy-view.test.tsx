@@ -13,9 +13,10 @@ let postError: Error | null = null;
 
 const fakeClient = {
   GET: vi.fn(async () => ({ data: list, response: new Response(null, { status: 200 }) })),
-  POST: vi.fn(async (url: string, options?: { body?: unknown }) => {
-    posts.push({ url, body: options?.body });
+  POST: vi.fn(async (url: string, options?: { body?: unknown; params?: unknown }) => {
+    posts.push({ url, body: options?.body ?? options?.params });
     if (postError) throw postError;
+    if (url === '/api/privacy/requests/{id}/link') return { data: { url: '/api/data-exports/x/download?e=1&d=attachment&s=sig', expiresAt: '2026-10-17T08:06:00.000Z' }, response: new Response() };
     if (url === '/api/privacy/otp') return { data: { channel: 'MOBILE', sentTo: '98******10', expiresIn: 300, resendAfter: 30 }, response: new Response() };
     return { data: { ...REQUEST, status: 'PENDING' }, response: new Response(null, { status: 201 }) };
   }),
@@ -35,6 +36,19 @@ describe('PrivacyView', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Download my data' }));
     await waitFor(() => expect(posts).toEqual([{ url: '/api/privacy/requests', body: { type: 'EXPORT' } }]));
     expect(await screen.findByText(/We are preparing your file/)).toBeInTheDocument();
+  });
+
+  it('downloads a ready export through a signed link', async () => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+    list = { ...list, items: [{ ...REQUEST, downloadable: true }] };
+    render(<PrivacyView />);
+    expect(await screen.findByText(/can be downloaded until 17 Oct 2026/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Prepare a new copy' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Download ZIP' }));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/api/data-exports/x/download?e=1&d=attachment&s=sig'));
+    expect(posts).toEqual([{ url: '/api/privacy/requests/{id}/link', body: { path: { id: REQUEST.id } } }]);
+    vi.unstubAllGlobals();
   });
 
   it('shows an open export as being prepared and lists past requests', async () => {

@@ -65,10 +65,22 @@ export function PrivacyView() {
     }
   };
 
+  const download = async (id: string) => {
+    setExportNotice(null);
+    try {
+      const link = await api.call((c) => c.POST('/api/privacy/requests/{id}/link', { params: { path: { id } } }));
+      window.location.assign(link.url);
+    } catch (err) {
+      setExportNotice({ tone: 'error', text: message(err, 'Could not start the download') });
+      await load();
+    }
+  };
+
   if (loadError && !data) return <Notice tone="error">{loadError}</Notice>;
   if (!data) return <div className="py-10 text-center text-sm text-muted">Loading…</div>;
 
   const openExport = data.items.find((r) => r.type === 'EXPORT' && isOpen(r));
+  const ready = data.items.find((r) => r.type === 'EXPORT' && r.downloadable);
   const openDeletion = data.items.find((r) => r.type === 'DELETION' && isOpen(r));
 
   return (
@@ -89,11 +101,20 @@ export function PrivacyView() {
               tickets, bookings and notifications. The download stays available for {DATA_EXPORT_TTL_DAYS} days.
             </p>
           </div>
-          <Button type="button" variant="outline" onClick={requestExport} disabled={exporting || !!openExport}>
-            <Icon name="download" size={16} />
-            <span>{openExport ? 'Preparing your file…' : exporting ? 'Requesting…' : 'Download my data'}</span>
-          </Button>
+          <div className="flex flex-col gap-2 sm:items-end">
+            {ready && (
+              <Button type="button" onClick={() => download(ready.id)}>
+                <Icon name="download" size={16} />
+                <span>Download ZIP</span>
+              </Button>
+            )}
+            <Button type="button" variant="outline" onClick={requestExport} disabled={exporting || !!openExport}>
+              {!ready && <Icon name="download" size={16} />}
+              <span>{openExport ? 'Preparing your file…' : exporting ? 'Requesting…' : ready ? 'Prepare a new copy' : 'Download my data'}</span>
+            </Button>
+          </div>
         </div>
+        {ready?.expiresAt && <p className="mt-3 text-xs text-muted">Your file is ready. It can be downloaded until {formatDate(ready.expiresAt)}.</p>}
         {exportNotice && (
           <div className="mt-4">
             <Notice tone={exportNotice.tone}>{exportNotice.text}</Notice>

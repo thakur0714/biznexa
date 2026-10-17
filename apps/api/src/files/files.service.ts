@@ -178,7 +178,7 @@ function assertClean(file: StoredFile) {
  * What a signed link opens: `/api/<scope>/<id>/download`. Stored files (D17) and invoice PDFs (M3.23) share
  * the secret; the scope is part of what is signed, so a link for one can never open the other.
  */
-export type LinkScope = 'files' | 'invoices' | 'certificates' | 'credit-notes';
+export type LinkScope = 'files' | 'invoices' | 'certificates' | 'credit-notes' | 'data-exports';
 
 function sign(scope: LinkScope, id: string, expires: number, disposition: Disposition) {
   // Files sign the bare id, as they did before invoices had links.

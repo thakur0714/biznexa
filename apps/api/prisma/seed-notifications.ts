@@ -645,6 +645,36 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     channel: 'WHATSAPP',
     body: 'Hello {{recipientName}}, you have a new message from {{senderName}} on application {{applicationCode}}.',
   },
+
+  // ────────────────── privacy.export_ready (M5.12) ──────────────────
+  {
+    event: 'privacy.export_ready',
+    channel: 'EMAIL',
+    subject: 'Your BizNexa data export is ready',
+    body: '<p>Hello {{customerName}},</p><p>The copy of your data you asked for is ready. Download it from your Privacy page before <strong>{{expiresOn}}</strong>, after which it is deleted.</p><p><a href="{{link}}">Open the Privacy page</a></p>',
+  },
+  {
+    event: 'privacy.export_ready',
+    channel: 'IN_APP',
+    subject: 'Your data export is ready',
+    body: 'Download it from the Privacy page before {{expiresOn}}.',
+  },
+  {
+    event: 'privacy.export_ready',
+    channel: 'SMS',
+    body: 'Your BizNexa data export is ready. Download it from your Privacy page before {{expiresOn}}.',
+  },
+  {
+    event: 'privacy.export_ready',
+    channel: 'PUSH',
+    subject: 'Your data export is ready',
+    body: 'Download it before {{expiresOn}}.',
+  },
+  {
+    event: 'privacy.export_ready',
+    channel: 'WHATSAPP',
+    body: 'Hello {{customerName}}, your BizNexa data export is ready. Download it from your Privacy page before {{expiresOn}}.',
+  },
 ];
 
 export async function seedNotificationTemplates(prisma: PrismaClient): Promise<{ count: number }> {

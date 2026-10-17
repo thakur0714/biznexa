@@ -14318,6 +14318,98 @@
           "privacy"
         ]
       }
+    },
+    "/api/privacy/requests/{id}/link": {
+      "post": {
+        "operationId": "PrivacyController_link",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileLink"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such export among yours (another customer’s looks the same)"
+          },
+          "409": {
+            "description": "Still being prepared"
+          },
+          "410": {
+            "description": "Expired and deleted — ask for a new export"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "privacy"
+        ]
+      }
+    },
+    "/api/data-exports/{id}/download": {
+      "get": {
+        "operationId": "DataExportsController_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s",
+            "required": true,
+            "in": "query",
+            "description": "Signature",
+            "schema": {}
+          },
+          {
+            "name": "d",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "attachment"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "e",
+            "required": true,
+            "in": "query",
+            "description": "Expiry (unix seconds)",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "privacy"
+        ]
+      }
     }
   },
   "info": {

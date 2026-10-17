@@ -27,6 +27,7 @@ export const NOTIFICATION_EVENTS = [
   'ticket.replied',
   'ticket.resolved',
   'message.received',
+  'privacy.export_ready',
 ] as const;
 export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
 export const notificationEventSchema = z.enum(NOTIFICATION_EVENTS);

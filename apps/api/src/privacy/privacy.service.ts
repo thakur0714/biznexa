@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { OtpService } from '../auth/otp.service';
 import { maskMobile } from '../notifications/providers/sms.provider';
+import { DataExportService } from './data-export.service';
 
 const OPEN = { in: ['PENDING', 'PROCESSING'] satisfies DataRequestStatus[] };
 
@@ -50,6 +51,7 @@ export class PrivacyService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly otp: OtpService,
+    private readonly exports: DataExportService,
   ) {}
 
   private async customer(userId: string) {
@@ -95,6 +97,8 @@ export class PrivacyService {
         throw e;
       });
     await this.audit.log({ actorId: userId, action: 'privacy.request_create', entityType: 'DataRequest', entityId: row.id, after: { type: row.type } });
+    // Exports need no review: the job starts at once. Deletions wait for staff (M5.12 step 3).
+    if (row.type === 'EXPORT') this.exports.enqueue(row.id);
     return toDataRequestResult(row);
   }
 

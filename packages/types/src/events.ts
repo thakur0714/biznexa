@@ -200,6 +200,12 @@ export interface DomainEventPayloads {
     customerId: string;
     resolution?: string;
   };
+  /** A customer's data export ZIP is ready to download (M5.12). */
+  'privacy.export_ready': {
+    requestId: string;
+    userId: string;
+    expiresAt: string;
+  };
 }
 
 export type DomainEventName = keyof DomainEventPayloads;
