@@ -1,9 +1,19 @@
+/**
+ * htmlparser2 and its helpers (used by sanitize-html, D59) ship ES modules only. Node 22 loads them
+ * from CommonJS at runtime, but Jest cannot, so they are compiled to CommonJS for tests.
+ */
+const ESM_ONLY = '(?:htmlparser2|domhandler|domutils|dom-serializer|domelementtype|entities)';
+
 /** @type {import('jest').Config} */
 module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/src', '<rootDir>/test'],
   testRegex: String.raw`.*\.(spec|e2e-spec)\.ts$`,
-  transform: { '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.spec.json' }] },
+  transform: {
+    '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.spec.json' }],
+    [`/node_modules/(?:\\.pnpm/${ESM_ONLY}@[^/]+/node_modules/)?${ESM_ONLY}/.+\\.js$`]: ['ts-jest', { tsconfig: { allowJs: true, isolatedModules: true }, diagnostics: false }],
+  },
+  transformIgnorePatterns: [`/node_modules/(?!(?:\\.pnpm/)?${ESM_ONLY}[@/])`],
   moduleFileExtensions: ['ts', 'js', 'json'],
   testTimeout: 30000,
   setupFiles: ['<rootDir>/test/setup-env.js'],

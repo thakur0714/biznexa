@@ -1,3 +1,4 @@
+import { resolve, sep } from 'node:path';
 import { z } from 'zod';
 
 /** Validated environment. The app refuses to start with missing or weak secrets in production. */
@@ -22,6 +23,8 @@ const baseSchema = z
     UPLOAD_DIR: z.string().min(1).default('uploads'),
     /** Hard cap per file whatever a document requirement says. */
     UPLOAD_MAX_MB: z.coerce.number().int().min(1).max(100).default(25),
+    /** Public website images (M9.4, D59), served at /api/media without a login. Must not overlap UPLOAD_DIR. */
+    MEDIA_DIR: z.string().min(1).default('media'),
     /** Upload virus scanning (D23). `stub` only flags the EICAR test file and is refused in production. */
     VIRUS_SCANNER: z.enum(['stub', 'clamav']).default('stub'),
     CLAMAV_HOST: z.string().min(1).default('localhost'),
@@ -65,6 +68,16 @@ function validateRazorpay(v: RawEnv, ctx: z.RefinementCtx): void {
   }
 }
 
+/** Public media must never be able to serve a private upload, so neither folder may contain the other. */
+function validateMediaDir(v: RawEnv, ctx: z.RefinementCtx): void {
+  const media = resolve(v.MEDIA_DIR);
+  const uploads = resolve(v.UPLOAD_DIR);
+  const inside = (a: string, b: string) => a === b || a.startsWith(b + sep);
+  if (inside(media, uploads) || inside(uploads, media)) {
+    ctx.addIssue({ code: 'custom', path: ['MEDIA_DIR'], message: 'MEDIA_DIR and UPLOAD_DIR must be separate folders' });
+  }
+}
+
 function validateProductionSecrets(v: RawEnv, ctx: z.RefinementCtx): void {
   for (const k of ['JWT_ACCESS_SECRET', 'OTP_PEPPER', 'CERT_QR_SECRET', 'FILE_LINK_SECRET', 'DATA_ENCRYPTION_KEY'] as const) {
     if (v[k].startsWith('change-me') || v[k].length < 32) {
@@ -105,6 +118,7 @@ function validateProductionProviders(v: RawEnv, ctx: z.RefinementCtx): void {
 
 const schema = baseSchema.superRefine((v, ctx) => {
   validateRazorpay(v, ctx);
+  validateMediaDir(v, ctx);
   if (v.NODE_ENV === 'production') {
     validateProductionSecrets(v, ctx);
     validateProductionProviders(v, ctx);

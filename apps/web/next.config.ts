@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const API_URL = process.env.API_URL ?? 'http://localhost:4000';
 
 const config: NextConfig = {
-  transpilePackages: ['@biznexa/types', '@biznexa/ui', '@biznexa/api-client'],
+  transpilePackages: ['@biznexa/types', '@biznexa/ui', '@biznexa/api-client', '@biznexa/rich-text'],
   poweredByHeader: false,
   // Browser calls go to /api on the same origin, so the refresh-token cookie stays first-party.
   async rewrites() {
