@@ -112,14 +112,25 @@ describe('Admin consultant review (M8.2)', () => {
     expect(profileAudit?.before).toMatchObject({ qualification: 'Chartered Accountant' });
     expect(profileAudit?.after).toMatchObject({ qualification: 'Updated qualification' });
 
-    await http.post(`/api/admin/consultants/${consultantId}/reject`).set(as(adminToken)).send({ reason: 'Please clarify the membership proof.' }).expect(201);
+    await http.post(`/api/admin/consultants/${consultantId}/suspend`).set(as(adminToken)).expect(409);
+    const concurrentRejects = await Promise.all([
+      http.post(`/api/admin/consultants/${consultantId}/reject`).set(as(adminToken)).send({ reason: 'Please clarify the membership proof.' }),
+      http.post(`/api/admin/consultants/${consultantId}/reject`).set(as(adminToken)).send({ reason: 'Please clarify the membership proof.' }),
+    ]);
+    expect(concurrentRejects.map(({ status }) => status).sort()).toEqual([201, 409]);
     expect(await prisma.consultant.findUniqueOrThrow({ where: { id: consultantId }, select: { verificationStatus: true, rejectionReason: true } })).toMatchObject({ verificationStatus: 'REJECTED', rejectionReason: 'Please clarify the membership proof.' });
+    await http.post(`/api/admin/consultants/${consultantId}/reject`).set(as(adminToken)).send({ reason: 'Again' }).expect(409);
     await http.post(`/api/admin/consultants/${consultantId}/approve`).set(as(adminToken)).expect(201);
+    await http.post(`/api/admin/consultants/${consultantId}/approve`).set(as(adminToken)).expect(409);
+    await http.post(`/api/admin/consultants/${consultantId}/reject`).set(as(adminToken)).send({ reason: 'Not allowed after approval' }).expect(409);
     const consultantRole = await prisma.userRole.findFirst({ where: { userId: customerId, role: { key: 'CONSULTANT' } } });
     expect(consultantRole).not.toBeNull();
     await http.post(`/api/files/${fileIds[0]}/link?disposition=inline`).set(as(adminToken)).expect(200);
     await http.post(`/api/admin/consultants/${consultantId}/suspend`).set(as(adminToken)).expect(201);
     expect(await prisma.userRole.findFirst({ where: { userId: customerId, role: { key: 'CONSULTANT' } } })).toBeNull();
+    await http.post(`/api/admin/consultants/${consultantId}/suspend`).set(as(adminToken)).expect(409);
+    await http.post(`/api/admin/consultants/${consultantId}/approve`).set(as(adminToken)).expect(201);
+    expect(await prisma.userRole.findFirst({ where: { userId: customerId, role: { key: 'CONSULTANT' } } })).not.toBeNull();
     const actions = await prisma.auditLog.findMany({ where: { entityType: 'Consultant', entityId: consultantId } });
     expect(actions.map((entry) => entry.action)).toEqual(expect.arrayContaining(['consultant.profile.update', 'consultant.rejected', 'consultant.approved', 'consultant.suspended']));
   });
