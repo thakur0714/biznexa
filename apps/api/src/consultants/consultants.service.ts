@@ -195,21 +195,32 @@ export class ConsultantsService {
   }
 
   private async setStatus(id: string, status: 'APPROVED' | 'REJECTED' | 'SUSPENDED', reason: string | null, staffId: string) {
-    const before = await this.prisma.consultant.findUnique({
-      where: { id },
-      select: {
-        id: true, userId: true, verificationStatus: true, rejectionReason: true,
-        user: { select: { roles: { where: { role: { key: 'CONSULTANT' } }, select: { roleId: true } } } },
-      },
-    });
-    if (!before) throw new NotFoundException('Consultant not found');
     const updated = await this.prisma.$transaction(async (tx) => {
-      const consultantRole = await tx.role.findUniqueOrThrow({ where: { key: 'CONSULTANT' }, select: { id: true } });
-      const result = await tx.consultant.update({
+      const before = await tx.consultant.findUnique({
         where: { id },
-        data: { verificationStatus: status, rejectionReason: reason },
-        select: { id: true, userId: true, verificationStatus: true, rejectionReason: true },
+        select: {
+          id: true, userId: true, verificationStatus: true, rejectionReason: true,
+          user: { select: { roles: { where: { role: { key: 'CONSULTANT' } }, select: { roleId: true } } } },
+        },
       });
+      if (!before) throw new NotFoundException('Consultant not found');
+      const allowedFrom: Record<typeof status, readonly string[]> = {
+        APPROVED: ['PENDING', 'REJECTED', 'SUSPENDED'],
+        REJECTED: ['PENDING'],
+        SUSPENDED: ['APPROVED'],
+      };
+      if (!allowedFrom[status].includes(before.verificationStatus)) {
+        throw new ConflictException(`Cannot ${status.toLowerCase()} a consultant with status ${before.verificationStatus}.`);
+      }
+      const consultantRole = await tx.role.findUniqueOrThrow({ where: { key: 'CONSULTANT' }, select: { id: true } });
+      const update = await tx.consultant.updateMany({
+        where: { id, verificationStatus: before.verificationStatus },
+        data: { verificationStatus: status, rejectionReason: reason },
+      });
+      if (update.count !== 1) {
+        throw new ConflictException('Consultant status changed while this action was being processed. Reload and try again.');
+      }
+      const result = { id, userId: before.userId, verificationStatus: status, rejectionReason: reason };
       if (status === 'APPROVED') {
         await tx.userRole.createMany({ data: [{ userId: before.userId, roleId: consultantRole.id }], skipDuplicates: true });
       } else {
