@@ -19,6 +19,8 @@ enum UserStatus {
   BLOCKED
   DEACTIVATED
   PENDING_DELETION
+  /// Anonymised after an approved deletion request (M5.12); can never sign in again.
+  DELETED
 }
 
 enum OtpChannel {
@@ -1296,6 +1298,8 @@ model StoredFile {
   scanStatus    FileScanStatus              @default(PENDING) // only CLEAN files can be downloaded
   scanSignature String? // what the scanner found, when INFECTED
   scannedAt     DateTime?
+  /// Bytes deleted with the uploader's account (M5.12); the row stays for the documents that point at it.
+  deletedAt     DateTime?
   createdAt     DateTime                    @default(now())
   owner         User                        @relation(fields: [ownerId], references: [id])
   requirement   ServiceDocumentRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)

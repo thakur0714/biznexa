@@ -2756,6 +2756,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/privacy/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminPrivacyController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/privacy/requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPrivacyController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/privacy/requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminPrivacyController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5796,7 +5844,7 @@ export interface components {
                 email: string | null;
                 mobile: string | null;
                 /** @enum {string} */
-                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION" | "DELETED";
                 /** Format: date-time */
                 createdAt: string;
                 applicationCount: number;
@@ -5813,7 +5861,7 @@ export interface components {
                 email: string | null;
                 mobile: string | null;
                 /** @enum {string} */
-                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION" | "DELETED";
                 /** Format: date-time */
                 createdAt: string;
             };
@@ -5861,7 +5909,7 @@ export interface components {
             email: string | null;
             mobile: string | null;
             /** @enum {string} */
-            status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+            status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION" | "DELETED";
             /** Format: date-time */
             createdAt: string;
             applicationCount: number;
@@ -6658,6 +6706,75 @@ export interface components {
             expiresIn: number;
             resendAfter: number;
             devCode?: string;
+        };
+        AdminDataRequestList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                type: "EXPORT" | "DELETION";
+                /** @enum {string} */
+                status: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED";
+                reason: string | null;
+                rejectionReason: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                handledAt: string | null;
+                /** Format: date-time */
+                completedAt: string | null;
+                /** Format: date-time */
+                expiresAt: string | null;
+                user: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                    email: string | null;
+                    mobile: string | null;
+                    deleted: boolean;
+                };
+                handledBy: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                } | null;
+                blockers: string[];
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        AdminDataRequestRow: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            type: "EXPORT" | "DELETION";
+            /** @enum {string} */
+            status: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED";
+            reason: string | null;
+            rejectionReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            handledAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            user: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                email: string | null;
+                mobile: string | null;
+                deleted: boolean;
+            };
+            handledBy: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            } | null;
+            blockers: string[];
         };
     };
     responses: never;
@@ -11451,7 +11568,7 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
-                status?: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION";
+                status?: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION" | "DELETED";
                 page?: number;
                 limit?: number;
             };
@@ -13096,6 +13213,92 @@ export interface operations {
         requestBody?: never;
         responses: {
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPrivacyController_list: {
+        parameters: {
+            query?: {
+                type?: "EXPORT" | "DELETION";
+                status?: "PENDING" | "PROCESSING" | "COMPLETED" | "REJECTED";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDataRequestList"];
+                };
+            };
+        };
+    };
+    AdminPrivacyController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDataRequestRow"];
+                };
+            };
+            /** @description Not a pending deletion, or an application is in progress, a balance is due or a booking is upcoming */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminPrivacyController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDataRequestRow"];
+                };
+            };
+            /** @description Not pending */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

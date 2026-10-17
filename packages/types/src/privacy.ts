@@ -80,3 +80,41 @@ export const privacyOtpResponseSchema = z.object({
   devCode: z.string().optional(),
 });
 export type PrivacyOtpResponse = z.infer<typeof privacyOtpResponseSchema>;
+
+/** Staff queue (`privacy.manage`): `GET /api/admin/privacy/requests`. */
+export const adminDataRequestListQuery = z.object({
+  type: z.enum(DATA_REQUEST_TYPES).optional(),
+  status: z.enum(DATA_REQUEST_STATUSES).optional(),
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type AdminDataRequestListQuery = z.output<typeof adminDataRequestListQuery>;
+
+export const adminDataRequestRowSchema = dataRequestSchema.omit({ downloadable: true }).extend({
+  user: z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    email: z.string().nullable(),
+    mobile: z.string().nullable(),
+    deleted: z.boolean(),
+  }),
+  handledBy: z.object({ id: z.string().uuid(), name: z.string() }).nullable(),
+  /** Pending deletions only: why it can't be approved yet (empty = it can). */
+  blockers: z.array(z.string()),
+});
+export type AdminDataRequestRow = z.infer<typeof adminDataRequestRowSchema>;
+
+export const adminDataRequestListSchema = z.object({
+  items: z.array(adminDataRequestRowSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+});
+export type AdminDataRequestList = z.infer<typeof adminDataRequestListSchema>;
+
+export const rejectDataRequestInput = z
+  .object({
+    reason: z.string({ required_error: 'Give the customer a reason' }).trim().min(5, 'Give the customer a reason (at least 5 characters)').max(500),
+  })
+  .strict();
+export type RejectDataRequestInput = z.infer<typeof rejectDataRequestInput>;

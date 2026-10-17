@@ -9,6 +9,7 @@ import { AuditService } from '../audit/audit.service';
 import { OtpService } from '../auth/otp.service';
 import { maskMobile } from '../notifications/providers/sms.provider';
 import { DataExportService } from './data-export.service';
+import { AdminPrivacyService } from './admin-privacy.service';
 
 const OPEN = { in: ['PENDING', 'PROCESSING'] satisfies DataRequestStatus[] };
 
@@ -52,6 +53,7 @@ export class PrivacyService {
     private readonly audit: AuditService,
     private readonly otp: OtpService,
     private readonly exports: DataExportService,
+    private readonly admin: AdminPrivacyService,
   ) {}
 
   private async customer(userId: string) {
@@ -85,6 +87,8 @@ export class PrivacyService {
         throw new ForbiddenException('Staff and consultant accounts cannot be deleted here. Please contact an administrator.');
       }
       await this.recheck(user, input);
+      const blockers = await this.admin.blockers(userId);
+      if (blockers.length) throw new ConflictException(`We can't delete your account yet: ${blockers.join('; ')}. Please try again once that is done.`);
     }
 
     const open = await this.prisma.dataRequest.findFirst({ where: { userId, type: input.type, status: OPEN } });
