@@ -2516,6 +2516,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/consultants/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicConsultantsController_profile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/consultants/me/availability": {
         parameters: {
             query?: never;
@@ -6269,6 +6285,56 @@ export interface components {
                 endAt: string;
                 date: string;
                 time: string;
+            }[];
+        };
+        PublicConsultantProfile: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            /** @enum {string} */
+            category: "CA" | "CS" | "LAWYER" | "TAX_CONSULTANT" | "TRADEMARK_CONSULTANT" | "ISO_CONSULTANT" | "BUSINESS_CONSULTANT" | "TECHNOLOGY_CONSULTANT";
+            qualification: string;
+            city: string;
+            state: string;
+            area: string | null;
+            expertise: string[];
+            languages: string[];
+            bio: string | null;
+            photoUrl: string | null;
+            /** @description Consultation fee in paise */
+            feePerSession: number;
+            sessionMinutes: number;
+            consultationTypes: ("AUDIO" | "VIDEO" | "CHAT" | "MEETING")[];
+            rating: number;
+            reviewCount: number;
+            isOnline: boolean;
+            experienceYears: number;
+            ratingSummary: {
+                average: number;
+                reviewCount: number;
+                breakdown: {
+                    1: number;
+                    2: number;
+                    3: number;
+                    4: number;
+                    5: number;
+                };
+            };
+            services: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+                category: string;
+            }[];
+            verifiedReviews: {
+                /** Format: uuid */
+                id: string;
+                rating: number;
+                text: string | null;
+                /** Format: date-time */
+                createdAt: string;
             }[];
         };
         ConsultantAvailability: {
@@ -12163,6 +12229,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description No approved consultant with this slug */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PublicConsultantsController_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Approved consultant profile slug */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicConsultantProfile"];
+                };
             };
             /** @description No approved consultant with this slug */
             404: {

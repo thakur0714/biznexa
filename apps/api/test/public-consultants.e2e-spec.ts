@@ -122,4 +122,16 @@ describe('Public consultant directory (M8.3)', () => {
     const unavailable = await http().get('/api/public/consultants?availableToday=false&language=Blocked-language').expect(200);
     expect(unavailable.body.items[0]).toMatchObject({ name: 'blocked-today consultant', availableToday: false });
   });
+
+  it('serves only approved public profiles and returns a 404 for pending or unknown slugs', async () => {
+    const response = await http().get(`/api/public/consultants/directory-${runId}-approved-one`).expect(200);
+    expect(response.body).toMatchObject({
+      name: 'approved-one consultant', category: 'CA', expertise: ['Tax'], languages: ['English', 'Hindi', runLanguage],
+      ratingSummary: { average: 4.8, reviewCount: 10, breakdown: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 } },
+      services: [], verifiedReviews: [],
+    });
+    expect(response.body).not.toHaveProperty('email');
+    await http().get(`/api/public/consultants/directory-${runId}-pending`).expect(404);
+    await http().get('/api/public/consultants/no-such-consultant').expect(404);
+  });
 });

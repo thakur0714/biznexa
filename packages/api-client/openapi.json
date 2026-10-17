@@ -13393,6 +13393,40 @@
         ]
       }
     },
+    "/api/public/consultants/{slug}": {
+      "get": {
+        "operationId": "PublicConsultantsController_profile",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "description": "Approved consultant profile slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicConsultantProfile"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No approved consultant with this slug"
+          }
+        },
+        "tags": [
+          "public · consultants"
+        ]
+      }
+    },
     "/api/consultants/me/availability": {
       "get": {
         "operationId": "ConsultantAvailabilityController_get",
@@ -31223,6 +31257,228 @@
           "from",
           "to",
           "slots"
+        ],
+        "additionalProperties": false
+      },
+      "PublicConsultantProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "CA",
+              "CS",
+              "LAWYER",
+              "TAX_CONSULTANT",
+              "TRADEMARK_CONSULTANT",
+              "ISO_CONSULTANT",
+              "BUSINESS_CONSULTANT",
+              "TECHNOLOGY_CONSULTANT"
+            ]
+          },
+          "qualification": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "area": {
+            "type": "string",
+            "nullable": true
+          },
+          "expertise": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "photoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "feePerSession": {
+            "type": "integer",
+            "description": "Consultation fee in paise"
+          },
+          "sessionMinutes": {
+            "type": "integer"
+          },
+          "consultationTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "AUDIO",
+                "VIDEO",
+                "CHAT",
+                "MEETING"
+              ]
+            }
+          },
+          "rating": {
+            "type": "number"
+          },
+          "reviewCount": {
+            "type": "integer"
+          },
+          "isOnline": {
+            "type": "boolean"
+          },
+          "experienceYears": {
+            "type": "integer"
+          },
+          "ratingSummary": {
+            "type": "object",
+            "properties": {
+              "average": {
+                "type": "number"
+              },
+              "reviewCount": {
+                "type": "integer"
+              },
+              "breakdown": {
+                "type": "object",
+                "properties": {
+                  "1": {
+                    "type": "integer"
+                  },
+                  "2": {
+                    "type": "integer"
+                  },
+                  "3": {
+                    "type": "integer"
+                  },
+                  "4": {
+                    "type": "integer"
+                  },
+                  "5": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "1",
+                  "2",
+                  "3",
+                  "4",
+                  "5"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "average",
+              "reviewCount",
+              "breakdown"
+            ],
+            "additionalProperties": false
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name",
+                "category"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "verifiedReviews": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "rating": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5
+                },
+                "text": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "rating",
+                "text",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "category",
+          "qualification",
+          "city",
+          "state",
+          "area",
+          "expertise",
+          "languages",
+          "bio",
+          "photoUrl",
+          "feePerSession",
+          "sessionMinutes",
+          "consultationTypes",
+          "rating",
+          "reviewCount",
+          "isOnline",
+          "experienceYears",
+          "ratingSummary",
+          "services",
+          "verifiedReviews"
         ],
         "additionalProperties": false
       },

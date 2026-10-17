@@ -11,6 +11,7 @@ import {
   adminConsultantSummarySchema,
   consultantApplicationResponseSchema,
   publicConsultantDirectorySchema,
+  publicConsultantProfileSchema,
   type AdminConsultantDetail,
   type AdminConsultantList,
   type AdminConsultantListQuery,
@@ -20,6 +21,7 @@ import {
   type ConsultantRejectInput,
   type PublicConsultantDirectory,
   type PublicConsultantDirectoryQuery,
+  type PublicConsultantProfile,
 } from '@biznexa/types';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -387,6 +389,59 @@ export class ConsultantsService {
       total,
       page: query.page,
       limit: query.limit,
+    });
+  }
+
+  async getPublic(slug: string): Promise<PublicConsultantProfile> {
+    const consultant = await this.prisma.consultant.findFirst({
+      where: { slug, verificationStatus: 'APPROVED' },
+      select: {
+        id: true, slug: true, category: true, qualification: true, experienceYears: true, expertise: true,
+        languages: true, city: true, state: true, area: true, bio: true, photoUrl: true, feePerSession: true,
+        sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true,
+        user: { select: { name: true } },
+        services: {
+          where: { service: { isActive: true, deletedAt: null } },
+          orderBy: { service: { name: 'asc' } },
+          select: { service: { select: { id: true, slug: true, name: true, category: { select: { name: true } } } } },
+        },
+      },
+    });
+    if (!consultant) throw new NotFoundException('Consultant not found');
+    const ratings = await this.prisma.review.groupBy({
+      by: ['rating'],
+      where: { consultantId: consultant.id, isPublished: true },
+      _count: { _all: true },
+    });
+    const breakdown = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+    for (const rating of ratings) breakdown[String(rating.rating) as keyof typeof breakdown] = rating._count._all;
+    return publicConsultantProfileSchema.parse({
+      id: consultant.id,
+      slug: consultant.slug,
+      name: consultant.user.name,
+      category: consultant.category,
+      qualification: consultant.qualification,
+      experienceYears: consultant.experienceYears,
+      expertise: consultant.expertise,
+      languages: consultant.languages,
+      city: consultant.city,
+      state: consultant.state,
+      area: consultant.area,
+      bio: consultant.bio,
+      photoUrl: consultant.photoUrl,
+      feePerSession: consultant.feePerSession,
+      sessionMinutes: consultant.sessionMinutes,
+      consultationTypes: consultant.consultationTypes,
+      rating: consultant.rating,
+      reviewCount: consultant.reviewCount,
+      isOnline: consultant.isOnline,
+      ratingSummary: {
+        average: consultant.rating,
+        reviewCount: consultant.reviewCount,
+        breakdown,
+      },
+      services: consultant.services.map(({ service }) => ({ ...service, category: service.category.name })),
+      verifiedReviews: [],
     });
   }
 }

@@ -174,3 +174,15 @@ export const publicConsultantDirectorySchema = z.object({
   limit: z.number().int(),
 });
 export type PublicConsultantDirectory = z.infer<typeof publicConsultantDirectorySchema>;
+
+export const publicConsultantProfileSchema = publicConsultantCardSchema.omit({ availableToday: true }).extend({
+  experienceYears: z.number().int(),
+  ratingSummary: z.object({
+    average: z.number(),
+    reviewCount: z.number().int(),
+    breakdown: z.object({ '1': z.number().int(), '2': z.number().int(), '3': z.number().int(), '4': z.number().int(), '5': z.number().int() }),
+  }),
+  services: z.array(z.object({ id: z.string().uuid(), slug: z.string(), name: z.string(), category: z.string() })),
+  verifiedReviews: z.array(z.object({ id: z.string().uuid(), rating: z.number().int().min(1).max(5), text: z.string().nullable(), createdAt: z.string().datetime() })),
+});
+export type PublicConsultantProfile = z.infer<typeof publicConsultantProfileSchema>;
