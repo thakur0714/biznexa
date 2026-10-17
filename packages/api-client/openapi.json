@@ -24984,7 +24984,12 @@
                 },
                 "requirementId": {
                   "type": "string",
-                  "format": "uuid"
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "description": {
+                  "type": "string",
+                  "nullable": true
                 },
                 "name": {
                   "type": "string"
@@ -25008,6 +25013,7 @@
               "required": [
                 "id",
                 "requirementId",
+                "description",
                 "name",
                 "status",
                 "fileKey",

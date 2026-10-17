@@ -183,6 +183,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
             <div key={d.id} className="flex justify-between items-center text-sm border-b pb-2">
               <div>
                 <p className="font-medium">{d.name}</p>
+                {d.description && <p className="text-xs text-muted">{d.description}</p>}
                 <p className="text-xs text-muted">{d.fileName || 'No file'} • {d.status}</p>
               </div>
             </div>

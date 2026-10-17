@@ -4744,7 +4744,8 @@ export interface components {
                 /** Format: uuid */
                 id: string;
                 /** Format: uuid */
-                requirementId: string;
+                requirementId: string | null;
+                description: string | null;
                 name: string;
                 status: string;
                 fileKey: string;
