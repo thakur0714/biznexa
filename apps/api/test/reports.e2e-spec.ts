@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { presetDateRange } from '@biznexa/types';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
@@ -257,9 +258,10 @@ beforeAll(async () => {
   paymentIds.push(bookingPayment.id);
 
   // 10. Support ticket with exact 1-hour first response and 2-hour resolution
-  const ticketCreatedAt = new Date(now.getTime() - 2 * 3600 * 1000);
-  const ticketFirstResponseAt = new Date(now.getTime() - 1 * 3600 * 1000);
-  const ticketResolvedAt = now;
+  // Kept inside today in IST (the `preset=today` range): between 00:00 and 02:00 IST "two hours ago" is yesterday.
+  const ticketCreatedAt = new Date(Math.max(now.getTime() - 2 * 3600 * 1000, presetDateRange('today', now).from.getTime() + 1000));
+  const ticketFirstResponseAt = new Date(ticketCreatedAt.getTime() + 1 * 3600 * 1000);
+  const ticketResolvedAt = new Date(ticketCreatedAt.getTime() + 2 * 3600 * 1000);
 
   const ticket = await prisma.ticket.create({
     data: {
