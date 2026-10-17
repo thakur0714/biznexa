@@ -2276,6 +2276,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/consultants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminConsultantsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/consultants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminConsultantsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/consultants/{id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminConsultantsController_updateProfile"];
+        trace?: never;
+    };
+    "/api/admin/consultants/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminConsultantsController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/consultants/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminConsultantsController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/consultants/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminConsultantsController_suspend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5634,6 +5730,80 @@ export interface components {
                 /** Format: date-time */
                 readAt: string | null;
             }[];
+        };
+        AdminConsultantList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                userId: string;
+                name: string;
+                /** Format: email */
+                email: string;
+                /** @enum {string} */
+                category: "CA" | "CS" | "LAWYER" | "TAX_CONSULTANT" | "TRADEMARK_CONSULTANT" | "ISO_CONSULTANT" | "BUSINESS_CONSULTANT" | "TECHNOLOGY_CONSULTANT";
+                /** @enum {string} */
+                verificationStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
+                city: string;
+                state: string;
+                experienceYears: number;
+                feePerSession: number;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        AdminConsultantDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            name: string;
+            /** Format: email */
+            email: string;
+            /** @enum {string} */
+            category: "CA" | "CS" | "LAWYER" | "TAX_CONSULTANT" | "TRADEMARK_CONSULTANT" | "ISO_CONSULTANT" | "BUSINESS_CONSULTANT" | "TECHNOLOGY_CONSULTANT";
+            /** @enum {string} */
+            verificationStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
+            city: string;
+            state: string;
+            experienceYears: number;
+            feePerSession: number;
+            /** Format: date-time */
+            createdAt: string;
+            slug: string;
+            qualification: string;
+            membershipNo: string | null;
+            expertise: string[];
+            languages: string[];
+            area: string | null;
+            bio: string | null;
+            consultationTypes: ("AUDIO" | "VIDEO" | "CHAT" | "MEETING")[];
+            rejectionReason: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            documents: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "QUALIFICATION_PROOF" | "MEMBERSHIP_PROOF" | "ID_PROOF";
+                /** Format: uuid */
+                fileId: string;
+                fileName: string;
+                mimeType: string;
+                /** @enum {string} */
+                scanStatus: "PENDING" | "CLEAN" | "INFECTED";
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+        };
+        AdminConsultantActionResponse: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            verificationStatus: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
         };
         ConsultantApplicationResponse: {
             /** Format: uuid */
@@ -10986,6 +11156,159 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminConsultantsController_list: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminConsultantList"];
+                };
+            };
+        };
+    };
+    AdminConsultantsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminConsultantDetail"];
+                };
+            };
+        };
+    };
+    AdminConsultantsController_updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    category: "CA" | "CS" | "LAWYER" | "TAX_CONSULTANT" | "TRADEMARK_CONSULTANT" | "ISO_CONSULTANT" | "BUSINESS_CONSULTANT" | "TECHNOLOGY_CONSULTANT";
+                    qualification: string;
+                    membershipNo?: string | null;
+                    experienceYears: number;
+                    expertise: string[];
+                    languages: string[];
+                    city: string;
+                    state: string;
+                    area?: string | null;
+                    bio?: string | null;
+                    /** @description Consultation fee in paise */
+                    feePerSession: number;
+                    consultationTypes: ("AUDIO" | "VIDEO" | "CHAT" | "MEETING")[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminConsultantDetail"];
+                };
+            };
+        };
+    };
+    AdminConsultantsController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminConsultantActionResponse"];
+                };
+            };
+        };
+    };
+    AdminConsultantsController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminConsultantActionResponse"];
+                };
+            };
+        };
+    };
+    AdminConsultantsController_suspend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminConsultantActionResponse"];
+                };
             };
         };
     };

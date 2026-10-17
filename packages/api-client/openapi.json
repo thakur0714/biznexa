@@ -12362,6 +12362,375 @@
           "consultants"
         ]
       }
+    },
+    "/api/admin/consultants": {
+      "get": {
+        "operationId": "AdminConsultantsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "APPROVED",
+                "REJECTED",
+                "SUSPENDED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminConsultantList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · consultants"
+        ]
+      }
+    },
+    "/api/admin/consultants/{id}": {
+      "get": {
+        "operationId": "AdminConsultantsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminConsultantDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · consultants"
+        ]
+      }
+    },
+    "/api/admin/consultants/{id}/profile": {
+      "patch": {
+        "operationId": "AdminConsultantsController_updateProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "CA",
+                      "CS",
+                      "LAWYER",
+                      "TAX_CONSULTANT",
+                      "TRADEMARK_CONSULTANT",
+                      "ISO_CONSULTANT",
+                      "BUSINESS_CONSULTANT",
+                      "TECHNOLOGY_CONSULTANT"
+                    ]
+                  },
+                  "qualification": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "membershipNo": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "nullable": true
+                  },
+                  "experienceYears": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60
+                  },
+                  "expertise": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "minItems": 1,
+                    "maxItems": 20
+                  },
+                  "languages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "minItems": 1,
+                    "maxItems": 20
+                  },
+                  "city": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "state": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "area": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "nullable": true
+                  },
+                  "bio": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "nullable": true
+                  },
+                  "feePerSession": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000000,
+                    "description": "Consultation fee in paise"
+                  },
+                  "consultationTypes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "AUDIO",
+                        "VIDEO",
+                        "CHAT",
+                        "MEETING"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "category",
+                  "qualification",
+                  "experienceYears",
+                  "expertise",
+                  "languages",
+                  "city",
+                  "state",
+                  "feePerSession",
+                  "consultationTypes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminConsultantDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · consultants"
+        ]
+      }
+    },
+    "/api/admin/consultants/{id}/approve": {
+      "post": {
+        "operationId": "AdminConsultantsController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminConsultantActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · consultants"
+        ]
+      }
+    },
+    "/api/admin/consultants/{id}/reject": {
+      "post": {
+        "operationId": "AdminConsultantsController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminConsultantActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · consultants"
+        ]
+      }
+    },
+    "/api/admin/consultants/{id}/suspend": {
+      "post": {
+        "operationId": "AdminConsultantsController_suspend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminConsultantActionResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · consultants"
+        ]
+      }
     }
   },
   "info": {
@@ -28521,6 +28890,310 @@
           "updatedAt",
           "thread",
           "messages"
+        ],
+        "additionalProperties": false
+      },
+      "AdminConsultantList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "userId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "CA",
+                    "CS",
+                    "LAWYER",
+                    "TAX_CONSULTANT",
+                    "TRADEMARK_CONSULTANT",
+                    "ISO_CONSULTANT",
+                    "BUSINESS_CONSULTANT",
+                    "TECHNOLOGY_CONSULTANT"
+                  ]
+                },
+                "verificationStatus": {
+                  "type": "string",
+                  "enum": [
+                    "PENDING",
+                    "APPROVED",
+                    "REJECTED",
+                    "SUSPENDED"
+                  ]
+                },
+                "city": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "experienceYears": {
+                  "type": "integer"
+                },
+                "feePerSession": {
+                  "type": "integer"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "userId",
+                "name",
+                "email",
+                "category",
+                "verificationStatus",
+                "city",
+                "state",
+                "experienceYears",
+                "feePerSession",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ],
+        "additionalProperties": false
+      },
+      "AdminConsultantDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "CA",
+              "CS",
+              "LAWYER",
+              "TAX_CONSULTANT",
+              "TRADEMARK_CONSULTANT",
+              "ISO_CONSULTANT",
+              "BUSINESS_CONSULTANT",
+              "TECHNOLOGY_CONSULTANT"
+            ]
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED",
+              "SUSPENDED"
+            ]
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "experienceYears": {
+            "type": "integer"
+          },
+          "feePerSession": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "qualification": {
+            "type": "string"
+          },
+          "membershipNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "expertise": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "area": {
+            "type": "string",
+            "nullable": true
+          },
+          "bio": {
+            "type": "string",
+            "nullable": true
+          },
+          "consultationTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "AUDIO",
+                "VIDEO",
+                "CHAT",
+                "MEETING"
+              ]
+            }
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "QUALIFICATION_PROOF",
+                    "MEMBERSHIP_PROOF",
+                    "ID_PROOF"
+                  ]
+                },
+                "fileId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "fileName": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "scanStatus": {
+                  "type": "string",
+                  "enum": [
+                    "PENDING",
+                    "CLEAN",
+                    "INFECTED"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "kind",
+                "fileId",
+                "fileName",
+                "mimeType",
+                "scanStatus",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "name",
+          "email",
+          "category",
+          "verificationStatus",
+          "city",
+          "state",
+          "experienceYears",
+          "feePerSession",
+          "createdAt",
+          "slug",
+          "qualification",
+          "membershipNo",
+          "expertise",
+          "languages",
+          "area",
+          "bio",
+          "consultationTypes",
+          "rejectionReason",
+          "updatedAt",
+          "documents"
+        ],
+        "additionalProperties": false
+      },
+      "AdminConsultantActionResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verificationStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED",
+              "SUSPENDED"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "verificationStatus"
         ],
         "additionalProperties": false
       },

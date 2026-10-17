@@ -794,6 +794,7 @@ model Consultant {
   consultationTypes  ConsultationType[]
   commissionPercent  Int                @default(20)
   verificationStatus VerificationStatus @default(PENDING)
+  rejectionReason    String?
   rating             Float              @default(0)
   reviewCount        Int                @default(0)
   isOnline           Boolean            @default(false)

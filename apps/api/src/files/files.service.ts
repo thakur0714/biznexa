@@ -104,6 +104,11 @@ export class FilesService {
   private async canRead(user: AuthUser, file: StoredFile) {
     if (file.ownerId === user.id || user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ALL)) return true;
 
+    if (user.permissions?.includes(PERMS.CONSULTANTS_MANAGE)) {
+      const consultantDocument = await this.prisma.consultantDocument.findFirst({ where: { fileId: file.id }, select: { id: true } });
+      if (consultantDocument) return true;
+    }
+
     if (user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED)) {
       const doc = await this.prisma.applicationDocument.findFirst({
         where: {

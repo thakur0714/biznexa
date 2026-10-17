@@ -14,6 +14,9 @@ export const consultantCategories = [
 export const consultationTypes = ['AUDIO', 'VIDEO', 'CHAT', 'MEETING'] as const;
 
 export const consultantDocumentKinds = ['QUALIFICATION_PROOF', 'MEMBERSHIP_PROOF', 'ID_PROOF'] as const;
+export const consultantCategorySchema = z.enum(consultantCategories);
+export const consultationTypeSchema = z.enum(consultationTypes);
+export const consultantDocumentKindSchema = z.enum(consultantDocumentKinds);
 export type ConsultantCategory = (typeof consultantCategories)[number];
 export type ConsultationType = (typeof consultationTypes)[number];
 
@@ -51,3 +54,72 @@ export const consultantApplicationResponseSchema = z.object({
 });
 
 export type ConsultantApplicationResponse = z.infer<typeof consultantApplicationResponseSchema>;
+
+export const consultantVerificationStatuses = ['PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED'] as const;
+export type ConsultantVerificationStatus = (typeof consultantVerificationStatuses)[number];
+
+export const adminConsultantListQuerySchema = z.object({
+  status: z.enum(consultantVerificationStatuses).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type AdminConsultantListQuery = z.infer<typeof adminConsultantListQuerySchema>;
+
+export const adminConsultantSummarySchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  name: z.string(),
+  email: z.string().email(),
+  category: consultantCategorySchema,
+  verificationStatus: z.enum(consultantVerificationStatuses),
+  city: z.string(),
+  state: z.string(),
+  experienceYears: z.number().int(),
+  feePerSession: z.number().int(),
+  createdAt: z.string().datetime(),
+});
+export type AdminConsultantSummary = z.infer<typeof adminConsultantSummarySchema>;
+
+export const adminConsultantDocumentSchema = z.object({
+  id: z.string().uuid(),
+  kind: consultantDocumentKindSchema,
+  fileId: z.string().uuid(),
+  fileName: z.string(),
+  mimeType: z.string(),
+  scanStatus: z.enum(['PENDING', 'CLEAN', 'INFECTED']),
+  createdAt: z.string().datetime(),
+});
+
+export const adminConsultantDetailSchema = adminConsultantSummarySchema.extend({
+  slug: z.string(),
+  qualification: z.string(),
+  membershipNo: z.string().nullable(),
+  expertise: z.array(z.string()),
+  languages: z.array(z.string()),
+  area: z.string().nullable(),
+  bio: z.string().nullable(),
+  consultationTypes: z.array(consultationTypeSchema),
+  rejectionReason: z.string().nullable(),
+  updatedAt: z.string().datetime(),
+  documents: z.array(adminConsultantDocumentSchema),
+});
+export type AdminConsultantDetail = z.infer<typeof adminConsultantDetailSchema>;
+
+export const adminConsultantListSchema = z.object({
+  items: z.array(adminConsultantSummarySchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+});
+export type AdminConsultantList = z.infer<typeof adminConsultantListSchema>;
+
+export const adminConsultantProfileInputSchema = consultantProfileInputSchema;
+export type AdminConsultantProfileInput = z.infer<typeof adminConsultantProfileInputSchema>;
+export const consultantRejectInputSchema = z.object({ reason: z.string().trim().min(3).max(1000) });
+export type ConsultantRejectInput = z.infer<typeof consultantRejectInputSchema>;
+
+export const adminConsultantActionResponseSchema = z.object({
+  id: z.string().uuid(),
+  verificationStatus: z.enum(consultantVerificationStatuses),
+});
+export type AdminConsultantActionResponse = z.infer<typeof adminConsultantActionResponseSchema>;

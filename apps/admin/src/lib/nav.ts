@@ -40,7 +40,7 @@ export const NAV: NavGroup[] = [
       { slug: 'services', label: 'Services', requires: { all: [PERMS.SERVICES_MANAGE] }, built: true },
       { slug: 'payments', label: 'Payments', requires: { all: [PERMS.PAYMENTS_VIEW] }, built: true },
       { slug: 'coupons', label: 'Coupons', requires: { all: [PERMS.COUPONS_MANAGE] }, built: true },
-      { slug: 'consultants', label: 'Consultants', requires: { all: [PERMS.CONSULTANTS_MANAGE] } },
+      { slug: 'consultants', label: 'Consultants', requires: { all: [PERMS.CONSULTANTS_MANAGE] }, built: true },
       { slug: 'certificates', label: 'Certificates', requires: { all: [PERMS.CERTIFICATES_MANAGE] }, built: true },
     ],
   },
