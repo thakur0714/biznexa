@@ -76,6 +76,7 @@ export const adminConsultantSummarySchema = z.object({
   state: z.string(),
   experienceYears: z.number().int(),
   feePerSession: z.number().int(),
+  isFeatured: z.boolean(),
   createdAt: z.string().datetime(),
 });
 export type AdminConsultantSummary = z.infer<typeof adminConsultantSummarySchema>;
@@ -168,6 +169,9 @@ export const adminConsultantActionResponseSchema = z.object({
 });
 export type AdminConsultantActionResponse = z.infer<typeof adminConsultantActionResponseSchema>;
 
+export const adminConsultantFeaturedInputSchema = z.object({ isFeatured: z.boolean() }).strict();
+export type AdminConsultantFeaturedInput = z.infer<typeof adminConsultantFeaturedInputSchema>;
+
 export const publicConsultantDirectoryQuerySchema = z.object({
   category: z.enum(consultantCategories).optional(),
   state: z.string().trim().min(1).max(100).optional(),
@@ -180,6 +184,7 @@ export const publicConsultantDirectoryQuerySchema = z.object({
   language: z.string().trim().min(1).max(40).optional(),
   consultationType: z.enum(consultationTypes).optional(),
   availableToday: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
+  featured: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
   sort: z.enum(['rating', 'experience', 'fee_low', 'fee_high']).default('rating'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(12),
@@ -208,6 +213,7 @@ export const publicConsultantCardSchema = z.object({
   reviewCount: z.number().int(),
   isOnline: z.boolean(),
   availableToday: z.boolean(),
+  isFeatured: z.boolean(),
 });
 export type PublicConsultantCard = z.infer<typeof publicConsultantCardSchema>;
 
