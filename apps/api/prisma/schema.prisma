@@ -1236,6 +1236,9 @@ model CmsPage {
   content         Json // rich content blocks
   seoTitle        String?
   metaDescription String?
+  ogImageUrl      String?
+  contactEmail    String?
+  contactPhone    String?
   status          PublishStatus @default(DRAFT)
   updatedAt       DateTime      @updatedAt
 }

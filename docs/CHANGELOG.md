@@ -1,5 +1,13 @@
 # Changelog
 
+## M9.5 / M9.6 — CMS (in progress, 18-Oct-2026)
+
+- Added CMS page draft, publish and unpublish endpoints requiring `cms.manage`; writes are audit logged and rich HTML is saved through `richTextInput`.
+- Added SEO title, meta description and Open Graph image URL to `CmsPage`; public page reads continue to return only published rows.
+- Added an admin page editor using the shared `RichTextEditor`, contact email/phone fields, and SEO metadata rendering; About and Contact read published CMS content. D62 records the `{ html }` content shape.
+- Added audited homepage administration for banners, testimonials, stats, active catalogue service picks and FAQs, including ordering and active flags. The public homepage renders these sections and uses the legacy layout only when CMS content is empty.
+- Focused CMS e2e, admin tests (191), rich-text sanitizer tests (56), migrations and typechecks pass. Full API test suite still needs a clean run.
+
 ## Milestones 1 & 2 — Foundation and Catalogue (09-Oct-2026)
 
 ### Built and tested

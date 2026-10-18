@@ -14,11 +14,19 @@ export interface CmsPageData {
   title: string;
   /** Seeded pages use blocks; pages saved from the admin editor (M9.5) store sanitised `html`. */
   content: { blocks?: Block[]; html?: string };
+  seoTitle?: string | null;
+  metaDescription?: string | null;
+  ogImageUrl?: string | null;
   updatedAt: string;
 }
 
 export function getCmsPage(slug: string) {
   return apiOrNull<CmsPageData>(`/cms/pages/${slug}`);
+}
+
+export async function cmsMetadata(slug: string) {
+  const page = await getCmsPage(slug);
+  return { title: page?.seoTitle || page?.title || 'BizNexa', ...(page?.metaDescription ? { description: page.metaDescription } : {}), ...(page?.ogImageUrl ? { openGraph: { images: [page.ogImageUrl] } } : {}) };
 }
 
 /** Renders a published CMS page (content managed by Admin). */
