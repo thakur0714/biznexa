@@ -13,7 +13,8 @@ let prisma: PrismaService;
 let numbers: InvoiceNumbersService;
 let close: () => Promise<void>;
 
-// A calendar year between 2200 and 2899; each test takes its own so they can share one run.
+// A calendar year between 2200 and 2829 (invoice-pdf and invoice-record use 3000+); each test takes its own so they
+// can share one run.
 const base = 2200 + Math.floor(Math.random() * 600);
 let used = 0;
 const year = () => base + 10 * used++;
