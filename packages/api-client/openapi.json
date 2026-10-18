@@ -11829,6 +11829,447 @@
         ]
       }
     },
+    "/api/cms/homepage": {
+      "get": {
+        "operationId": "CmsController_homepage",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "cms"
+        ]
+      }
+    },
+    "/api/admin/cms/homepage": {
+      "get": {
+        "operationId": "AdminCmsController_homepage",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsHomepage"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin · cms"
+        ]
+      },
+      "put": {
+        "operationId": "AdminCmsController_saveHomepage",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "banners": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 160
+                        },
+                        "subtitle": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "imageUrl": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "linkUrl": {
+                          "type": "string",
+                          "maxLength": 500,
+                          "nullable": true
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "subtitle",
+                        "imageUrl",
+                        "linkUrl",
+                        "sortOrder",
+                        "isActive"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 20
+                  },
+                  "testimonials": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "company": {
+                          "type": "string",
+                          "maxLength": 160,
+                          "nullable": true
+                        },
+                        "quote": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "rating": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "company",
+                        "quote",
+                        "rating",
+                        "sortOrder",
+                        "isActive"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 50
+                  },
+                  "stats": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "value": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "value",
+                        "sortOrder",
+                        "isActive"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 12
+                  },
+                  "popularServiceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 8
+                  },
+                  "faq": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "question": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "answer": {
+                          "type": "string",
+                          "maxLength": 200000
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "question",
+                        "answer",
+                        "sortOrder",
+                        "isActive"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 30
+                  }
+                },
+                "required": [
+                  "banners",
+                  "testimonials",
+                  "stats",
+                  "popularServiceIds",
+                  "faq"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsHomepage"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin · cms"
+        ]
+      }
+    },
+    "/api/admin/cms/homepage/services": {
+      "get": {
+        "operationId": "AdminCmsController_services",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsServices"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin · cms"
+        ]
+      }
+    },
+    "/api/admin/cms/pages": {
+      "get": {
+        "operationId": "AdminCmsController_adminPages",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsPageList"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin · cms"
+        ]
+      },
+      "put": {
+        "operationId": "AdminCmsController_savePage",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "slug": {
+                    "type": "string",
+                    "enum": [
+                      "about",
+                      "terms",
+                      "privacy",
+                      "refund-policy",
+                      "contact"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "content": {
+                    "type": "object",
+                    "properties": {
+                      "html": {
+                        "type": "string",
+                        "maxLength": 200000
+                      }
+                    },
+                    "required": [
+                      "html"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "seoTitle": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "nullable": true
+                  },
+                  "metaDescription": {
+                    "type": "string",
+                    "maxLength": 320,
+                    "nullable": true
+                  },
+                  "ogImageUrl": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  },
+                  "contactEmail": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254,
+                    "nullable": true
+                  },
+                  "contactPhone": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "slug",
+                  "title",
+                  "content",
+                  "seoTitle",
+                  "metaDescription",
+                  "ogImageUrl",
+                  "contactEmail",
+                  "contactPhone"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsPage"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin · cms"
+        ]
+      }
+    },
+    "/api/admin/cms/pages/{slug}/publish": {
+      "post": {
+        "operationId": "AdminCmsController_publishPage",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsPage"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin · cms"
+        ]
+      }
+    },
+    "/api/admin/cms/pages/{slug}/unpublish": {
+      "post": {
+        "operationId": "AdminCmsController_unpublishPage",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsPage"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin · cms"
+        ]
+      }
+    },
     "/api/admin/media/images": {
       "post": {
         "operationId": "MediaController_upload",
@@ -15969,6 +16410,363 @@
         ],
         "tags": [
           "admin · blog"
+        ]
+      }
+    },
+    "/api/admin/blog/posts": {
+      "get": {
+        "operationId": "AdminBlogPostsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlogPostList"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · blog"
+        ]
+      },
+      "post": {
+        "operationId": "AdminBlogPostsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "slug": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  },
+                  "excerpt": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  },
+                  "content": {
+                    "type": "string",
+                    "maxLength": 200000
+                  },
+                  "featuredImage": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  },
+                  "authorName": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "nullable": true
+                  },
+                  "categoryIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 20
+                  },
+                  "tagIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 50
+                  },
+                  "seoTitle": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "nullable": true
+                  },
+                  "metaDescription": {
+                    "type": "string",
+                    "maxLength": 320,
+                    "nullable": true
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "DRAFT",
+                      "SCHEDULED",
+                      "PUBLISHED"
+                    ]
+                  },
+                  "publishAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "title",
+                  "slug",
+                  "excerpt",
+                  "content",
+                  "featuredImage",
+                  "authorName",
+                  "categoryIds",
+                  "tagIds",
+                  "seoTitle",
+                  "metaDescription",
+                  "status",
+                  "publishAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlogPost"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · blog"
+        ]
+      }
+    },
+    "/api/admin/blog/posts/{id}": {
+      "put": {
+        "operationId": "AdminBlogPostsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "slug": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                  },
+                  "excerpt": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  },
+                  "content": {
+                    "type": "string",
+                    "maxLength": 200000
+                  },
+                  "featuredImage": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "nullable": true
+                  },
+                  "authorName": {
+                    "type": "string",
+                    "maxLength": 120,
+                    "nullable": true
+                  },
+                  "categoryIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 20
+                  },
+                  "tagIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "maxItems": 50
+                  },
+                  "seoTitle": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "nullable": true
+                  },
+                  "metaDescription": {
+                    "type": "string",
+                    "maxLength": 320,
+                    "nullable": true
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "DRAFT",
+                      "SCHEDULED",
+                      "PUBLISHED"
+                    ]
+                  },
+                  "publishAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "title",
+                  "slug",
+                  "excerpt",
+                  "content",
+                  "featuredImage",
+                  "authorName",
+                  "categoryIds",
+                  "tagIds",
+                  "seoTitle",
+                  "metaDescription",
+                  "status",
+                  "publishAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlogPost"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · blog"
+        ]
+      },
+      "delete": {
+        "operationId": "AdminBlogPostsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · blog"
+        ]
+      }
+    },
+    "/api/public/blog/posts": {
+      "get": {
+        "operationId": "PublicBlogPostsController_list",
+        "parameters": [
+          {
+            "name": "category",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/public/blog/posts/{slug}": {
+      "get": {
+        "operationId": "PublicBlogPostsController_detail",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "blog"
         ]
       }
     },
@@ -21304,6 +22102,427 @@
           "sizeBytes",
           "width",
           "height"
+        ],
+        "additionalProperties": false
+      },
+      "CmsHomepage": {
+        "type": "object",
+        "properties": {
+          "banners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "subtitle": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "imageUrl": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "linkUrl": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "placement": {
+                  "type": "string"
+                },
+                "sortOrder": {
+                  "type": "number"
+                },
+                "isActive": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "subtitle",
+                "imageUrl",
+                "linkUrl",
+                "placement",
+                "sortOrder",
+                "isActive"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "testimonials": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "company": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "quote": {
+                  "type": "string"
+                },
+                "rating": {
+                  "type": "number"
+                },
+                "sortOrder": {
+                  "type": "number"
+                },
+                "isActive": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "company",
+                "quote",
+                "rating",
+                "sortOrder",
+                "isActive"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "stats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                },
+                "sortOrder": {
+                  "type": "number"
+                },
+                "isActive": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "label",
+                "value",
+                "sortOrder",
+                "isActive"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "popularServiceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "faq": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                },
+                "answer": {
+                  "type": "string"
+                },
+                "sortOrder": {
+                  "type": "number"
+                },
+                "isActive": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "question",
+                "answer",
+                "sortOrder",
+                "isActive"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "banners",
+          "testimonials",
+          "stats",
+          "popularServiceIds",
+          "faq"
+        ],
+        "additionalProperties": false
+      },
+      "CmsServices": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "CmsPageList": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "slug": {
+              "type": "string",
+              "enum": [
+                "about",
+                "terms",
+                "privacy",
+                "refund-policy",
+                "contact"
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "content": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "html": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "html"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "blocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "paragraph",
+                              "heading",
+                              "list"
+                            ]
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "blocks"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            },
+            "seoTitle": {
+              "type": "string",
+              "nullable": true
+            },
+            "metaDescription": {
+              "type": "string",
+              "nullable": true
+            },
+            "ogImageUrl": {
+              "type": "string",
+              "nullable": true
+            },
+            "contactEmail": {
+              "type": "string",
+              "nullable": true
+            },
+            "contactPhone": {
+              "type": "string",
+              "nullable": true
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "PUBLISHED"
+              ]
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "id",
+            "slug",
+            "title",
+            "content",
+            "seoTitle",
+            "metaDescription",
+            "ogImageUrl",
+            "contactEmail",
+            "contactPhone",
+            "status",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "CmsPage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "enum": [
+              "about",
+              "terms",
+              "privacy",
+              "refund-policy",
+              "contact"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "html": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "html"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "blocks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "paragraph",
+                            "heading",
+                            "list"
+                          ]
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "blocks"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "seoTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "metaDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "ogImageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "contactEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "contactPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "content",
+          "seoTitle",
+          "metaDescription",
+          "ogImageUrl",
+          "contactEmail",
+          "contactPhone",
+          "status",
+          "updatedAt"
         ],
         "additionalProperties": false
       },
@@ -36127,6 +37346,295 @@
           "id",
           "slug",
           "name"
+        ],
+        "additionalProperties": false
+      },
+      "BlogPostList": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "title": {
+              "type": "string"
+            },
+            "slug": {
+              "type": "string"
+            },
+            "excerpt": {
+              "type": "string",
+              "nullable": true
+            },
+            "content": {
+              "type": "string"
+            },
+            "featuredImage": {
+              "type": "string",
+              "nullable": true
+            },
+            "authorName": {
+              "type": "string",
+              "nullable": true
+            },
+            "categoryId": {
+              "type": "string",
+              "nullable": true
+            },
+            "categories": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "slug": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "id",
+                  "slug",
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "slug": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "id",
+                  "slug",
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "seoTitle": {
+              "type": "string",
+              "nullable": true
+            },
+            "metaDescription": {
+              "type": "string",
+              "nullable": true
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "SCHEDULED",
+                "PUBLISHED"
+              ]
+            },
+            "publishAt": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "publishedAt": {
+              "type": "string",
+              "format": "date-time",
+              "nullable": true
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updatedAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "slug",
+            "excerpt",
+            "content",
+            "featuredImage",
+            "authorName",
+            "categoryId",
+            "tags",
+            "seoTitle",
+            "metaDescription",
+            "status",
+            "publishAt",
+            "publishedAt",
+            "createdAt",
+            "updatedAt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "BlogPost": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string",
+            "nullable": true
+          },
+          "content": {
+            "type": "string"
+          },
+          "featuredImage": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "categoryId": {
+            "type": "string",
+            "nullable": true
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "slug": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "slug": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "seoTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "metaDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "SCHEDULED",
+              "PUBLISHED"
+            ]
+          },
+          "publishAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "excerpt",
+          "content",
+          "featuredImage",
+          "authorName",
+          "categoryId",
+          "tags",
+          "seoTitle",
+          "metaDescription",
+          "status",
+          "publishAt",
+          "publishedAt",
+          "createdAt",
+          "updatedAt"
         ],
         "additionalProperties": false
       },

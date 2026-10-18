@@ -1,5 +1,25 @@
 # Changelog
 
+## M8.14 — Featured consultants (18-Oct-2026)
+
+- Added a homepage section backed by `GET /api/public/consultants?featured=true`; it is hidden when there are no featured consultants and sits alongside the homepage CMS sections.
+- Added the audited Featured toggle to the consultant admin detail page for approved consultants and exposed the meeting link on booking confirmation.
+- Added Playwright coverage for filtering consultants, booking a slot, completing mock payment, and seeing the confirmation link on desktop and mobile.
+
+## M9.7 — Blog admin (18-Oct-2026)
+
+- Added admin blog post CRUD with sanitized rich-text content, media-library featured images, author, categories, tags, SEO fields and draft/scheduled/published states. Category and tag writes now await their audit records.
+- Added idempotent queue publishing for scheduled posts with startup recovery, plus public blog API routes that return published posts only.
+- Added the admin post/category/tag editor and API coverage for scheduling, unpublished visibility, XSS stripping and missing `cms.manage` permissions.
+
+## M9.5 / M9.6 — CMS (in progress, 18-Oct-2026)
+
+- Added CMS page draft, publish and unpublish endpoints requiring `cms.manage`; writes are audit logged and rich HTML is saved through `richTextInput`.
+- Added SEO title, meta description and Open Graph image URL to `CmsPage`; public page reads continue to return only published rows.
+- Added an admin page editor using the shared `RichTextEditor`, contact email/phone fields, and SEO metadata rendering; About and Contact read published CMS content. D62 records the `{ html }` content shape.
+- Added audited homepage administration for banners, testimonials, stats, active catalogue service picks and FAQs, including ordering and active flags. The public homepage renders these sections and uses the legacy layout only when CMS content is empty.
+- Focused CMS e2e, admin tests (191), rich-text sanitizer tests (56), migrations and typechecks pass. Full API test suite still needs a clean run.
+
 ## Milestones 1 & 2 — Foundation and Catalogue (09-Oct-2026)
 
 ### Built and tested

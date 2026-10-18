@@ -1,0 +1,1 @@
+ALTER TABLE "CmsPage" ADD COLUMN "ogImageUrl" TEXT;
