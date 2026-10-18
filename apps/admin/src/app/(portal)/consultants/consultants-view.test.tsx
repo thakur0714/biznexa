@@ -26,7 +26,7 @@ beforeEach(() => {
     items: [{
       id: CONSULTANT_ID, userId: '22222222-2222-4222-8222-222222222222', name: 'Asha Rao', email: 'asha@example.com',
       category: 'CA', verificationStatus: 'PENDING', city: 'Pune', state: 'Maharashtra', experienceYears: 8,
-      feePerSession: 120000, createdAt: '2026-10-17T08:00:00.000Z',
+      feePerSession: 120000, isFeatured: false, createdAt: '2026-10-17T08:00:00.000Z',
     }], total: 1, page: 1, limit: 25,
   });
 });

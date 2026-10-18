@@ -119,6 +119,21 @@ describe('booking hold (M8.8)', () => {
     expect((await http.get('/api/bookings').set(as(alice.token)).expect(200)).body.items.map((b: { id: string }) => b.id)).toEqual([res.body.id]);
   });
 
+  it('confirms with a generated meeting link and serves an owner-only iCalendar file', async () => {
+    const alice = customers[0];
+    const held = (await book(alice, '09:00').expect(201)).body;
+    const pay = (await http.post(`/api/bookings/${held.id}/payment`).set(as(alice.token)).expect(200)).body;
+    const paid = gateway.pay(pay.gatewayOrderId);
+    await send(captured(paid.payment));
+    const confirmed = (await http.get(`/api/bookings/${held.id}`).set(as(alice.token)).expect(200)).body;
+    expect(confirmed.meetingLink).toMatch(/^https:\/\/meet\.jit\.si\/BizNexa-/);
+    const calendar = await http.get(`/api/bookings/${held.id}/calendar.ics`).set(as(alice.token)).expect(200);
+    expect(calendar.headers['content-type']).toContain('text/calendar');
+    expect(calendar.text).toContain(`UID:${held.id}@biznexa`);
+    expect(calendar.text).toContain(confirmed.meetingLink);
+    await http.get(`/api/bookings/${held.id}/calendar.ics`).set(as(customers[1].token)).expect(404);
+  });
+
   it('refuses slots that are not offered, types not offered, booking yourself, and anonymous callers', async () => {
     const [, bob] = customers;
     await book(bob, '09:10').expect(409); // off the slot grid
@@ -254,5 +269,96 @@ describe('booking payment (M8.8)', () => {
     expect(await bookingRow(late.id)).toMatchObject({ status: 'EXPIRED', payments: [{ status: 'SUCCESS' }] });
     expect(await outcomes(late.id)).toEqual(['slot_taken']);
     expect(events.filter((e) => e.name === 'booking.confirmed').map((e) => (e.payload as { bookingId: string }).bookingId)).toEqual([free.id]);
+  });
+});
+
+describe('booking confirmation and lifecycle (M8.9, M8.10)', () => {
+  // A day of its own, so these bookings never meet the slots used above.
+  const day3 = addDays(istDate(new Date()), 3);
+  const at3 = (time: string) => istInstant(day3, Number(time.slice(0, 2)) * 60 + Number(time.slice(3))).toISOString();
+  const svc = () => app.get(BookingsService);
+
+  async function confirmedBooking(who: { token: string }, time: string) {
+    const held = (await http.post('/api/bookings').set(as(who.token)).send({ consultantSlug: slug, type: 'VIDEO', startAt: at3(time) }).expect(201)).body;
+    const pay = (await http.post(`/api/bookings/${held.id}/payment`).set(as(who.token)).expect(200)).body;
+    await send(captured(gateway.pay(pay.gatewayOrderId).payment));
+    return held.id as string;
+  }
+  async function notified(userId: string, event: string) {
+    for (let i = 0; i < 50; i++) {
+      const rows = await prisma.notification.findMany({ where: { userId, event, channel: 'IN_APP' }, select: { body: true } });
+      if (rows.length) return rows;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    return [];
+  }
+  const history = (bookingId: string) => prisma.bookingStatusHistory.findMany({ where: { bookingId }, orderBy: { createdAt: 'asc' }, select: { fromStatus: true, toStatus: true } });
+
+  it('sends the confirmation with the consultant, date and meeting link filled in', async () => {
+    const carol = customers[2];
+    const id = await confirmedBooking(carol, '09:00');
+    const [message] = await notified(carol.id, 'consultation.booked');
+    expect(message).toBeDefined();
+    expect(message.body).toContain('Booker 0');
+    expect(message.body).not.toMatch(/{{/);
+    expect(await history(id)).toEqual([{ fromStatus: 'PENDING_PAYMENT', toStatus: 'CONFIRMED' }]);
+  });
+
+  it('cancels more than 24 hours ahead once, notifies, and frees the slot; others get 404', async () => {
+    const dave = customers[3];
+    const id = await confirmedBooking(dave, '10:00');
+    await http.post(`/api/bookings/${id}/cancel`).set(as(customers[4].token)).send({}).expect(404);
+    const res = await http.post(`/api/bookings/${id}/cancel`).set(as(dave.token)).send({ reason: 'Plans changed' }).expect(200);
+    expect(res.body.status).toBe('CANCELLED');
+    await http.post(`/api/bookings/${id}/cancel`).set(as(dave.token)).send({}).expect(409);
+    expect(await history(id)).toEqual([
+      { fromStatus: 'PENDING_PAYMENT', toStatus: 'CONFIRMED' },
+      { fromStatus: 'CONFIRMED', toStatus: 'CANCELLED' },
+    ]);
+    const [message] = await notified(dave.id, 'consultation.cancelled');
+    expect(message.body).toContain('Plans changed');
+    // The slot can be booked again.
+    await http.post('/api/bookings').set(as(customers[4].token)).send({ consultantSlug: slug, type: 'VIDEO', startAt: at3('10:00') }).expect(201);
+  });
+
+  it('refuses to cancel or reschedule within 24 hours of the session', async () => {
+    const dave = customers[3];
+    const id = await confirmedBooking(dave, '13:30');
+    const soon = new Date(new Date(at3('13:30')).getTime() - 23 * 3600_000);
+    await expect(svc().cancel(dave.id, id, undefined, soon)).rejects.toThrow(/24 hours/);
+    await expect(svc().reschedule(dave.id, id, new Date(at3('12:30')), soon)).rejects.toThrow(/24 hours/);
+  });
+
+  it('reschedules to a free slot, keeps the payment, and refuses a taken or off-grid one', async () => {
+    const [, , , , erin, frank] = customers;
+    const id = await confirmedBooking(erin, '11:00');
+    const other = await confirmedBooking(frank, '12:00');
+    await http.post(`/api/bookings/${id}/reschedule`).set(as(erin.token)).send({ startAt: at3('12:00') }).expect(409);
+    await http.post(`/api/bookings/${id}/reschedule`).set(as(erin.token)).send({ startAt: at3('11:10') }).expect(409);
+    await http.post(`/api/bookings/${id}/reschedule`).set(as(frank.token)).send({ startAt: at3('11:30') }).expect(404);
+    const res = await http.post(`/api/bookings/${id}/reschedule`).set(as(erin.token)).send({ startAt: at3('11:30') }).expect(200);
+    expect(res.body).toMatchObject({ status: 'CONFIRMED', startAt: at3('11:30'), endAt: at3('12:00'), payment: { status: 'SUCCESS' } });
+    expect((await history(id)).slice(1)).toEqual([
+      { fromStatus: 'CONFIRMED', toStatus: 'RESCHEDULED' },
+      { fromStatus: 'RESCHEDULED', toStatus: 'CONFIRMED' },
+    ]);
+    // Moving to the next slot is allowed even though it touches the old one; frank's booking is untouched.
+    expect((await bookingRow(other)).status).toBe('CONFIRMED');
+  });
+
+  it('lets only the consultant set the meeting link and record the outcome, after the session ended', async () => {
+    const gita = customers[6];
+    const id = await confirmedBooking(gita, '09:30');
+    // Consultants need the staff portal (admin.access); a customer token is refused.
+    await http.put(`/api/bookings/${id}/meeting-link`).set(as(gita.token)).send({ meetingLink: 'https://meet.example.com/x' }).expect(403);
+    await expect(svc().setMeetingLink(gita.id, id, 'https://meet.example.com/x')).rejects.toThrow(/not found/i);
+    expect((await svc().setMeetingLink(consultantUser.id, id, 'https://meet.example.com/x')).meetingLink).toBe('https://meet.example.com/x');
+
+    await expect(svc().consultantOutcome(consultantUser.id, id, 'COMPLETED')).rejects.toThrow(/ended/);
+    const after = new Date(new Date(at3('10:00')).getTime() + 60_000);
+    await expect(svc().consultantOutcome(gita.id, id, 'COMPLETED', after)).rejects.toThrow(/not found/i);
+    expect((await svc().consultantOutcome(consultantUser.id, id, 'NO_SHOW', after)).status).toBe('NO_SHOW');
+    await expect(svc().consultantOutcome(consultantUser.id, id, 'COMPLETED', after)).rejects.toThrow(/ended/);
+    expect((await history(id)).at(-1)).toEqual({ fromStatus: 'CONFIRMED', toStatus: 'NO_SHOW' });
   });
 });

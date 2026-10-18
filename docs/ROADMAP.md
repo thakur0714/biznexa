@@ -206,8 +206,9 @@ Gaps found while planning are moved into Milestone 2.5 below.
 - [x] **M4.10 — Internal notes.** `[Sonnet]` CRUD on `InternalNote`; staff only; test that customer API never returns them.
   - *Done 13-Oct-2026 (Jules, batch J2):* `InternalNotesController`/`Service` under `/api/admin/applications/:applicationId/notes` (list, create, update, delete). Users with only `applications.view_assigned` reach notes only on applications assigned to them (404 otherwise); editing/deleting another user's note needs `applications.view_all` (403). Audit log on every write. Integration tests: unassigned ops, assigned ops (own vs other's note), admin, customer, support.
   - *Follow-ups:* `InternalNote` has no `updatedAt`, so responses repeat `createdAt`; write + audit log not in one transaction; unused imports in the controller. The notes UI arrives with the application detail page (M4.4).
-- [ ] **M4.11 — Messaging threads (async).** `[Sonnet]` `Conversation` per application; post message with text + attachments; unread counts per participant; staff and owning customer only. Emits `message.created`. *Ref: §7.12.*
+- [x] **M4.11 — Messaging threads (async).** `[Sonnet]` `Conversation` per application; post message with text + attachments; unread counts per participant; staff and owning customer only. Emits `message.created`. *Ref: §7.12.*
   - *Part 1 done 16-Oct-2026 (Argon + Claude):* text threads per application (staff + customer APIs, unread via `readAt` = read by the other side, `message.created`), admin panel + customer tab. Left: attachments, notification on new message.
+  - *Done 17-Oct-2026 (#49 + #55, reviewed by Claude):* attachments on application messages — `fileIds` on post, each file must be the sender's own, clean and not used elsewhere (`MessageAttachment`, one message per file); customer and assigned staff can open them through `/api/files`. Admin messages panel sends and lists attachments. `message.created` notifies the other side (notification listener).
 - [x] **M4.12 — Final deliverables.** `[Sonnet]` Ops uploads final documents (type, file) via the upload service (M2.5.6); application → COMPLETED → DELIVERED; customer download (owner only).
   - *Done 16-Oct-2026 (part 1 Jules, part 2 Codex; reviewed by Claude):* moving to DELIVERED is refused (409) without at least one `FinalDeliverable` (checked in `ApplicationStatusService`); admin `deliverables-panel.tsx` lists, opens (signed inline link) and uploads deliverables for `applications.update` on IN_PROGRESS/COMPLETED. Claude's fix: no DELIVERED-only 200 response.
   - *Part 1 done 16-Oct-2026 (Jules + Claude):* staff add/list deliverables (IN_PROGRESS/COMPLETED, own clean unused file, audit), customer list, download via `FilesService.canRead`. Left: COMPLETED → DELIVERED guard and admin upload UI.
@@ -256,8 +257,9 @@ Gaps found while planning are moved into Milestone 2.5 below.
   - *Follow-ups:* email change needs no password re-entry or verification mail yet; OTP/Google-only users have no way to set a first password.
 - [x] **M5.12 — Account deletion + data export request (DPDP).** `[Opus]` Request flow, admin queue, data export as JSON/ZIP job. *Ref: §7.2, §10 Privacy.*
   - *Done 17-Oct-2026 (Claude & Antigravity):* DPDP compliance (D61). Customer request flow (`POST /api/privacy/requests`, password or OTP re-auth, export vs deletion); BullMQ background ZIP export with 7-day retention and 5-min signed download link (`POST /api/privacy/requests/{id}/link`); admin privacy queue (`GET /api/admin/privacy/requests`, `POST /:id/approve`, `POST /:id/reject` with required reason); account anonymisation (replaces PII, removes file bytes, keeps GST legal records, download returns 410); deletion blockers (409 on active applications, partially paid orders, upcoming bookings); customer `/dashboard/privacy` and admin `/privacy` pages.
-  - *Follow-ups:* deleted user ka purana access token 15 min tak valid; customer apni request cancel nahi kar sakta; order/booking banne aur approve ke beech chhota race; refund in-flight ko blocker nahi maana.
-- [ ] **M5.13 — Data isolation tests + E2E.** `[Opus]` Automated tests: customer A cannot read/modify any of customer B's resources (every customer route). Playwright for dashboard journeys on desktop + mobile. Update CHANGELOG.
+  - *Follow-ups:* deleted user ka purana access token 15 min tak valid; customer apni request cancel nahi kar sakta; order/booking banne aur approve ke beech chhota race; D59 (notification queue) merge hone pe privacy listeners queue pe shift karne honge; refund in-flight ko blocker nahi maana.
+- [x] **M5.13 — Data isolation tests + E2E.** `[Opus]` Automated tests: customer A cannot read/modify any of customer B's resources (every customer route). Playwright for dashboard journeys on desktop + mobile. Update CHANGELOG.
+  - *Done 18-Oct-2026 (Claude):* audit of every customer route found no leak. `apps/api/test/data-isolation.e2e-spec.ts` (86 tests): Bob owns one of everything (applications, documents, deliverables, payments, invoice, credit note, certificate, messages + attachments, ticket, booking, business, notification, export, reminder, push token); for each id route Bob succeeds and Alice gets 404 (same as a missing id, nothing of Bob's in the error); Bob's ids in Alice's bodies (files, business, application) are refused; signed links can't be re-targeted; 15 lists/counts/dashboard show Alice nothing of Bob's; Bob's data checked unchanged. Browser: `apps/web/e2e/customer-isolation.spec.ts` (desktop + mobile) — Alice opens Bob's application URL → "not found", her pages list none of his things.
 
 *(Certificates, Consultations, Notifications and Support pages are built in M6–M9 and plugged into this sidebar.)*
 
@@ -348,12 +350,17 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [x] **M8.8 — Booking hold + payment.** `[Opus]` Pick type/date/slot → slot locked for 10 min (no double booking under concurrency — test) → pay via M3.15 → webhook → CONFIRMED.
   - *Done 17-Oct-2026 (Claude):* `POST /api/bookings` → PENDING_PAYMENT hold for 10 min (`holdExpiresAt`) under the consultant row lock + `Booking_no_overlap` exclusion constraint (btree_gist); status EXPIRED; one live hold per customer; cron tidies expired holds. Pay via `POST /api/bookings/:id/payment` (+ callback) reusing the payment rules; webhook → CONFIRMED + `booking.confirmed`; late payment with the slot taken → `slot_taken`, money kept for refund. Customer `GET /api/bookings`, `/:id` (own only). Web `/consultants/[slug]/book` (type → date → slot → hold → pay; mock gateway via dev `POST /api/payments/mock/:paymentId/pay`), checked at 360 px. e2e: 5 parallel bookings → one hold, expiry, webhook confirm + duplicate, isolation, 403s. D58.
    - *Follow-ups:* no invoice / GST for consultation payments yet (`payment.succeeded` is order-only); booking payments don't show in `/dashboard/payments` (it lists order payments); `payment.failed` notification for bookings; confirmation link/.ics/notifications are M8.9.
-- [ ] **M8.9 — Booking confirmation.** `[Sonnet]` Meeting link (consultant-provided or generated), `.ics` file, notifications, reminders 24h and 1h before (queue delayed jobs).
-- [ ] **M8.10 — Booking lifecycle.** `[Sonnet]` Reschedule/cancel per policy, COMPLETED / NO_SHOW by consultant, state machine tests.
-- [ ] **M8.11 — Customer Consultations page.** `[Sonnet]` Upcoming/past, join link, reschedule/cancel, leave review.
-- [ ] **M8.12 — Reviews.** `[Sonnet]` Only after COMPLETED booking, one per booking; admin moderation; rating aggregates updated.
-- [ ] **M8.13 — Consultant portal: bookings, assigned applications, messages, earnings (fee − commission).** `[Sonnet]`
+- [x] **M8.9 — Booking confirmation.** `[Sonnet]` Meeting link (consultant-provided or generated), `.ics` file, notifications, reminders 24h and 1h before (queue delayed jobs).
+  - *Done 18-Oct-2026 (Codex cx-9, reviewed + fixed by Claude):* meeting link on confirmation, `.ics` download, confirmation notifications and 24h/1h reminder jobs; notification variables now match the seeded templates (before the fix the engine threw and no booking message was ever sent).
+- [x] **M8.10 — Booking lifecycle.** `[Sonnet]` Reschedule/cancel per policy, COMPLETED / NO_SHOW by consultant, state machine tests.
+  - *Done 18-Oct-2026 (Codex cx-9, reviewed + fixed by Claude):* booking state machine, reschedule under the consultant row lock, one-time cancel and outcome, lifecycle e2e.
+  - *Follow-ups:* the 24-hour change window is hard-coded in the API and the web Consultations page — move it to settings.
+- [x] **M8.11 — Customer Consultations page.** `[Sonnet]` Upcoming/past, join link, reschedule/cancel, leave review.
+- [x] **M8.12 — Reviews.** `[Sonnet]` Only after COMPLETED booking, one per booking; admin moderation; rating aggregates updated.
+- [x] **M8.13 — Consultant portal: bookings, assigned applications, messages, earnings (fee − commission).** `[Sonnet]`
+  - Done 18-Oct-2026: Consultant-only portal navigation and pages for upcoming/past bookings (join link; outcome buttons reuse cx-9 `POST /api/bookings/:id/outcome`), assigned applications and their existing M4.11 message thread, conversations with unread counts, and completed-booking earnings. API collections scope every read to the signed-in consultant; earnings use the consultant’s stored commission rate and paise amounts. E2E covers consultant-to-consultant isolation and customer 403s.
 - [ ] **M8.14 — Featured consultants on homepage** `[Sonnet]` + E2E: filter → book → pay → confirmation with link. CHANGELOG.
+  - *Part 1 merged 18-Oct-2026 (Jules #58, fixed by Claude):* `isFeatured` on consultants, admin toggle API, `featured` filter on the public directory. Left: homepage section + the filter → book → pay → confirmation E2E.
 
 ---
 
@@ -374,6 +381,7 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [~] **M9.6 — Homepage CMS.** `[Sonnet]` Banners, testimonials, stats counters, popular-services picker, FAQ.
   - *In progress 18-Oct-2026:* Added audited `cms.manage` homepage editing for banners, testimonials, counters, selected active catalogue services, FAQ, ordering and active flags. Rich FAQ answers use `richTextInput` / `RichTextEditor` / `<RichText>`, image URLs are restricted to M9.4 media paths, and the homepage renders CMS data with the legacy homepage as its empty-CMS fallback. The shared popular-services endpoint reads the selected service IDs. Full e2e and suite checks remain.
 - [ ] **M9.7 — Blog admin.** `[Sonnet]` Categories, tags, featured image, author, SEO, publish/schedule (scheduled publish job).
+  - *Part 1 merged 18-Oct-2026 (Jules #59):* admin CRUD API for blog categories and tags. Left: posts, featured image, author, SEO, publish/schedule, admin UI.
 - [ ] **M9.8 — Blog public pages.** `[Sonnet]` Listing, category/tag pages, detail with JSON-LD, latest posts on homepage, sitemap entries.
 - [ ] **M9.9 — Add blog posts to global search** `[Opus]` (decide: extend D6 ranker or move to Meilisearch — record in DECISIONS). Tests + CHANGELOG.
 
@@ -387,18 +395,22 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [x] **M10.4 — Customers report** `[Haiku]` (total, new, active in 90 days).
   - *Done 17-Oct-2026 (Antigravity, reviewed by Claude):* M10.1–M10.4 — `apps/api/src/reports` (`reports.view` on every route): IST date-range presets, `GET /api/admin/reports/dashboard` (KPIs, daily revenue/orders, SLA breaches, documents waiting > 24 h) on the admin home, `/reports/sales` (total, monthly, service/category-wise, coupon impact; revenue = payment − refunds not FAILED) and `/reports/customers` (total, new, active in 90 days). Migration `20261017111418_report_indexes` (Claude dropped its duplicate `Refund_paymentId_idx`, already created by M4.13).
   - *Follow-ups:* reports load the range's payments and add them up in JS — move to SQL `GROUP BY` before data grows; a refund lowers revenue on the payment's date, not the refund's date, and counts while still INITIATED (the customer card counts only PROCESSED) — decide one rule with the accountant.
-- [ ] **M10.5 — Services report** `[Sonnet]` (popular, active/completed/cancelled, avg turnaround, SLA breaches).
-- [ ] **M10.6 — Consultants report** `[Sonnet]` (total, active, bookings, revenue, avg rating).
-- [ ] **M10.7 — Support report** `[Sonnet]` (by status, avg first response, resolution time).
-- [ ] **M10.8 — CSV/Excel export as background job** `[Sonnet]` + download link. Tests verify numbers against fixtures. CHANGELOG.
+- [x] **M10.5 — Services report** `[Sonnet]` (popular, active/completed/cancelled, avg turnaround, SLA breaches).
+- [x] **M10.6 — Consultants report** `[Sonnet]` (total, active, bookings, revenue, avg rating).
+- [x] **M10.7 — Support report** `[Sonnet]` (by status, avg first response, resolution time).
+- [x] **M10.8 — CSV/Excel export as background job** `[Sonnet]` + download link. Tests verify numbers against fixtures. CHANGELOG.
+  - *Done 17-Oct-2026 (Antigravity, ag-11 #54):* M10.5–M10.8 — `GET /api/admin/reports/services` (popular, by status, avg turnaround, SLA breaches), `/consultants` (total, active, by verification, bookings, revenue, avg rating), `/support` (by status, avg first response, resolution time, priority) with admin pages; "Export CSV" on every report page queues a `report-export` job, CSV (formula-injection safe) stored and downloaded through a 24-hour signed link; `reports.view` on all of it.
 
 ---
 
 ## Milestone 11 — Mobile App (Expo)
 
-- [ ] **M11.1 — Expo app scaffold** `[Sonnet]` in `apps/mobile`, uses `packages/types` + `packages/api-client`, theme tokens, bottom tabs.
-- [ ] **M11.2 — Auth.** `[Sonnet]` Mobile OTP, email+password, Google; refresh token in secure storage (`X-Client: mobile`); biometric unlock.
-- [ ] **M11.3 — Home + Services browse + service detail.** `[Sonnet]`
+- [x] **M11.1 — Expo app scaffold** `[Sonnet]` in `apps/mobile`, uses `packages/types` + `packages/api-client`, theme tokens, bottom tabs.
+  - *Done 18-Oct-2026:* Expo SDK 52 scaffold in `apps/mobile` linked in pnpm workspace & Turborepo. Android tester APK target configured via `eas.json` and `app.json` (decision of 18-Oct: internal testers only, no iOS/TestFlight, no store). Shared design tokens in `@biznexa/config/tokens` (ink, night, marigold, seal, radius, spacing). Typed API client via `@biznexa/api-client`, bottom tabs navigation with Ionicons. 12 unit tests, zero lint or typecheck errors.
+- [x] **M11.2 — Auth.** `[Sonnet]` Mobile OTP, email+password, Google; refresh token in secure storage (`X-Client: mobile`); biometric unlock.
+  - *Done 18-Oct-2026:* Mobile authentication with `X-Client: mobile` header support on all requests. Refresh token stored securely in `expo-secure-store` with automatic token rotation and retry on 401. Access token kept in memory only. Mobile OTP login/verification, email + password login/registration using `@biznexa/types` schemas (`mobileSchema`, `loginSchema`, `registerSchema`, `otpVerifySchema`), and Google sign-in. Biometric authentication toggle (FaceID / Fingerprint) via `expo-local-authentication` with app lock screen.
+- [x] **M11.3 — Home + Services browse + service detail.** `[Sonnet]`
+  - *Done 18-Oct-2026:* Home screen with live typo-tolerant search (`GET /api/catalogue/search`), popular services cards (`GET /api/catalogue/popular`), categories carousel (`GET /api/catalogue/categories`), and trust indicators. Services browse screen with search filter, category filter pills, sort options (popular, price asc/desc, name), and pull-to-refresh. Service detail screen (`GET /api/catalogue/services/:slug`) with package selection cards, price breakdowns (professional fee, GST, government fees, advance payment % when partial), required documents checklist, process timeline stages, FAQs accordion, related services, and sticky bottom booking bar.
 - [ ] **M11.4 — Buy flow.** `[Opus]` Package → form renderer (native components using M3.2 validator) → upload (camera with crop, gallery, files) → Razorpay SDK incl. UPI intent.
 - [ ] **M11.5 — My Services + application detail timeline + messages.** `[Sonnet]`
 - [ ] **M11.6 — Documents & Payments** `[Sonnet]` (upload/replace, pay balance, invoice download).

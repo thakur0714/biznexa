@@ -137,6 +137,12 @@ enum BookingStatus {
   EXPIRED
 }
 
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum CertificateStatus {
   ACTIVE
   SUSPENDED
@@ -242,6 +248,8 @@ model User {
   tickets           Ticket[]          @relation("TicketCustomer")
   assignedTickets   Ticket[]          @relation("TicketAssignee")
   bookings          Booking[]
+  moderatedReviews  Review[]          @relation("ReviewModerator")
+  bookingStatusHistory BookingStatusHistory[]
   auditLogs         AuditLog[]
   internalNotes     InternalNote[]
   messages          Message[]
@@ -902,6 +910,7 @@ model Consultant {
   rating             Float              @default(0)
   reviewCount        Int                @default(0)
   isOnline           Boolean            @default(false)
+  isFeatured         Boolean            @default(false)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   user               User               @relation(fields: [userId], references: [id])
@@ -1001,22 +1010,45 @@ model Booking {
   payments     Payment[]
   review       Review?
   conversations Conversation[]
+  history      BookingStatusHistory[]
 
   @@index([consultantId, startAt])
   @@index([customerId, startAt])
   @@index([status, holdExpiresAt])
 }
 
+model BookingStatusHistory {
+  id          String        @id @default(uuid())
+  bookingId   String
+  fromStatus  BookingStatus
+  toStatus    BookingStatus
+  actorId     String?
+  reason      String?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  booking     Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor       User?          @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([bookingId, createdAt])
+}
+
 model Review {
-  id           String     @id @default(uuid())
-  bookingId    String     @unique
-  consultantId String
-  rating       Int
-  text         String?
-  isPublished  Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  booking      Booking    @relation(fields: [bookingId], references: [id])
-  consultant   Consultant @relation(fields: [consultantId], references: [id])
+  id              String       @id @default(uuid())
+  bookingId       String       @unique
+  consultantId    String
+  rating          Int
+  text            String?
+  status          ReviewStatus @default(PENDING)
+  isPublished     Boolean      @default(false)
+  moderationReason String?
+  moderatedAt     DateTime?
+  moderatedById   String?
+  createdAt       DateTime     @default(now())
+  booking         Booking      @relation(fields: [bookingId], references: [id])
+  consultant      Consultant   @relation(fields: [consultantId], references: [id])
+  moderatedBy     User?        @relation("ReviewModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([consultantId, status])
 }
 
 // ─────────────────────────── Certificates ───────────────────────────
