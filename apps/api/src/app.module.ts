@@ -11,6 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { CatalogueModule } from './catalogue/catalogue.module';
 import { CertificatesModule } from './certificates/certificates.module';
 import { LeadsModule } from './leads/leads.module';
+import { MediaModule } from './media/media.module';
 import { CmsModule } from './cms/cms.module';
 import { QueueModule, QueueService } from './queue/queue.service';
 import { EventsModule } from './events/event-bus';
@@ -86,6 +87,7 @@ class HealthController {
     CustomersModule,
     LeadsModule,
     CmsModule,
+    MediaModule,
     DashboardModule,
     RemindersModule,
     TicketsModule,

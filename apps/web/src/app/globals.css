@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/instrument-sans';
 @import '@biznexa/config/tokens.css';
+@import '@biznexa/config/rich-text.css';
 /* Shared components live outside this app, so Tailwind must be told to scan them. */
 @source '../../../../packages/ui/src';
 
