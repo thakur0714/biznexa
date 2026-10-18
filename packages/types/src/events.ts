@@ -6,7 +6,7 @@
  *
  * Adding an event: add its payload here, then emit it from the service that owns the change.
  */
-import type { ApplicationStatus, CertificateStatus } from './status';
+import type { ApplicationStatus, BookingLifecycleStatus, CertificateStatus } from './status';
 import type { FileScanStatus } from './uploads';
 
 export interface DomainEventPayloads {
@@ -104,6 +104,18 @@ export interface DomainEventPayloads {
     paymentId: string;
     /** Integer paise. */
     amount: number;
+  };
+  'booking.status_changed': {
+    bookingId: string;
+    code: string;
+    from: BookingLifecycleStatus;
+    to: BookingLifecycleStatus;
+    actorId: string;
+    customerId: string;
+    consultantId: string;
+    startAt: string;
+    endAt: string;
+    reason?: string;
   };
   /**
    * An invoice was issued for a successful payment (M3.21): one per payment, so an advance and its balance
