@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { addDays, formatDate, formatINR, istDate, type BookingView, type PublicConsultantSlots } from '@biznexa/types';
+import { BOOKING_CHANGE_WINDOW_HOURS, addDays, formatDate, formatINR, istDate, type BookingView, type PublicConsultantSlots } from '@biznexa/types';
 import { useApi } from '@biznexa/api-client/react';
 import { Badge, Button, EmptyState, Notice } from '@biznexa/ui';
 
 type Tab = 'UPCOMING' | 'PAST';
-const CANCEL_WINDOW = 24 * 60 * 60 * 1000;
+const CANCEL_WINDOW = BOOKING_CHANGE_WINDOW_HOURS * 60 * 60 * 1000;
 
 function statusLabel(status: BookingView['status']) {
   return status.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
@@ -126,7 +126,7 @@ export function ConsultationsView() {
           {booking.status === 'CONFIRMED' && <div className="mt-4 flex flex-wrap gap-2">
             <Button variant="outline" disabled={!canManage || busyId === booking.id} onClick={() => void loadSlots(booking)}>Reschedule</Button>
             <Button variant="outline" disabled={!canManage || busyId === booking.id} onClick={() => void cancel(booking)}>Cancel</Button>
-            {!canManage && <span className="self-center text-xs text-muted">Changes are available until 24 hours before the session.</span>}
+            {!canManage && <span className="self-center text-xs text-muted">{`Changes are available until ${BOOKING_CHANGE_WINDOW_HOURS} hours before the session.`}</span>}
           </div>}
           {rescheduling === booking.id && <div className="mt-4 rounded-md bg-paper p-4">
             <label htmlFor={`slot-${booking.id}`} className="mb-2 block text-sm font-medium">Available times (Asia/Kolkata)</label>

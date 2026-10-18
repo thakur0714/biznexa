@@ -9,6 +9,7 @@ import { ApplicationStatusService } from './application-status.service';
 import { EventBus } from '../events/event-bus';
 import { applicationScope, findVisibleApplication } from './application-access';
 import { decryptField } from '../common/encryption';
+import { openFormData } from './sensitive-form-data';
 
 const DAY_MS = 86_400_000;
 const HOUR_MS = 3_600_000;
@@ -275,7 +276,8 @@ export class AdminApplicationsService {
       })),
       
       formSchema: formSchema as any,
-      formData: app.formData as Record<string, unknown>,
+      // PAN / bank details in full only for staff who work on applications (M12.2); viewers see them masked.
+      formData: openFormData(app.formData, u.permissions.includes(PERMS.APPLICATIONS_UPDATE)),
       
       documents: app.documents.map(d => ({
         id: d.id,

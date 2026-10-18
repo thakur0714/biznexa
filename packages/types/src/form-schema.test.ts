@@ -259,3 +259,23 @@ describe('formSchema: conditional show', () => {
     expect(issues(oneStep({ type: 'text', name: 'a', label: 'A' }, { type: 'text', name: 'b', label: 'B', showIf: { field: 'a', equals: 'x', filled: true } }))).toHaveProperty(['steps.0.fields.1.showIf']);
   });
 });
+
+describe('Aadhaar numbers (M12.2)', () => {
+  it('refuses a field named after Aadhaar, also inside a repeater', () => {
+    expect(issues(oneStep({ name: 'aadhaarNumber', label: 'Number', type: 'text' }))['steps.0.fields.0.name']).toMatch(/never be collected/);
+    expect(issues(oneStep({ name: 'ownerAadhar', label: 'ID', type: 'number' }))['steps.0.fields.0.name']).toMatch(/never be collected/);
+    const repeater = { name: 'directors', label: 'Directors', type: 'repeater', fields: [{ name: 'uidaiId', label: 'ID', type: 'text' }] };
+    expect(issues(oneStep(repeater))['steps.0.fields.0.fields.0.name']).toMatch(/never be collected/);
+  });
+
+  it('refuses a label that asks for the number', () => {
+    for (const label of ['Aadhaar number', 'Aadhar No.', 'Aadhaar card no', 'UID number']) {
+      expect(issues(oneStep({ name: 'idNumber', label, type: 'text' }))['steps.0.fields.0.name'], label).toMatch(/never be collected/);
+    }
+  });
+
+  it('allows labels that only mention Aadhaar', () => {
+    expect(issues(oneStep({ name: 'ownerName', label: 'Full name (as on Aadhaar)', type: 'text' }))).toEqual({});
+    expect(issues(oneStep({ name: 'contactMobile', label: 'Mobile number linked to Aadhaar', type: 'tel' }))).toEqual({});
+  });
+});

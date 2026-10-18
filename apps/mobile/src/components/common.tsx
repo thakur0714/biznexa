@@ -10,6 +10,7 @@ import {
   type TextInputProps,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../theme';
 
 export interface CardProps {
@@ -150,6 +151,90 @@ export function Badge({ label, variant = 'seal', style, textStyle }: BadgeProps)
   );
 }
 
+export interface EmptyStateProps {
+  icon?: keyof typeof Ionicons.glyphMap;
+  title: string;
+  description?: string;
+  actionTitle?: string;
+  onAction?: () => void;
+  style?: ViewStyle;
+}
+
+export function EmptyState({
+  icon = 'file-tray-outline',
+  title,
+  description,
+  actionTitle,
+  onAction,
+  style,
+}: EmptyStateProps) {
+  return (
+    <View style={[styles.emptyStateContainer, style]}>
+      <View style={styles.emptyIconCircle}>
+        <Ionicons name={icon} size={36} color={colors.muted} />
+      </View>
+      <Text style={styles.emptyTitle}>{title}</Text>
+      {description && <Text style={styles.emptyDescription}>{description}</Text>}
+      {actionTitle && onAction && (
+        <Button
+          title={actionTitle}
+          onPress={onAction}
+          variant="primary"
+          size="sm"
+          style={{ marginTop: spacing.md }}
+        />
+      )}
+    </View>
+  );
+}
+
+export interface LoadingStateProps {
+  message?: string;
+  style?: ViewStyle;
+}
+
+export function LoadingState({ message = 'Loading…', style }: LoadingStateProps) {
+  return (
+    <View style={[styles.loadingContainer, style]}>
+      <ActivityIndicator size="large" color={colors.ink} />
+      {message && <Text style={styles.loadingText}>{message}</Text>}
+    </View>
+  );
+}
+
+export interface ErrorStateProps {
+  title?: string;
+  message: string;
+  onRetry?: () => void;
+  style?: ViewStyle;
+}
+
+export function ErrorState({
+  title = 'Something went wrong',
+  message,
+  onRetry,
+  style,
+}: ErrorStateProps) {
+  return (
+    <View style={[styles.errorContainer, style]}>
+      <View style={styles.errorIconCircle}>
+        <Ionicons name="alert-circle-outline" size={36} color={colors.danger} />
+      </View>
+      <Text style={styles.errorTitle}>{title}</Text>
+      <Text style={styles.errorMessage}>{message}</Text>
+      {onRetry && (
+        <Button
+          title="Try Again"
+          onPress={onRetry}
+          variant="secondary"
+          size="sm"
+          style={{ marginTop: spacing.md }}
+        />
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
@@ -286,5 +371,73 @@ const styles = StyleSheet.create({
   },
   badgeTextNeutral: {
     color: colors.muted,
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.paper,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.night,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  emptyDescription: {
+    fontSize: 13,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 260,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xxl,
+  },
+  loadingText: {
+    marginTop: spacing.sm,
+    fontSize: 14,
+    color: colors.muted,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+  },
+  errorIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.danger050,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  errorMessage: {
+    fontSize: 13,
+    color: colors.night,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 280,
   },
 });

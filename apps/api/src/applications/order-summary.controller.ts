@@ -1,7 +1,7 @@
 import { Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { applyCouponInput, orderSummarySchema, type ApplyCouponInput } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { OrderSummaryService } from './order-summary.service';
 
@@ -15,6 +15,7 @@ const Gone = () => ApiResponse({ status: 409, description: 'A package on the ord
  */
 @ApiTags('applications')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('applications/:id')
 export class OrderSummaryController {
   constructor(private readonly orders: OrderSummaryService) {}

@@ -204,6 +204,7 @@ enum Priority {
 
 enum PublishStatus {
   DRAFT
+  SCHEDULED
   PUBLISHED
   ARCHIVED
 }
@@ -1268,6 +1269,9 @@ model CmsPage {
   content         Json // rich content blocks
   seoTitle        String?
   metaDescription String?
+  ogImageUrl      String?
+  contactEmail    String?
+  contactPhone    String?
   status          PublishStatus @default(DRAFT)
   updatedAt       DateTime      @updatedAt
 }
@@ -1298,6 +1302,7 @@ model BlogCategory {
   slug  String     @unique
   name  String
   posts BlogPost[]
+  categorizedPosts BlogPostCategory[]
 }
 
 model Tag {
@@ -1320,10 +1325,20 @@ model BlogPost {
   metaDescription String?
   status          PublishStatus @default(DRAFT)
   publishedAt     DateTime?
+  publishAt       DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   category        BlogCategory? @relation(fields: [categoryId], references: [id])
+  categories      BlogPostCategory[]
   tags            Tag[]
+}
+
+model BlogPostCategory {
+  postId     String
+  categoryId String
+  post       BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  category   BlogCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  @@id([postId, categoryId])
 }
 
 model Lead {

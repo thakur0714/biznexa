@@ -5,8 +5,10 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
 import { Button, Card, Badge } from '../components/common';
@@ -61,6 +63,66 @@ export function AccountScreen({ navigation }: AccountScreenProps) {
               </View>
             </View>
           </Card>
+
+          {/* Shortcuts Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Workspace</Text>
+            <Card style={styles.menuCard}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => navigation.navigate('MyServices')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="briefcase-outline" size={20} color={colors.ink} />
+                  <Text style={styles.menuItemText}>My Services & Applications</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </TouchableOpacity>
+
+              <View style={styles.menuDivider} />
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => navigation.navigate('Documents')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="document-text-outline" size={20} color={colors.ink} />
+                  <Text style={styles.menuItemText}>My Compliance Documents</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </TouchableOpacity>
+
+              <View style={styles.menuDivider} />
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => navigation.navigate('Payments')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="card-outline" size={20} color={colors.ink} />
+                  <Text style={styles.menuItemText}>Payments & Invoices</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </TouchableOpacity>
+
+              <View style={styles.menuDivider} />
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => navigation.navigate('Certificates')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuItemLeft}>
+                  <Ionicons name="ribbon-outline" size={20} color={colors.ink} />
+                  <Text style={styles.menuItemText}>Certificates & Verification</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </TouchableOpacity>
+            </Card>
+          </View>
 
           {/* Security & Preferences */}
           <View style={styles.section}>
@@ -240,5 +302,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.muted,
     marginTop: 2,
+  },
+  menuCard: {
+    padding: 0,
+    overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  menuItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.night,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: colors.rule,
+    marginHorizontal: spacing.md,
   },
 });

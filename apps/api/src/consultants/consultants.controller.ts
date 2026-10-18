@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { consultantApplicationInputSchema, consultantApplicationResponseSchema, consultantOwnProfileSchema, consultantProfileInputSchema, PERMS, type ConsultantApplicationInput, type ConsultantProfileInput } from '@biznexa/types';
-import { AuthUser, CurrentUser, RequirePermissions } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { ConsultantsService } from './consultants.service';
 
@@ -15,6 +15,7 @@ export class ConsultantsController {
   @ApiResponse({ status: 400, description: 'A proof file is missing, duplicated, or does not belong to the applicant.' })
   @ApiResponse({ status: 409, description: 'The user already has a consultant application.' })
   @Post()
+  @CustomerOnly()
   apply(
     @CurrentUser() user: AuthUser,
     @ZodBody(consultantApplicationInputSchema) body: ConsultantApplicationInput,

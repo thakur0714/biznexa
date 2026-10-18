@@ -516,6 +516,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/notifications/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNotificationTemplatesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/notifications/templates/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNotificationTemplatesController_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/notifications/templates/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNotificationTemplatesController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/notifications/templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNotificationTemplatesController_getById"];
+        put: operations["AdminNotificationTemplatesController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/notifications/deliveries": {
         parameters: {
             query?: never;
@@ -2180,6 +2244,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cms/homepage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CmsController_homepage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/cms/homepage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCmsController_homepage"];
+        put: operations["AdminCmsController_saveHomepage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/cms/homepage/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCmsController_services"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/cms/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCmsController_adminPages"];
+        put: operations["AdminCmsController_savePage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/cms/pages/{slug}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCmsController_publishPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/cms/pages/{slug}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCmsController_unpublishPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/media/images": {
         parameters: {
             query?: never;
@@ -3220,6 +3380,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/blog/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBlogPostsController_list"];
+        put?: never;
+        post: operations["AdminBlogPostsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/blog/posts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminBlogPostsController_update"];
+        post?: never;
+        delete: operations["AdminBlogPostsController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/blog/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicBlogPostsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/blog/posts/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicBlogPostsController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bookings/{id}/review": {
         parameters: {
             query?: never;
@@ -3352,6 +3576,43 @@ export interface components {
         DeviceTokenActionResponse: {
             success: boolean;
             token?: string;
+        };
+        AdminNotificationTemplateList: {
+            templates: {
+                /** Format: uuid */
+                id: string;
+                event: string;
+                /** @enum {string} */
+                channel: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+                subject: string | null;
+                body: string;
+                dltTemplateId: string | null;
+                isActive: boolean;
+                /** Format: date-time */
+                updatedAt: string;
+                allowedVariables: string[];
+            }[];
+        };
+        PreviewNotificationTemplateResponse: {
+            renderedSubject?: string;
+            renderedBody: string;
+            variablesUsed: string[];
+            missingVariables: string[];
+            unknownVariables: string[];
+        };
+        AdminNotificationTemplate: {
+            /** Format: uuid */
+            id: string;
+            event: string;
+            /** @enum {string} */
+            channel: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+            subject: string | null;
+            body: string;
+            dltTemplateId: string | null;
+            isActive: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            allowedVariables: string[];
         };
         NotificationDeliveryPage: {
             items: {
@@ -4325,6 +4586,94 @@ export interface components {
             sizeBytes: number;
             width: number;
             height: number;
+        };
+        CmsHomepage: {
+            banners: {
+                id: string;
+                title: string;
+                subtitle: string | null;
+                imageUrl: string | null;
+                linkUrl: string | null;
+                placement: string;
+                sortOrder: number;
+                isActive: boolean;
+            }[];
+            testimonials: {
+                id: string;
+                name: string;
+                company: string | null;
+                quote: string;
+                rating: number;
+                sortOrder: number;
+                isActive: boolean;
+            }[];
+            stats: {
+                label: string;
+                value: string;
+                sortOrder: number;
+                isActive: boolean;
+            }[];
+            popularServiceIds: string[];
+            faq: {
+                question: string;
+                answer: string;
+                sortOrder: number;
+                isActive: boolean;
+            }[];
+        };
+        CmsServices: {
+            id: string;
+            name: string;
+        }[];
+        CmsPageList: {
+            id: string;
+            /** @enum {string} */
+            slug: "about" | "terms" | "privacy" | "refund-policy" | "contact";
+            title: string;
+            content: {
+                html: string;
+            } | {
+                blocks: {
+                    /** @enum {string} */
+                    type: "paragraph" | "heading" | "list";
+                    text?: string;
+                    items?: string[];
+                }[];
+            };
+            seoTitle: string | null;
+            metaDescription: string | null;
+            ogImageUrl: string | null;
+            contactEmail: string | null;
+            contactPhone: string | null;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED";
+            /** Format: date-time */
+            updatedAt: string;
+        }[];
+        CmsPage: {
+            id: string;
+            /** @enum {string} */
+            slug: "about" | "terms" | "privacy" | "refund-policy" | "contact";
+            title: string;
+            content: {
+                html: string;
+            } | {
+                blocks: {
+                    /** @enum {string} */
+                    type: "paragraph" | "heading" | "list";
+                    text?: string;
+                    items?: string[];
+                }[];
+            };
+            seoTitle: string | null;
+            metaDescription: string | null;
+            ogImageUrl: string | null;
+            contactEmail: string | null;
+            contactPhone: string | null;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED";
+            /** Format: date-time */
+            updatedAt: string;
         };
         StoredFile: {
             /** Format: uuid */
@@ -7552,6 +7901,76 @@ export interface components {
             slug: string;
             name: string;
         };
+        BlogPostList: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            slug: string;
+            excerpt: string | null;
+            content: string;
+            featuredImage: string | null;
+            authorName: string | null;
+            categoryId: string | null;
+            categories?: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            tags: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            seoTitle: string | null;
+            metaDescription: string | null;
+            /** @enum {string} */
+            status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+            /** Format: date-time */
+            publishAt: string | null;
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        }[];
+        BlogPost: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            slug: string;
+            excerpt: string | null;
+            content: string;
+            featuredImage: string | null;
+            authorName: string | null;
+            categoryId: string | null;
+            categories?: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            tags: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            seoTitle: string | null;
+            metaDescription: string | null;
+            /** @enum {string} */
+            status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+            /** Format: date-time */
+            publishAt: string | null;
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
         CustomerReview: {
             /** Format: uuid */
             id: string;
@@ -8461,6 +8880,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeviceTokenActionResponse"];
+                };
+            };
+        };
+    };
+    AdminNotificationTemplatesController_list: {
+        parameters: {
+            query?: {
+                event?: string;
+                channel?: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNotificationTemplateList"];
+                };
+            };
+        };
+    };
+    AdminNotificationTemplatesController_events: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNotificationTemplatesController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    channel: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+                    event?: string;
+                    subject?: string | null;
+                    body: string;
+                    sampleVariables?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewNotificationTemplateResponse"];
+                };
+            };
+        };
+    };
+    AdminNotificationTemplatesController_getById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNotificationTemplate"];
+                };
+            };
+        };
+    };
+    AdminNotificationTemplatesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    subject?: string | null;
+                    body: string;
+                    dltTemplateId?: string | null;
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNotificationTemplate"];
                 };
             };
         };
@@ -12680,6 +13221,213 @@ export interface operations {
             };
         };
     };
+    CmsController_homepage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCmsController_homepage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsHomepage"];
+                };
+            };
+        };
+    };
+    AdminCmsController_saveHomepage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    banners: {
+                        id?: string;
+                        title: string;
+                        subtitle: string | null;
+                        imageUrl: string | null;
+                        linkUrl: string | null;
+                        sortOrder: number;
+                        isActive: boolean;
+                    }[];
+                    testimonials: {
+                        id?: string;
+                        name: string;
+                        company: string | null;
+                        quote: string;
+                        rating: number;
+                        sortOrder: number;
+                        isActive: boolean;
+                    }[];
+                    stats: {
+                        label: string;
+                        value: string;
+                        sortOrder: number;
+                        isActive: boolean;
+                    }[];
+                    popularServiceIds: string[];
+                    faq: {
+                        question: string;
+                        answer: string;
+                        sortOrder: number;
+                        isActive: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsHomepage"];
+                };
+            };
+        };
+    };
+    AdminCmsController_services: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsServices"];
+                };
+            };
+        };
+    };
+    AdminCmsController_adminPages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsPageList"];
+                };
+            };
+        };
+    };
+    AdminCmsController_savePage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    slug: "about" | "terms" | "privacy" | "refund-policy" | "contact";
+                    title: string;
+                    content: {
+                        html: string;
+                    };
+                    seoTitle: string | null;
+                    metaDescription: string | null;
+                    ogImageUrl: string | null;
+                    /** Format: email */
+                    contactEmail: string | null;
+                    contactPhone: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsPage"];
+                };
+            };
+        };
+    };
+    AdminCmsController_publishPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsPage"];
+                };
+            };
+        };
+    };
+    AdminCmsController_unpublishPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsPage"];
+                };
+            };
+        };
+    };
     MediaController_upload: {
         parameters: {
             query?: never;
@@ -14871,6 +15619,161 @@ export interface operations {
             header?: never;
             path: {
                 id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminBlogPostsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlogPostList"];
+                };
+            };
+        };
+    };
+    AdminBlogPostsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    slug: string;
+                    excerpt: string | null;
+                    content: string;
+                    featuredImage: string | null;
+                    authorName: string | null;
+                    categoryIds: string[];
+                    tagIds: string[];
+                    seoTitle: string | null;
+                    metaDescription: string | null;
+                    /** @enum {string} */
+                    status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+                    /** Format: date-time */
+                    publishAt: string | null;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlogPost"];
+                };
+            };
+        };
+    };
+    AdminBlogPostsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    slug: string;
+                    excerpt: string | null;
+                    content: string;
+                    featuredImage: string | null;
+                    authorName: string | null;
+                    categoryIds: string[];
+                    tagIds: string[];
+                    seoTitle: string | null;
+                    metaDescription: string | null;
+                    /** @enum {string} */
+                    status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+                    /** Format: date-time */
+                    publishAt: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlogPost"];
+                };
+            };
+        };
+    };
+    AdminBlogPostsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PublicBlogPostsController_list: {
+        parameters: {
+            query: {
+                category: string;
+                tag: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PublicBlogPostsController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
             };
             cookie?: never;
         };
