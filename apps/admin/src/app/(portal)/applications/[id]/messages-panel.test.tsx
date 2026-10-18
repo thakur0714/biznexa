@@ -48,7 +48,7 @@ const fakeClient = {
         response: new Response(null, { status: 201 }),
       };
     }
-    const bodyData = options?.body && !(options.body instanceof FormData) ? options.body : undefined;
+    const bodyData = options?.body && !(options.body instanceof FormData) ? (options.body as { body?: string; fileIds?: string[] }) : undefined;
     const nextMsg: Message = messageSchema.parse({
       ...createdMessage,
       body: bodyData?.body !== undefined ? bodyData.body : createdMessage.body,
@@ -193,11 +193,7 @@ describe('MessagesPanel (M4.11)', () => {
 
     await waitFor(() => {
       expect(calls.some(c => c.url === '/api/files' && c.method === 'POST')).toBe(true);
-<<<<<<< HEAD
       expect(calls.some(c => c.url.includes('/messages') && c.method === 'POST' && ((c.options as { body?: { fileIds?: string[] } })?.body?.fileIds?.includes('77777777-7777-4777-8777-777777777777')))).toBe(true);
-=======
-      expect(calls.some(c => c.url.includes('/messages') && c.method === 'POST' && (c.options as { body?: { fileIds?: string[] } })?.body?.fileIds?.includes('77777777-7777-4777-8777-777777777777'))).toBe(true);
->>>>>>> origin/main
     });
 
     await screen.findByText('attached.pdf');
