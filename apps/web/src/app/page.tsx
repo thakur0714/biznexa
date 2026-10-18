@@ -90,13 +90,12 @@ function TrackerPreview() {
 
 export default async function HomePage() {
   const { categories, popular, cms, featured } = await load();
-  const cmsIsEmpty = !cms.banners.length && !cms.testimonials.length && !cms.stats.length && !cms.faq.length;
   const byStage = (stage: string) => categories.filter((c) => c.journeyStage === stage);
 
   return (
     <>
-      {/* Hero */}
-      {cmsIsEmpty && <section className="border-b border-rule bg-white">
+      {/* Hero — always shown: the page's H1 and search. CMS blocks below add to it. */}
+      <section className="border-b border-rule bg-white">
         <Container className="grid grid-cols-1 items-center gap-12 pb-14 pt-12 lg:grid-cols-[1.15fr_0.85fr] lg:pb-20 lg:pt-16">
           <div className="min-w-0">
             <h1 className="max-w-[16ch] text-[40px] font-bold leading-[1.05] tracking-[-0.03em] text-night sm:text-[56px]">
@@ -160,7 +159,7 @@ export default async function HomePage() {
             </ol>
           </div>
         </Container>
-      </section>}
+      </section>
 
       {cms.banners.length > 0 && <section aria-label="Featured"><Container className="grid gap-4 py-10 sm:grid-cols-2">{cms.banners.map((banner) => <a key={banner.id} href={banner.linkUrl || '/services'} className="overflow-hidden rounded-xl border border-rule bg-white">{banner.imageUrl && <img src={banner.imageUrl} alt="" className="h-44 w-full object-cover" />}<div className="p-5"><h2 className="text-xl font-bold">{banner.title}</h2>{banner.subtitle && <p className="mt-2 text-muted">{banner.subtitle}</p>}</div></a>)}</Container></section>}
       {featured.length > 0 && <section aria-labelledby="featured-consultants-h"><Container className="py-12"><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 id="featured-consultants-h" className="text-3xl font-bold tracking-[-0.02em]">Featured consultants</h2><p className="mt-1 text-muted">Meet trusted professionals ready to help your business.</p></div><LinkButton href="/consultants" variant="outline">Browse all consultants</LinkButton></div><div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{featured.map((consultant) => <ConsultantCard key={consultant.id} consultant={consultant} />)}</div></Container></section>}
@@ -192,7 +191,7 @@ export default async function HomePage() {
       {cms.faq.length > 0 && <section aria-labelledby="home-faq-h"><Container className="max-w-3xl py-14"><h2 id="home-faq-h" className="text-3xl font-bold tracking-[-0.02em]">Frequently asked questions</h2><div className="mt-5 divide-y divide-rule">{cms.faq.map((item) => <details key={item.question} className="py-4"><summary className="cursor-pointer font-semibold">{item.question}</summary><RichText html={item.answer} className="mt-3" /></details>)}</div></Container></section>}
 
       {/* How it works — a real sequence, so it is numbered */}
-      {cmsIsEmpty && <section aria-labelledby="how-h">
+      <section aria-labelledby="how-h">
         <Container className="pt-20">
           <h2 id="how-h" className="text-3xl font-bold tracking-[-0.02em]">
             How it works
@@ -207,10 +206,10 @@ export default async function HomePage() {
             ))}
           </ol>
         </Container>
-      </section>}
+      </section>
 
       {/* Verify + expert */}
-      {cmsIsEmpty && <section>
+      <section>
         <Container className="grid grid-cols-1 gap-6 pt-20 lg:grid-cols-2">
           <div className="flex flex-col justify-between rounded-lg bg-ink p-8 text-white">
             <div>
@@ -234,7 +233,7 @@ export default async function HomePage() {
             </div>
           </div>
         </Container>
-      </section>}
+      </section>
     </>
   );
 }
