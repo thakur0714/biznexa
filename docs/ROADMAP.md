@@ -350,13 +350,17 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [x] **M8.8 — Booking hold + payment.** `[Opus]` Pick type/date/slot → slot locked for 10 min (no double booking under concurrency — test) → pay via M3.15 → webhook → CONFIRMED.
   - *Done 17-Oct-2026 (Claude):* `POST /api/bookings` → PENDING_PAYMENT hold for 10 min (`holdExpiresAt`) under the consultant row lock + `Booking_no_overlap` exclusion constraint (btree_gist); status EXPIRED; one live hold per customer; cron tidies expired holds. Pay via `POST /api/bookings/:id/payment` (+ callback) reusing the payment rules; webhook → CONFIRMED + `booking.confirmed`; late payment with the slot taken → `slot_taken`, money kept for refund. Customer `GET /api/bookings`, `/:id` (own only). Web `/consultants/[slug]/book` (type → date → slot → hold → pay; mock gateway via dev `POST /api/payments/mock/:paymentId/pay`), checked at 360 px. e2e: 5 parallel bookings → one hold, expiry, webhook confirm + duplicate, isolation, 403s. D58.
    - *Follow-ups:* no invoice / GST for consultation payments yet (`payment.succeeded` is order-only); booking payments don't show in `/dashboard/payments` (it lists order payments); `payment.failed` notification for bookings; confirmation link/.ics/notifications are M8.9.
-- [ ] **M8.9 — Booking confirmation.** `[Sonnet]` Meeting link (consultant-provided or generated), `.ics` file, notifications, reminders 24h and 1h before (queue delayed jobs).
-- [ ] **M8.10 — Booking lifecycle.** `[Sonnet]` Reschedule/cancel per policy, COMPLETED / NO_SHOW by consultant, state machine tests.
+- [x] **M8.9 — Booking confirmation.** `[Sonnet]` Meeting link (consultant-provided or generated), `.ics` file, notifications, reminders 24h and 1h before (queue delayed jobs).
+  - *Done 18-Oct-2026 (Codex cx-9, reviewed + fixed by Claude):* meeting link on confirmation, `.ics` download, confirmation notifications and 24h/1h reminder jobs; notification variables now match the seeded templates (before the fix the engine threw and no booking message was ever sent).
+- [x] **M8.10 — Booking lifecycle.** `[Sonnet]` Reschedule/cancel per policy, COMPLETED / NO_SHOW by consultant, state machine tests.
+  - *Done 18-Oct-2026 (Codex cx-9, reviewed + fixed by Claude):* booking state machine, reschedule under the consultant row lock, one-time cancel and outcome, lifecycle e2e.
+  - *Follow-ups:* the 24-hour change window is hard-coded in the API and the web Consultations page — move it to settings.
 - [x] **M8.11 — Customer Consultations page.** `[Sonnet]` Upcoming/past, join link, reschedule/cancel, leave review.
 - [x] **M8.12 — Reviews.** `[Sonnet]` Only after COMPLETED booking, one per booking; admin moderation; rating aggregates updated.
 - [x] **M8.13 — Consultant portal: bookings, assigned applications, messages, earnings (fee − commission).** `[Sonnet]`
   - Done 18-Oct-2026: Consultant-only portal navigation and pages for upcoming/past bookings (join link; outcome buttons reuse cx-9 `POST /api/bookings/:id/outcome`), assigned applications and their existing M4.11 message thread, conversations with unread counts, and completed-booking earnings. API collections scope every read to the signed-in consultant; earnings use the consultant’s stored commission rate and paise amounts. E2E covers consultant-to-consultant isolation and customer 403s.
 - [ ] **M8.14 — Featured consultants on homepage** `[Sonnet]` + E2E: filter → book → pay → confirmation with link. CHANGELOG.
+  - *Part 1 merged 18-Oct-2026 (Jules #58, fixed by Claude):* `isFeatured` on consultants, admin toggle API, `featured` filter on the public directory. Left: homepage section + the filter → book → pay → confirmation E2E.
 
 ---
 
@@ -375,6 +379,7 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [ ] **M9.5 — CMS pages admin.** `[Sonnet]` About, Terms, Privacy, Refund, contact info; draft/publish; SEO fields.
 - [ ] **M9.6 — Homepage CMS.** `[Sonnet]` Banners, testimonials, stats counters, popular-services picker, FAQ.
 - [ ] **M9.7 — Blog admin.** `[Sonnet]` Categories, tags, featured image, author, SEO, publish/schedule (scheduled publish job).
+  - *Part 1 merged 18-Oct-2026 (Jules #59):* admin CRUD API for blog categories and tags. Left: posts, featured image, author, SEO, publish/schedule, admin UI.
 - [ ] **M9.8 — Blog public pages.** `[Sonnet]` Listing, category/tag pages, detail with JSON-LD, latest posts on homepage, sitemap entries.
 - [ ] **M9.9 — Add blog posts to global search** `[Opus]` (decide: extend D6 ranker or move to Meilisearch — record in DECISIONS). Tests + CHANGELOG.
 
