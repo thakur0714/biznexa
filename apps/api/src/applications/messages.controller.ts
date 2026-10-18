@@ -40,7 +40,7 @@ export class MessagesController {
     return this.messages.listStaff(applicationId, q, u);
   }
 
-  @RequirePermissions(PERMS.APPLICATIONS_UPDATE)
+  @RequireAnyPermission(PERMS.APPLICATIONS_VIEW_ALL, PERMS.APPLICATIONS_VIEW_ASSIGNED)
   @ApiZodResponse('Message', messageSchema, 201)
   @Post('admin/applications/:applicationId/messages')
   postStaff(

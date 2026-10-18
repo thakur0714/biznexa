@@ -144,3 +144,10 @@ Admin applications list and detail, assignment, status updates and the document 
 - Customers can submit one 1–5 star review with an optional comment after a booking reaches `COMPLETED`. The booking's unique review relation enforces one review per booking.
 - New reviews await moderation. Admins can approve or reject with a reason; every moderation decision is written to the audit log.
 - Approval updates the consultant's average rating and review count in the same transaction. Consultant profiles show approved reviews and calculate their rating breakdown from approved reviews only.
+
+## M8.13 — Consultant Portal (18-Oct-2026)
+
+- Added consultant-only portal navigation and pages for bookings, assigned applications, messages, and earnings.
+- Consultants see only their own bookings and assigned applications. Booking outcomes call the existing cx-9 endpoint; application detail reuses the existing M4.11 message thread.
+- Conversation list shows unread counts. Earnings include only `COMPLETED` bookings and calculate fee less the consultant record’s commission rate, in paise with Indian currency formatting.
+- Added API e2e coverage proving cross-consultant isolation and 403 responses for customers; regenerated OpenAPI and API client types.

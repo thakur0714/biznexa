@@ -2724,6 +2724,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/consultants/me/portal/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantPortalController_bookings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/portal/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantPortalController_applications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/portal/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantPortalController_conversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/portal/earnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantPortalController_earnings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bookings": {
         parameters: {
             query?: never;
@@ -6940,6 +7004,65 @@ export interface components {
                 startTime: string;
                 endTime: string;
                 isBlocked: boolean;
+            }[];
+        };
+        ConsultantPortalBookings: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                code: string;
+                status: string;
+                type: string;
+                upcoming: boolean;
+                /** Format: date-time */
+                startAt: string;
+                /** Format: date-time */
+                endAt: string;
+                /** Format: uri */
+                meetingLink: string | null;
+                fee: number;
+                customerName: string;
+            }[];
+        };
+        ConsultantPortalApplications: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                code: string;
+                status: string;
+                /** Format: date-time */
+                createdAt: string;
+                serviceName: string;
+                customerName: string;
+            }[];
+        };
+        ConsultantPortalConversations: {
+            items: {
+                /** Format: uuid */
+                applicationId: string;
+                applicationCode: string;
+                serviceName: string;
+                unreadCount: number;
+            }[];
+        };
+        ConsultantPortalEarnings: {
+            commissionPercent: number;
+            items: {
+                /** Format: uuid */
+                bookingId: string;
+                code: string;
+                /** Format: date-time */
+                completedAt: string;
+                fee: number;
+                commission: number;
+                net: number;
+            }[];
+            monthlyTotals: {
+                month: string;
+                fee: number;
+                commission: number;
+                net: number;
+                bookings: number;
             }[];
         };
         BookingView: {
@@ -13469,6 +13592,82 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ConsultantPortalController_bookings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantPortalBookings"];
+                };
+            };
+        };
+    };
+    ConsultantPortalController_applications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantPortalApplications"];
+                };
+            };
+        };
+    };
+    ConsultantPortalController_conversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantPortalConversations"];
+                };
+            };
+        };
+    };
+    ConsultantPortalController_earnings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantPortalEarnings"];
+                };
             };
         };
     };
