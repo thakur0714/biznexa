@@ -20,6 +20,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
 import { ApplicationDocumentsService } from './application-documents.service';
+import { openFormData, sealFormData } from './sensitive-form-data';
 
 const draftSelect = {
   id: true,
@@ -397,7 +398,7 @@ export class ApplicationsService {
 
     const { count } = await this.prisma.application.updateMany({
       where: { id, customerId, status: 'DRAFT' },
-      data: { formData: parsed.data as Prisma.InputJsonValue },
+      data: { formData: sealFormData(form, parsed.data) as Prisma.InputJsonValue },
     });
     if (count === 0) throw notDraft();
     return toDetailDto(await this.find(customerId, id), form);
@@ -411,7 +412,7 @@ export class ApplicationsService {
   async assertFormComplete(db: Prisma.TransactionClient, app: { serviceId: string; formSchemaVersion: number | null; formData: Prisma.JsonValue }): Promise<void> {
     if (app.formSchemaVersion == null) throw new ConflictException('This application has no form, so it can’t be paid for online.');
     const form = await this.formForVersion(app.serviceId, app.formSchemaVersion, db);
-    const parsed = formDataValidator(form).safeParse(app.formData ?? {});
+    const parsed = formDataValidator(form).safeParse(openFormData(app.formData, true));
     if (!parsed.success) {
       throw new BadRequestException({
         message: 'Some answers in your details are missing or not valid. Complete them before paying.',
@@ -468,7 +469,7 @@ function toDetailDto(r: DetailRow, form: FormSchema): ApplicationDetail {
     packageId: r.packageId,
     businessEntityId: r.businessEntityId,
     formSchemaVersion: r.formSchemaVersion!,
-    formData: r.formData as Record<string, unknown>,
+    formData: openFormData(r.formData, true), // the customer's own answers
     formSchema: form,
     createdAt: r.createdAt.toISOString(),
   };

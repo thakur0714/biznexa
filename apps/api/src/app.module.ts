@@ -62,10 +62,11 @@ class HealthController {
     }),
     ThrottlerModule.forRoot({
       throttlers: [{ name: 'default', ttl: 60_000, limit: 120 }],
-      // Automated tests make many auth calls from one IP; rate limits are covered by OTP rules and staging tests.
-      // E2E_DISABLE_THROTTLE lets the browser suite (API runs as development) do the same; never honoured in production.
+      // Automated tests make many auth calls from one IP. rate-limits.e2e-spec turns limits back on with
+      // THROTTLE_IN_TESTS=1 to check them. E2E_DISABLE_THROTTLE lets the browser suite (API runs as development)
+      // skip them too; never honoured in production.
       skipIf: () =>
-        process.env.NODE_ENV === 'test' ||
+        (process.env.NODE_ENV === 'test' && process.env.THROTTLE_IN_TESTS !== '1') ||
         (process.env.E2E_DISABLE_THROTTLE === '1' && process.env.NODE_ENV !== 'production'),
     }),
     ScheduleModule.forRoot(),

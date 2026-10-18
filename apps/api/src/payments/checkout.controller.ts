@@ -1,5 +1,6 @@
 import { Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import {
   paymentCallbackInput,
   paymentCheckoutSchema,
@@ -10,6 +11,7 @@ import {
 } from '@biznexa/types';
 import { AuthUser, CurrentUser } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
+import { PAYMENT_LIMIT } from '../common/rate-limits';
 import { CheckoutService } from './checkout.service';
 
 /** Paying for the signed-in customer's own application (M3.16, M3.18). The amount is always the server's order total. */
@@ -30,6 +32,7 @@ export class CheckoutController {
   @ApiResponse({ status: 409, description: 'Already paid or cannot be paid online, the plan does not apply (no part payment for these packages; balance before an advance; full/advance after one), a package is no longer offered, the coupon stopped applying (check the new total), or nothing to pay' })
   @ApiResponse({ status: 502, description: 'The payment gateway refused the order; the payment stays open, try again' })
   @ApiResponse({ status: 503, description: 'The payment gateway could not be reached; the payment stays open, try again' })
+  @Throttle(PAYMENT_LIMIT)
   @Post()
   @HttpCode(200)
   start(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(startPaymentInput) body: StartPaymentInput, @CurrentUser() u: AuthUser) {
@@ -51,6 +54,7 @@ export class CheckoutController {
   @ApiZodResponse('PaymentStatus', paymentStatusSchema)
   @ApiResponse({ status: 400, description: 'Bad body, or the signature or ids don’t match a payment of this application' })
   @ApiResponse({ status: 404, description: 'No such application among yours (another customer’s application looks the same)' })
+  @Throttle(PAYMENT_LIMIT)
   @Post('callback')
   @HttpCode(200)
   callback(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(paymentCallbackInput) body: PaymentCallbackInput, @CurrentUser() u: AuthUser) {

@@ -10,6 +10,7 @@ import { applicationDetailSchema, formSchema, GENERIC_SERVICE_FORM } from '@bizn
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { staffSession } from './staff';
 
 let app: NestExpressApplication;
 let http: ReturnType<typeof request>;
@@ -163,7 +164,25 @@ describe('application form answers (M3.9)', () => {
   it('accepts complete answers on the final save and stores them cleaned', async () => {
     const res = await save(alice, { formData: { ...COMPLETE, directors: [{ fullName: ' Asha Rao ', share: '60' }] }, final: true }).expect(200);
     expect(res.body.formData).toEqual(COMPLETE);
-    expect(await stored()).toEqual(COMPLETE);
+    // The PAN is stored encrypted (M12.2); the customer gets it back in full.
+    const row = await stored();
+    expect(row).toEqual({ ...COMPLETE, businessPan: { $enc: expect.stringMatching(/^v1\./) } });
+    expect(JSON.stringify(row)).not.toContain(COMPLETE.businessPan);
+    expect((await get(alice).expect(200)).body.formData.businessPan).toBe(COMPLETE.businessPan);
+  });
+
+  it('shows the PAN in full to staff who work on applications and masked to a consultant (M12.2)', async () => {
+    const admin = (await staffSession(http, prisma, 'ADMIN', `e2e-form-${run}-admin@example.com`)).accessToken;
+    const consultant = await staffSession(http, prisma, 'CONSULTANT', `e2e-form-${run}-consultant@example.com`);
+    const consultantId = (await prisma.user.findUniqueOrThrow({ where: { email: `e2e-form-${run}-consultant@example.com` } })).id;
+    await prisma.application.update({ where: { id: appId }, data: { assignedToId: consultantId } });
+
+    const full = await http.get(`/api/admin/applications/${appId}`).set(as(admin)).expect(200);
+    expect(full.body.formData.businessPan).toBe(COMPLETE.businessPan);
+    const masked = await http.get(`/api/admin/applications/${appId}`).set(as(consultant.accessToken)).expect(200);
+    expect(masked.body.formData.businessPan).toBe('AAACA****F');
+    expect(masked.body.formData.businessName).toBe(COMPLETE.businessName);
+    await prisma.application.update({ where: { id: appId }, data: { assignedToId: null } });
   });
 
   it('only accepts files the customer uploaded', async () => {
