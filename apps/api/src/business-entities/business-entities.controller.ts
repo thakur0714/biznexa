@@ -1,7 +1,7 @@
 import { Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { businessEntityInput, businessEntityListSchema, businessEntitySchema, type BusinessEntityData } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { BusinessEntitiesService } from './business-entities.service';
 
@@ -12,6 +12,7 @@ const NotFound = () => ApiResponse({ status: 404, description: 'No such business
 /** The signed-in customer's own businesses; nobody else's are reachable here. */
 @ApiTags('business entities')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('business-entities')
 export class BusinessEntitiesController {
   constructor(private readonly entities: BusinessEntitiesService) {}

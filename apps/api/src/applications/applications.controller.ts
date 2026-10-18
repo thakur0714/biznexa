@@ -13,7 +13,7 @@ import {
   type CustomerApplicationListQuery,
   type UpdateApplicationFormInput,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 import { ApplicationsService } from './applications.service';
 
@@ -23,6 +23,7 @@ const NotFound = () => ApiResponse({ status: 404, description: 'No such applicat
 /** The signed-in customer's own applications. */
 @ApiTags('applications')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('applications')
 export class ApplicationsController {
   constructor(private readonly applications: ApplicationsService) {}
