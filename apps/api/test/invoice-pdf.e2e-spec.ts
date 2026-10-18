@@ -41,7 +41,9 @@ const users = { email: { startsWith: `e2e-ipdf-${run}` } };
 const slug = `e2e-ipdf-${run}`;
 const eventIds: string[] = [];
 
-const AT = new Date(`${2900 + Math.floor(Math.random() * 100)}-07-01T06:30:00Z`);
+// Invoice date: 1 July of a year between 3000 and 3499 — this spec's own range (invoice-record uses 3500–3999,
+// invoice-numbers 2200–2829), so the counter it deletes at the end is never one another spec is using.
+const AT = new Date(`${3000 + Math.floor(Math.random() * 500)}-07-01T06:30:00Z`);
 const FY = financialYear(AT);
 
 const SELLER: SellerSettings = {
@@ -55,6 +57,8 @@ const SELLER: SellerSettings = {
   invoicePrefix,
   updatedAt: null,
 };
+
+const isOurs = async (paymentId: string) => (await prisma.payment.count({ where: { id: paymentId, order: { customer: users } } })) > 0;
 
 async function register(n: number) {
   const res = await http
@@ -109,8 +113,10 @@ beforeAll(async () => {
   storage = app.get(StorageService);
   gateway = app.get(PaymentGateway) as MockPaymentGateway;
   const invoices = app.get(InvoicesService);
+  // This run's invoices are dated in its own year. Anything else this process issues (the 10-minute sweep can pick
+  // up another suite's payment) keeps today's date, so it never takes a number from the counter deleted below.
   const issue = invoices.issue.bind(invoices);
-  jest.spyOn(invoices, 'issue').mockImplementation((paymentId) => issue(paymentId, AT));
+  jest.spyOn(invoices, 'issue').mockImplementation(async (paymentId) => ((await isOurs(paymentId)) ? issue(paymentId, AT) : issue(paymentId)));
   jest.spyOn(app.get(SettingsService), 'seller').mockResolvedValue(SELLER);
 
   alice = await register(1);
