@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import {
+  BOOKING_CHANGE_WINDOW_HOURS,
   BOOKING_HOLD_MINUTES,
   formatBookingCode,
   generateSlots,
@@ -138,8 +139,8 @@ export class BookingsService {
     if (!row) throw new NotFoundException('Booking not found');
     await this.prisma.$transaction(async (tx) => {
       // Re-checked inside the transaction: two cancels at once change the row (and write history) only once.
-      const { count } = await tx.booking.updateMany({ where: { id, status: 'CONFIRMED', startAt: { gte: new Date(now.getTime() + 24 * 3600_000) } }, data: { status: 'CANCELLED' } });
-      if (!count) throw new ConflictException('Bookings can be cancelled up to 24 hours before the session.');
+      const { count } = await tx.booking.updateMany({ where: { id, status: 'CONFIRMED', startAt: { gte: new Date(now.getTime() + BOOKING_CHANGE_WINDOW_HOURS * 3600_000) } }, data: { status: 'CANCELLED' } });
+      if (!count) throw new ConflictException(`Bookings can be cancelled up to ${BOOKING_CHANGE_WINDOW_HOURS} hours before the session.`);
       assertTransition('booking', 'CONFIRMED', 'CANCELLED');
       await tx.bookingStatusHistory.create({ data: { bookingId: id, fromStatus: 'CONFIRMED', toStatus: 'CANCELLED', actorId: customerId, reason } });
       await this.audit.log({ actorId: customerId, action: 'booking.cancelled', entityType: 'Booking', entityId: id, before: { status: 'CONFIRMED' }, after: { status: 'CANCELLED', reason } }, tx);
@@ -152,7 +153,7 @@ export class BookingsService {
   async reschedule(customerId: string, id: string, startAt: Date, now = new Date()): Promise<BookingView> {
     const row = await this.prisma.booking.findFirst({ where: { id, customerId }, select: { id: true, code: true, consultantId: true } });
     if (!row) throw new NotFoundException('Booking not found');
-    const tooLate = 'Bookings can be rescheduled up to 24 hours before the session.';
+    const tooLate = `Bookings can be rescheduled up to ${BOOKING_CHANGE_WINDOW_HOURS} hours before the session.`;
     const taken = 'That slot is no longer available. Pick another time.';
     let moved: { endAt: Date };
     try {
@@ -160,7 +161,7 @@ export class BookingsService {
         // Same lock as creating a hold and confirming a payment, so the new slot cannot be taken in between.
         await lockConsultant(tx, row.consultantId);
         const current = await tx.booking.findUniqueOrThrow({ where: { id }, select: { status: true, startAt: true, endAt: true } });
-        if (current.status !== 'CONFIRMED' || current.startAt.getTime() - now.getTime() < 24 * 3600_000 || startAt.getTime() <= now.getTime()) throw new ConflictException(tooLate);
+        if (current.status !== 'CONFIRMED' || current.startAt.getTime() - now.getTime() < BOOKING_CHANGE_WINDOW_HOURS * 3600_000 || startAt.getTime() <= now.getTime()) throw new ConflictException(tooLate);
         const date = istDate(startAt);
         const rules = await this.availability.rules(tx, row.consultantId, date, date);
         const endAt = new Date(startAt.getTime() + rules.sessionMinutes * 60_000);
