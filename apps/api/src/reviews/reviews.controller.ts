@@ -11,7 +11,7 @@ import {
   type ReviewInput,
   type ReviewModerationInput,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser, PERMS, RequirePermissions } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly, PERMS, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 import { ReviewsService } from './reviews.service';
 
@@ -22,12 +22,14 @@ export class ReviewsController {
   constructor(private readonly reviews: ReviewsService) {}
 
   @ApiZodResponse('CustomerReview', customerReviewSchema)
+  @CustomerOnly()
   @Get('bookings/:id/review')
   getMine(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() user: AuthUser) {
     return this.reviews.getMine(user.id, id);
   }
 
   @ApiZodResponse('Review', reviewViewSchema, 201)
+  @CustomerOnly()
   @Post('bookings/:id/review')
   submit(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(reviewInputSchema) body: ReviewInput, @CurrentUser() user: AuthUser) {
     return this.reviews.submit(user.id, id, body);

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -6,6 +7,9 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { staffSession } from './staff';
+
+// Slugs are unique per run, so a parallel or earlier crashed run cannot collide with this one.
+const run = randomUUID().slice(0, 8);
 
 describe('Admin Blog Tags API', () => {
   let app: INestApplication;
@@ -25,7 +29,7 @@ describe('Admin Blog Tags API', () => {
 
   afterAll(async () => {
     try {
-      await prisma.tag.deleteMany({ where: { slug: { startsWith: 'test-tag-' } } });
+      await prisma.tag.deleteMany({ where: { slug: { startsWith: `test-tag-${run}-` } } });
       await prisma.user.delete({ where: { email: 'blog_tag_admin@test.com' } });
     } finally {
       await app.close();
@@ -33,7 +37,7 @@ describe('Admin Blog Tags API', () => {
   });
 
   it('should list tags', async () => {
-    await prisma.tag.create({ data: { slug: 'test-tag-1', name: 'Test Tag 1' } });
+    await prisma.tag.create({ data: { slug: `test-tag-${run}-1`, name: 'Test Tag 1' } });
 
     const res = await http
       .get('/api/admin/blog/tags')
@@ -41,17 +45,17 @@ describe('Admin Blog Tags API', () => {
       .expect(200);
 
     expect(res.body).toBeInstanceOf(Array);
-    expect(res.body.some((t: { slug: string }) => t.slug === 'test-tag-1')).toBe(true);
+    expect(res.body.some((t: { slug: string }) => t.slug === `test-tag-${run}-1`)).toBe(true);
   });
 
   it('should create a tag', async () => {
     const res = await http
       .post('/api/admin/blog/tags')
       .set('Authorization', `Bearer ${session.accessToken}`)
-      .send({ slug: 'test-tag-2', name: 'Test Tag 2' })
+      .send({ slug: `test-tag-${run}-2`, name: 'Test Tag 2' })
       .expect(201);
 
-    expect(res.body.slug).toBe('test-tag-2');
+    expect(res.body.slug).toBe(`test-tag-${run}-2`);
 
     const logs = await prisma.auditLog.findMany({ where: { entityId: res.body.id } });
     expect(logs).toHaveLength(1);
@@ -62,12 +66,12 @@ describe('Admin Blog Tags API', () => {
     await http
       .post('/api/admin/blog/tags')
       .set('Authorization', `Bearer ${session.accessToken}`)
-      .send({ slug: 'test-tag-1', name: 'Another Test Tag' })
+      .send({ slug: `test-tag-${run}-1`, name: 'Another Test Tag' })
       .expect(409);
   });
 
   it('should update a tag', async () => {
-    const tag = await prisma.tag.create({ data: { slug: 'test-tag-3', name: 'Test Tag 3' } });
+    const tag = await prisma.tag.create({ data: { slug: `test-tag-${run}-3`, name: 'Test Tag 3' } });
 
     const res = await http
       .put(`/api/admin/blog/tags/${tag.id}`)
@@ -82,17 +86,17 @@ describe('Admin Blog Tags API', () => {
   });
 
   it('should enforce unique slug on update', async () => {
-    const tag = await prisma.tag.create({ data: { slug: 'test-tag-4', name: 'Test Tag 4' } });
+    const tag = await prisma.tag.create({ data: { slug: `test-tag-${run}-4`, name: 'Test Tag 4' } });
 
     await http
       .put(`/api/admin/blog/tags/${tag.id}`)
       .set('Authorization', `Bearer ${session.accessToken}`)
-      .send({ slug: 'test-tag-1' })
+      .send({ slug: `test-tag-${run}-1` })
       .expect(409);
   });
 
   it('should delete a tag', async () => {
-    const tag = await prisma.tag.create({ data: { slug: 'test-tag-5', name: 'Test Tag 5' } });
+    const tag = await prisma.tag.create({ data: { slug: `test-tag-${run}-5`, name: 'Test Tag 5' } });
 
     await http
       .delete(`/api/admin/blog/tags/${tag.id}`)

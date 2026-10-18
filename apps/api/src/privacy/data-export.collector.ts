@@ -1,5 +1,6 @@
 import type { PrismaService } from '../prisma/prisma.service';
 import { decryptField } from '../common/encryption';
+import { openFormData } from '../applications/sensitive-form-data';
 import type { ZipEntry } from './zip';
 
 /**
@@ -106,7 +107,7 @@ export async function collectExport(prisma: PrismaService, userId: string, now =
       package: a.package.name,
       business: a.businessEntity?.legalName ?? null,
       status: a.status,
-      formData: a.formData,
+      formData: openFormData(a.formData, true),
       submittedAt: a.submittedAt,
       completedAt: a.completedAt,
       createdAt: a.createdAt,

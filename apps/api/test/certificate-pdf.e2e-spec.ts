@@ -63,15 +63,24 @@ const binary = (res: request.Response, callback: (err: Error | null, body: Buffe
   res.on('end', () => callback(null, Buffer.concat(data)));
 };
 
-// Chromium rendering may wait behind other PDF jobs in the full parallel API run.
+// Chromium rendering may wait behind other PDF jobs in the full parallel API run. Every API process queues the
+// certificates that have no PDF when it starts, so another suite's process can render this one first: its
+// `pdf.generated` event never reaches this process, so the record itself is watched as well.
 function waitForGeneratedPdf(certId: string, ms = 120_000) {
   const ready = generatedPdfKeys.get(certId);
   if (ready) return Promise.resolve(ready);
 
   return new Promise<string>((resolve, reject) => {
     const waiters = generatedPdfWaiters.get(certId) ?? new Set<(key: string) => void>();
+    const poll = setInterval(() => {
+      prisma.certificate
+        .findUnique({ where: { id: certId }, select: { pdfKey: true } })
+        .then((c) => c?.pdfKey && waiters.has(finish) && finish(c.pdfKey))
+        .catch(() => undefined);
+    }, 500);
     const finish = (key: string) => {
       clearTimeout(timeout);
+      clearInterval(poll);
       waiters.delete(finish);
       if (!waiters.size) generatedPdfWaiters.delete(certId);
       resolve(key);
@@ -79,6 +88,7 @@ function waitForGeneratedPdf(certId: string, ms = 120_000) {
     waiters.add(finish);
     generatedPdfWaiters.set(certId, waiters);
     const timeout = setTimeout(() => {
+      clearInterval(poll);
       waiters.delete(finish);
       if (!waiters.size) generatedPdfWaiters.delete(certId);
       reject(new Error(`PDF generation was not completed for certificate ${certId} within ${ms} ms`));

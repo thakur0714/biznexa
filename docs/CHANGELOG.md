@@ -186,3 +186,37 @@ Admin applications list and detail, assignment, status updates and the document 
 - Every customer route was reviewed for ownership checks; no leak was found, so no code changed.
 - API: `test/data-isolation.e2e-spec.ts` (86 tests). Customer A gets 404 for every one of customer B's applications, documents, deliverables, payments, invoices, credit notes, certificates, messages, attachments, tickets, bookings, businesses, notifications and data exports — the same answer as an id that doesn't exist. B's ids inside A's requests (files, business, application) are refused, signed download links can't be pointed at another resource, lists/counts/dashboard show A nothing of B's, and B's data is checked unchanged afterwards.
 - Browser: `e2e/customer-isolation.spec.ts` on desktop and mobile — A opens B's application by URL and sees "Application not found"; A's My Services, Businesses and Support pages show none of B's things.
+
+## M12.1 — Security review & M12.2 — Sensitive data (18-Oct-2026)
+
+Report: `docs/reviews/SECURITY_REVIEW_2026-10-18.md`. Decisions: D64, D65.
+
+### Fixed
+- **Password reset tokens work once.** They are bound to the old password hash. Before, a token could be replayed for 10 minutes.
+- **Account pre-hijacking.** Google sign-in or OTP login on an account whose email/mobile was never verified now clears its password and revokes every session (audited).
+- **Rate limits on every sensitive route** (`src/common/rate-limits.ts`): password change, refresh, and payment create/callback for applications and bookings now have their own limits too.
+- **Headers:** helmet CSP + HSTS (2 years, includeSubDomains) in production only. Web and admin send HSTS in production. `CORS_ORIGINS` is validated (no `*` or paths, https in production). The refresh cookie gets a 403 from a foreign `Origin`.
+- **PAN and bank-account answers** in application forms are encrypted at rest. They are shown in full to the customer, the data export and Admin/Operations, and masked for consultants.
+- **Aadhaar:** the form builder refuses Aadhaar number fields. A grep of the schema, forms, exports and logs found no stored number.
+- **PII scrub in logs:** `RedactingLogger` removes emails, mobiles, PANs, Aadhaar-shaped numbers, tokens and passwords from messages, contexts and stacks.
+- **Dependencies:** postcss and mysql2 overridden. No runtime advisories remain in the API. The remaining dev-tool advisories are accepted (review A1).
+
+### Deploy note
+- `CORS_ORIGINS` must list every browser origin that signs in (website + admin), or `/api/auth/refresh` returns 403.
+
+### Test results
+- Lint 0 errors (warnings are older ones) and typecheck pass in every package.
+- Unit/integration: types 490, api-client 7, mobile 12, rich-text 56, ui 40, admin 195, web 19, API 922, all passing. New: `security.e2e-spec.ts`, `rate-limits.e2e-spec.ts` (throttler on: the 11th login gets 429), `security.spec.ts`, `redacting-logger.spec.ts`, `sensitive-form-data.spec.ts`, PAN visibility in `application-form.e2e-spec.ts`, Aadhaar rules in `form-schema.test.ts`, `next-config.test.ts` (web, admin).
+- Browser: 26 Playwright tests passing (desktop + mobile). During the run the dev API log scrubbed 22 emails/mobiles and none appeared in plain text.
+## M12.4 — Authorization sweep (18-Oct-2026)
+
+### Built and tested
+- Every API route now declares who may call it: `@Public()`, `@SignedIn()`, `@CustomerOnly()`, `@RequirePermissions()` or `@RequireAnyPermission()`. The global guard refuses a route that declares nothing (D63).
+- Customer self-service routes are customer-only: staff accounts get 403 there instead of acting as a customer.
+- API: `test/route-access.e2e-spec.ts` — every route (found from the running app) × anonymous, customer, consultant, admin, operations, support and a staff session before 2FA, checked against the decorators and the role seed. A new route without an access decorator fails it.
+- Test fix: `invoice-pdf` and `invoice-record` no longer share a far-future invoice year with each other or with `invoice-numbers`, and their date override applies only to their own payments, so the counter each deletes at the end is never one another suite (or this process's invoice sweep, working on another suite's payment) is using. This removes the random duplicate-invoice-number failures in parallel runs.
+- Test fix: `certificate-pdf` waited only for its own process's `pdf.generated` event, but every API process queues all certificates without a PDF when it starts, so another suite's process could render the regenerated PDF first and the test timed out after 2 minutes. It now also watches the certificate's `pdfKey`.
+
+### Test results
+- API suite run 3 times in a row: 83 suites, 794 tests, all passed each time.
+

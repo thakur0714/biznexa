@@ -1,6 +1,6 @@
 import { Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { AuthUser, CurrentUser, RequirePermissions, RequireAnyPermission } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly, RequireAnyPermission, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { DeliverablesService } from './deliverables.service';
 import {
@@ -42,6 +42,7 @@ export class DeliverablesController {
 
   @ApiZodResponse('DeliverableList', deliverableListSchema)
   @Get('applications/:id/deliverables')
+  @CustomerOnly()
   listDeliverablesCustomer(
     @Param('id', uuid) id: string,
     @CurrentUser() u: AuthUser,
