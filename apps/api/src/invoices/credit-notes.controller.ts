@@ -2,7 +2,7 @@ import { Controller, Get, Header, HttpCode, Param, ParseUUIDPipe, Post, Query, S
 import { ApiBearerAuth, ApiProduces, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { fileLinkSchema } from '@biznexa/types';
-import { AuthUser, CurrentUser, Public } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, Public, SignedIn } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery } from '../common/openapi';
 import { CreditNotePdfService } from './credit-note-pdf.service';
 
@@ -12,6 +12,7 @@ const linkQuery = z.object({
 
 /** Credit note PDFs (M4.13), downloaded like invoices (D50). */
 @ApiTags('invoices')
+@SignedIn()
 @Controller('credit-notes')
 export class CreditNotesController {
   constructor(private readonly creditNotes: CreditNotePdfService) {}

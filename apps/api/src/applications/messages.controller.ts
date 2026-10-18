@@ -14,6 +14,7 @@ import {
 import {
   AuthUser,
   CurrentUser,
+  CustomerOnly,
   RequireAnyPermission,
   RequirePermissions,
 } from '../common/auth.decorators';
@@ -74,6 +75,7 @@ export class MessagesController {
 
   @ApiZodResponse('MessageThreadPage', messageThreadPageSchema)
   @Get('applications/:id/messages')
+  @CustomerOnly()
   listCustomer(
     @Param('id', uuid) id: string,
     @ZodQuery(messageListQuery) q: MessageListQuery,
@@ -84,6 +86,7 @@ export class MessagesController {
 
   @ApiZodResponse('Message', messageSchema, 201)
   @Post('applications/:id/messages')
+  @CustomerOnly()
   postCustomer(
     @Param('id', uuid) id: string,
     @ZodBody(postMessageInput) body: PostMessageInput,
@@ -95,6 +98,7 @@ export class MessagesController {
   @ApiZodResponse('MarkMessagesReadResponse', markMessagesReadResponseSchema)
   @HttpCode(200)
   @Post('applications/:id/messages/read')
+  @CustomerOnly()
   markReadCustomer(
     @Param('id', uuid) id: string,
     @CurrentUser() u: AuthUser,
@@ -104,6 +108,7 @@ export class MessagesController {
 
   @ApiZodResponse('MessageUnreadCount', messageUnreadCountSchema)
   @Get('applications/:id/messages/unread-count')
+  @CustomerOnly()
   unreadCountCustomer(
     @Param('id', uuid) id: string,
     @CurrentUser() u: AuthUser,

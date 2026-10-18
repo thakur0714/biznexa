@@ -24,7 +24,7 @@ import {
   type UnregisterDeviceTokenInput,
   type UserNotificationPreferences,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, SignedIn } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 import { NotificationsService } from './notifications.service';
 import { NotificationPreferencesService } from './notification-preferences.service';
@@ -32,6 +32,7 @@ import { NotificationPreferencesService } from './notification-preferences.servi
 const uuid = new ParseUUIDPipe();
 
 @ApiTags('notifications')
+@SignedIn()
 @Controller('notifications')
 export class NotificationsController {
   constructor(

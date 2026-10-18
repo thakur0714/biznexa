@@ -9,7 +9,7 @@ import {
   type CreateBookingInput,
   type PaymentCallbackInput,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { BookingPaymentsService } from '../payments/booking-payments.service';
 import { BookingsService } from './bookings.service';
@@ -17,6 +17,7 @@ import { BookingsService } from './bookings.service';
 /** The signed-in customer's consultation bookings (M8.8). Another customer's booking looks missing (404). */
 @ApiTags('bookings')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('bookings')
 export class BookingsController {
   constructor(private readonly bookings: BookingsService, private readonly payments: BookingPaymentsService) {}

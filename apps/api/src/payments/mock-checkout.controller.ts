@@ -1,7 +1,7 @@
 import { ConflictException, Controller, HttpCode, NotFoundException, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { mockPaymentResultSchema, type MockPaymentResult } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly } from '../common/auth.decorators';
 import { ApiZodResponse } from '../common/openapi';
 import { PrismaService } from '../prisma/prisma.service';
 import { MockPaymentGateway } from './mock-payment-gateway';
@@ -15,6 +15,7 @@ import { PaymentWebhookService } from './payment-webhook.service';
  */
 @ApiTags('payments')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('payments/mock')
 export class MockCheckoutController {
   constructor(
