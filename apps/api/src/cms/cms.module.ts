@@ -122,7 +122,8 @@ class AdminCmsController {
   @Put('pages')
   async savePage(@ZodBody(pageInput) body: PageInput, @CurrentUser() user: AuthUser) {
     const before = await this.prisma.cmsPage.findUnique({ where: { slug: body.slug } });
-    const page = await this.prisma.cmsPage.upsert({ where: { slug: body.slug }, create: { ...body, status: 'DRAFT' }, update: { title: body.title, content: body.content, seoTitle: body.seoTitle, metaDescription: body.metaDescription, ogImageUrl: body.ogImageUrl, contactEmail: body.contactEmail, contactPhone: body.contactPhone, status: 'DRAFT' } });
+    const page = await this.prisma.cmsPage.upsert({ where: { slug: body.slug }, create: { ...body, status: 'DRAFT' }, update: { title: body.title, content: body.content, seoTitle: body.seoTitle, metaDescription: body.metaDescription, ogImageUrl: body.ogImageUrl, contactEmail: body.contactEmail, contactPhone: body.contactPhone } });
+    // Saving keeps the page's status: a published page stays live with the edit, a new one starts as a draft.
     await this.audit.log({ actorId: user.id, action: 'cms.page.save', entityType: 'CmsPage', entityId: page.id, before, after: page });
     return page;
   }
