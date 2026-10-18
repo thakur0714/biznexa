@@ -86,10 +86,10 @@ function discoverRoutes(): Route[] {
 function expected(route: Route, actor: Actor): Outcome {
   if (route.isPublic) return 'allowed';
   if (!actor.token) return 401;
-  if (route.access === 'signed-in') return 'allowed';
-  if (route.access === 'customer') return actor.roles.includes('CUSTOMER') ? 'allowed' : 403;
+  // Same order as the guard: the access marker first, then any permissions the route also declares.
+  if (route.access === 'customer' && !actor.roles.includes('CUSTOMER')) return 403;
   const held = actor.twoFactorPending ? [] : actor.perms;
-  if (!route.all.length && !route.any.length) return 403; // undeclared: refused for everyone
+  if (!route.all.length && !route.any.length) return route.access ? 'allowed' : 403; // undeclared: refused for everyone
   if (!route.all.every((p) => held.includes(p))) return 403;
   if (route.any.length && !route.any.some((p) => held.includes(p))) return 403;
   return 'allowed';
