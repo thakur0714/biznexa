@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -19,12 +18,12 @@ type PopularService = ServiceCard;
 type SearchResult = ServiceCard;
 
 interface HomeScreenProps {
-  navigation: {
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  readonly navigation: {
+    readonly navigate: (screen: string, params?: Record<string, unknown>) => void;
   };
 }
 
-export function HomeScreen({ navigation }: HomeScreenProps) {
+export function HomeScreen({ navigation }: Readonly<HomeScreenProps>) {
   const { api, user } = useAuth();
   const [popularServices, setPopularServices] = useState<PopularService[]>([]);
   const [categories, setCategories] = useState<CategorySummary[]>([]);
@@ -56,12 +55,12 @@ export function HomeScreen({ navigation }: HomeScreenProps) {
   }, [api]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadData();
+    void loadData();
   };
 
   const handleSearch = async (text: string) => {
