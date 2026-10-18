@@ -22,6 +22,7 @@ import multer from 'multer';
 import { MEDIA_MAX_MB, mediaImageSchema, mediaTypeFromName, PERMS } from '@biznexa/types';
 import { AuthUser, CurrentUser, Public, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse } from '../common/openapi';
+import { UPLOAD_LIMIT } from '../common/rate-limits';
 import { env } from '../config/env';
 import { toHttpError } from '../files/upload.interceptor';
 import { contentTypeForKey, MEDIA_KEY_FORMAT, MediaService } from './media.service';
@@ -65,7 +66,7 @@ export class MediaController {
   /** Website image for CMS pages and blog posts. Returns its public URL. */
   @ApiBearerAuth()
   @RequirePermissions(PERMS.CMS_MANAGE)
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle(UPLOAD_LIMIT)
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } } })
   @ApiZodResponse('MediaImage', mediaImageSchema, 201)

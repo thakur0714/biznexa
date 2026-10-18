@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { fileLinkSchema, storedFileSchema } from '@biznexa/types';
 import { AuthUser, CurrentUser, Public } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery } from '../common/openapi';
+import { UPLOAD_LIMIT } from '../common/rate-limits';
 import { FilesService } from './files.service';
 import { UploadInterceptor, type UploadRequest } from './upload.interceptor';
 
@@ -18,7 +19,7 @@ export class FilesController {
   constructor(private readonly files: FilesService) {}
 
   @ApiBearerAuth()
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle(UPLOAD_LIMIT)
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } } })
   @ApiQuery({ name: 'requirementId', required: false, description: 'Document requirement whose file types and size limit apply (default: PDF/JPG/PNG, 10 MB)' })

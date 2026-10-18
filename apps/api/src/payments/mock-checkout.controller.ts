@@ -1,8 +1,10 @@
 import { ConflictException, Controller, HttpCode, NotFoundException, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { mockPaymentResultSchema, type MockPaymentResult } from '@biznexa/types';
 import { AuthUser, CurrentUser } from '../common/auth.decorators';
 import { ApiZodResponse } from '../common/openapi';
+import { PAYMENT_LIMIT } from '../common/rate-limits';
 import { PrismaService } from '../prisma/prisma.service';
 import { MockPaymentGateway } from './mock-payment-gateway';
 import { PaymentGateway } from './payment-gateway';
@@ -26,6 +28,7 @@ export class MockCheckoutController {
   @ApiZodResponse('MockPaymentResult', mockPaymentResultSchema)
   @ApiResponse({ status: 404, description: 'Not using the mock gateway, or no such open payment of yours' })
   @ApiResponse({ status: 409, description: 'The mock gateway no longer knows this order (the API restarted); start the payment again' })
+  @Throttle(PAYMENT_LIMIT)
   @Post(':paymentId/pay')
   @HttpCode(200)
   async pay(@Param('paymentId', new ParseUUIDPipe()) paymentId: string, @CurrentUser() user: AuthUser): Promise<MockPaymentResult> {

@@ -24,10 +24,9 @@ import { TwoFactorService } from './two-factor.service';
 import { AuthUser, CurrentUser, Public } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { env } from '../config/env';
+import { AUTH_LIMIT, OTP_LIMIT, REFRESH_LIMIT } from '../common/rate-limits';
 
-const REFRESH_COOKIE = 'bn_rt';
-const AUTH_LIMIT = { default: { limit: 10, ttl: 60_000 } };
-const OTP_LIMIT = { default: { limit: 5, ttl: 60_000 } };
+export const REFRESH_COOKIE = 'bn_rt';
 
 const meta = (req: Request) => ({ ip: req.ip, userAgent: req.headers['user-agent'] });
 /** Mobile apps send X-Client: mobile and keep the refresh token in secure storage instead of a cookie. */
@@ -108,6 +107,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(REFRESH_LIMIT)
   @HttpCode(200)
   @ApiBody(MOBILE_TOKEN_BODY)
   @Post('refresh')
@@ -156,6 +156,7 @@ export class AuthController {
   }
 
   @ApiBearerAuth()
+  @Throttle(AUTH_LIMIT)
   @HttpCode(200)
   @ApiResponse({ status: 400, description: 'Incorrect current password or invalid new password' })
   @Post('password/change')

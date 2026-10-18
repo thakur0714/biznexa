@@ -6,6 +6,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { env } from '../config/env';
 
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
+/** Changes whenever the password does; never reveals the hash itself. */
+export const passwordFingerprint = (hash: string | null) => sha256(`pw:${hash ?? ''}`).slice(0, 32);
 
 export interface SessionMeta {
   ip?: string;
@@ -105,16 +107,19 @@ export class TokenService {
   }
 
 
-  /** One-time token allowing a password change after an OTP check. */
-  resetToken(userId: string) {
-    return this.jwt.signAsync({ sub: userId, typ: 'reset' }, { expiresIn: '10m' });
+  /**
+   * One-time token allowing a password change after an OTP check. It carries a fingerprint of the password
+   * it replaces, so once the password changes the token stops working (M12.1: it could be replayed for 10 minutes).
+   */
+  resetToken(userId: string, passwordHash: string | null) {
+    return this.jwt.signAsync({ sub: userId, typ: 'reset', pwf: passwordFingerprint(passwordHash) }, { expiresIn: '10m' });
   }
 
-  verifyResetToken(token: string): string {
+  verifyResetToken(token: string): { userId: string; fingerprint: string } {
     try {
       const p = this.jwt.verify(token);
-      if (p.typ !== 'reset') throw new Error();
-      return p.sub;
+      if (p.typ !== 'reset' || typeof p.pwf !== 'string') throw new Error();
+      return { userId: p.sub, fingerprint: p.pwf };
     } catch {
       throw new UnauthorizedException('This reset link has expired. Please start again.');
     }
