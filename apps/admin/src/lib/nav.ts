@@ -47,7 +47,7 @@ export const NAV: NavGroup[] = [
   },
   {
     label: 'Website',
-    items: [{ slug: 'cms', label: 'Content & blog', requires: { all: [PERMS.CMS_MANAGE] } }],
+    items: [{ slug: 'cms', label: 'Content & blog', requires: { all: [PERMS.CMS_MANAGE] }, built: true }],
   },
   {
     label: 'Administration',

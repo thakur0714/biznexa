@@ -2180,6 +2180,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cms/homepage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CmsController_homepage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/cms/homepage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCmsController_homepage"];
+        put: operations["AdminCmsController_saveHomepage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/cms/homepage/services": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCmsController_services"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/cms/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminCmsController_adminPages"];
+        put: operations["AdminCmsController_savePage"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/cms/pages/{slug}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCmsController_publishPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/cms/pages/{slug}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCmsController_unpublishPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/media/images": {
         parameters: {
             query?: never;
@@ -4325,6 +4421,94 @@ export interface components {
             sizeBytes: number;
             width: number;
             height: number;
+        };
+        CmsHomepage: {
+            banners: {
+                id: string;
+                title: string;
+                subtitle: string | null;
+                imageUrl: string | null;
+                linkUrl: string | null;
+                placement: string;
+                sortOrder: number;
+                isActive: boolean;
+            }[];
+            testimonials: {
+                id: string;
+                name: string;
+                company: string | null;
+                quote: string;
+                rating: number;
+                sortOrder: number;
+                isActive: boolean;
+            }[];
+            stats: {
+                label: string;
+                value: string;
+                sortOrder: number;
+                isActive: boolean;
+            }[];
+            popularServiceIds: string[];
+            faq: {
+                question: string;
+                answer: string;
+                sortOrder: number;
+                isActive: boolean;
+            }[];
+        };
+        CmsServices: {
+            id: string;
+            name: string;
+        }[];
+        CmsPageList: {
+            id: string;
+            /** @enum {string} */
+            slug: "about" | "terms" | "privacy" | "refund-policy" | "contact";
+            title: string;
+            content: {
+                html: string;
+            } | {
+                blocks: {
+                    /** @enum {string} */
+                    type: "paragraph" | "heading" | "list";
+                    text?: string;
+                    items?: string[];
+                }[];
+            };
+            seoTitle: string | null;
+            metaDescription: string | null;
+            ogImageUrl: string | null;
+            contactEmail: string | null;
+            contactPhone: string | null;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED";
+            /** Format: date-time */
+            updatedAt: string;
+        }[];
+        CmsPage: {
+            id: string;
+            /** @enum {string} */
+            slug: "about" | "terms" | "privacy" | "refund-policy" | "contact";
+            title: string;
+            content: {
+                html: string;
+            } | {
+                blocks: {
+                    /** @enum {string} */
+                    type: "paragraph" | "heading" | "list";
+                    text?: string;
+                    items?: string[];
+                }[];
+            };
+            seoTitle: string | null;
+            metaDescription: string | null;
+            ogImageUrl: string | null;
+            contactEmail: string | null;
+            contactPhone: string | null;
+            /** @enum {string} */
+            status: "DRAFT" | "PUBLISHED";
+            /** Format: date-time */
+            updatedAt: string;
         };
         StoredFile: {
             /** Format: uuid */
@@ -12677,6 +12861,213 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    CmsController_homepage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminCmsController_homepage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsHomepage"];
+                };
+            };
+        };
+    };
+    AdminCmsController_saveHomepage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    banners: {
+                        id?: string;
+                        title: string;
+                        subtitle: string | null;
+                        imageUrl: string | null;
+                        linkUrl: string | null;
+                        sortOrder: number;
+                        isActive: boolean;
+                    }[];
+                    testimonials: {
+                        id?: string;
+                        name: string;
+                        company: string | null;
+                        quote: string;
+                        rating: number;
+                        sortOrder: number;
+                        isActive: boolean;
+                    }[];
+                    stats: {
+                        label: string;
+                        value: string;
+                        sortOrder: number;
+                        isActive: boolean;
+                    }[];
+                    popularServiceIds: string[];
+                    faq: {
+                        question: string;
+                        answer: string;
+                        sortOrder: number;
+                        isActive: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsHomepage"];
+                };
+            };
+        };
+    };
+    AdminCmsController_services: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsServices"];
+                };
+            };
+        };
+    };
+    AdminCmsController_adminPages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsPageList"];
+                };
+            };
+        };
+    };
+    AdminCmsController_savePage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    slug: "about" | "terms" | "privacy" | "refund-policy" | "contact";
+                    title: string;
+                    content: {
+                        html: string;
+                    };
+                    seoTitle: string | null;
+                    metaDescription: string | null;
+                    ogImageUrl: string | null;
+                    /** Format: email */
+                    contactEmail: string | null;
+                    contactPhone: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsPage"];
+                };
+            };
+        };
+    };
+    AdminCmsController_publishPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsPage"];
+                };
+            };
+        };
+    };
+    AdminCmsController_unpublishPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsPage"];
+                };
             };
         };
     };
