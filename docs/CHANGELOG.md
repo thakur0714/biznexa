@@ -203,9 +203,24 @@ Admin applications list and detail, assignment, status updates and the document 
 - Services browse screen: searchable and filterable service catalogue (`GET /api/catalogue/services`) with category filter pills, sorting options (Popular, Price Low-High, Price High-Low, Name), pull-to-refresh, and empty state handling.
 - Service detail screen (`GET /api/catalogue/services/:slug`): service overview, packages selection cards with complete fee breakdown (professional fee, GST, government fee, partial payment advance %), required documents checklist, ordered process timeline stages, expandable FAQs accordion, related services, and sticky bottom booking bar.
 
+**My Services & Application Detail (M11.5)**
+- My Services list screen (`GET /api/applications`) displaying customer's ongoing and completed services with category filters, status pills (using `@biznexa/types` application status tokens), search, pull-to-refresh, and empty state.
+- Application detail screen (`GET /api/applications/:id`): ordered lifecycle process stages timeline with active/completed status indicator, assigned expert details, deliverable certificate download cards, and interactive message thread.
+- Bidirectional messaging tab (`GET /api/applications/:id/messages` and `POST /api/applications/:id/messages`) supporting text messages and multi-file attachments uploaded via camera or document picker.
+
+**Documents & Payments (M11.6)**
+- Documents screen (`GET /api/applications/:id/documents`): mandatory and optional documents checklist with status badges (PENDING, APPROVED, REJECTED), rejection remarks, and action triggers for camera capture (`expo-image-picker`), gallery selection, or file upload (`expo-document-picker`).
+- Secure file upload service (`apps/mobile/src/api/upload.ts`) handling multipart upload (`POST /api/files`) with mime type & size limit validation, followed by document replacement/upload (`POST /api/applications/:id/documents/:docId/upload`).
+- Payments screen (`GET /api/orders`): list of completed and pending payment transactions, invoice PDF download and sharing via `expo-file-system` and `expo-sharing`, and pay balance modal for partial payments.
+
+**Certificates & QR Verification (M11.7)**
+- Certificates screen (`GET /api/certificates`) with status badges (ACTIVE, EXPIRING, EXPIRED), issuance and validity dates in DD-MMM-YYYY format, and PDF certificate download and native share sheet integration.
+- Public certificate verification lookup by number (`GET /api/public/certificates/verify?number=...`) displaying verification state, holder details, issuing body, and validity period.
+- Integrated camera QR scanner screen (`expo-camera`) with live viewfinder overlay, torch toggle, camera flip, and automatic parsing of raw certificate numbers and verification URLs.
+
 ### Test results (18-Oct-2026)
-- 12 unit tests in `@biznexa/mobile` covering theme tokens, API client headers and error parsing, secure storage persistence, and auth schema validation.
-- All 8 workspace packages passing typecheck (`turbo run typecheck`), lint (`turbo run lint`), and tests (`turbo run test`).
+- 22 unit tests in `@biznexa/mobile` covering theme tokens, API client headers and error parsing, secure storage persistence, auth schema validation, multipart file upload validation, and screen logic.
+- All 10 workspace packages passing typecheck (`turbo run typecheck`), lint (`turbo run lint`), and tests (`turbo run test`).
 
 ## M8.11 — Customer Consultations (18-Oct-2026)
 

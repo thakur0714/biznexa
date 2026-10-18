@@ -3,12 +3,16 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ServicesBrowseScreen } from '../screens/ServicesBrowseScreen';
+import { MyServicesScreen } from '../screens/MyServicesScreen';
+import { CertificatesScreen } from '../screens/CertificatesScreen';
 import { AccountScreen } from '../screens/AccountScreen';
 import { colors } from '../theme';
 
 export type RootTabParamList = {
   Home: undefined;
   ServicesBrowse: { categorySlug?: string; popular?: boolean } | undefined;
+  MyServices: undefined;
+  Certificates: { initialTab?: 'my' | 'verify'; scannedNumber?: string } | undefined;
   Account: undefined;
 };
 
@@ -25,6 +29,10 @@ export function TabNavigator() {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'ServicesBrowse') {
             iconName = focused ? 'grid' : 'grid-outline';
+          } else if (route.name === 'MyServices') {
+            iconName = focused ? 'briefcase' : 'briefcase-outline';
+          } else if (route.name === 'Certificates') {
+            iconName = focused ? 'ribbon' : 'ribbon-outline';
           } else if (route.name === 'Account') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -41,7 +49,7 @@ export function TabNavigator() {
           paddingTop: 6,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
         },
         headerShown: false,
@@ -56,9 +64,33 @@ export function TabNavigator() {
         name="ServicesBrowse"
         component={ServicesBrowseScreen}
         options={{
-          tabBarLabel: 'Services',
+          tabBarLabel: 'Catalogue',
           headerShown: true,
           headerTitle: 'All Services',
+          headerTintColor: colors.night,
+          headerStyle: { backgroundColor: colors.white },
+          headerTitleStyle: { fontWeight: '700' },
+        }}
+      />
+      <Tab.Screen
+        name="MyServices"
+        component={MyServicesScreen}
+        options={{
+          tabBarLabel: 'My Services',
+          headerShown: true,
+          headerTitle: 'My Services & Applications',
+          headerTintColor: colors.night,
+          headerStyle: { backgroundColor: colors.white },
+          headerTitleStyle: { fontWeight: '700' },
+        }}
+      />
+      <Tab.Screen
+        name="Certificates"
+        component={CertificatesScreen}
+        options={{
+          tabBarLabel: 'Certificates',
+          headerShown: true,
+          headerTitle: 'Certificates & Verification',
           headerTintColor: colors.night,
           headerStyle: { backgroundColor: colors.white },
           headerTitleStyle: { fontWeight: '700' },
