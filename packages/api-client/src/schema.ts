@@ -2180,6 +2180,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/media/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MediaController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{shard}/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MediaController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/summary": {
         parameters: {
             query?: never;
@@ -4076,6 +4108,15 @@ export interface components {
             url: string;
             /** Format: date-time */
             expiresAt: string;
+        };
+        MediaImage: {
+            /** @description Path under the site origin, e.g. /api/media/ab/<id>.webp — public, cached for a year */
+            url: string;
+            /** @enum {string} */
+            mimeType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+            sizeBytes: number;
+            width: number;
+            height: number;
         };
         StoredFile: {
             /** Format: uuid */
@@ -12295,6 +12336,52 @@ export interface operations {
             query?: never;
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MediaController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaImage"];
+                };
+            };
+        };
+    };
+    MediaController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shard: string;
+                name: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

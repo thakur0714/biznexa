@@ -27,18 +27,21 @@ export function newFileKey(): string {
 
 const KEY_FORMAT = /^[0-9a-f]{2}\/[0-9a-f]{32}$/;
 
-/** Files under UPLOAD_DIR, which must sit outside any publicly served folder and be backed up. */
+/**
+ * Files under a root folder: UPLOAD_DIR (private; outside any publicly served folder, backed up) or
+ * MEDIA_DIR (public website images, M9.4), each with its own instance and key format.
+ */
 export class LocalDiskStorage extends StorageService {
   private readonly root: string;
 
-  constructor(root: string) {
+  constructor(root: string, private readonly keyFormat: RegExp = KEY_FORMAT) {
     super();
     this.root = resolve(root);
   }
 
   /** Only keys we generate are accepted, so a key can never point outside the root. */
   private pathFor(key: string) {
-    if (!KEY_FORMAT.test(key)) throw new Error(`Invalid file key: ${key}`);
+    if (!this.keyFormat.test(key)) throw new Error(`Invalid file key: ${key}`);
     return join(this.root, key);
   }
 

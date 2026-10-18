@@ -37,5 +37,6 @@ export * from './reports';
 export * from './consultants';
 export * from './availability';
 export * from './bookings';
+export * from './media';
 export * from './privacy';
 export * from './blog';

@@ -20,6 +20,7 @@
     "openapi": "node -r @swc-node/register scripts/openapi.ts"
   },
   "dependencies": {
+    "@biznexa/rich-text": "workspace:*",
     "@biznexa/types": "workspace:*",
     "@fontsource/noto-sans": "5.2.10",
     "@nestjs/common": "^11.1.0",
@@ -48,6 +49,7 @@
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "sharp": "0.35.5",
     "zod": "^3.25.0",
     "zod-to-json-schema": "^3.25.2"
   },
