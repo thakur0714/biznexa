@@ -94,7 +94,7 @@ describe('ConsultantPortalView', () => {
     await waitFor(() => expect(calls).toHaveLength(1));
     expect(calls[0]).toMatchObject({
       method: 'POST',
-      path: '/api/bookings/f47ac10b-58cc-4372-a567-0e02b2c3d479/outcome',
+      path: '/api/bookings/{id}/outcome',
       body: { status: 'COMPLETED' }
     });
   });
