@@ -12,7 +12,7 @@ import {
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
 import { Card, Badge } from '../components/common';
-import type { ServiceCard, CategorySummary } from '@biznexa/types';
+import type { ServiceCard, CategorySummary } from '@biznexa/api-client';
 
 type PopularService = ServiceCard;
 type SearchResult = ServiceCard;

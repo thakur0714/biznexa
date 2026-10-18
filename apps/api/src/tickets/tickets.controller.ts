@@ -12,7 +12,7 @@ import {
   type CustomerTicketListQuery,
   type PostTicketMessageInput,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 import { TicketsService } from './tickets.service';
 
@@ -20,6 +20,7 @@ const uuid = new ParseUUIDPipe();
 
 @ApiTags('tickets')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('tickets')
 export class TicketsController {
   constructor(private readonly tickets: TicketsService) {}

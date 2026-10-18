@@ -1,5 +1,25 @@
 # Changelog
 
+## M8.14 — Featured consultants (18-Oct-2026)
+
+- Added a homepage section backed by `GET /api/public/consultants?featured=true`; it is hidden when there are no featured consultants and sits alongside the homepage CMS sections.
+- Added the audited Featured toggle to the consultant admin detail page for approved consultants and exposed the meeting link on booking confirmation.
+- Added Playwright coverage for filtering consultants, booking a slot, completing mock payment, and seeing the confirmation link on desktop and mobile.
+
+## M9.7 — Blog admin (18-Oct-2026)
+
+- Added admin blog post CRUD with sanitized rich-text content, media-library featured images, author, categories, tags, SEO fields and draft/scheduled/published states. Category and tag writes now await their audit records.
+- Added idempotent queue publishing for scheduled posts with startup recovery, plus public blog API routes that return published posts only.
+- Added the admin post/category/tag editor and API coverage for scheduling, unpublished visibility, XSS stripping and missing `cms.manage` permissions.
+
+## M9.5 / M9.6 — CMS (in progress, 18-Oct-2026)
+
+- Added CMS page draft, publish and unpublish endpoints requiring `cms.manage`; writes are audit logged and rich HTML is saved through `richTextInput`.
+- Added SEO title, meta description and Open Graph image URL to `CmsPage`; public page reads continue to return only published rows.
+- Added an admin page editor using the shared `RichTextEditor`, contact email/phone fields, and SEO metadata rendering; About and Contact read published CMS content. D62 records the `{ html }` content shape.
+- Added audited homepage administration for banners, testimonials, stats, active catalogue service picks and FAQs, including ordering and active flags. The public homepage renders these sections and uses the legacy layout only when CMS content is empty.
+- Focused CMS e2e, admin tests (191), rich-text sanitizer tests (56), migrations and typechecks pass. Full API test suite still needs a clean run.
+
 ## Milestones 1 & 2 — Foundation and Catalogue (09-Oct-2026)
 
 ### Built and tested
@@ -130,8 +150,33 @@ Admin applications list and detail, assignment, status updates and the document 
 - Reusable "Export CSV" button across all report pages (`sales`, `customers`, `services`, `consultants`, `support`).
 - BullMQ queue job (`report-export`) generating CSV asynchronously with MinIO/S3 object storage upload.
 - Secure 24-hour HMAC-signed download links with tamper and expiration validation.
-- RFC 4180 CSV compliance with formula injection defense (prefixing `=`, `+`, `-`, `@` with `'`).
 - RBAC: `reports.view` permission strictly enforced on export enqueue and signed link generation.
+
+## Milestone 6 — Notifications & Templates (Part 1, 18-Oct-2026)
+
+### Built and tested
+
+**Admin Notification Template Editor (M6.9 part 1)**
+- API endpoints `GET /api/admin/notifications/templates`, `GET /api/admin/notifications/templates/events`, `POST /api/admin/notifications/templates/preview`, `GET /api/admin/notifications/templates/:id`, `PUT /api/admin/notifications/templates/:id` guarded by `settings.manage` permission.
+- Variable catalog and sample variables per event for all 24 transactional events across EMAIL, SMS, PUSH, IN_APP, and WHATSAPP channels.
+- Live preview rendering with sample event variables and detection of missing/unknown variables.
+- SMS DLT template ID configuration, character and SMS segment counter with GSM-7 detection.
+- Complete audit logging (`notification.template.update`) for every template modification.
+- Admin UI template editor (`/notifications`) with channel tabs, device previews, variable chips, and `useApi()` typed client integration.
+
+## Milestone 4 — Fulfilment Integration & End-to-End (18-Oct-2026)
+
+### Built and tested
+
+**M4 Fulfilment Integration & Authorization Coverage (M4.17)**
+- End-to-end Playwright journey in `apps/web/e2e/document-reupload.spec.ts`: customer order & document upload → ops reviews and rejects with reason → customer sees reason and re-uploads v2 in dashboard → ops reviews and approves v2 → application automatically moves to DOCUMENTS_APPROVED → moves to IN_PROGRESS → ops uploads final deliverable (PDF certificate) and attaches to application → application moves to COMPLETED and DELIVERED → customer verifies "Delivered" status and downloads the final deliverable.
+- Comprehensive M4 route authorization and scoping test suite `apps/api/test/m4-authorization.e2e-spec.ts` (67 tests):
+  - 401 Unauthorized enforced for unauthenticated requests across all M4 endpoints.
+  - 403 Forbidden enforced for customer role on staff/admin routes.
+  - 403 Forbidden enforced for support role on routes requiring applications/documents/certificates management.
+  - 403 Forbidden enforced for operations staff lacking global management permissions (`applications.view_all` for bulk-assign and assignee patch, `certificates.manage` for certificate creation).
+  - 404 Not Found scoping enforced for operations staff attempting to access unassigned applications, documents, internal notes, or deliverables.
+  - Customer data isolation: customer accounts cannot access or view other customers' applications, documents, notes, or deliverables.
 
 ## Milestone 11 — Mobile App (Expo) (18-Oct-2026)
 
@@ -151,16 +196,31 @@ Admin applications list and detail, assignment, status updates and the document 
   - Indian mobile number OTP login and verification with countdown timer.
   - Email + password login and account registration with validation using `@biznexa/types` schemas (`mobileSchema`, `loginSchema`, `registerSchema`, `otpVerifySchema`).
   - Google OAuth sign-in integration (`POST /api/auth/google`).
-- Biometric authentication (FaceID / Fingerprint) toggle via `expo-local-authentication`, with auto-lock on launch and biometric unlock screen.
+  - Biometric authentication (FaceID / Fingerprint) toggle via `expo-local-authentication`, with auto-lock on launch and biometric unlock screen.
 
 **Home & Services Catalogue (M11.3)**
 - Home screen: BizNexa brand header, live typo-tolerant search with quick results dropdown (`GET /api/catalogue/search`), popular services cards with turnaround times (`GET /api/catalogue/popular`), category chips with service counts (`GET /api/catalogue/categories`), and trust indicators.
 - Services browse screen: searchable and filterable service catalogue (`GET /api/catalogue/services`) with category filter pills, sorting options (Popular, Price Low-High, Price High-Low, Name), pull-to-refresh, and empty state handling.
 - Service detail screen (`GET /api/catalogue/services/:slug`): service overview, packages selection cards with complete fee breakdown (professional fee, GST, government fee, partial payment advance %), required documents checklist, ordered process timeline stages, expandable FAQs accordion, related services, and sticky bottom booking bar.
 
+**My Services & Application Detail (M11.5)**
+- My Services list screen (`GET /api/applications`) displaying customer's ongoing and completed services with category filters, status pills (using `@biznexa/types` application status tokens), search, pull-to-refresh, and empty state.
+- Application detail screen (`GET /api/applications/:id`): ordered lifecycle process stages timeline with active/completed status indicator, assigned expert details, deliverable certificate download cards, and interactive message thread.
+- Bidirectional messaging tab (`GET /api/applications/:id/messages` and `POST /api/applications/:id/messages`) supporting text messages and multi-file attachments uploaded via camera or document picker.
+
+**Documents & Payments (M11.6)**
+- Documents screen (`GET /api/applications/:id/documents`): mandatory and optional documents checklist with status badges (PENDING, APPROVED, REJECTED), rejection remarks, and action triggers for camera capture (`expo-image-picker`), gallery selection, or file upload (`expo-document-picker`).
+- Secure file upload service (`apps/mobile/src/api/upload.ts`) handling multipart upload (`POST /api/files`) with mime type & size limit validation, followed by document replacement/upload (`POST /api/applications/:id/documents/:docId/upload`).
+- Payments screen (`GET /api/orders`): list of completed and pending payment transactions, invoice PDF download and sharing via `expo-file-system` and `expo-sharing`, and pay balance modal for partial payments.
+
+**Certificates & QR Verification (M11.7)**
+- Certificates screen (`GET /api/certificates`) with status badges (ACTIVE, EXPIRING, EXPIRED), issuance and validity dates in DD-MMM-YYYY format, and PDF certificate download and native share sheet integration.
+- Public certificate verification lookup by number (`GET /api/public/certificates/verify?number=...`) displaying verification state, holder details, issuing body, and validity period.
+- Integrated camera QR scanner screen (`expo-camera`) with live viewfinder overlay, torch toggle, camera flip, and automatic parsing of raw certificate numbers and verification URLs.
+
 ### Test results (18-Oct-2026)
-- 12 unit tests in `@biznexa/mobile` covering theme tokens, API client headers and error parsing, secure storage persistence, and auth schema validation.
-- All 8 workspace packages passing typecheck (`turbo run typecheck`), lint (`turbo run lint`), and tests (`turbo run test`).
+- 22 unit tests in `@biznexa/mobile` covering theme tokens, API client headers and error parsing, secure storage persistence, auth schema validation, multipart file upload validation, and screen logic.
+- All 10 workspace packages passing typecheck (`turbo run typecheck`), lint (`turbo run lint`), and tests (`turbo run test`).
 
 ## M8.11 — Customer Consultations (18-Oct-2026)
 
@@ -186,3 +246,37 @@ Admin applications list and detail, assignment, status updates and the document 
 - Every customer route was reviewed for ownership checks; no leak was found, so no code changed.
 - API: `test/data-isolation.e2e-spec.ts` (86 tests). Customer A gets 404 for every one of customer B's applications, documents, deliverables, payments, invoices, credit notes, certificates, messages, attachments, tickets, bookings, businesses, notifications and data exports — the same answer as an id that doesn't exist. B's ids inside A's requests (files, business, application) are refused, signed download links can't be pointed at another resource, lists/counts/dashboard show A nothing of B's, and B's data is checked unchanged afterwards.
 - Browser: `e2e/customer-isolation.spec.ts` on desktop and mobile — A opens B's application by URL and sees "Application not found"; A's My Services, Businesses and Support pages show none of B's things.
+
+## M12.1 — Security review & M12.2 — Sensitive data (18-Oct-2026)
+
+Report: `docs/reviews/SECURITY_REVIEW_2026-10-18.md`. Decisions: D64, D65.
+
+### Fixed
+- **Password reset tokens work once.** They are bound to the old password hash. Before, a token could be replayed for 10 minutes.
+- **Account pre-hijacking.** Google sign-in or OTP login on an account whose email/mobile was never verified now clears its password and revokes every session (audited).
+- **Rate limits on every sensitive route** (`src/common/rate-limits.ts`): password change, refresh, and payment create/callback for applications and bookings now have their own limits too.
+- **Headers:** helmet CSP + HSTS (2 years, includeSubDomains) in production only. Web and admin send HSTS in production. `CORS_ORIGINS` is validated (no `*` or paths, https in production). The refresh cookie gets a 403 from a foreign `Origin`.
+- **PAN and bank-account answers** in application forms are encrypted at rest. They are shown in full to the customer, the data export and Admin/Operations, and masked for consultants.
+- **Aadhaar:** the form builder refuses Aadhaar number fields. A grep of the schema, forms, exports and logs found no stored number.
+- **PII scrub in logs:** `RedactingLogger` removes emails, mobiles, PANs, Aadhaar-shaped numbers, tokens and passwords from messages, contexts and stacks.
+- **Dependencies:** postcss and mysql2 overridden. No runtime advisories remain in the API. The remaining dev-tool advisories are accepted (review A1).
+
+### Deploy note
+- `CORS_ORIGINS` must list every browser origin that signs in (website + admin), or `/api/auth/refresh` returns 403.
+
+### Test results
+- Lint 0 errors (warnings are older ones) and typecheck pass in every package.
+- Unit/integration: types 490, api-client 7, mobile 12, rich-text 56, ui 40, admin 195, web 19, API 922, all passing. New: `security.e2e-spec.ts`, `rate-limits.e2e-spec.ts` (throttler on: the 11th login gets 429), `security.spec.ts`, `redacting-logger.spec.ts`, `sensitive-form-data.spec.ts`, PAN visibility in `application-form.e2e-spec.ts`, Aadhaar rules in `form-schema.test.ts`, `next-config.test.ts` (web, admin).
+- Browser: 26 Playwright tests passing (desktop + mobile). During the run the dev API log scrubbed 22 emails/mobiles and none appeared in plain text.
+## M12.4 — Authorization sweep (18-Oct-2026)
+
+### Built and tested
+- Every API route now declares who may call it: `@Public()`, `@SignedIn()`, `@CustomerOnly()`, `@RequirePermissions()` or `@RequireAnyPermission()`. The global guard refuses a route that declares nothing (D63).
+- Customer self-service routes are customer-only: staff accounts get 403 there instead of acting as a customer.
+- API: `test/route-access.e2e-spec.ts` — every route (found from the running app) × anonymous, customer, consultant, admin, operations, support and a staff session before 2FA, checked against the decorators and the role seed. A new route without an access decorator fails it.
+- Test fix: `invoice-pdf` and `invoice-record` no longer share a far-future invoice year with each other or with `invoice-numbers`, and their date override applies only to their own payments, so the counter each deletes at the end is never one another suite (or this process's invoice sweep, working on another suite's payment) is using. This removes the random duplicate-invoice-number failures in parallel runs.
+- Test fix: `certificate-pdf` waited only for its own process's `pdf.generated` event, but every API process queues all certificates without a PDF when it starts, so another suite's process could render the regenerated PDF first and the test timed out after 2 minutes. It now also watches the certificate's `pdfKey`.
+
+### Test results
+- API suite run 3 times in a row: 83 suites, 794 tests, all passed each time.
+

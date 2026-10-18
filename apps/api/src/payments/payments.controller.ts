@@ -5,13 +5,14 @@ import {
   customerPaymentListResponseSchema,
   type CustomerPaymentListQuery,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery } from '../common/openapi';
 import { CustomerPaymentsService } from './customer-payments.service';
 
 /** The signed-in customer's own payments; nobody else's are visible here (M5.10). */
 @ApiTags('payments')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly payments: CustomerPaymentsService) {}

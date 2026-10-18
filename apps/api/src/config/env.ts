@@ -91,6 +91,28 @@ function validateMediaDir(v: RawEnv, ctx: z.RefinementCtx): void {
   }
 }
 
+/**
+ * CORS allow-list (M12.1): exact origins only. A wildcard would be ignored with credentials anyway, but it
+ * signals a misconfiguration; production origins must be https.
+ */
+function validateCorsOrigins(v: RawEnv, ctx: z.RefinementCtx): void {
+  const origins = v.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+  if (!origins.length) ctx.addIssue({ code: 'custom', path: ['CORS_ORIGINS'], message: 'List at least one origin' });
+  for (const o of origins) {
+    let url: URL | undefined;
+    try {
+      url = new URL(o);
+    } catch {
+      url = undefined;
+    }
+    if (!url || url.origin !== o || o.includes('*')) {
+      ctx.addIssue({ code: 'custom', path: ['CORS_ORIGINS'], message: `"${o}" is not an origin (scheme://host[:port], no path or wildcard)` });
+    } else if (v.NODE_ENV === 'production' && url.protocol !== 'https:') {
+      ctx.addIssue({ code: 'custom', path: ['CORS_ORIGINS'], message: `"${o}" must use https in production` });
+    }
+  }
+}
+
 function validateProductionSecrets(v: RawEnv, ctx: z.RefinementCtx): void {
   for (const k of ['JWT_ACCESS_SECRET', 'OTP_PEPPER', 'CERT_QR_SECRET', 'FILE_LINK_SECRET', 'DATA_ENCRYPTION_KEY'] as const) {
     if (v[k].startsWith('change-me') || v[k].length < 32) {
@@ -138,6 +160,7 @@ function validateProductionProviders(v: RawEnv, ctx: z.RefinementCtx): void {
 const schema = baseSchema.superRefine((v, ctx) => {
   validateRazorpay(v, ctx);
   validateMediaDir(v, ctx);
+  validateCorsOrigins(v, ctx);
   if (v.NODE_ENV === 'production') {
     validateProductionSecrets(v, ctx);
     validateProductionProviders(v, ctx);
@@ -146,10 +169,13 @@ const schema = baseSchema.superRefine((v, ctx) => {
 
 export type Env = z.infer<typeof schema>;
 
+/** Validates an environment without caching it; `env()` uses it on process.env. */
+export const parseEnv = (source: Record<string, string | undefined>) => schema.safeParse(source);
+
 let cached: Env | undefined;
 export function env(): Env {
   if (!cached) {
-    const parsed = schema.safeParse(process.env);
+    const parsed = parseEnv(process.env);
     if (!parsed.success) {
       const msg = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
       throw new Error(`Invalid environment configuration:\n${msg}`);

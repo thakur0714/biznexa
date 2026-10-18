@@ -9,14 +9,19 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { env } from './config/env';
 import { addZodComponents } from './common/openapi';
+import { RedactingLogger } from './common/redacting-logger';
+import { corsOrigins, helmetOptions, refreshCookieOriginCheck } from './common/security';
+import { REFRESH_COOKIE } from './auth/auth.controller';
 
 export function configureApp(app: NestExpressApplication) {
   const cfg = env();
   app.setGlobalPrefix('api');
   app.set('trust proxy', 1); // behind load balancer / Next.js rewrite: use X-Forwarded-For for rate limits
-  app.use(helmet({ contentSecurityPolicy: cfg.NODE_ENV === 'production' ? undefined : false }));
+  const origins = corsOrigins(cfg.CORS_ORIGINS);
+  app.use(helmet(helmetOptions(cfg.NODE_ENV)));
   app.use(cookieParser());
-  app.enableCors({ origin: cfg.CORS_ORIGINS.split(',').map((o) => o.trim()), credentials: true });
+  app.use('/api/auth', refreshCookieOriginCheck(REFRESH_COOKIE, origins));
+  app.enableCors({ origin: origins, credentials: true });
   app.enableShutdownHooks();
   return app;
 }
@@ -35,7 +40,8 @@ export function buildOpenApiDocument(app: NestExpressApplication): OpenAPIObject
 async function bootstrap() {
   const cfg = env();
   // rawBody keeps the exact request bytes on `req.rawBody`: payment webhook signatures are checked over them.
-  const app = configureApp(await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true }));
+  // RedactingLogger scrubs emails, mobiles, PANs and tokens from every log line (M12.2).
+  const app = configureApp(await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true, logger: new RedactingLogger() }));
 
   if (cfg.NODE_ENV !== 'production') SwaggerModule.setup('api/docs', app, buildOpenApiDocument(app));
 

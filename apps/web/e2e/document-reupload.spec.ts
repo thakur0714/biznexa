@@ -51,7 +51,7 @@ async function findInQueue(request: import('@playwright/test').APIRequestContext
   return undefined;
 }
 
-test('rejects -> re-upload -> back to review', async ({ page, request }) => {
+test('ops reviews -> rejects -> customer re-uploads -> ops approves -> in progress -> delivers', async ({ page, request }) => {
   test.setTimeout(120_000);
   const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
   const runId = Date.now().toString().slice(-6) + Math.floor(Math.random() * 1000);
@@ -196,4 +196,91 @@ test('rejects -> re-upload -> back to review', async ({ page, request }) => {
   expect(item2).toBeDefined();
   expect(item2?.version).toBe(2);
   expect(item2?.fileName).toBe(`doc-v2-${runId}.pdf`);
+
+  // 11. Ops reviews and approves the re-uploaded document
+  const approveRes = await request.post(`${apiUrl}/api/admin/documents/${item2!.id}/approve`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  expect(approveRes.status()).toBe(201);
+
+  // 11b. The service has more mandatory documents than the one walked through above: the customer uploads the
+  // rest and ops approves them, so the application reaches DOCUMENTS_APPROVED (only then can it go IN_PROGRESS).
+  const applicationUuid = item1.application.id;
+  const refreshRes = await page.request.post('/api/auth/refresh');
+  expect(refreshRes.status()).toBe(200);
+  const customerAuth = { Authorization: `Bearer ${(await refreshRes.json()).accessToken}` };
+  const checklistRes = await request.get(`${apiUrl}/api/applications/${applicationUuid}/documents`, { headers: customerAuth });
+  expect(checklistRes.status()).toBe(200);
+  const checklist = await checklistRes.json() as { items: { requirement: { id: string; isMandatory: boolean }; current: { status: string } | null }[] };
+  for (const { requirement } of checklist.items.filter((i) => i.requirement.isMandatory && i.current?.status !== 'APPROVED')) {
+    const fileRes = await request.post(`${apiUrl}/api/files?requirementId=${requirement.id}`, {
+      headers: customerAuth,
+      multipart: { file: { name: `extra-${requirement.id.slice(0, 8)}-${runId}.pdf`, mimeType: 'application/pdf', buffer: pdfBuffer2 } },
+    });
+    expect(fileRes.status()).toBe(201);
+    const attachRes = await request.post(`${apiUrl}/api/applications/${applicationUuid}/documents/${requirement.id}`, {
+      headers: customerAuth, data: { fileId: (await fileRes.json()).id },
+    });
+    expect(attachRes.status()).toBe(201);
+  }
+  for (let page = 1; page <= 50; page++) {
+    const res = await request.get(`${apiUrl}/api/admin/documents/review-queue?limit=100&page=${page}`, { headers: { Authorization: `Bearer ${adminToken}` } });
+    const data = await res.json() as { items?: { id: string; application: { code: string } }[] };
+    if (!data.items?.length) break;
+    for (const queued of data.items.filter((i) => i.application.code === applicationId)) {
+      const res2 = await request.post(`${apiUrl}/api/admin/documents/${queued.id}/approve`, { headers: { Authorization: `Bearer ${adminToken}` } });
+      expect(res2.status()).toBe(201);
+    }
+  }
+
+  // 12. Move to IN_PROGRESS
+  const inProgressRes = await request.post(`${apiUrl}/api/admin/applications/${applicationUuid}/status`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { to: 'IN_PROGRESS', note: 'Documentation approved; moving into fulfilment' },
+  });
+  expect(inProgressRes.status()).toBe(201);
+
+  // 13. Ops uploads and attaches final deliverable
+  const deliverablePdf = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF');
+  const uploadRes = await request.post(`${apiUrl}/api/files`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    multipart: {
+      file: {
+        name: `trademark-certificate-${runId}.pdf`,
+        mimeType: 'application/pdf',
+        buffer: deliverablePdf,
+      },
+    },
+  });
+  expect(uploadRes.status()).toBe(201);
+  const { id: fileId } = (await uploadRes.json()) as { id: string };
+
+  const deliverableRes = await request.post(`${apiUrl}/api/admin/applications/${applicationUuid}/deliverables`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { title: 'Trademark Registration Certificate', fileId },
+  });
+  expect(deliverableRes.status()).toBe(201);
+
+  // 14. Move COMPLETED -> DELIVERED
+  const completedRes = await request.post(`${apiUrl}/api/admin/applications/${applicationUuid}/status`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { to: 'COMPLETED', note: 'All formalities complete' },
+  });
+  expect(completedRes.status()).toBe(201);
+
+  const deliveredRes = await request.post(`${apiUrl}/api/admin/applications/${applicationUuid}/status`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+    data: { to: 'DELIVERED', note: 'Delivered final trademark certificate' },
+  });
+  expect(deliveredRes.status()).toBe(201);
+
+  // 15. Customer sees Delivered status and views deliverable
+  await page.goto(`/dashboard/applications/${applicationUuid}`);
+  // Customers see DELIVERED as "Documents Available" (customer status label).
+  await expect(page.getByText('Documents Available', { exact: true }).first()).toBeVisible();
+  await page.getByRole('tab', { name: 'Deliverables' }).click();
+  await expect(page.getByRole('heading', { name: 'Final Deliverables' })).toBeVisible();
+  await expect(page.getByText('Trademark Registration Certificate')).toBeVisible();
+  await expect(page.getByText(`trademark-certificate-${runId}.pdf`)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download' })).toBeVisible();
 });

@@ -220,6 +220,18 @@ function checkCondition(cond: FormCondition, target: FormField | undefined): str
   return `Compare "${target.name}" with ${numeric ? 'numbers' : 'text'}`;
 }
 
+/**
+ * Aadhaar numbers are never collected or stored (M12.2, UIDAI rules): an expert takes the customer's Aadhaar
+ * OTP consent when filing. A field named after Aadhaar, or one whose label asks for the number, is refused.
+ * Labels that only mention it ("Full name (as on Aadhaar)") are fine.
+ */
+const AADHAAR_NAME = /aadhaa?r|uidai/i;
+const AADHAAR_NUMBER_LABEL = /aadhaa?r\s*(card\s*)?(no\b|no\.|number|num\b|#)|\buid\s*(no\b|no\.|number)/i;
+export function asksForAadhaar(f: Pick<FormField, 'name' | 'label'>): boolean {
+  return AADHAAR_NAME.test(f.name) || AADHAAR_NUMBER_LABEL.test(f.label);
+}
+const AADHAAR_MESSAGE = 'Aadhaar numbers must never be collected. An expert takes the Aadhaar OTP consent when filing.';
+
 /** The whole form definition stored in `ServiceFormSchema.schema`. */
 export const formSchema = z
   .object({
@@ -234,6 +246,7 @@ export const formSchema = z
       s.fields.forEach((f, fi) => {
         const at = ['steps', si, 'fields', fi];
         for (const i of checkField(f)) report([...at, ...i.path], i.message);
+        if (asksForAadhaar(f)) report([...at, 'name'], AADHAAR_MESSAGE);
         if (f.showIf) {
           const msg = checkCondition(f.showIf, declared.get(f.showIf.field));
           if (msg) report([...at, 'showIf', 'field'], msg);
@@ -245,6 +258,7 @@ export const formSchema = z
           f.fields.forEach((sub, ri) => {
             const subAt = [...at, 'fields', ri];
             for (const i of checkField(sub)) report([...subAt, ...i.path], i.message);
+            if (asksForAadhaar(sub)) report([...subAt, 'name'], AADHAAR_MESSAGE);
             if (sub.showIf) {
               const msg = checkCondition(sub.showIf, row.get(sub.showIf.field) ?? declared.get(sub.showIf.field));
               if (msg) report([...subAt, 'showIf', 'field'], msg);

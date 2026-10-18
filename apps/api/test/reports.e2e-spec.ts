@@ -7,6 +7,7 @@ import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { presetDateRange } from '@biznexa/types';
 import { staffSession } from './staff';
+import { istDayStart } from '@biznexa/types';
 
 let app: NestExpressApplication;
 let http: ReturnType<typeof request>;

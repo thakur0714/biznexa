@@ -3,20 +3,24 @@ import { LeadForm } from '@/components/lead-form';
 import { Icon } from '@/components/icons';
 import { Container } from '@biznexa/ui';
 import { api } from '@/lib/api';
+import { RichText } from '@/components/rich-text';
 
 export const revalidate = 300;
 export const metadata: Metadata = { title: 'Contact us', description: 'Talk to a BizNexa expert about registration, tax, compliance, certification or technology services.', alternates: { canonical: '/contact' } };
 
 export default async function ContactPage() {
-  const settings = await api<Record<string, unknown>>('/cms/settings/public').catch(() => ({}) as Record<string, unknown>);
-  const email = (settings['company.email'] as string) || 'support@biznexa.com';
-  const phone = settings['company.phone'] as string | undefined;
+  const [settings, page] = await Promise.all([
+    api<Record<string, unknown>>('/cms/settings/public').catch(() => ({}) as Record<string, unknown>),
+    api<{ content?: { html?: string }; contactEmail?: string | null; contactPhone?: string | null }>('/cms/pages/contact').catch(() => null),
+  ]);
+  const email = page?.contactEmail || (settings['company.email'] as string) || 'support@biznexa.com';
+  const phone = page?.contactPhone || (settings['company.phone'] as string | undefined);
 
   return (
     <Container className="grid grid-cols-1 gap-12 py-14 lg:grid-cols-[1fr_380px]">
       <div>
         <h1 className="text-4xl font-bold tracking-[-0.025em]">Contact us</h1>
-        <p className="mt-2 max-w-[56ch] text-muted">Tell us what you need. An expert will call you within one working day — or email us anytime.</p>
+        {page?.content?.html ? <RichText html={page.content.html} className="mt-4" /> : <p className="mt-2 max-w-[56ch] text-muted">Tell us what you need. An expert will call you within one working day — or email us anytime.</p>}
         <div className="mt-8 rounded-xl border border-rule bg-white p-6 sm:p-8">
           <LeadForm source="contact" withMessage />
         </div>
