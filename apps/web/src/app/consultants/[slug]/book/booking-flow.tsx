@@ -245,6 +245,7 @@ export function BookingFlow({ slug, initial }: { slug: string; initial: PublicCo
             <dt className="text-muted">Paid</dt>
             <dd className="num">{money(booking.fee)}</dd>
           </dl>
+          {booking.meetingLink && <p className="mt-4"><a href={booking.meetingLink} target="_blank" rel="noreferrer" className="font-semibold text-ink underline underline-offset-2">Join your consultation</a></p>}
           <p className="mt-4 text-sm text-muted">We’ll send the meeting details to your email and phone before the session.</p>
           <LinkButton href="/dashboard" variant="outline" className="mt-5">
             Go to dashboard
