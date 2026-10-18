@@ -2,7 +2,7 @@ import { Controller, Get, Header, HttpCode, Param, ParseUUIDPipe, Post, Query, S
 import { ApiBearerAuth, ApiProduces, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { fileLinkSchema, invoiceListQuery, invoiceListSchema, type InvoiceListQuery } from '@biznexa/types';
-import { AuthUser, CurrentUser, Public } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly, Public, SignedIn } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery } from '../common/openapi';
 import { InvoicePdfService } from './invoice-pdf.service';
 
@@ -19,6 +19,7 @@ export class InvoicesController {
   @ApiBearerAuth()
   @ApiZodResponse('InvoiceList', invoiceListSchema)
   @Get()
+  @CustomerOnly()
   list(@ZodQuery(invoiceListQuery) q: InvoiceListQuery, @CurrentUser() user: AuthUser) {
     return this.invoices.list(user.id, q.applicationId);
   }
@@ -30,6 +31,7 @@ export class InvoicesController {
   @ApiResponse({ status: 409, description: 'The PDF is still being generated — try again shortly' })
   @HttpCode(200)
   @Post(':id/link')
+  @SignedIn()
   link(@Param('id', new ParseUUIDPipe()) id: string, @ZodQuery(linkQuery) q: z.infer<typeof linkQuery>, @CurrentUser() user: AuthUser) {
     return this.invoices.createLink(id, user, q.disposition);
   }

@@ -12,6 +12,13 @@ export const ANY_PERMISSIONS = 'anyPermissions';
 /** Caller must hold AT LEAST ONE of the listed permissions. */
 export const RequireAnyPermission = (...perms: string[]) => SetMetadata(ANY_PERMISSIONS, perms);
 
+export const ACCESS = 'access';
+export type Access = 'signed-in' | 'customer';
+/** Any signed-in user — customer, consultant or staff; the service decides what each may see (owner or permission). */
+export const SignedIn = () => SetMetadata(ACCESS, 'signed-in' satisfies Access);
+/** Signed-in user with the CUSTOMER role (consultants keep it); staff accounts get 403. */
+export const CustomerOnly = () => SetMetadata(ACCESS, 'customer' satisfies Access);
+
 export interface AuthUser {
   id: string;
   roles: string[];

@@ -17,7 +17,7 @@ import {
   type BookingConsultantOutcomeInput,
   type PaymentCallbackInput,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser, PERMS, RequirePermissions } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly, PERMS, RequirePermissions, SignedIn } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { PAYMENT_LIMIT } from '../common/rate-limits';
 import { BookingPaymentsService } from '../payments/booking-payments.service';
@@ -26,6 +26,7 @@ import { BookingsService } from './bookings.service';
 /** The signed-in customer's consultation bookings (M8.8). Another customer's booking looks missing (404). */
 @ApiTags('bookings')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('bookings')
 export class BookingsController {
   constructor(private readonly bookings: BookingsService, private readonly payments: BookingPaymentsService) {}
@@ -62,6 +63,7 @@ export class BookingsController {
     res.send(await this.bookings.calendar(u.id, id));
   }
 
+  @SignedIn() // the consultant's own booking (service checks); overrides the class-level @CustomerOnly
   @RequirePermissions(PERMS.ADMIN_ACCESS)
   @ApiZodResponse('BookingView', bookingViewSchema)
   @Put(':id/meeting-link')
@@ -81,6 +83,7 @@ export class BookingsController {
     return this.bookings.reschedule(u.id, id, new Date(body.startAt));
   }
 
+  @SignedIn() // the consultant's own booking (service checks); overrides the class-level @CustomerOnly
   @RequirePermissions(PERMS.ADMIN_ACCESS)
   @Post(':id/outcome')
   @HttpCode(200)

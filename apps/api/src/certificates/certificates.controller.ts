@@ -45,7 +45,7 @@ import { CSV_SAMPLE_TEMPLATE, generateCsvErrorReport } from './certificate-csv';
 import { CertificatesService, createCertificateInput, statusInput } from './certificates.service';
 import { CertificatePdfService } from './certificate-pdf.service';
 import { CaptchaVerifier } from '../captcha/captcha-verifier';
-import { AuthUser, CurrentUser, PERMS, Public, RequirePermissions } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, PERMS, Public, RequirePermissions, SignedIn } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 
 const meta = (req: Request) => ({ ip: req.ip, userAgent: req.headers['user-agent'] });
@@ -363,6 +363,7 @@ const certLinkQuery = z.object({
 });
 
 @ApiTags('certificates')
+@SignedIn()
 @Controller('certificates')
 export class CertificatesController {
   constructor(
