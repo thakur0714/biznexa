@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, ConflictException, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../common/auth.decorators';
@@ -38,7 +38,7 @@ export class AdminBlogService implements OnModuleInit {
     if (input.status === 'SCHEDULED' && !input.publishAt) throw new ConflictException('Scheduled posts require a publish date');
     if (input.status !== 'SCHEDULED' && input.publishAt) throw new ConflictException('Only scheduled posts can have a publish date');
     const content = sanitizeRichText(input.content);
-    const post = await this.prisma.blogPost.create({ data: { title: input.title, slug: input.slug, excerpt: input.excerpt, content, featuredImage: input.featuredImage, authorName: input.authorName, categoryId: input.categoryIds[0] ?? null, categories: { create: input.categoryIds.map(categoryId => ({ categoryId })) }, tags: { connect: input.tagIds.map(id => ({ id })) }, seoTitle: input.seoTitle, metaDescription: input.metaDescription, status: input.status, publishAt: input.publishAt ? new Date(input.publishAt) : null, ...(input.status === 'PUBLISHED' ? { publishedAt: new Date() } : {}) }, include: { tags: true, categories: { include: { category: true } } } });
+    const post = await this.prisma.blogPost.create({ data: { title: input.title, slug: input.slug, excerpt: input.excerpt, content, featuredImage: input.featuredImage, authorName: input.authorName, categoryId: input.categoryIds[0] ?? null, categories: { create: input.categoryIds.map(categoryId => ({ categoryId })) }, tags: { connect: input.tagIds.map(id => ({ id })) }, seoTitle: input.seoTitle, metaDescription: input.metaDescription, status: input.status, publishAt: input.publishAt ? new Date(input.publishAt) : null, ...(input.status === 'PUBLISHED' ? { publishedAt: new Date() } : {}) }, include: { tags: true, categories: { include: { category: true } } } }).catch((e: unknown) => { throw postWriteError(e); });
     const { categories, ...result } = post; const response = { ...result, categories: categories.map(x => x.category) };
     await this.audit.log({ actorId: u.id, action: 'blog_post.created', entityType: 'BlogPost', entityId: post.id, after: response });
     if (post.status === 'SCHEDULED') await this.enqueue(post.id, post.publishAt!);
@@ -50,7 +50,7 @@ export class AdminBlogService implements OnModuleInit {
     if (!before) throw new NotFoundException('Blog post not found');
     if (input.status === 'SCHEDULED' && !input.publishAt) throw new ConflictException('Scheduled posts require a publish date');
     if (input.status !== 'SCHEDULED' && input.publishAt) throw new ConflictException('Only scheduled posts can have a publish date');
-    const post = await this.prisma.blogPost.update({ where: { id }, data: { title: input.title, slug: input.slug, excerpt: input.excerpt, content: sanitizeRichText(input.content), featuredImage: input.featuredImage, authorName: input.authorName, categoryId: input.categoryIds[0] ?? null, categories: { deleteMany: {}, create: input.categoryIds.map(categoryId => ({ categoryId })) }, tags: { set: input.tagIds.map(tagId => ({ id: tagId })) }, seoTitle: input.seoTitle, metaDescription: input.metaDescription, status: input.status, publishAt: input.publishAt ? new Date(input.publishAt) : null, publishedAt: input.status === 'PUBLISHED' ? (before.status === 'PUBLISHED' ? before.publishedAt : new Date()) : null }, include: { tags: true, categories: { include: { category: true } } } });
+    const post = await this.prisma.blogPost.update({ where: { id }, data: { title: input.title, slug: input.slug, excerpt: input.excerpt, content: sanitizeRichText(input.content), featuredImage: input.featuredImage, authorName: input.authorName, categoryId: input.categoryIds[0] ?? null, categories: { deleteMany: {}, create: input.categoryIds.map(categoryId => ({ categoryId })) }, tags: { set: input.tagIds.map(tagId => ({ id: tagId })) }, seoTitle: input.seoTitle, metaDescription: input.metaDescription, status: input.status, publishAt: input.publishAt ? new Date(input.publishAt) : null, publishedAt: input.status === 'PUBLISHED' ? (before.status === 'PUBLISHED' ? before.publishedAt : new Date()) : null }, include: { tags: true, categories: { include: { category: true } } } }).catch((e: unknown) => { throw postWriteError(e); });
     const { categories, ...result } = post; const response = { ...result, categories: categories.map(x => x.category) };
     await this.audit.log({ actorId: u.id, action: 'blog_post.updated', entityType: 'BlogPost', entityId: id, before, after: response });
     if (post.status === 'SCHEDULED') await this.enqueue(id, post.publishAt!);
@@ -198,4 +198,12 @@ export class AdminBlogService implements OnModuleInit {
       after: null,
     });
   }
+}
+
+/** A duplicate slug or a category/tag that no longer exists is the editor's mistake (409/400), not a server error. */
+function postWriteError(e: unknown): unknown {
+  if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return e;
+  if (e.code === 'P2002') return new ConflictException('A blog post with this slug already exists');
+  if (e.code === 'P2003' || e.code === 'P2025') return new BadRequestException('Choose categories and tags that exist');
+  return e;
 }

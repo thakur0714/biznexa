@@ -56,7 +56,7 @@ export function CmsView() {
     setSaving(true); setError('');
     try {
       const saved = await api.call<Page>((c) => page?.status === 'PUBLISHED' ? c.POST('/api/admin/cms/pages/{slug}/unpublish', { params: { path: { slug } } }) : c.POST('/api/admin/cms/pages/{slug}/publish', { params: { path: { slug } } }));
-      setPages((all) => [...all.filter((p) => p.slug !== slug), saved]); setForm(saved); toast(saved.status === 'PUBLISHED' ? 'Page published' : 'Page is a draft', 'success');
+      setPages((all) => [...all.filter((p) => p.slug !== slug), saved]); setForm(saved); toast(saved.status === 'PUBLISHED' ? 'Saved — the changes are live' : 'Draft saved', 'success');
     } catch (e) { setError((e as Error).message); } finally { setSaving(false); }
   }
   return <div className="max-w-4xl space-y-5">
@@ -72,6 +72,6 @@ export function CmsView() {
       <label className="block text-sm font-medium" htmlFor="cms-meta">Description</label><textarea id="cms-meta" className="field min-h-24 w-full rounded border border-rule p-3" maxLength={320} value={form.metaDescription ?? ''} onChange={(e) => update('metaDescription', e.target.value || null)} />
       <Field id="cms-og" label="Open Graph image URL" value={form.ogImageUrl ?? ''} onChange={(e) => update('ogImageUrl', e.target.value || null)} hint="Upload through the image button in the editor, then paste the public media URL." />
     </div></details>
-    <div className="flex gap-3"><Button disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save draft'}</Button><Button variant="outline" disabled={saving || !page} onClick={publish}>{page?.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}</Button></div>
+    <div className="flex gap-3"><Button disabled={saving} onClick={save}>{saving ? 'Saving…' : page?.status === 'PUBLISHED' ? 'Save (live)' : 'Save draft'}</Button><Button variant="outline" disabled={saving || !page} onClick={publish}>{page?.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}</Button></div>
   </div>;
 }
