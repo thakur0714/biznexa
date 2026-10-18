@@ -132,3 +132,33 @@ Admin applications list and detail, assignment, status updates and the document 
 - Secure 24-hour HMAC-signed download links with tamper and expiration validation.
 - RFC 4180 CSV compliance with formula injection defense (prefixing `=`, `+`, `-`, `@` with `'`).
 - RBAC: `reports.view` permission strictly enforced on export enqueue and signed link generation.
+
+## Milestone 11 — Mobile App (Expo) (18-Oct-2026)
+
+### Built and tested
+
+**Mobile App Scaffold & Android Tester APK (M11.1)**
+- Expo SDK 52 mobile application scaffolded in `apps/mobile` and added to pnpm workspace and Turborepo (`dev`, `build`, `test`, `lint`, `typecheck`).
+- Configured specifically for Android tester APK distribution (`eas.json` and `app.json` preview/production APK build targets; no iOS/TestFlight, no store submission per 18-Oct decision).
+- Centralized design tokens in `@biznexa/config/tokens` (colors: ink, night, paper, rule, seal, marigold, danger; spacing; radius; typography) imported directly by the mobile app.
+- Shared `@biznexa/types` and `@biznexa/api-client` packages integrated without duplicated types.
+- React Navigation bottom tab navigator with Ionicons icons across Home, Services (Browse), and Account.
+
+**Mobile Authentication & Secure Storage (M11.2)**
+- Header `X-Client: mobile` enforced across all client API calls, matching API expectations for mobile session handling.
+- Refresh token securely stored and rotated in `expo-secure-store` with automatic retry on 401. Access token kept in memory only.
+- Authentication methods:
+  - Indian mobile number OTP login and verification with countdown timer.
+  - Email + password login and account registration with validation using `@biznexa/types` schemas (`mobileSchema`, `loginSchema`, `registerSchema`, `otpVerifySchema`).
+  - Google OAuth sign-in integration (`POST /api/auth/google`).
+- Biometric authentication (FaceID / Fingerprint) toggle via `expo-local-authentication`, with auto-lock on launch and biometric unlock screen.
+
+**Home & Services Catalogue (M11.3)**
+- Home screen: BizNexa brand header, live typo-tolerant search with quick results dropdown (`GET /api/catalogue/search`), popular services cards with turnaround times (`GET /api/catalogue/popular`), category chips with service counts (`GET /api/catalogue/categories`), and trust indicators.
+- Services browse screen: searchable and filterable service catalogue (`GET /api/catalogue/services`) with category filter pills, sorting options (Popular, Price Low-High, Price High-Low, Name), pull-to-refresh, and empty state handling.
+- Service detail screen (`GET /api/catalogue/services/:slug`): service overview, packages selection cards with complete fee breakdown (professional fee, GST, government fee, partial payment advance %), required documents checklist, ordered process timeline stages, expandable FAQs accordion, related services, and sticky bottom booking bar.
+
+### Test results (18-Oct-2026)
+- 12 unit tests in `@biznexa/mobile` covering theme tokens, API client headers and error parsing, secure storage persistence, and auth schema validation.
+- All 8 workspace packages passing typecheck (`turbo run typecheck`), lint (`turbo run lint`), and tests (`turbo run test`).
+

@@ -388,9 +388,12 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 
 ## Milestone 11 — Mobile App (Expo)
 
-- [ ] **M11.1 — Expo app scaffold** `[Sonnet]` in `apps/mobile`, uses `packages/types` + `packages/api-client`, theme tokens, bottom tabs.
-- [ ] **M11.2 — Auth.** `[Sonnet]` Mobile OTP, email+password, Google; refresh token in secure storage (`X-Client: mobile`); biometric unlock.
-- [ ] **M11.3 — Home + Services browse + service detail.** `[Sonnet]`
+- [x] **M11.1 — Expo app scaffold** `[Sonnet]` in `apps/mobile`, uses `packages/types` + `packages/api-client`, theme tokens, bottom tabs.
+  - *Done 18-Oct-2026:* Expo SDK 52 scaffold in `apps/mobile` linked in pnpm workspace & Turborepo. Android tester APK target configured via `eas.json` and `app.json` (decision of 18-Oct: internal testers only, no iOS/TestFlight, no store). Shared design tokens in `@biznexa/config/tokens` (ink, night, marigold, seal, radius, spacing). Typed API client via `@biznexa/api-client`, bottom tabs navigation with Ionicons. 12 unit tests, zero lint or typecheck errors.
+- [x] **M11.2 — Auth.** `[Sonnet]` Mobile OTP, email+password, Google; refresh token in secure storage (`X-Client: mobile`); biometric unlock.
+  - *Done 18-Oct-2026:* Mobile authentication with `X-Client: mobile` header support on all requests. Refresh token stored securely in `expo-secure-store` with automatic token rotation and retry on 401. Access token kept in memory only. Mobile OTP login/verification, email + password login/registration using `@biznexa/types` schemas (`mobileSchema`, `loginSchema`, `registerSchema`, `otpVerifySchema`), and Google sign-in. Biometric authentication toggle (FaceID / Fingerprint) via `expo-local-authentication` with app lock screen.
+- [x] **M11.3 — Home + Services browse + service detail.** `[Sonnet]`
+  - *Done 18-Oct-2026:* Home screen with live typo-tolerant search (`GET /api/catalogue/search`), popular services cards (`GET /api/catalogue/popular`), categories carousel (`GET /api/catalogue/categories`), and trust indicators. Services browse screen with search filter, category filter pills, sort options (popular, price asc/desc, name), and pull-to-refresh. Service detail screen (`GET /api/catalogue/services/:slug`) with package selection cards, price breakdowns (professional fee, GST, government fees, advance payment % when partial), required documents checklist, process timeline stages, FAQs accordion, related services, and sticky bottom booking bar.
 - [ ] **M11.4 — Buy flow.** `[Opus]` Package → form renderer (native components using M3.2 validator) → upload (camera with crop, gallery, files) → Razorpay SDK incl. UPI intent.
 - [ ] **M11.5 — My Services + application detail timeline + messages.** `[Sonnet]`
 - [ ] **M11.6 — Documents & Payments** `[Sonnet]` (upload/replace, pay balance, invoice download).
