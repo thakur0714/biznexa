@@ -1500,6 +1500,219 @@
         ]
       }
     },
+    "/api/admin/notifications/deliveries": {
+      "get": {
+        "operationId": "AdminNotificationDeliveriesController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "QUEUED",
+                "SENT",
+                "DELIVERED",
+                "FAILED",
+                "SKIPPED"
+              ]
+            }
+          },
+          {
+            "name": "channel",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EMAIL",
+                "SMS",
+                "PUSH",
+                "IN_APP",
+                "WHATSAPP"
+              ]
+            }
+          },
+          {
+            "name": "event",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "user",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDeliveryPage"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · notifications"
+        ]
+      }
+    },
+    "/api/admin/notifications/deliveries/{id}/retry": {
+      "post": {
+        "operationId": "AdminNotificationDeliveriesController_retry",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDelivery"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such delivery"
+          },
+          "409": {
+            "description": "The delivery is not FAILED"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · notifications"
+        ]
+      }
+    },
+    "/api/notifications/callbacks/msg91": {
+      "post": {
+        "operationId": "DeliveryCallbacksController_msg91",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Applied (unknown or non-final reports are ignored)"
+          },
+          "401": {
+            "description": "Wrong token"
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/notifications/callbacks/sendgrid": {
+      "post": {
+        "operationId": "DeliveryCallbacksController_sendgrid",
+        "parameters": [
+          {
+            "name": "X-Twilio-Email-Event-Webhook-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Twilio-Email-Event-Webhook-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Applied (unknown or other events are ignored)"
+          },
+          "401": {
+            "description": "Missing or wrong signature"
+          }
+        },
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/api/catalogue/categories": {
       "get": {
         "operationId": "CatalogueController_categories",
@@ -15593,6 +15806,250 @@
         },
         "required": [
           "success"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationDeliveryPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "userId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "userName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "userEmail": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "event": {
+                  "type": "string"
+                },
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "EMAIL",
+                    "SMS",
+                    "PUSH",
+                    "IN_APP",
+                    "WHATSAPP"
+                  ]
+                },
+                "templateId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "QUEUED",
+                    "SENT",
+                    "DELIVERED",
+                    "FAILED",
+                    "SKIPPED"
+                  ]
+                },
+                "attempts": {
+                  "type": "integer"
+                },
+                "lastError": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "providerMessageId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "sendAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "sentAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "deliveredAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "failedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "userId",
+                "userName",
+                "userEmail",
+                "event",
+                "channel",
+                "templateId",
+                "status",
+                "attempts",
+                "lastError",
+                "providerMessageId",
+                "sendAt",
+                "sentAt",
+                "deliveredAt",
+                "failedAt",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "pages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit",
+          "pages"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationDelivery": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userName": {
+            "type": "string",
+            "nullable": true
+          },
+          "userEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "event": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "EMAIL",
+              "SMS",
+              "PUSH",
+              "IN_APP",
+              "WHATSAPP"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "SENT",
+              "DELIVERED",
+              "FAILED",
+              "SKIPPED"
+            ]
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "providerMessageId": {
+            "type": "string",
+            "nullable": true
+          },
+          "sendAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "failedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "userName",
+          "userEmail",
+          "event",
+          "channel",
+          "templateId",
+          "status",
+          "attempts",
+          "lastError",
+          "providerMessageId",
+          "sendAt",
+          "sentAt",
+          "deliveredAt",
+          "failedAt",
+          "createdAt",
+          "updatedAt"
         ],
         "additionalProperties": false
       },

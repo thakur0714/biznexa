@@ -78,7 +78,7 @@ describe('anonymiseAccount', () => {
     expect(find('user.update')).toEqual([{ op: 'user.update', args: { where: { id: USER }, data: anonymisedUser(NOW) } }]);
     expect(find('customerProfile.updateMany')[0].args).toEqual({ where: { userId: USER }, data: anonymisedProfile });
     expect(find('businessEntity.updateMany').map((c) => c.args.where)).toEqual([{ ownerId: USER }, { ownerId: USER, deletedAt: null }]);
-    for (const op of ['refreshToken.deleteMany', 'deviceToken.deleteMany', 'notification.deleteMany']) expect(find(op)[0].args).toEqual({ where: { userId: USER } });
+    for (const op of ['refreshToken.deleteMany', 'deviceToken.deleteMany', 'notification.deleteMany', 'notificationDelivery.deleteMany']) expect(find(op)[0].args).toEqual({ where: { userId: USER } });
     expect(find('otpCode.deleteMany')[0].args).toEqual({ where: { target: { in: ['asha@example.com', '9876543210'] } } });
     expect(find('lead.deleteMany')[0].args).toEqual({ where: { OR: [{ email: 'asha@example.com' }, { mobile: '9876543210' }] } });
   });

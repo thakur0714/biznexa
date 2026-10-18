@@ -5,6 +5,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { presetDateRange } from '@biznexa/types';
 import { staffSession } from './staff';
 
 let app: NestExpressApplication;
@@ -257,9 +258,11 @@ beforeAll(async () => {
   paymentIds.push(bookingPayment.id);
 
   // 10. Support ticket with exact 1-hour first response and 2-hour resolution
-  const ticketCreatedAt = new Date(now.getTime() - 2 * 3600 * 1000);
-  const ticketFirstResponseAt = new Date(now.getTime() - 1 * 3600 * 1000);
-  const ticketResolvedAt = now;
+  // The report asks for "today" (IST): just after midnight, now − 2 h would be yesterday, so start it no earlier than 00:01 IST.
+  const ticketEnd = new Date(Math.max(now.getTime(), presetDateRange('today', now).from.getTime() + 2 * 3600 * 1000 + 60_000));
+  const ticketCreatedAt = new Date(ticketEnd.getTime() - 2 * 3600 * 1000);
+  const ticketFirstResponseAt = new Date(ticketEnd.getTime() - 1 * 3600 * 1000);
+  const ticketResolvedAt = ticketEnd;
 
   const ticket = await prisma.ticket.create({
     data: {

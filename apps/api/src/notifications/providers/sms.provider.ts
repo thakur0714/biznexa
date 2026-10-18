@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { env } from '../../config/env';
+import { isPermanentHttpStatus, PermanentDeliveryError } from '../delivery/delivery-policy';
 
 export interface SendSmsOptions {
   to: string;
@@ -111,10 +112,27 @@ export class Msg91SmsProvider extends SmsProvider {
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       this.logger.error(`MSG91 send failed (${res.status}): ${errText}`);
-      throw new Error('Could not send SMS. Please try again.');
+      const message = `MSG91 send failed (${res.status})`;
+      throw isPermanentHttpStatus(res.status) ? new PermanentDeliveryError(message) : new Error(message);
     }
 
-    return { messageId: `msg91-${Date.now()}` };
+    // Flow API answers 200 with { type: 'success', message: '<request id>' } or { type: 'error', message: '<why>' }.
+    // The request id is what MSG91's delivery report sends back (M6.3 callbacks).
+    const body = parseJson(await res.text().catch(() => '')) as { type?: string; message?: unknown } | null;
+    if (body?.type === 'error') {
+      this.logger.error(`MSG91 refused the SMS: ${String(body.message ?? '')}`);
+      throw new PermanentDeliveryError(`MSG91 refused the SMS: ${String(body.message ?? 'unknown reason')}`);
+    }
+    const requestId = typeof body?.message === 'string' && body.message ? body.message : undefined;
+    return { messageId: requestId };
+  }
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
 }
 

@@ -1,5 +1,6 @@
 import nodemailer, { type Transporter } from 'nodemailer';
 import { env } from '../../config/env';
+import { isPermanentHttpStatus, PermanentDeliveryError } from '../delivery/delivery-policy';
 
 export interface SendEmailOptions {
   to: string;
@@ -110,7 +111,9 @@ export class SendGridEmailProvider extends EmailProvider {
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      throw new Error(`SendGrid delivery failed (${res.status}): ${errText}`);
+      const message = `SendGrid delivery failed (${res.status}): ${errText}`;
+      // 4xx (bad address, rejected content, bad key): retrying sends the same request and fails the same way.
+      throw isPermanentHttpStatus(res.status) ? new PermanentDeliveryError(message) : new Error(message);
     }
 
     const messageId = res.headers.get('x-message-id') ?? undefined;

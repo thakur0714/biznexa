@@ -29,6 +29,8 @@ const baseSchema = z
     SMS_PROVIDER: z.enum(['console', 'msg91']).default('console'),
     MSG91_AUTH_KEY: z.string().optional().default(''),
     MSG91_OTP_TEMPLATE_ID: z.string().optional().default(''),
+    /** Token in the MSG91 delivery report URL (M6.3). Empty = reports switched off; SMS stays SENT. */
+    MSG91_WEBHOOK_TOKEN: z.string().optional().default(''),
     /** `console` = in-memory (nothing sent), `smtp` = Mailpit in dev (docker compose), `sendgrid` in production. */
     EMAIL_PROVIDER: z.enum(['console', 'sendgrid', 'smtp']).default('console'),
     EMAIL_FROM: z.string().default('BizNexa <no-reply@biznexa.com>'),
@@ -38,6 +40,8 @@ const baseSchema = z
     SMTP_PASS: z.string().optional().default(''),
     SMTP_SECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
     SENDGRID_API_KEY: z.string().optional().default(''),
+    /** SendGrid Event Webhook verification key (M6.3). Empty = delivery events switched off; email stays SENT. */
+    SENDGRID_WEBHOOK_PUBLIC_KEY: z.string().optional().default(''),
     FCM_PROVIDER: z.enum(['fake', 'firebase']).default('fake'),
     FIREBASE_PROJECT_ID: z.string().optional().default(''),
     FIREBASE_SERVICE_ACCOUNT_KEY: z.string().optional().default(''),
@@ -55,6 +59,12 @@ const baseSchema = z
     PDF_RENDERER: z.enum(['playwright', 'stub']).default('playwright'),
     /** Redis key prefix for queues; tests use their own so a running dev API never picks up test jobs. */
     QUEUE_PREFIX: z.string().min(1).default('bn'),
+    /**
+     * On start, queue work left over from before (PDFs not yet generated, files not yet scanned). Off in the API
+     * tests: the suites share one database, so one suite's app would pick up another's records and write files
+     * into its own upload folder.
+     */
+    QUEUE_BOOT_SWEEP: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** Comma-separated list of approved partner API keys for public certificate verification */
     CERT_VERIFY_API_KEYS: z.string().optional().default(''),
   });

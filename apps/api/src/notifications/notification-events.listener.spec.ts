@@ -1,7 +1,7 @@
 import { NotificationEventsListener } from './notification-events.listener';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { EventBus } from '../events/event-bus';
-import type { NotificationDispatcherService } from './notification-dispatcher.service';
+import type { NotificationQueueService } from './delivery/notification-queue.service';
 import type { TemplateEngineService } from './template-engine.service';
 import { formatINR } from '@biznexa/types';
 
@@ -9,7 +9,7 @@ describe('NotificationEventsListener (M6.8)', () => {
   let listener: NotificationEventsListener;
   let prisma: Partial<PrismaService>;
   let events: Partial<EventBus>;
-  let dispatcher: Partial<NotificationDispatcherService>;
+  let notifications: Partial<NotificationQueueService>;
   let templateEngine: Partial<TemplateEngineService>;
 
   const mockTemplates = [
@@ -66,8 +66,8 @@ describe('NotificationEventsListener (M6.8)', () => {
       on: jest.fn(),
     };
 
-    dispatcher = {
-      dispatch: jest.fn().mockResolvedValue({ success: true, channel: 'IN_APP' }),
+    notifications = {
+      enqueue: jest.fn().mockResolvedValue({ id: 'delivery-1', created: true }),
     };
 
     templateEngine = {
@@ -80,7 +80,7 @@ describe('NotificationEventsListener (M6.8)', () => {
     listener = new NotificationEventsListener(
       prisma as PrismaService,
       events as EventBus,
-      dispatcher as NotificationDispatcherService,
+      notifications as NotificationQueueService,
       templateEngine as TemplateEngineService,
     );
   });
@@ -136,13 +136,15 @@ describe('NotificationEventsListener (M6.8)', () => {
         }),
       );
 
-      expect(dispatcher.dispatch).toHaveBeenCalledTimes(2);
-      expect(dispatcher.dispatch).toHaveBeenCalledWith(
+      expect(notifications.enqueue).toHaveBeenCalledTimes(2);
+      expect(notifications.enqueue).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 'cust-1',
           channel: 'EMAIL',
           event: 'payment.succeeded',
-          recipient: { email: 'alice@example.com', mobile: '9876543210' },
+          // One delivery per payment: the payment id names this occurrence (idempotency, M6.3).
+          sourceKey: 'pay-1',
+          templateId: 'tpl-email-1',
         }),
       );
     });
@@ -157,12 +159,12 @@ describe('NotificationEventsListener (M6.8)', () => {
 
       expect(prisma.notificationTemplate!.findMany).toHaveBeenCalledWith({ where: { event: 'refund.processed', isActive: true } });
       expect(templateEngine.render).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ customerName: 'Alice Sharma', orderId: 'ORD-2026-0001', amount: formatINR(284000) }));
-      expect(dispatcher.dispatch).toHaveBeenCalledWith(expect.objectContaining({ userId: 'cust-1', event: 'refund.processed' }));
+      expect(notifications.enqueue).toHaveBeenCalledWith(expect.objectContaining({ userId: 'cust-1', event: 'refund.processed' }));
     });
 
     it('does nothing for a payment without a customer', async () => {
       await listener.handleRefundProcessed({ refundId: 'r-1', paymentId: 'pay-1', orderId: null, customerId: null, amount: 100, paymentStatus: 'REFUNDED' });
-      expect(dispatcher.dispatch).not.toHaveBeenCalled();
+      expect(notifications.enqueue).not.toHaveBeenCalled();
     });
   });
 
@@ -195,7 +197,7 @@ describe('NotificationEventsListener (M6.8)', () => {
           reason: 'Insufficient funds',
         }),
       );
-      expect(dispatcher.dispatch).toHaveBeenCalled();
+      expect(notifications.enqueue).toHaveBeenCalled();
     });
   });
 
@@ -228,7 +230,7 @@ describe('NotificationEventsListener (M6.8)', () => {
           total: formatINR(1000000),
         }),
       );
-      expect(dispatcher.dispatch).toHaveBeenCalled();
+      expect(notifications.enqueue).toHaveBeenCalled();
     });
   });
 
@@ -274,7 +276,7 @@ describe('NotificationEventsListener (M6.8)', () => {
           reason: 'Front side clear copy required',
         }),
       );
-      expect(dispatcher.dispatch).toHaveBeenCalled();
+      expect(notifications.enqueue).toHaveBeenCalled();
     });
 
     it('document.approved renders application details and document name', async () => {
@@ -296,7 +298,7 @@ describe('NotificationEventsListener (M6.8)', () => {
           serviceName: 'Private Limited Company Registration',
         }),
       );
-      expect(dispatcher.dispatch).toHaveBeenCalled();
+      expect(notifications.enqueue).toHaveBeenCalled();
     });
 
     it('document.rejected renders document name and rejection reason', async () => {
@@ -319,7 +321,7 @@ describe('NotificationEventsListener (M6.8)', () => {
           reason: 'Older than 2 months',
         }),
       );
-      expect(dispatcher.dispatch).toHaveBeenCalled();
+      expect(notifications.enqueue).toHaveBeenCalled();
     });
   });
 
@@ -333,7 +335,7 @@ describe('NotificationEventsListener (M6.8)', () => {
       });
 
       expect(prisma.application!.findUnique).not.toHaveBeenCalled();
-      expect(dispatcher.dispatch).not.toHaveBeenCalled();
+      expect(notifications.enqueue).not.toHaveBeenCalled();
     });
 
     it('skips notification when transition was not visible to customer', async () => {
@@ -350,7 +352,7 @@ describe('NotificationEventsListener (M6.8)', () => {
       });
 
       expect(prisma.application!.findUnique).not.toHaveBeenCalled();
-      expect(dispatcher.dispatch).not.toHaveBeenCalled();
+      expect(notifications.enqueue).not.toHaveBeenCalled();
     });
 
     it('dispatches when transition is visible to customer', async () => {
@@ -384,7 +386,7 @@ describe('NotificationEventsListener (M6.8)', () => {
           status: 'In Progress',
         }),
       );
-      expect(dispatcher.dispatch).toHaveBeenCalled();
+      expect(notifications.enqueue).toHaveBeenCalled();
     });
   });
 
@@ -423,7 +425,7 @@ describe('NotificationEventsListener (M6.8)', () => {
           entityName: 'Acme Pvt Ltd',
         }),
       );
-      expect(dispatcher.dispatch).toHaveBeenCalled();
+      expect(notifications.enqueue).toHaveBeenCalled();
     });
   });
 
@@ -452,8 +454,8 @@ describe('NotificationEventsListener (M6.8)', () => {
         gatewayPaymentId: 'mock-1',
       });
 
-      expect(dispatcher.dispatch).toHaveBeenCalledTimes(1);
-      expect(dispatcher.dispatch).toHaveBeenCalledWith(
+      expect(notifications.enqueue).toHaveBeenCalledTimes(1);
+      expect(notifications.enqueue).toHaveBeenCalledWith(
         expect.objectContaining({ channel: 'SMS' }),
       );
     });
@@ -461,7 +463,7 @@ describe('NotificationEventsListener (M6.8)', () => {
     it('swallows dispatcher error without throwing', async () => {
       (prisma.user!.findUnique as jest.Mock).mockResolvedValue({ id: 'u1', name: 'User 1' });
       (prisma.order!.findUnique as jest.Mock).mockResolvedValue({ id: 'o1', code: 'ORD-1' });
-      (dispatcher.dispatch as jest.Mock).mockRejectedValue(new Error('Network failure'));
+      (notifications.enqueue as jest.Mock).mockRejectedValue(new Error('Network failure'));
 
       await expect(
         listener.handlePaymentSucceeded({
@@ -516,7 +518,7 @@ describe('NotificationEventsListener (M6.8)', () => {
           messageExcerpt: 'Please submit your PAN card copy.',
         }),
       );
-      expect(dispatcher.dispatch).toHaveBeenCalledTimes(2); // EMAIL and IN_APP
+      expect(notifications.enqueue).toHaveBeenCalledTimes(2); // EMAIL and IN_APP
     });
 
     it('notifies assigned staff on IN_APP only when message is from customer', async () => {
@@ -555,8 +557,8 @@ describe('NotificationEventsListener (M6.8)', () => {
           messageExcerpt: 'Here is the copy.',
         }),
       );
-      expect(dispatcher.dispatch).toHaveBeenCalledTimes(1);
-      expect(dispatcher.dispatch).toHaveBeenCalledWith(
+      expect(notifications.enqueue).toHaveBeenCalledTimes(1);
+      expect(notifications.enqueue).toHaveBeenCalledWith(
         expect.objectContaining({ channel: 'IN_APP', userId: 'staff-1' }),
       );
     });
@@ -581,7 +583,7 @@ describe('NotificationEventsListener (M6.8)', () => {
         fromStaff: false,
       });
 
-      expect(dispatcher.dispatch).not.toHaveBeenCalled();
+      expect(notifications.enqueue).not.toHaveBeenCalled();
     });
 
     it('swallows dispatcher error without throwing', async () => {
@@ -602,7 +604,7 @@ describe('NotificationEventsListener (M6.8)', () => {
       (prisma.notificationTemplate!.findMany as jest.Mock).mockResolvedValue([
         { channel: 'EMAIL', isActive: true, event: 'message.received' },
       ]);
-      (dispatcher.dispatch as jest.Mock).mockRejectedValue(new Error('Network failure'));
+      (notifications.enqueue as jest.Mock).mockRejectedValue(new Error('Network failure'));
 
       await expect(
         listener.handleMessageCreated({
