@@ -8,7 +8,7 @@ import {
 } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventBus } from '../events/event-bus';
-import { NotificationDispatcherService } from './notification-dispatcher.service';
+import { NotificationQueueService } from './delivery/notification-queue.service';
 import { TemplateEngineService } from './template-engine.service';
 import { env } from '../config/env';
 
@@ -19,7 +19,7 @@ export class NotificationEventsListener implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventBus,
-    private readonly dispatcher: NotificationDispatcherService,
+    private readonly notifications: NotificationQueueService,
     private readonly templateEngine: TemplateEngineService,
   ) {}
 
@@ -70,7 +70,7 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('payment.succeeded', customer, variables, link);
+      await this.dispatchForEvent('payment.succeeded', payload.paymentId, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling payment.succeeded: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -105,7 +105,7 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('payment.failed', customer, variables, link);
+      await this.dispatchForEvent('payment.failed', payload.paymentId, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling payment.failed: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -140,7 +140,7 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('invoice.issued', customer, variables, link);
+      await this.dispatchForEvent('invoice.issued', payload.invoiceId, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling invoice.issued: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -170,7 +170,7 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('refund.processed', customer, variables, link);
+      await this.dispatchForEvent('refund.processed', payload.refundId, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling refund.processed: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -212,7 +212,7 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('document.requested', customer, variables, link);
+      await this.dispatchForEvent('document.requested', payload.documentId, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling document.requested: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -254,7 +254,7 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('document.approved', customer, variables, link);
+      await this.dispatchForEvent('document.approved', payload.documentId, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling document.approved: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -296,7 +296,7 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('document.rejected', customer, variables, link);
+      await this.dispatchForEvent('document.rejected', payload.documentId, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling document.rejected: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -313,7 +313,7 @@ export class NotificationEventsListener implements OnModuleInit {
       const history = await this.prisma.applicationStageHistory.findFirst({
         where: { applicationId: payload.applicationId, status: payload.to },
         orderBy: { changedAt: 'desc' },
-        select: { visibleToCustomer: true },
+        select: { id: true, visibleToCustomer: true },
       });
       if (history && history.visibleToCustomer === false) {
         return;
@@ -355,7 +355,8 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('application.status_changed', customer, variables, link);
+      // The history row names this change; without one (older data) fall back to the target status.
+      await this.dispatchForEvent('application.status_changed', history?.id ?? `${payload.applicationId}:${payload.to}`, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling application.status_changed: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -416,18 +417,25 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('certificate.issued', customer, variables, link);
+      await this.dispatchForEvent('certificate.issued', payload.certificateId, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling certificate.issued: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
+  /**
+   * Queue one delivery per active template (channel). `sourceKey` names this occurrence of the event, so
+   * handling the same event again (a replayed webhook, a retried request) sends nothing new (M6.3).
+   * `useGivenAddress`: send to the email / mobile passed here, not the user record (an anonymised account).
+   */
   private async dispatchForEvent(
     event: NotificationEvent,
+    sourceKey: string,
     recipient: { id: string; name: string; email?: string | null; mobile?: string | null },
     variables: Record<string, unknown>,
     link?: string,
     allowedChannels?: string[],
+    useGivenAddress = false,
   ): Promise<void> {
     let templates = await this.prisma.notificationTemplate.findMany({
       where: {
@@ -443,22 +451,21 @@ export class NotificationEventsListener implements OnModuleInit {
     for (const template of templates) {
       try {
         const rendered = this.templateEngine.render(template, variables);
-        await this.dispatcher.dispatch({
+        await this.notifications.enqueue({
           userId: recipient.id,
           channel: template.channel,
           event,
+          sourceKey,
+          templateId: template.id,
           title: rendered.subject,
           body: rendered.body,
           payload: variables,
           link,
-          recipient: {
-            email: recipient.email ?? undefined,
-            mobile: recipient.mobile ?? undefined,
-          },
+          ...(useGivenAddress ? { recipient: { email: recipient.email ?? undefined, mobile: recipient.mobile ?? undefined } } : {}),
         });
       } catch (err) {
         this.logger.error(
-          `Failed to dispatch notification for event "${event}" on channel "${template.channel}" to user "${recipient.id}": ${
+          `Failed to queue notification for event "${event}" on channel "${template.channel}" to user "${recipient.id}": ${
             err instanceof Error ? err.message : String(err)
           }`,
         );
@@ -516,7 +523,7 @@ export class NotificationEventsListener implements OnModuleInit {
           link,
         };
 
-        await this.dispatchForEvent('message.received', customer, variables, link);
+        await this.dispatchForEvent('message.received', payload.messageId, customer, variables, link);
       } else {
         // Notify assigned staff on IN_APP only
         if (!app.assignedToId) return;
@@ -539,7 +546,7 @@ export class NotificationEventsListener implements OnModuleInit {
           link,
         };
 
-        await this.dispatchForEvent('message.received', staff, variables, link, ['IN_APP']);
+        await this.dispatchForEvent('message.received', payload.messageId, staff, variables, link, ['IN_APP']);
       }
     } catch (err) {
       this.logger.error(`Error handling message.created: ${err instanceof Error ? err.message : String(err)}`);
@@ -562,7 +569,7 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('ticket.created', customer, variables, link);
+      await this.dispatchForEvent('ticket.created', payload.ticketId, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling ticket.created: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -587,7 +594,7 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('ticket.replied', customer, variables, link);
+      await this.dispatchForEvent('ticket.replied', payload.messageId, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling ticket.replied: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -609,7 +616,10 @@ export class NotificationEventsListener implements OnModuleInit {
         link,
       };
 
-      await this.dispatchForEvent('ticket.resolved', customer, variables, link);
+      // A ticket can be reopened and resolved again: each resolution is its own notification.
+      const ticket = await this.prisma.ticket.findUnique({ where: { id: payload.ticketId }, select: { resolvedAt: true } });
+      const sourceKey = `${payload.ticketId}:${ticket?.resolvedAt?.toISOString() ?? 'resolved'}`;
+      await this.dispatchForEvent('ticket.resolved', sourceKey, customer, variables, link);
     } catch (err) {
       this.logger.error(`Error handling ticket.resolved: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -625,7 +635,7 @@ export class NotificationEventsListener implements OnModuleInit {
 
       const link = `${env().PUBLIC_WEB_URL}/dashboard/privacy`;
       const expiresOn = new Date(payload.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
-      await this.dispatchForEvent('privacy.export_ready', customer, { customerName: customer.name, expiresOn, link }, link);
+      await this.dispatchForEvent('privacy.export_ready', payload.requestId, customer, { customerName: customer.name, expiresOn, link }, link);
     } catch (err) {
       this.logger.error(`Error handling privacy.export_ready: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -641,7 +651,7 @@ export class NotificationEventsListener implements OnModuleInit {
 
       const link = `${env().PUBLIC_WEB_URL}/dashboard/privacy`;
       const requestType = payload.type === 'EXPORT' ? 'data export' : 'account deletion';
-      await this.dispatchForEvent('privacy.request_rejected', customer, { customerName: customer.name, requestType, reason: payload.reason, link }, link);
+      await this.dispatchForEvent('privacy.request_rejected', payload.requestId, customer, { customerName: customer.name, requestType, reason: payload.reason, link }, link);
     } catch (err) {
       this.logger.error(`Error handling privacy.request_rejected: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -651,7 +661,7 @@ export class NotificationEventsListener implements OnModuleInit {
   async handleAccountDeleted(payload: DomainEventPayloads['privacy.account_deleted']): Promise<void> {
     try {
       const recipient = { id: payload.userId, name: payload.name, email: payload.email, mobile: payload.mobile };
-      await this.dispatchForEvent('privacy.account_deleted', recipient, { customerName: payload.name }, undefined, ['EMAIL', 'SMS']);
+      await this.dispatchForEvent('privacy.account_deleted', payload.requestId, recipient, { customerName: payload.name }, undefined, ['EMAIL', 'SMS'], true);
     } catch (err) {
       this.logger.error(`Error handling privacy.account_deleted: ${err instanceof Error ? err.message : String(err)}`);
     }

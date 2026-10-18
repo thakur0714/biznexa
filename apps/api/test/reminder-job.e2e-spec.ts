@@ -4,13 +4,13 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ReminderJobService } from '../src/reminders/reminder-job.service';
-import { NotificationDispatcherService } from '../src/notifications/notification-dispatcher.service';
+import { NotificationQueueService } from '../src/notifications/delivery/notification-queue.service';
 
 describe('Reminder Job (e2e)', () => {
   let app: NestExpressApplication;
   let prisma: PrismaService;
   let job: ReminderJobService;
-  let dispatcher: NotificationDispatcherService;
+  let notifications: NotificationQueueService;
   let dispatchSpy: jest.SpyInstance;
 
   let runStr = Date.now().toString(36);
@@ -29,8 +29,9 @@ describe('Reminder Job (e2e)', () => {
 
     prisma = app.get(PrismaService);
     job = app.get(ReminderJobService);
-    dispatcher = app.get(NotificationDispatcherService);
-    dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
+    // Sends are queued (M6.3): what the job asks for is what enqueue receives.
+    notifications = app.get(NotificationQueueService);
+    dispatchSpy = jest.spyOn(notifications, 'enqueue');
 
     const randMobile = `9${Date.now().toString().slice(-9)}`;
 
@@ -121,6 +122,7 @@ describe('Reminder Job (e2e)', () => {
        expect(emailCall[0].event).toBe('certificate.expiring');
        expect(emailCall[0].payload.daysLeft).toBe(30);
        expect(emailCall[0].payload.certificateNumber).toBe(`${prefix}-123`);
+       expect(emailCall[0].sourceKey).toMatch(/:30$/); // reminder + offset: one notification per offset
        expect(emailCall[0].link).toContain(`/services/${serviceCatSlug}/${serviceSlug}?entity=${entityAId}`);
     }
   });

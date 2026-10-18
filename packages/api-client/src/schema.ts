@@ -516,6 +516,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/notifications/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNotificationDeliveriesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/notifications/deliveries/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNotificationDeliveriesController_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/callbacks/msg91": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DeliveryCallbacksController_msg91"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/callbacks/sendgrid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DeliveryCallbacksController_sendgrid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalogue/categories": {
         parameters: {
             query?: never;
@@ -3048,6 +3112,72 @@ export interface components {
         DeviceTokenActionResponse: {
             success: boolean;
             token?: string;
+        };
+        NotificationDeliveryPage: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                userId: string;
+                userName: string | null;
+                userEmail: string | null;
+                event: string;
+                /** @enum {string} */
+                channel: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+                /** Format: uuid */
+                templateId: string | null;
+                /** @enum {string} */
+                status: "QUEUED" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED";
+                attempts: number;
+                lastError: string | null;
+                providerMessageId: string | null;
+                /** Format: date-time */
+                sendAt: string | null;
+                /** Format: date-time */
+                sentAt: string | null;
+                /** Format: date-time */
+                deliveredAt: string | null;
+                /** Format: date-time */
+                failedAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+            pages: number;
+        };
+        NotificationDelivery: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            userName: string | null;
+            userEmail: string | null;
+            event: string;
+            /** @enum {string} */
+            channel: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+            /** Format: uuid */
+            templateId: string | null;
+            /** @enum {string} */
+            status: "QUEUED" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED";
+            attempts: number;
+            lastError: string | null;
+            providerMessageId: string | null;
+            /** Format: date-time */
+            sendAt: string | null;
+            /** Format: date-time */
+            sentAt: string | null;
+            /** Format: date-time */
+            deliveredAt: string | null;
+            /** Format: date-time */
+            failedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         AuthMeResponse: {
             /** Format: uuid */
@@ -7959,6 +8089,124 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DeviceTokenActionResponse"];
                 };
+            };
+        };
+    };
+    AdminNotificationDeliveriesController_list: {
+        parameters: {
+            query?: {
+                status?: "QUEUED" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED";
+                channel?: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+                event?: string;
+                user?: string;
+                from?: string;
+                to?: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDeliveryPage"];
+                };
+            };
+        };
+    };
+    AdminNotificationDeliveriesController_retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDelivery"];
+                };
+            };
+            /** @description No such delivery */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The delivery is not FAILED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DeliveryCallbacksController_msg91: {
+        parameters: {
+            query: {
+                token: unknown;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Applied (unknown or non-final reports are ignored) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wrong token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DeliveryCallbacksController_sendgrid: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Twilio-Email-Event-Webhook-Timestamp": string;
+                "X-Twilio-Email-Event-Webhook-Signature": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Applied (unknown or other events are ignored) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or wrong signature */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -257,9 +257,9 @@ describe('MessagesController (e2e, M4.11)', () => {
       });
 
       // Notification is saved for the customer
-      // Since it runs in the background, we need to poll or wait for a bit
+      // Sent by the notification queue (M6.3): poll for it
       let notifications: any[] = [];
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 100; i++) {
         notifications = await prisma.notification.findMany({
           where: { userId: customer1Id, event: 'message.received', channel: 'IN_APP' },
         });
