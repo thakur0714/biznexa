@@ -137,6 +137,12 @@ enum BookingStatus {
   EXPIRED
 }
 
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum CertificateStatus {
   ACTIVE
   SUSPENDED
@@ -233,6 +239,7 @@ model User {
   tickets           Ticket[]          @relation("TicketCustomer")
   assignedTickets   Ticket[]          @relation("TicketAssignee")
   bookings          Booking[]
+  moderatedReviews  Review[]          @relation("ReviewModerator")
   bookingStatusHistory BookingStatusHistory[]
   auditLogs         AuditLog[]
   internalNotes     InternalNote[]
@@ -1015,15 +1022,23 @@ model BookingStatusHistory {
 }
 
 model Review {
-  id           String     @id @default(uuid())
-  bookingId    String     @unique
-  consultantId String
-  rating       Int
-  text         String?
-  isPublished  Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  booking      Booking    @relation(fields: [bookingId], references: [id])
-  consultant   Consultant @relation(fields: [consultantId], references: [id])
+  id              String       @id @default(uuid())
+  bookingId       String       @unique
+  consultantId    String
+  rating          Int
+  text            String?
+  status          ReviewStatus @default(PENDING)
+  isPublished     Boolean      @default(false)
+  moderationReason String?
+  moderatedAt     DateTime?
+  moderatedById   String?
+  createdAt       DateTime     @default(now())
+  booking         Booking      @relation(fields: [bookingId], references: [id])
+  consultant      Consultant   @relation(fields: [consultantId], references: [id])
+  moderatedBy     User?        @relation("ReviewModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([consultantId, status])
 }
 
 // ─────────────────────────── Certificates ───────────────────────────

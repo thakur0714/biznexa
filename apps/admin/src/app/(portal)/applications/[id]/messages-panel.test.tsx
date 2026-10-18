@@ -33,7 +33,7 @@ const fakeClient = {
       response: new Response(null, { status: 200 }),
     };
   }),
-  POST: vi.fn(async (url: string, options?: { body?: { body?: string, fileIds?: string[] } | FormData | any }) => {
+  POST: vi.fn(async (url: string, options?: { body?: { body?: string; fileIds?: string[] } | FormData }) => {
     calls.push({ method: 'POST', url, options });
     if (url.endsWith('/read')) {
       const readRes: MarkMessagesReadResponse = markMessagesReadResponseSchema.parse({ count: 1 });
@@ -48,10 +48,11 @@ const fakeClient = {
         response: new Response(null, { status: 201 }),
       };
     }
+    const payload = options?.body instanceof FormData ? undefined : options?.body;
     const nextMsg: Message = messageSchema.parse({
       ...createdMessage,
-      body: options?.body?.body !== undefined ? options.body.body : createdMessage.body,
-      attachments: options?.body?.fileIds ? [{ id: options.body.fileIds[0], fileName: 'attached.pdf', mimeType: 'application/pdf', sizeBytes: 1024 }] : [],
+      body: payload?.body !== undefined ? payload.body : createdMessage.body,
+      attachments: payload?.fileIds ? [{ id: payload.fileIds[0], fileName: 'attached.pdf', mimeType: 'application/pdf', sizeBytes: 1024 }] : [],
     });
     return {
       data: nextMsg,
@@ -192,7 +193,7 @@ describe('MessagesPanel (M4.11)', () => {
 
     await waitFor(() => {
       expect(calls.some(c => c.url === '/api/files' && c.method === 'POST')).toBe(true);
-      expect(calls.some(c => c.url.includes('/messages') && c.method === 'POST' && (c.options as any)?.body?.fileIds?.includes('77777777-7777-4777-8777-777777777777'))).toBe(true);
+      expect(calls.some(c => c.url.includes('/messages') && c.method === 'POST' && (c.options as { body?: { fileIds?: string[] } } | undefined)?.body?.fileIds?.includes('77777777-7777-4777-8777-777777777777'))).toBe(true);
     });
 
     await screen.findByText('attached.pdf');
