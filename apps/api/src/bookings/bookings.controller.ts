@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import {
   bookingCheckoutSchema,
   bookingListSchema,
@@ -18,6 +19,7 @@ import {
 } from '@biznexa/types';
 import { AuthUser, CurrentUser, PERMS, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
+import { PAYMENT_LIMIT } from '../common/rate-limits';
 import { BookingPaymentsService } from '../payments/booking-payments.service';
 import { BookingsService } from './bookings.service';
 
@@ -92,6 +94,7 @@ export class BookingsController {
   @ApiResponse({ status: 409, description: 'Already paid, or the hold ran out (pick a slot again)' })
   @ApiResponse({ status: 502, description: 'The payment gateway refused the order; try again' })
   @ApiResponse({ status: 503, description: 'The payment gateway could not be reached; try again' })
+  @Throttle(PAYMENT_LIMIT)
   @Post(':id/payment')
   @HttpCode(200)
   pay(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() u: AuthUser) {
@@ -102,6 +105,7 @@ export class BookingsController {
   @ApiZodResponse('BookingView', bookingViewSchema)
   @ApiResponse({ status: 400, description: 'Bad body, or the signature or ids don’t match a payment of this booking' })
   @ApiResponse({ status: 404, description: 'No such booking among yours' })
+  @Throttle(PAYMENT_LIMIT)
   @Post(':id/payment/callback')
   @HttpCode(200)
   callback(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(paymentCallbackInput) body: PaymentCallbackInput, @CurrentUser() u: AuthUser) {

@@ -18,6 +18,10 @@
     "typescript": "^5.8.3"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "esbuild", "sharp", "@nestjs/core", "unrs-resolver"]
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "esbuild", "sharp", "@nestjs/core", "unrs-resolver"],
+    "overrides": {
+      "postcss@<8.5.18": "^8.5.18",
+      "mysql2@<3.22.0": "^3.22.0"
+    }
   }
 }
