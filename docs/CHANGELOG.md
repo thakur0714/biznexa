@@ -139,3 +139,16 @@ Admin applications list and detail, assignment, status updates and the document 
 - Every customer route was reviewed for ownership checks; no leak was found, so no code changed.
 - API: `test/data-isolation.e2e-spec.ts` (86 tests). Customer A gets 404 for every one of customer B's applications, documents, deliverables, payments, invoices, credit notes, certificates, messages, attachments, tickets, bookings, businesses, notifications and data exports — the same answer as an id that doesn't exist. B's ids inside A's requests (files, business, application) are refused, signed download links can't be pointed at another resource, lists/counts/dashboard show A nothing of B's, and B's data is checked unchanged afterwards.
 - Browser: `e2e/customer-isolation.spec.ts` on desktop and mobile — A opens B's application by URL and sees "Application not found"; A's My Services, Businesses and Support pages show none of B's things.
+
+## M12.4 — Authorization sweep (18-Oct-2026)
+
+### Built and tested
+- Every API route now declares who may call it: `@Public()`, `@SignedIn()`, `@CustomerOnly()`, `@RequirePermissions()` or `@RequireAnyPermission()`. The global guard refuses a route that declares nothing (D63).
+- Customer self-service routes are customer-only: staff accounts get 403 there instead of acting as a customer.
+- API: `test/route-access.e2e-spec.ts` — every route (found from the running app) × anonymous, customer, consultant, admin, operations, support and a staff session before 2FA, checked against the decorators and the role seed. A new route without an access decorator fails it.
+- Test fix: `invoice-pdf` and `invoice-record` no longer share a far-future invoice year with each other or with `invoice-numbers`, and their date override applies only to their own payments, so the counter each deletes at the end is never one another suite (or this process's invoice sweep, working on another suite's payment) is using. This removes the random duplicate-invoice-number failures in parallel runs.
+- Test fix: `certificate-pdf` waited only for its own process's `pdf.generated` event, but every API process queues all certificates without a PDF when it starts, so another suite's process could render the regenerated PDF first and the test timed out after 2 minutes. It now also watches the certificate's `pdfKey`.
+
+### Test results
+- API suite run 3 times in a row: 83 suites, 794 tests, all passed each time.
+

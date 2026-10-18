@@ -10,24 +10,26 @@ import { timeStep, totpCode } from '../src/auth/totp';
 type Http = ReturnType<typeof request>;
 export const STAFF_PASSWORD = 'Staff@12345';
 
-/** Creates a user with `role` (e.g. ADMIN, OPERATIONS) and the given email; returns its id. */
-export async function createStaff(prisma: PrismaService, role: string, email: string) {
-  const { id: roleId } = await prisma.role.findUniqueOrThrow({ where: { key: role } });
+/** Creates a user with `role` (e.g. ADMIN, OPERATIONS — or several) and the given email; returns its id. */
+export async function createStaff(prisma: PrismaService, role: string | string[], email: string) {
+  const keys = typeof role === 'string' ? [role] : role;
+  const roles = await prisma.role.findMany({ where: { key: { in: keys } }, select: { id: true } });
+  if (roles.length !== keys.length) throw new Error(`Unknown role among ${keys.join(', ')}`);
   const user = await prisma.user.create({
     data: {
-      name: `E2E ${role}`,
+      name: `E2E ${keys.join('+')}`,
       email,
       passwordHash: await bcrypt.hash(STAFF_PASSWORD, 4),
       emailVerified: true,
       consentAt: new Date(),
-      roles: { create: { roleId } },
+      roles: { create: roles.map((r) => ({ roleId: r.id })) },
     },
   });
   return user.id;
 }
 
 /** Logs in with the password, sets up 2FA and returns the verified access token and the TOTP secret. */
-export async function staffSession(http: Http, prisma: PrismaService, role: string, email: string) {
+export async function staffSession(http: Http, prisma: PrismaService, role: string | string[], email: string) {
   await createStaff(prisma, role, email);
   const login = await http.post('/api/auth/login').send({ email, password: STAFF_PASSWORD }).expect(200);
   const auth = `Bearer ${login.body.accessToken}`;
