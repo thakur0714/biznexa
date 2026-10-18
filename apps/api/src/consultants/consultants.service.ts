@@ -119,7 +119,7 @@ export class ConsultantsService {
         take: query.limit,
         select: {
           id: true, userId: true, category: true, verificationStatus: true, city: true,
-          state: true, experienceYears: true, feePerSession: true, createdAt: true,
+          state: true, experienceYears: true, feePerSession: true, isFeatured: true, createdAt: true,
           user: { select: { name: true, email: true } },
         },
       }),
@@ -313,6 +313,35 @@ export class ConsultantsService {
     return this.setStatus(id, 'SUSPENDED', null, staffId);
   }
 
+  async setFeatured(id: string, isFeatured: boolean, staffId: string) {
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const before = await tx.consultant.findUnique({
+        where: { id },
+        select: { id: true, verificationStatus: true, isFeatured: true },
+      });
+      if (!before) throw new NotFoundException('Consultant not found');
+      if (before.verificationStatus !== 'APPROVED') {
+        throw new ConflictException('Only approved consultants can be featured.');
+      }
+      const update = await tx.consultant.updateMany({
+        where: { id, verificationStatus: 'APPROVED' },
+        data: { isFeatured },
+      });
+      if (update.count !== 1) {
+        throw new ConflictException('Consultant status changed while this action was being processed. Reload and try again.');
+      }
+      await this.audit.log({
+        actorId: staffId,
+        action: 'consultant.featured',
+        entityType: 'Consultant', entityId: id,
+        before: { isFeatured: before.isFeatured },
+        after: { isFeatured },
+      }, tx);
+      return { id, isFeatured };
+    });
+    return updated;
+  }
+
   private async setStatus(id: string, status: 'APPROVED' | 'REJECTED' | 'SUSPENDED', reason: string | null, staffId: string) {
     const updated = await this.prisma.$transaction(async (tx) => {
       const before = await tx.consultant.findUnique({
@@ -390,6 +419,7 @@ export class ConsultantsService {
       } : {}),
       ...(query.language ? { languages: { has: query.language } } : {}),
       ...(query.consultationType ? { consultationTypes: { has: query.consultationType } } : {}),
+      ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
     };
     const orderBy: Prisma.ConsultantOrderByWithRelationInput[] = query.sort === 'experience'
       ? [{ experienceYears: 'desc' }, { rating: 'desc' }, { id: 'asc' }]
@@ -402,7 +432,7 @@ export class ConsultantsService {
     const select = {
       id: true, slug: true, category: true, qualification: true, city: true, state: true, area: true,
       expertise: true, languages: true, bio: true, photoUrl: true, feePerSession: true,
-      sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true,
+      sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true, isFeatured: true,
       user: { select: { name: true } },
     } satisfies Prisma.ConsultantSelect;
     let rows: (Prisma.ConsultantGetPayload<{ select: typeof select }> & { availableToday: boolean })[];
@@ -498,6 +528,7 @@ export class ConsultantsService {
         reviewCount: row.reviewCount,
         isOnline: row.isOnline,
         availableToday: row.availableToday,
+        isFeatured: row.isFeatured,
       })),
       total,
       page: query.page,
@@ -511,7 +542,7 @@ export class ConsultantsService {
       select: {
         id: true, slug: true, category: true, qualification: true, experienceYears: true, expertise: true,
         languages: true, city: true, state: true, area: true, bio: true, photoUrl: true, feePerSession: true,
-        sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true,
+        sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true, isFeatured: true,
         user: { select: { name: true } },
         services: {
           where: { service: { isActive: true, deletedAt: null } },
@@ -523,8 +554,14 @@ export class ConsultantsService {
     if (!consultant) throw new NotFoundException('Consultant not found');
     const ratings = await this.prisma.review.groupBy({
       by: ['rating'],
-      where: { consultantId: consultant.id, isPublished: true },
+      where: { consultantId: consultant.id, status: 'APPROVED' },
       _count: { _all: true },
+    });
+    const verifiedReviews = await this.prisma.review.findMany({
+      where: { consultantId: consultant.id, status: 'APPROVED' },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, rating: true, text: true, createdAt: true },
     });
     const breakdown = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
     for (const rating of ratings) breakdown[String(rating.rating) as keyof typeof breakdown] = rating._count._all;
@@ -548,13 +585,14 @@ export class ConsultantsService {
       rating: consultant.rating,
       reviewCount: consultant.reviewCount,
       isOnline: consultant.isOnline,
+      isFeatured: consultant.isFeatured,
       ratingSummary: {
         average: consultant.rating,
         reviewCount: consultant.reviewCount,
         breakdown,
       },
       services: consultant.services.map(({ service }) => ({ ...service, category: service.category.name })),
-      verifiedReviews: [],
+      verifiedReviews: verifiedReviews.map((review) => ({ ...review, createdAt: review.createdAt.toISOString() })),
     });
   }
 }

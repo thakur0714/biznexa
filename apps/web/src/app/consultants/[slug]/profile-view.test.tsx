@@ -7,7 +7,7 @@ const profile: PublicConsultantProfile = {
   id: '11111111-1111-4111-8111-111111111111', slug: 'asha-rao', name: 'Asha Rao', category: 'CA',
   qualification: 'Chartered Accountant', experienceYears: 8, expertise: ['GST', 'Tax'], languages: ['English', 'Hindi'],
   city: 'Pune', state: 'Maharashtra', area: 'Kothrud', bio: 'Practical advice for growing businesses.', photoUrl: null,
-  feePerSession: 120000, sessionMinutes: 30, consultationTypes: ['VIDEO', 'AUDIO'], rating: 4.8, reviewCount: 12, isOnline: true,
+  feePerSession: 120000, sessionMinutes: 30, consultationTypes: ['VIDEO', 'AUDIO'], rating: 4.8, reviewCount: 12, isOnline: true, isFeatured: false,
   ratingSummary: { average: 4.8, reviewCount: 12, breakdown: { '1': 0, '2': 0, '3': 1, '4': 2, '5': 9 } },
   services: [{ id: '22222222-2222-4222-8222-222222222222', slug: 'gst-registration', name: 'GST Registration', category: 'Tax' }],
   verifiedReviews: [],

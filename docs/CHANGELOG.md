@@ -130,7 +130,6 @@ Admin applications list and detail, assignment, status updates and the document 
 - Reusable "Export CSV" button across all report pages (`sales`, `customers`, `services`, `consultants`, `support`).
 - BullMQ queue job (`report-export`) generating CSV asynchronously with MinIO/S3 object storage upload.
 - Secure 24-hour HMAC-signed download links with tamper and expiration validation.
-- RFC 4180 CSV compliance with formula injection defense (prefixing `=`, `+`, `-`, `@` with `'`).
 - RBAC: `reports.view` permission strictly enforced on export enqueue and signed link generation.
 
 ## Milestone 6 — Notifications & Templates (Part 1, 18-Oct-2026)
@@ -158,3 +157,58 @@ Admin applications list and detail, assignment, status updates and the document 
   - 403 Forbidden enforced for operations staff lacking global management permissions (`applications.view_all` for bulk-assign and assignee patch, `certificates.manage` for certificate creation).
   - 404 Not Found scoping enforced for operations staff attempting to access unassigned applications, documents, internal notes, or deliverables.
   - Customer data isolation: customer accounts cannot access or view other customers' applications, documents, notes, or deliverables.
+
+## Milestone 11 — Mobile App (Expo) (18-Oct-2026)
+
+### Built and tested
+
+**Mobile App Scaffold & Android Tester APK (M11.1)**
+- Expo SDK 52 mobile application scaffolded in `apps/mobile` and added to pnpm workspace and Turborepo (`dev`, `build`, `test`, `lint`, `typecheck`).
+- Configured specifically for Android tester APK distribution (`eas.json` and `app.json` preview/production APK build targets; no iOS/TestFlight, no store submission per 18-Oct decision).
+- Centralized design tokens in `@biznexa/config/tokens` (colors: ink, night, paper, rule, seal, marigold, danger; spacing; radius; typography) imported directly by the mobile app.
+- Shared `@biznexa/types` and `@biznexa/api-client` packages integrated without duplicated types.
+- React Navigation bottom tab navigator with Ionicons icons across Home, Services (Browse), and Account.
+
+**Mobile Authentication & Secure Storage (M11.2)**
+- Header `X-Client: mobile` enforced across all client API calls, matching API expectations for mobile session handling.
+- Refresh token securely stored and rotated in `expo-secure-store` with automatic retry on 401. Access token kept in memory only.
+- Authentication methods:
+  - Indian mobile number OTP login and verification with countdown timer.
+  - Email + password login and account registration with validation using `@biznexa/types` schemas (`mobileSchema`, `loginSchema`, `registerSchema`, `otpVerifySchema`).
+  - Google OAuth sign-in integration (`POST /api/auth/google`).
+  - Biometric authentication (FaceID / Fingerprint) toggle via `expo-local-authentication`, with auto-lock on launch and biometric unlock screen.
+
+**Home & Services Catalogue (M11.3)**
+- Home screen: BizNexa brand header, live typo-tolerant search with quick results dropdown (`GET /api/catalogue/search`), popular services cards with turnaround times (`GET /api/catalogue/popular`), category chips with service counts (`GET /api/catalogue/categories`), and trust indicators.
+- Services browse screen: searchable and filterable service catalogue (`GET /api/catalogue/services`) with category filter pills, sorting options (Popular, Price Low-High, Price High-Low, Name), pull-to-refresh, and empty state handling.
+- Service detail screen (`GET /api/catalogue/services/:slug`): service overview, packages selection cards with complete fee breakdown (professional fee, GST, government fee, partial payment advance %), required documents checklist, ordered process timeline stages, expandable FAQs accordion, related services, and sticky bottom booking bar.
+
+### Test results (18-Oct-2026)
+- 12 unit tests in `@biznexa/mobile` covering theme tokens, API client headers and error parsing, secure storage persistence, and auth schema validation.
+- All 8 workspace packages passing typecheck (`turbo run typecheck`), lint (`turbo run lint`), and tests (`turbo run test`).
+
+## M8.11 — Customer Consultations (18-Oct-2026)
+
+- Added the customer Consultations page with upcoming and past bookings, IST session times, booking status and fees.
+- Confirmed sessions show their meeting link; completed sessions link to the review flow.
+- Customers can cancel or reschedule more than 24 hours before a session. Rescheduling lists the consultant’s available times, and the lifecycle API rechecks the policy and slot under lock.
+
+## M8.12 — Consultation Reviews (18-Oct-2026)
+
+- Customers can submit one 1–5 star review with an optional comment after a booking reaches `COMPLETED`. The booking's unique review relation enforces one review per booking.
+- New reviews await moderation. Admins can approve or reject with a reason; every moderation decision is written to the audit log.
+- Approval updates the consultant's average rating and review count in the same transaction. Consultant profiles show approved reviews and calculate their rating breakdown from approved reviews only.
+
+## M8.13 — Consultant Portal (18-Oct-2026)
+
+- Added consultant-only portal navigation and pages for bookings, assigned applications, messages, and earnings.
+- Consultants see only their own bookings and assigned applications. Booking outcomes call the existing cx-9 endpoint; application detail reuses the existing M4.11 message thread.
+- Conversation list shows unread counts. Earnings include only `COMPLETED` bookings and calculate fee less the consultant record’s commission rate, in paise with Indian currency formatting.
+- Added API e2e coverage proving cross-consultant isolation and 403 responses for customers; regenerated OpenAPI and API client types.
+## M5.13 — Customer data isolation (18-Oct-2026)
+
+### Checked and tested
+- Every customer route was reviewed for ownership checks; no leak was found, so no code changed.
+- API: `test/data-isolation.e2e-spec.ts` (86 tests). Customer A gets 404 for every one of customer B's applications, documents, deliverables, payments, invoices, credit notes, certificates, messages, attachments, tickets, bookings, businesses, notifications and data exports — the same answer as an id that doesn't exist. B's ids inside A's requests (files, business, application) are refused, signed download links can't be pointed at another resource, lists/counts/dashboard show A nothing of B's, and B's data is checked unchanged afterwards.
+- Browser: `e2e/customer-isolation.spec.ts` on desktop and mobile — A opens B's application by URL and sees "Application not found"; A's My Services, Businesses and Support pages show none of B's things.
+

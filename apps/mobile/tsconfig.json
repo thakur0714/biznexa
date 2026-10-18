@@ -1,0 +1,20 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "react": ["node_modules/@types/react"],
+      "react/*": ["node_modules/@types/react/*"],
+      "@types/react": ["node_modules/@types/react"],
+      "@types/react/*": ["node_modules/@types/react/*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ]
+}

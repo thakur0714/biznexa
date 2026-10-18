@@ -580,6 +580,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/notifications/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNotificationDeliveriesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/notifications/deliveries/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNotificationDeliveriesController_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/callbacks/msg91": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DeliveryCallbacksController_msg91"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/callbacks/sendgrid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DeliveryCallbacksController_sendgrid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalogue/categories": {
         parameters: {
             query?: never;
@@ -2180,6 +2244,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/media/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["MediaController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/media/{shard}/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MediaController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/summary": {
         parameters: {
             query?: never;
@@ -2660,6 +2756,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/consultants/{id}/featured": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminConsultantsController_setFeatured"];
+        trace?: never;
+    };
     "/api/admin/consultants/{id}/fee-requests/{requestId}/approve": {
         parameters: {
             query?: never;
@@ -2788,6 +2900,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/consultants/me/portal/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantPortalController_bookings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/portal/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantPortalController_applications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/portal/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantPortalController_conversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/consultants/me/portal/earnings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConsultantPortalController_earnings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bookings": {
         parameters: {
             query?: never;
@@ -2814,6 +2990,86 @@ export interface paths {
         get: operations["BookingsController_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}/calendar.ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BookingsController_calendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}/meeting-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["BookingsController_setMeetingLink"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BookingsController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}/reschedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BookingsController_reschedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}/outcome": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BookingsController_outcome"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2964,6 +3220,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/blog/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBlogCategoriesController_list"];
+        put?: never;
+        post: operations["AdminBlogCategoriesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/blog/categories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminBlogCategoriesController_update"];
+        post?: never;
+        delete: operations["AdminBlogCategoriesController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/blog/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBlogTagsController_list"];
+        put?: never;
+        post: operations["AdminBlogTagsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/blog/tags/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminBlogTagsController_update"];
+        post?: never;
+        delete: operations["AdminBlogTagsController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/bookings/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewsController_getMine"];
+        put?: never;
+        post: operations["ReviewsController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReviewsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reviews/{id}/moderate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewsController_moderate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3085,6 +3453,72 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             allowedVariables: string[];
+        };
+        NotificationDeliveryPage: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                userId: string;
+                userName: string | null;
+                userEmail: string | null;
+                event: string;
+                /** @enum {string} */
+                channel: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+                /** Format: uuid */
+                templateId: string | null;
+                /** @enum {string} */
+                status: "QUEUED" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED";
+                attempts: number;
+                lastError: string | null;
+                providerMessageId: string | null;
+                /** Format: date-time */
+                sendAt: string | null;
+                /** Format: date-time */
+                sentAt: string | null;
+                /** Format: date-time */
+                deliveredAt: string | null;
+                /** Format: date-time */
+                failedAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+            pages: number;
+        };
+        NotificationDelivery: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            userName: string | null;
+            userEmail: string | null;
+            event: string;
+            /** @enum {string} */
+            channel: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+            /** Format: uuid */
+            templateId: string | null;
+            /** @enum {string} */
+            status: "QUEUED" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED";
+            attempts: number;
+            lastError: string | null;
+            providerMessageId: string | null;
+            /** Format: date-time */
+            sendAt: string | null;
+            /** Format: date-time */
+            sentAt: string | null;
+            /** Format: date-time */
+            deliveredAt: string | null;
+            /** Format: date-time */
+            failedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         AuthMeResponse: {
             /** Format: uuid */
@@ -3983,6 +4417,15 @@ export interface components {
             url: string;
             /** Format: date-time */
             expiresAt: string;
+        };
+        MediaImage: {
+            /** @description Path under the site origin, e.g. /api/media/ab/<id>.webp — public, cached for a year */
+            url: string;
+            /** @enum {string} */
+            mimeType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+            sizeBytes: number;
+            width: number;
+            height: number;
         };
         StoredFile: {
             /** Format: uuid */
@@ -6675,6 +7118,7 @@ export interface components {
                 state: string;
                 experienceYears: number;
                 feePerSession: number;
+                isFeatured: boolean;
                 /** Format: date-time */
                 createdAt: string;
             }[];
@@ -6698,6 +7142,7 @@ export interface components {
             state: string;
             experienceYears: number;
             feePerSession: number;
+            isFeatured: boolean;
             /** Format: date-time */
             createdAt: string;
             slug: string;
@@ -6817,6 +7262,7 @@ export interface components {
                 reviewCount: number;
                 isOnline: boolean;
                 availableToday: boolean;
+                isFeatured: boolean;
             }[];
             total: number;
             page: number;
@@ -6867,6 +7313,7 @@ export interface components {
             rating: number;
             reviewCount: number;
             isOnline: boolean;
+            isFeatured: boolean;
             experienceYears: number;
             ratingSummary: {
                 average: number;
@@ -6915,6 +7362,65 @@ export interface components {
                 isBlocked: boolean;
             }[];
         };
+        ConsultantPortalBookings: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                code: string;
+                status: string;
+                type: string;
+                upcoming: boolean;
+                /** Format: date-time */
+                startAt: string;
+                /** Format: date-time */
+                endAt: string;
+                /** Format: uri */
+                meetingLink: string | null;
+                fee: number;
+                customerName: string;
+            }[];
+        };
+        ConsultantPortalApplications: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                code: string;
+                status: string;
+                /** Format: date-time */
+                createdAt: string;
+                serviceName: string;
+                customerName: string;
+            }[];
+        };
+        ConsultantPortalConversations: {
+            items: {
+                /** Format: uuid */
+                applicationId: string;
+                applicationCode: string;
+                serviceName: string;
+                unreadCount: number;
+            }[];
+        };
+        ConsultantPortalEarnings: {
+            commissionPercent: number;
+            items: {
+                /** Format: uuid */
+                bookingId: string;
+                code: string;
+                /** Format: date-time */
+                completedAt: string;
+                fee: number;
+                commission: number;
+                net: number;
+            }[];
+            monthlyTotals: {
+                month: string;
+                fee: number;
+                commission: number;
+                net: number;
+                bookings: number;
+            }[];
+        };
         BookingView: {
             /** Format: uuid */
             id: string;
@@ -6930,6 +7436,8 @@ export interface components {
             fee: number;
             /** Format: date-time */
             holdExpiresAt: string | null;
+            /** Format: uri */
+            meetingLink: string | null;
             consultant: {
                 slug: string;
                 name: string;
@@ -6960,6 +7468,8 @@ export interface components {
                 fee: number;
                 /** Format: date-time */
                 holdExpiresAt: string | null;
+                /** Format: uri */
+                meetingLink: string | null;
                 consultant: {
                     slug: string;
                     name: string;
@@ -7118,6 +7628,87 @@ export interface components {
                 name: string;
             } | null;
             blockers: string[];
+        };
+        BlogCategoryList: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+        }[];
+        BlogCategory: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+        };
+        TagList: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+        }[];
+        Tag: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+        };
+        CustomerReview: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            bookingId: string;
+            rating: number;
+            text: string | null;
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED" | "REJECTED";
+            moderationReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        } | null;
+        Review: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            bookingId: string;
+            rating: number;
+            text: string | null;
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED" | "REJECTED";
+            moderationReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AdminReviewList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                bookingId: string;
+                rating: number;
+                text: string | null;
+                /** @enum {string} */
+                status: "PENDING" | "APPROVED" | "REJECTED";
+                moderationReason: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                bookingCode: string;
+                customerName: string;
+                consultantName: string;
+            }[];
+        };
+        ReviewModerationResult: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            bookingId: string;
+            rating: number;
+            text: string | null;
+            /** @enum {string} */
+            status: "PENDING" | "APPROVED" | "REJECTED";
+            moderationReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
         };
     };
     responses: never;
@@ -8094,6 +8685,124 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminNotificationTemplate"];
                 };
+            };
+        };
+    };
+    AdminNotificationDeliveriesController_list: {
+        parameters: {
+            query?: {
+                status?: "QUEUED" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED";
+                channel?: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+                event?: string;
+                user?: string;
+                from?: string;
+                to?: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDeliveryPage"];
+                };
+            };
+        };
+    };
+    AdminNotificationDeliveriesController_retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDelivery"];
+                };
+            };
+            /** @description No such delivery */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The delivery is not FAILED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DeliveryCallbacksController_msg91: {
+        parameters: {
+            query: {
+                token: unknown;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Applied (unknown or non-final reports are ignored) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wrong token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DeliveryCallbacksController_sendgrid: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Twilio-Email-Event-Webhook-Timestamp": string;
+                "X-Twilio-Email-Event-Webhook-Signature": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Applied (unknown or other events are ignored) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or wrong signature */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -12194,6 +12903,52 @@ export interface operations {
             };
         };
     };
+    MediaController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaImage"];
+                };
+            };
+        };
+    };
+    MediaController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shard: string;
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     DashboardController_summary: {
         parameters: {
             query?: never;
@@ -13197,6 +13952,31 @@ export interface operations {
             };
         };
     };
+    AdminConsultantsController_setFeatured: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    isFeatured: boolean;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminConsultantsController_approveFeeChange: {
         parameters: {
             query?: never;
@@ -13263,6 +14043,7 @@ export interface operations {
                 language?: string;
                 consultationType?: "AUDIO" | "VIDEO" | "CHAT" | "MEETING";
                 availableToday?: "true" | "false";
+                featured?: "true" | "false";
                 sort?: "rating" | "experience" | "fee_low" | "fee_high";
                 page?: number;
                 limit?: number;
@@ -13506,6 +14287,82 @@ export interface operations {
             };
         };
     };
+    ConsultantPortalController_bookings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantPortalBookings"];
+                };
+            };
+        };
+    };
+    ConsultantPortalController_applications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantPortalApplications"];
+                };
+            };
+        };
+    };
+    ConsultantPortalController_conversations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantPortalConversations"];
+                };
+            };
+        };
+    };
+    ConsultantPortalController_earnings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConsultantPortalEarnings"];
+                };
+            };
+        };
+    };
     BookingsController_list: {
         parameters: {
             query?: never;
@@ -13596,6 +14453,130 @@ export interface operations {
             };
             /** @description No such booking among yours */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BookingsController_calendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BookingsController_setMeetingLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uri */
+                    meetingLink: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingView"];
+                };
+            };
+        };
+    };
+    BookingsController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BookingsController_reschedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date-time */
+                    startAt: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    BookingsController_outcome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "COMPLETED" | "NO_SHOW";
+                };
+            };
+        };
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13939,6 +14920,289 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminBlogCategoriesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlogCategoryList"];
+                };
+            };
+        };
+    };
+    AdminBlogCategoriesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    slug: string;
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlogCategory"];
+                };
+            };
+        };
+    };
+    AdminBlogCategoriesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    slug?: string;
+                    name?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlogCategory"];
+                };
+            };
+        };
+    };
+    AdminBlogCategoriesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminBlogTagsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TagList"];
+                };
+            };
+        };
+    };
+    AdminBlogTagsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    slug: string;
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+        };
+    };
+    AdminBlogTagsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    slug?: string;
+                    name?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tag"];
+                };
+            };
+        };
+    };
+    AdminBlogTagsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReviewsController_getMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerReview"];
+                };
+            };
+        };
+    };
+    ReviewsController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    rating: number;
+                    text?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Review"];
+                };
+            };
+        };
+    };
+    ReviewsController_list: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "APPROVED" | "REJECTED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminReviewList"];
+                };
+            };
+        };
+    };
+    ReviewsController_moderate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "APPROVED" | "REJECTED";
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewModerationResult"];
+                };
             };
         };
     };

@@ -104,6 +104,8 @@ export async function anonymiseAccount(tx: Prisma.TransactionClient, userId: str
   await tx.refreshToken.deleteMany({ where: { userId } });
   await tx.deviceToken.deleteMany({ where: { userId } });
   await tx.notification.deleteMany({ where: { userId } });
+  // The delivery log holds message text and template variables (names, links); anything still queued is not sent.
+  await tx.notificationDelivery.deleteMany({ where: { userId } });
   const targets = [user.email, user.mobile].filter((t): t is string => !!t);
   if (targets.length) {
     await tx.otpCode.deleteMany({ where: { target: { in: targets } } });

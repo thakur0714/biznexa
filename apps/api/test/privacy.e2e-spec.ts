@@ -171,6 +171,17 @@ const binary = (res: request.Response, cb: (err: Error | null, body: Buffer) => 
 
 const userId = async (n: number) => (await prisma.user.findFirstOrThrow({ where: { email: `e2e-priv-${run}-${n}@example.com` } })).id;
 
+/** Notifications are sent by the queue (M6.3): poll until the value is there (truthy / non-zero). */
+async function eventually<T>(read: () => Promise<T>, ms = 5_000): Promise<T> {
+  const until = Date.now() + ms;
+  let value = await read();
+  while (!value && Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 50));
+    value = await read();
+  }
+  return value;
+}
+
 async function completedExport(token: string, ms = 30_000) {
   const since = Date.now();
   while (Date.now() - since < ms) {
@@ -221,7 +232,8 @@ describe('data export', () => {
   });
 
   it('tells the customer it is ready', async () => {
-    const n = await prisma.notification.findFirst({ where: { userId: await userId(1), event: 'privacy.export_ready', channel: 'IN_APP' } });
+    const uid = await userId(1);
+    const n = await eventually(() => prisma.notification.findFirst({ where: { userId: uid, event: 'privacy.export_ready', channel: 'IN_APP' } }));
     expect(n?.link).toMatch(/\/dashboard\/privacy$/);
   });
 
@@ -310,7 +322,7 @@ describe('staff queue and deletion', () => {
     const payment = await prisma.payment.create({ data: { orderId: order.id, amount: 118000, status: 'SUCCESS', paidAt: new Date(), rawWebhook: { email: 'kept@example.com' } } });
     const invoice = await prisma.invoice.create({
       data: {
-        number: code('PRV/'), financialYear: '2026-27', sequence: 1, issuedAt: new Date(), orderId: order.id, paymentId: payment.id, customerId: bobId,
+        number: code('PRV/'), financialYear: '2026-27', sequence: Math.floor(Math.random() * 100000) + 1000, issuedAt: new Date(), orderId: order.id, paymentId: payment.id, customerId: bobId,
         seller: { name: 'BizNexa' }, buyerName: 'Privacy 2', buyer: { name: 'Privacy 2', email: `e2e-priv-${run}-2@example.com` }, taxType: 'CGST_SGST', lines: [], taxableValue: 100000, cgst: 9000, sgst: 9000, total: 118000, amountInWords: 'One lakh eighteen thousand rupees',
         // Already has a PDF (like the certificate below), so another suite's PDF queue does not render one mid-test and change the row.
         pdfKey: `e2e/privacy-${run}/invoice.pdf`,
@@ -388,7 +400,7 @@ describe('staff queue and deletion', () => {
     await http.post(`/api/admin/privacy/requests/${carolDeletion}/approve`).set(as(admin)).expect(409);
     const mine = (await http.get('/api/privacy/requests').set(as(carol)).expect(200)).body.items.find((r: { id: string }) => r.id === carolDeletion);
     expect(mine).toMatchObject({ status: 'REJECTED', rejectionReason: 'Please settle the open ticket first' });
-    expect(await prisma.notification.count({ where: { userId: carolId, event: 'privacy.request_rejected' } })).toBe(1);
+    expect(await eventually(() => prisma.notification.count({ where: { userId: carolId, event: 'privacy.request_rejected' } }))).toBe(1);
     expect(await prisma.auditLog.count({ where: { action: 'privacy.request_reject', entityId: carolDeletion } })).toBe(1);
     expect((await prisma.user.findUniqueOrThrow({ where: { id: carolId } })).status).toBe('ACTIVE');
   });

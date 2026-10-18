@@ -41,6 +41,7 @@ export const NAV: NavGroup[] = [
       { slug: 'payments', label: 'Payments', requires: { all: [PERMS.PAYMENTS_VIEW] }, built: true },
       { slug: 'coupons', label: 'Coupons', requires: { all: [PERMS.COUPONS_MANAGE] }, built: true },
       { slug: 'consultants', label: 'Consultants', requires: { all: [PERMS.CONSULTANTS_MANAGE] }, built: true },
+      { slug: 'reviews', label: 'Review moderation', requires: { all: [PERMS.CONSULTANTS_MANAGE] }, built: true },
       { slug: 'certificates', label: 'Certificates', requires: { all: [PERMS.CERTIFICATES_MANAGE] }, built: true },
     ],
   },
@@ -52,7 +53,7 @@ export const NAV: NavGroup[] = [
     label: 'Administration',
     items: [
       { slug: 'reports', label: 'Reports', requires: { all: [PERMS.REPORTS_VIEW] }, built: true },
-      { slug: 'notifications', label: 'Notifications', requires: { all: [PERMS.SETTINGS_MANAGE] }, built: true },
+      { slug: 'notifications', label: 'Notifications', requires: { any: [PERMS.NOTIFICATIONS_VIEW, PERMS.SETTINGS_MANAGE] }, built: true },
       { slug: 'privacy', label: 'Privacy requests', requires: { all: [PERMS.PRIVACY_MANAGE] }, built: true },
       { slug: 'audit', label: 'Audit log', requires: { all: [PERMS.AUDIT_VIEW] }, built: true },
       { slug: 'settings', label: 'Settings', requires: { all: [PERMS.SETTINGS_MANAGE] }, built: true },
@@ -65,6 +66,10 @@ const CONSULTANT_PORTAL_NAV: NavGroup[] = [{
   items: [
     { slug: 'consultant/profile', label: 'My profile', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
     { slug: 'consultant/availability', label: 'Availability', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
+    { slug: 'consultant/bookings', label: 'Bookings', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
+    { slug: 'consultant/applications', label: 'Assigned applications', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
+    { slug: 'consultant/messages', label: 'Messages', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
+    { slug: 'consultant/earnings', label: 'Earnings', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
   ],
 }];
 

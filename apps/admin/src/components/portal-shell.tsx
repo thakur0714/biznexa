@@ -21,11 +21,12 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
   const pendingTwoFactor = needsTwoFactor(user?.twoFactor);
   const consultantOnly = user?.roles.includes('CONSULTANT') ?? false;
-  const outsideConsultantPortal = consultantOnly && !['/consultant/profile', '/consultant/availability'].includes(pathname);
+  const consultantRoutes = ['/consultant/profile', '/consultant/availability', '/consultant/bookings', '/consultant/applications', '/consultant/messages', '/consultant/earnings', '/applications/'];
+  const outsideConsultantPortal = consultantOnly && !consultantRoutes.some((route) => pathname === route || (route.endsWith('/') && pathname.startsWith(route)));
 
   useEffect(() => {
     if (ready && user && !pendingTwoFactor && outsideConsultantPortal) {
-      router.replace('/consultant/profile');
+      router.replace('/consultant/bookings');
       return;
     }
     if (!ready || (user && !pendingTwoFactor)) return;

@@ -64,6 +64,11 @@ Every account with `admin.access` must use an authenticator app (TOTP). After th
 - Inspect dead letters (until the admin screen exists): `redis-cli LRANGE bn:dead-letter:wait 0 -1` lists their ids; `redis-cli HGET bn:dead-letter:<id> data` shows the original queue, job data, error and attempts. Requeueing is `QueueService.requeueDeadLetter(id)` in code — there is no endpoint yet. Fix the cause first; a requeued job starts with full attempts.
 - Production Redis must persist (AOF on) and use `maxmemory-policy noeviction`, or queued jobs can be silently dropped.
 
+## Notifications (M6.3, D59)
+- Every notification × channel is a row in `NotificationDelivery` and a `notifications` queue job. Admin → **Notification log** shows status per row; **Retry** sends a FAILED one again (audited).
+- Temporary failures retry 6 times (30 s, 2 min, 8 min, 32 min, 1 h); permanent ones (no email/mobile, SMS template without DLT id, provider refused) fail at once — fix the cause, then Retry.
+- Delivery reports: set `MSG91_WEBHOOK_TOKEN` and point MSG91's delivery report URL to `https://<api>/api/notifications/callbacks/msg91?token=<token>`; enable SendGrid's **signed** Event Webhook (delivered, bounce, dropped) to `https://<api>/api/notifications/callbacks/sendgrid` and put its verification key in `SENDGRID_WEBHOOK_PUBLIC_KEY`. Without them emails/SMS stay SENT.
+
 ## Scheduled jobs
 - 00:05 IST daily — mark certificates past `validUntil` as EXPIRED (`CertificatesService.expireCertificates`).
 

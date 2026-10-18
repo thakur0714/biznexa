@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { NotificationsView } from './notifications-view';
+import { NotificationsHub } from './notifications-hub';
 
-export const metadata: Metadata = { title: 'Notification Templates' };
+export const metadata: Metadata = { title: 'Notifications' };
 
 export default function NotificationsPage() {
-  return <NotificationsView />;
+  return <NotificationsHub />;
 }
