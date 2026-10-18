@@ -2692,6 +2692,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/consultants/{id}/featured": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AdminConsultantsController_setFeatured"];
+        trace?: never;
+    };
     "/api/admin/consultants/{id}/fee-requests/{requestId}/approve": {
         parameters: {
             query?: never;
@@ -6953,6 +6969,7 @@ export interface components {
                 state: string;
                 experienceYears: number;
                 feePerSession: number;
+                isFeatured: boolean;
                 /** Format: date-time */
                 createdAt: string;
             }[];
@@ -6976,6 +6993,7 @@ export interface components {
             state: string;
             experienceYears: number;
             feePerSession: number;
+            isFeatured: boolean;
             /** Format: date-time */
             createdAt: string;
             slug: string;
@@ -7095,6 +7113,7 @@ export interface components {
                 reviewCount: number;
                 isOnline: boolean;
                 availableToday: boolean;
+                isFeatured: boolean;
             }[];
             total: number;
             page: number;
@@ -7145,6 +7164,7 @@ export interface components {
             rating: number;
             reviewCount: number;
             isOnline: boolean;
+            isFeatured: boolean;
             experienceYears: number;
             ratingSummary: {
                 average: number;
@@ -13604,6 +13624,31 @@ export interface operations {
             };
         };
     };
+    AdminConsultantsController_setFeatured: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    isFeatured: boolean;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AdminConsultantsController_approveFeeChange: {
         parameters: {
             query?: never;
@@ -13670,6 +13715,7 @@ export interface operations {
                 language?: string;
                 consultationType?: "AUDIO" | "VIDEO" | "CHAT" | "MEETING";
                 availableToday?: "true" | "false";
+                featured?: "true" | "false";
                 sort?: "rating" | "experience" | "fee_low" | "fee_high";
                 page?: number;
                 limit?: number;

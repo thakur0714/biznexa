@@ -9,11 +9,13 @@ import {
   consultantRejectInputSchema,
   consultantFeeChangeActionResponseSchema,
   consultantFeeChangeDecisionSchema,
+  adminConsultantFeaturedInputSchema,
   PERMS,
   type AdminConsultantListQuery,
   type AdminConsultantProfileInput,
   type ConsultantRejectInput,
   type ConsultantFeeChangeDecision,
+  type AdminConsultantFeaturedInput,
 } from '@biznexa/types';
 import { AuthUser, CurrentUser, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
@@ -68,6 +70,15 @@ export class AdminConsultantsController {
   @Post(':id/suspend')
   suspend(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() staff: AuthUser) {
     return this.consultants.suspend(id, staff.id);
+  }
+
+  @Patch(':id/featured')
+  setFeatured(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ZodBody(adminConsultantFeaturedInputSchema) body: AdminConsultantFeaturedInput,
+    @CurrentUser() staff: AuthUser,
+  ) {
+    return this.consultants.setFeatured(id, body.isFeatured, staff.id);
   }
 
   @ApiZodResponse('ConsultantFeeChangeAction', consultantFeeChangeActionResponseSchema)
