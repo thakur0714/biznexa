@@ -21,7 +21,7 @@ import {
 import { AuthService } from './auth.service';
 import { TokenService } from './token.service';
 import { TwoFactorService } from './two-factor.service';
-import { AuthUser, CurrentUser, Public } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, Public, SignedIn } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { env } from '../config/env';
 
@@ -131,6 +131,7 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(200)
   @Post('logout-all')
+  @SignedIn()
   async logoutAll(@CurrentUser() user: AuthUser, @Res({ passthrough: true }) res: Response) {
     await this.tokens.revokeAll(user.id);
     res.clearCookie(REFRESH_COOKIE, { path: '/api/auth' });
@@ -140,6 +141,7 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiZodResponse('AuthMeResponse', authMeResponseSchema)
   @Get('me')
+  @SignedIn()
   me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user.id, user.twoFactorPending);
   }
@@ -148,6 +150,7 @@ export class AuthController {
   @ApiZodResponse('AuthMeResponse', authMeResponseSchema)
   @ApiResponse({ status: 409, description: 'Email already in use' })
   @Patch('me')
+  @SignedIn()
   updateMe(
     @ZodBody(updateProfileSchema) body: UpdateProfileInput,
     @CurrentUser() user: AuthUser,
@@ -159,6 +162,7 @@ export class AuthController {
   @HttpCode(200)
   @ApiResponse({ status: 400, description: 'Incorrect current password or invalid new password' })
   @Post('password/change')
+  @SignedIn()
   async changePassword(
     @ZodBody(changePasswordSchema) body: ChangePasswordInput,
     @CurrentUser() user: AuthUser,
@@ -175,6 +179,7 @@ export class AuthController {
   @HttpCode(200)
   @ApiZodResponse('TwoFactorSetup', twoFactorSetupSchema)
   @Post('2fa/setup')
+  @SignedIn()
   setupTwoFactor(@CurrentUser() user: AuthUser) {
     return this.twoFactor.setup(user.id);
   }
@@ -184,6 +189,7 @@ export class AuthController {
   @Throttle(AUTH_LIMIT)
   @HttpCode(200)
   @Post('2fa/enable')
+  @SignedIn()
   async enableTwoFactor(@ZodBody(twoFactorBody) body: z.infer<typeof twoFactorBody>, @CurrentUser() user: AuthUser, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.twoFactor.enable(user.id, body.code, req.ip);
     return this.respond(req, res, await this.auth.twoFactorSession(user.id, this.currentRefresh(req, body), meta(req)));
@@ -194,6 +200,7 @@ export class AuthController {
   @Throttle(AUTH_LIMIT)
   @HttpCode(200)
   @Post('2fa/verify')
+  @SignedIn()
   async verifyTwoFactor(@ZodBody(twoFactorBody) body: z.infer<typeof twoFactorBody>, @CurrentUser() user: AuthUser, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.twoFactor.verify(user.id, body.code);
     return this.respond(req, res, await this.auth.twoFactorSession(user.id, this.currentRefresh(req, body), meta(req)));

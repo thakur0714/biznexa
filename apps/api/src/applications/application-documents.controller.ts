@@ -1,7 +1,7 @@
 import { Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { attachDocumentInput, documentChecklistSchema, type AttachDocumentInput } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { ApplicationDocumentsService } from './application-documents.service';
 
@@ -10,6 +10,7 @@ const uuid = new ParseUUIDPipe();
 /** The document step of the signed-in customer's own application (M3.10). */
 @ApiTags('applications')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('applications/:id/documents')
 export class ApplicationDocumentsController {
   constructor(private readonly documents: ApplicationDocumentsService) {}

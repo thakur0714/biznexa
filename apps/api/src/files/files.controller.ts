@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiBody, ApiConsumes, ApiProduces, ApiQuery, ApiResponse
 import { Throttle } from '@nestjs/throttler';
 import { z } from 'zod';
 import { fileLinkSchema, storedFileSchema } from '@biznexa/types';
-import { AuthUser, CurrentUser, Public } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, Public, SignedIn } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery } from '../common/openapi';
 import { FilesService } from './files.service';
 import { UploadInterceptor, type UploadRequest } from './upload.interceptor';
@@ -13,6 +13,7 @@ const linkQuery = z.object({
 });
 
 @ApiTags('files')
+@SignedIn()
 @Controller('files')
 export class FilesController {
   constructor(private readonly files: FilesService) {}

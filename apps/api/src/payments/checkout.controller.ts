@@ -8,13 +8,14 @@ import {
   type PaymentCallbackInput,
   type StartPaymentInput,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { CheckoutService } from './checkout.service';
 
 /** Paying for the signed-in customer's own application (M3.16, M3.18). The amount is always the server's order total. */
 @ApiTags('applications')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('applications/:id/payment')
 export class CheckoutController {
   constructor(private readonly checkout: CheckoutService) {}
