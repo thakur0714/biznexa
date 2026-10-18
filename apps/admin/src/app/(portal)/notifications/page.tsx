@@ -1,8 +1,8 @@
-import { Metadata } from 'next';
-import { DeliveriesView } from './deliveries-view';
+import type { Metadata } from 'next';
+import { NotificationsHub } from './notifications-hub';
 
-export const metadata: Metadata = { title: 'Notification log' };
+export const metadata: Metadata = { title: 'Notifications' };
 
-export default function Page() {
-  return <DeliveriesView />;
+export default function NotificationsPage() {
+  return <NotificationsHub />;
 }
