@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { staffSession } from './staff';
 
@@ -14,7 +15,7 @@ describe('Admin Blog Categories API', () => {
 
   beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleFixture.createNestApplication<NestExpressApplication>();
+    app = configureApp(moduleFixture.createNestApplication<NestExpressApplication>());
     await app.init();
     prisma = app.get(PrismaService);
     http = request(app.getHttpServer());
@@ -35,7 +36,7 @@ describe('Admin Blog Categories API', () => {
     await prisma.blogCategory.create({ data: { slug: 'test-cat-1', name: 'Test Cat 1' } });
 
     const res = await http
-      .get('/admin/blog/categories')
+      .get('/api/admin/blog/categories')
       .set('Authorization', `Bearer ${session.accessToken}`)
       .expect(200);
 
@@ -45,7 +46,7 @@ describe('Admin Blog Categories API', () => {
 
   it('should create a category', async () => {
     const res = await http
-      .post('/admin/blog/categories')
+      .post('/api/admin/blog/categories')
       .set('Authorization', `Bearer ${session.accessToken}`)
       .send({ slug: 'test-cat-2', name: 'Test Cat 2' })
       .expect(201);
@@ -59,7 +60,7 @@ describe('Admin Blog Categories API', () => {
 
   it('should enforce unique slug on create', async () => {
     await http
-      .post('/admin/blog/categories')
+      .post('/api/admin/blog/categories')
       .set('Authorization', `Bearer ${session.accessToken}`)
       .send({ slug: 'test-cat-1', name: 'Another Test Cat' })
       .expect(409);
@@ -69,7 +70,7 @@ describe('Admin Blog Categories API', () => {
     const cat = await prisma.blogCategory.create({ data: { slug: 'test-cat-3', name: 'Test Cat 3' } });
 
     const res = await http
-      .put(`/admin/blog/categories/${cat.id}`)
+      .put(`/api/admin/blog/categories/${cat.id}`)
       .set('Authorization', `Bearer ${session.accessToken}`)
       .send({ name: 'Updated Cat 3' })
       .expect(200);
@@ -84,7 +85,7 @@ describe('Admin Blog Categories API', () => {
     const cat = await prisma.blogCategory.create({ data: { slug: 'test-cat-4', name: 'Test Cat 4' } });
 
     await http
-      .put(`/admin/blog/categories/${cat.id}`)
+      .put(`/api/admin/blog/categories/${cat.id}`)
       .set('Authorization', `Bearer ${session.accessToken}`)
       .send({ slug: 'test-cat-1' })
       .expect(409);
@@ -94,7 +95,7 @@ describe('Admin Blog Categories API', () => {
     const cat = await prisma.blogCategory.create({ data: { slug: 'test-cat-5', name: 'Test Cat 5' } });
 
     await http
-      .delete(`/admin/blog/categories/${cat.id}`)
+      .delete(`/api/admin/blog/categories/${cat.id}`)
       .set('Authorization', `Bearer ${session.accessToken}`)
       .expect(200);
 
@@ -108,7 +109,7 @@ describe('Admin Blog Categories API', () => {
   it('should restrict access without permissions', async () => {
     const noPermsSession = await staffSession(http, prisma, 'SUPPORT', 'no_perms@test.com');
     await http
-      .get('/admin/blog/categories')
+      .get('/api/admin/blog/categories')
       .set('Authorization', `Bearer ${noPermsSession.accessToken}`)
       .expect(403);
 

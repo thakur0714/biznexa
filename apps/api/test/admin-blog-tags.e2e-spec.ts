@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { staffSession } from './staff';
 
@@ -14,7 +15,7 @@ describe('Admin Blog Tags API', () => {
 
   beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleFixture.createNestApplication<NestExpressApplication>();
+    app = configureApp(moduleFixture.createNestApplication<NestExpressApplication>());
     await app.init();
     prisma = app.get(PrismaService);
     http = request(app.getHttpServer());
@@ -35,7 +36,7 @@ describe('Admin Blog Tags API', () => {
     await prisma.tag.create({ data: { slug: 'test-tag-1', name: 'Test Tag 1' } });
 
     const res = await http
-      .get('/admin/blog/tags')
+      .get('/api/admin/blog/tags')
       .set('Authorization', `Bearer ${session.accessToken}`)
       .expect(200);
 
@@ -45,7 +46,7 @@ describe('Admin Blog Tags API', () => {
 
   it('should create a tag', async () => {
     const res = await http
-      .post('/admin/blog/tags')
+      .post('/api/admin/blog/tags')
       .set('Authorization', `Bearer ${session.accessToken}`)
       .send({ slug: 'test-tag-2', name: 'Test Tag 2' })
       .expect(201);
@@ -59,7 +60,7 @@ describe('Admin Blog Tags API', () => {
 
   it('should enforce unique slug on create', async () => {
     await http
-      .post('/admin/blog/tags')
+      .post('/api/admin/blog/tags')
       .set('Authorization', `Bearer ${session.accessToken}`)
       .send({ slug: 'test-tag-1', name: 'Another Test Tag' })
       .expect(409);
@@ -69,7 +70,7 @@ describe('Admin Blog Tags API', () => {
     const tag = await prisma.tag.create({ data: { slug: 'test-tag-3', name: 'Test Tag 3' } });
 
     const res = await http
-      .put(`/admin/blog/tags/${tag.id}`)
+      .put(`/api/admin/blog/tags/${tag.id}`)
       .set('Authorization', `Bearer ${session.accessToken}`)
       .send({ name: 'Updated Tag 3' })
       .expect(200);
@@ -84,7 +85,7 @@ describe('Admin Blog Tags API', () => {
     const tag = await prisma.tag.create({ data: { slug: 'test-tag-4', name: 'Test Tag 4' } });
 
     await http
-      .put(`/admin/blog/tags/${tag.id}`)
+      .put(`/api/admin/blog/tags/${tag.id}`)
       .set('Authorization', `Bearer ${session.accessToken}`)
       .send({ slug: 'test-tag-1' })
       .expect(409);
@@ -94,7 +95,7 @@ describe('Admin Blog Tags API', () => {
     const tag = await prisma.tag.create({ data: { slug: 'test-tag-5', name: 'Test Tag 5' } });
 
     await http
-      .delete(`/admin/blog/tags/${tag.id}`)
+      .delete(`/api/admin/blog/tags/${tag.id}`)
       .set('Authorization', `Bearer ${session.accessToken}`)
       .expect(200);
 
@@ -108,7 +109,7 @@ describe('Admin Blog Tags API', () => {
   it('should restrict access without permissions', async () => {
     const noPermsSession = await staffSession(http, prisma, 'SUPPORT', 'no_perms_tag@test.com');
     await http
-      .get('/admin/blog/tags')
+      .get('/api/admin/blog/tags')
       .set('Authorization', `Bearer ${noPermsSession.accessToken}`)
       .expect(403);
 
