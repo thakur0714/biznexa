@@ -32,11 +32,20 @@ export interface MobileApiOptions {
   session?: MobileApiSession;
 }
 
-const DEFAULT_BASE_URL =
+export const DEFAULT_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   (typeof window !== 'undefined' && window.location?.origin
     ? window.location.origin
     : 'http://10.0.2.2:3000');
+
+export function resolveApiUrl(url: string, baseUrl: string = DEFAULT_BASE_URL): string {
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `${cleanBase}${cleanPath}`;
+}
 
 export function createMobileApiClient(options: MobileApiOptions = {}) {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
