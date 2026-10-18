@@ -60,7 +60,7 @@ export function CmsView() {
     } catch (e) { setError((e as Error).message); } finally { setSaving(false); }
   }
   return <div className="max-w-4xl space-y-5">
-    <div><h1 className="text-2xl font-bold">Website content</h1><p className="mt-1 text-muted">Edit pages, SEO metadata, then publish when ready. Drafts are never shown publicly. <Link href="/cms/homepage" className="font-medium underline">Edit homepage content</Link></p></div>
+    <div><h1 className="text-2xl font-bold">Website content</h1><p className="mt-1 text-muted">Edit pages, SEO metadata, then publish when ready. Drafts are never shown publicly. <Link href="/cms/homepage" className="font-medium underline">Edit homepage content</Link> · <Link href="/cms/blog" className="font-medium underline">Manage blog</Link></p></div>
     {error && <Notice tone="error">{error}</Notice>}
     <Select id="cms-page" label="Page" value={slug} onChange={(e) => { const next = e.target.value as PageSlug; setSlug(next); setForm(pages.find((p) => p.slug === next) ?? { slug: next, title: titles[next], content: { html: '' }, seoTitle: null, metaDescription: null, ogImageUrl: null, contactEmail: null, contactPhone: null, status: 'DRAFT' }); }}>{slugs.map((s) => <option key={s} value={s}>{titles[s]}</option>)}</Select>
     <p className="text-sm">Status: <strong>{page?.status ?? 'DRAFT'}</strong></p>
