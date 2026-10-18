@@ -132,3 +132,9 @@ Admin applications list and detail, assignment, status updates and the document 
 - Secure 24-hour HMAC-signed download links with tamper and expiration validation.
 - RFC 4180 CSV compliance with formula injection defense (prefixing `=`, `+`, `-`, `@` with `'`).
 - RBAC: `reports.view` permission strictly enforced on export enqueue and signed link generation.
+
+## M8.11 — Customer Consultations (18-Oct-2026)
+
+- Added the customer Consultations page with upcoming and past bookings, IST session times, booking status and fees.
+- Confirmed sessions show their meeting link; completed sessions link to the review flow.
+- Customers can cancel or reschedule more than 24 hours before a session. Rescheduling lists the consultant’s available times, and the lifecycle API rechecks the policy and slot under lock.

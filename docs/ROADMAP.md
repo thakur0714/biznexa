@@ -347,7 +347,7 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
    - *Follow-ups:* no invoice / GST for consultation payments yet (`payment.succeeded` is order-only); booking payments don't show in `/dashboard/payments` (it lists order payments); `payment.failed` notification for bookings; confirmation link/.ics/notifications are M8.9.
 - [ ] **M8.9 — Booking confirmation.** `[Sonnet]` Meeting link (consultant-provided or generated), `.ics` file, notifications, reminders 24h and 1h before (queue delayed jobs).
 - [ ] **M8.10 — Booking lifecycle.** `[Sonnet]` Reschedule/cancel per policy, COMPLETED / NO_SHOW by consultant, state machine tests.
-- [ ] **M8.11 — Customer Consultations page.** `[Sonnet]` Upcoming/past, join link, reschedule/cancel, leave review.
+- [x] **M8.11 — Customer Consultations page.** `[Sonnet]` Upcoming/past, join link, reschedule/cancel, leave review.
 - [ ] **M8.12 — Reviews.** `[Sonnet]` Only after COMPLETED booking, one per booking; admin moderation; rating aggregates updated.
 - [ ] **M8.13 — Consultant portal: bookings, assigned applications, messages, earnings (fee − commission).** `[Sonnet]`
 - [ ] **M8.14 — Featured consultants on homepage** `[Sonnet]` + E2E: filter → book → pay → confirmation with link. CHANGELOG.
