@@ -516,6 +516,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/notifications/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNotificationTemplatesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/notifications/templates/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNotificationTemplatesController_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/notifications/templates/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminNotificationTemplatesController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/notifications/templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminNotificationTemplatesController_getById"];
+        put: operations["AdminNotificationTemplatesController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/notifications/deliveries": {
         parameters: {
             query?: never;
@@ -3448,6 +3512,43 @@ export interface components {
         DeviceTokenActionResponse: {
             success: boolean;
             token?: string;
+        };
+        AdminNotificationTemplateList: {
+            templates: {
+                /** Format: uuid */
+                id: string;
+                event: string;
+                /** @enum {string} */
+                channel: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+                subject: string | null;
+                body: string;
+                dltTemplateId: string | null;
+                isActive: boolean;
+                /** Format: date-time */
+                updatedAt: string;
+                allowedVariables: string[];
+            }[];
+        };
+        PreviewNotificationTemplateResponse: {
+            renderedSubject?: string;
+            renderedBody: string;
+            variablesUsed: string[];
+            missingVariables: string[];
+            unknownVariables: string[];
+        };
+        AdminNotificationTemplate: {
+            /** Format: uuid */
+            id: string;
+            event: string;
+            /** @enum {string} */
+            channel: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+            subject: string | null;
+            body: string;
+            dltTemplateId: string | null;
+            isActive: boolean;
+            /** Format: date-time */
+            updatedAt: string;
+            allowedVariables: string[];
         };
         NotificationDeliveryPage: {
             items: {
@@ -8645,6 +8746,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeviceTokenActionResponse"];
+                };
+            };
+        };
+    };
+    AdminNotificationTemplatesController_list: {
+        parameters: {
+            query?: {
+                event?: string;
+                channel?: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNotificationTemplateList"];
+                };
+            };
+        };
+    };
+    AdminNotificationTemplatesController_events: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminNotificationTemplatesController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    channel: "EMAIL" | "SMS" | "PUSH" | "IN_APP" | "WHATSAPP";
+                    event?: string;
+                    subject?: string | null;
+                    body: string;
+                    sampleVariables?: {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewNotificationTemplateResponse"];
+                };
+            };
+        };
+    };
+    AdminNotificationTemplatesController_getById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNotificationTemplate"];
+                };
+            };
+        };
+    };
+    AdminNotificationTemplatesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    subject?: string | null;
+                    body: string;
+                    dltTemplateId?: string | null;
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminNotificationTemplate"];
                 };
             };
         };

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.service';
+import { AuditModule } from '../audit/audit.module';
 import { EmailChannel } from './channels/email.channel';
 import { EmailProvider, emailProviderFactory } from './providers/email.provider';
 import { SmsChannel } from './channels/sms.channel';
@@ -13,6 +14,8 @@ import { NotificationDispatcherService } from './notification-dispatcher.service
 import { TemplateEngineService } from './template-engine.service';
 import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
+import { AdminNotificationTemplatesController } from './admin-notification-templates.controller';
+import { AdminNotificationTemplatesService } from './admin-notification-templates.service';
 
 import { NotificationEventsListener } from './notification-events.listener';
 import { NOTIFICATION_QUEUE_OPTIONS, NotificationQueueService } from './delivery/notification-queue.service';
@@ -22,8 +25,13 @@ import { DeliveryCallbacksService, deliveryCallbackConfigProvider } from './deli
 import { DeliveryCallbacksController } from './delivery/delivery-callbacks.controller';
 
 @Module({
-  imports: [PrismaModule],
-  controllers: [NotificationsController, AdminNotificationDeliveriesController, DeliveryCallbacksController],
+  imports: [PrismaModule, AuditModule],
+  controllers: [
+    NotificationsController,
+    AdminNotificationTemplatesController,
+    AdminNotificationDeliveriesController,
+    DeliveryCallbacksController,
+  ],
   providers: [
     emailProviderFactory,
     smsProviderFactory,
@@ -38,6 +46,7 @@ import { DeliveryCallbacksController } from './delivery/delivery-callbacks.contr
     TemplateEngineService,
     NotificationsService,
     NotificationEventsListener,
+    AdminNotificationTemplatesService,
     // Production timing (delivery-policy.ts); tests override it with fast retries.
     { provide: NOTIFICATION_QUEUE_OPTIONS, useValue: {} },
     NotificationQueueService,
@@ -55,6 +64,7 @@ import { DeliveryCallbacksController } from './delivery/delivery-callbacks.contr
     TemplateEngineService,
     NotificationsService,
     NotificationEventsListener,
+    AdminNotificationTemplatesService,
     EmailChannel,
     SmsChannel,
     PushChannel,
@@ -63,4 +73,3 @@ import { DeliveryCallbacksController } from './delivery/delivery-callbacks.contr
   ],
 })
 export class NotificationsModule {}
-

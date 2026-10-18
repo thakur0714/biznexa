@@ -150,8 +150,33 @@ Admin applications list and detail, assignment, status updates and the document 
 - Reusable "Export CSV" button across all report pages (`sales`, `customers`, `services`, `consultants`, `support`).
 - BullMQ queue job (`report-export`) generating CSV asynchronously with MinIO/S3 object storage upload.
 - Secure 24-hour HMAC-signed download links with tamper and expiration validation.
-- RFC 4180 CSV compliance with formula injection defense (prefixing `=`, `+`, `-`, `@` with `'`).
 - RBAC: `reports.view` permission strictly enforced on export enqueue and signed link generation.
+
+## Milestone 6 — Notifications & Templates (Part 1, 18-Oct-2026)
+
+### Built and tested
+
+**Admin Notification Template Editor (M6.9 part 1)**
+- API endpoints `GET /api/admin/notifications/templates`, `GET /api/admin/notifications/templates/events`, `POST /api/admin/notifications/templates/preview`, `GET /api/admin/notifications/templates/:id`, `PUT /api/admin/notifications/templates/:id` guarded by `settings.manage` permission.
+- Variable catalog and sample variables per event for all 24 transactional events across EMAIL, SMS, PUSH, IN_APP, and WHATSAPP channels.
+- Live preview rendering with sample event variables and detection of missing/unknown variables.
+- SMS DLT template ID configuration, character and SMS segment counter with GSM-7 detection.
+- Complete audit logging (`notification.template.update`) for every template modification.
+- Admin UI template editor (`/notifications`) with channel tabs, device previews, variable chips, and `useApi()` typed client integration.
+
+## Milestone 4 — Fulfilment Integration & End-to-End (18-Oct-2026)
+
+### Built and tested
+
+**M4 Fulfilment Integration & Authorization Coverage (M4.17)**
+- End-to-end Playwright journey in `apps/web/e2e/document-reupload.spec.ts`: customer order & document upload → ops reviews and rejects with reason → customer sees reason and re-uploads v2 in dashboard → ops reviews and approves v2 → application automatically moves to DOCUMENTS_APPROVED → moves to IN_PROGRESS → ops uploads final deliverable (PDF certificate) and attaches to application → application moves to COMPLETED and DELIVERED → customer verifies "Delivered" status and downloads the final deliverable.
+- Comprehensive M4 route authorization and scoping test suite `apps/api/test/m4-authorization.e2e-spec.ts` (67 tests):
+  - 401 Unauthorized enforced for unauthenticated requests across all M4 endpoints.
+  - 403 Forbidden enforced for customer role on staff/admin routes.
+  - 403 Forbidden enforced for support role on routes requiring applications/documents/certificates management.
+  - 403 Forbidden enforced for operations staff lacking global management permissions (`applications.view_all` for bulk-assign and assignee patch, `certificates.manage` for certificate creation).
+  - 404 Not Found scoping enforced for operations staff attempting to access unassigned applications, documents, internal notes, or deliverables.
+  - Customer data isolation: customer accounts cannot access or view other customers' applications, documents, notes, or deliverables.
 
 ## Milestone 11 — Mobile App (Expo) (18-Oct-2026)
 
@@ -171,7 +196,7 @@ Admin applications list and detail, assignment, status updates and the document 
   - Indian mobile number OTP login and verification with countdown timer.
   - Email + password login and account registration with validation using `@biznexa/types` schemas (`mobileSchema`, `loginSchema`, `registerSchema`, `otpVerifySchema`).
   - Google OAuth sign-in integration (`POST /api/auth/google`).
-- Biometric authentication (FaceID / Fingerprint) toggle via `expo-local-authentication`, with auto-lock on launch and biometric unlock screen.
+  - Biometric authentication (FaceID / Fingerprint) toggle via `expo-local-authentication`, with auto-lock on launch and biometric unlock screen.
 
 **Home & Services Catalogue (M11.3)**
 - Home screen: BizNexa brand header, live typo-tolerant search with quick results dropdown (`GET /api/catalogue/search`), popular services cards with turnaround times (`GET /api/catalogue/popular`), category chips with service counts (`GET /api/catalogue/categories`), and trust indicators.

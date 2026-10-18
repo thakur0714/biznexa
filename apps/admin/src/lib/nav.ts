@@ -53,7 +53,7 @@ export const NAV: NavGroup[] = [
     label: 'Administration',
     items: [
       { slug: 'reports', label: 'Reports', requires: { all: [PERMS.REPORTS_VIEW] }, built: true },
-      { slug: 'notifications', label: 'Notification log', requires: { all: [PERMS.NOTIFICATIONS_VIEW] }, built: true },
+      { slug: 'notifications', label: 'Notifications', requires: { any: [PERMS.NOTIFICATIONS_VIEW, PERMS.SETTINGS_MANAGE] }, built: true },
       { slug: 'privacy', label: 'Privacy requests', requires: { all: [PERMS.PRIVACY_MANAGE] }, built: true },
       { slug: 'audit', label: 'Audit log', requires: { all: [PERMS.AUDIT_VIEW] }, built: true },
       { slug: 'settings', label: 'Settings', requires: { all: [PERMS.SETTINGS_MANAGE] }, built: true },
