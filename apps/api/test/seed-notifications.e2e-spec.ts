@@ -1,6 +1,7 @@
 import { PrismaService } from '../src/prisma/prisma.service';
 import { seedNotificationTemplates, SEED_NOTIFICATION_TEMPLATES } from '../prisma/seed-notifications';
 import { TemplateEngineService } from '../src/notifications/template-engine.service';
+import { NOTIFICATION_EVENTS, getAllowedVariablesForEvent, extractTemplateVariables } from '@biznexa/types';
 
 const prisma = new PrismaService();
 
@@ -64,5 +65,21 @@ describe('seedNotificationTemplates (e2e)', () => {
     expect(rendered.subject).toContain('ORD-999');
     expect(rendered.body).toContain('Rohit Verma');
     expect(rendered.body).toContain('1500');
+  });
+
+  describe.each(NOTIFICATION_EVENTS)('seeded templates for event "%s"', (event) => {
+    it(`only uses variables allowed for ${event}`, () => {
+      const templatesForEvent = SEED_NOTIFICATION_TEMPLATES.filter((t) => t.event === event);
+      expect(templatesForEvent.length).toBeGreaterThan(0);
+
+      const allowed = getAllowedVariablesForEvent(event);
+
+      for (const t of templatesForEvent) {
+        const text = `${t.subject ?? ''} ${t.body}`;
+        const used = extractTemplateVariables(text);
+        const disallowed = used.filter((v) => !allowed.includes(v));
+        expect(disallowed).toEqual([]);
+      }
+    });
   });
 });

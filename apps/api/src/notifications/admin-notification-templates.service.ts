@@ -8,6 +8,7 @@ import {
   NOTIFICATION_EVENT_VARIABLES,
   getAllowedVariablesForEvent,
   getSampleVariablesForEvent,
+  extractTemplateVariables,
   escapeHtml,
 } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -82,6 +83,20 @@ export class AdminNotificationTemplatesService {
       throw new BadRequestException('Template body cannot be empty');
     }
 
+    const targetSubject = input.subject !== undefined
+      ? (input.subject && input.subject.trim() ? input.subject.trim() : null)
+      : existing.subject;
+    const targetBody = input.body !== undefined ? input.body.trim() : existing.body;
+
+    const usedVariables = extractTemplateVariables(`${targetSubject ?? ''} ${targetBody}`);
+    const allowed = getAllowedVariablesForEvent(existing.event);
+    const disallowed = usedVariables.filter((v) => !allowed.includes(v));
+    if (disallowed.length > 0) {
+      throw new BadRequestException(
+        `Template uses variable(s) not supported by event "${existing.event}": ${disallowed.join(', ')}. Allowed variables: ${allowed.join(', ')}`,
+      );
+    }
+
     const data: {
       subject?: string | null;
       body?: string;
@@ -90,10 +105,10 @@ export class AdminNotificationTemplatesService {
     } = {};
 
     if (input.subject !== undefined) {
-      data.subject = input.subject && input.subject.trim() ? input.subject.trim() : null;
+      data.subject = targetSubject;
     }
     if (input.body !== undefined) {
-      data.body = input.body.trim();
+      data.body = targetBody;
     }
     if (input.dltTemplateId !== undefined) {
       data.dltTemplateId = input.dltTemplateId && input.dltTemplateId.trim() ? input.dltTemplateId.trim() : null;

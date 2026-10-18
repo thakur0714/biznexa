@@ -109,6 +109,17 @@ describe('Admin Notification Templates (e2e)', () => {
         .send({ body: '   ' });
       expect(bad.status).toBe(400);
 
+      // Template using variable not sent by the event is rejected with 400
+      const badVarRes = await http
+        .put(`/api/admin/notifications/templates/${target.id}`)
+        .set(as(admin))
+        .send({
+          body: 'Payment received for {{orderCode}}. Unsent variable: {{nonExistentVariable}}',
+        });
+      expect(badVarRes.status).toBe(400);
+      expect(badVarRes.body.message).toContain('Template uses variable(s) not supported by event "payment.succeeded"');
+      expect(badVarRes.body.message).toContain('nonExistentVariable');
+
       // Operations staff gets 403
       const opsUpdate = await http
         .put(`/api/admin/notifications/templates/${target.id}`)

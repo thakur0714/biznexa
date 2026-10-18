@@ -196,7 +196,8 @@ export const NOTIFICATION_EVENT_VARIABLES: Record<NotificationEvent, TemplateVar
   ],
   'auth.otp': [
     { name: 'otp', description: 'One-time verification code', sample: '482910' },
-    { name: 'validMinutes', description: 'Validity duration in minutes', sample: '10' },
+    { name: 'validMinutes', description: 'Validity duration in minutes', sample: '5' },
+    { name: 'purpose', description: 'Purpose of verification', sample: 'login' },
   ],
   'payment.succeeded': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
@@ -218,6 +219,7 @@ export const NOTIFICATION_EVENT_VARIABLES: Record<NotificationEvent, TemplateVar
     { name: 'invoiceNumber', description: 'Tax invoice number', sample: 'INV-2026-000456' },
     { name: 'total', description: 'Total invoice amount formatted in INR', sample: '₹4,999' },
     { name: 'orderId', description: 'Related order code', sample: 'ORD-2026-000123' },
+    { name: 'orderCode', description: 'Formatted order reference code', sample: 'ORD-2026-000123' },
     { name: 'link', description: 'Link to view/download invoice', sample: 'https://biznexa.com/dashboard/payments' },
   ],
   'refund.processed': [
@@ -231,57 +233,64 @@ export const NOTIFICATION_EVENT_VARIABLES: Record<NotificationEvent, TemplateVar
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
     { name: 'documentName', description: 'Name of the requested document', sample: 'Electricity Bill' },
     { name: 'applicationNumber', description: 'Application reference code', sample: 'BN10025' },
+    { name: 'applicationCode', description: 'Application reference code', sample: 'BN10025' },
     { name: 'serviceName', description: 'Service name', sample: 'Private Limited Company Registration' },
-    { name: 'link', description: 'Direct upload link', sample: 'https://biznexa.com/dashboard/documents' },
+    { name: 'reason', description: 'Instructions or note for the requested document', sample: 'Address proof must be current' },
+    { name: 'link', description: 'Direct upload link', sample: 'https://biznexa.com/dashboard' },
   ],
   'document.approved': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
     { name: 'documentName', description: 'Name of the approved document', sample: 'PAN Card' },
     { name: 'applicationNumber', description: 'Application reference code', sample: 'BN10025' },
+    { name: 'applicationCode', description: 'Application reference code', sample: 'BN10025' },
     { name: 'serviceName', description: 'Service name', sample: 'Private Limited Company Registration' },
-    { name: 'link', description: 'Link to application details', sample: 'https://biznexa.com/dashboard/applications/app-1' },
+    { name: 'reason', description: 'Optional approval note', sample: '' },
+    { name: 'link', description: 'Link to application details', sample: 'https://biznexa.com/dashboard' },
   ],
   'document.rejected': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
     { name: 'documentName', description: 'Name of the rejected document', sample: 'Address Proof' },
     { name: 'applicationNumber', description: 'Application reference code', sample: 'BN10025' },
+    { name: 'applicationCode', description: 'Application reference code', sample: 'BN10025' },
     { name: 'serviceName', description: 'Service name', sample: 'Private Limited Company Registration' },
     { name: 'reason', description: 'Reason for rejection', sample: 'Document is blurry and unreadable' },
-    { name: 'link', description: 'Link to re-upload document', sample: 'https://biznexa.com/dashboard/documents' },
+    { name: 'link', description: 'Link to re-upload document', sample: 'https://biznexa.com/dashboard' },
   ],
   'application.status_changed': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
     { name: 'applicationNumber', description: 'Application reference code', sample: 'BN10025' },
+    { name: 'applicationCode', description: 'Application reference code', sample: 'BN10025' },
     { name: 'serviceName', description: 'Service name', sample: 'Private Limited Company Registration' },
     { name: 'status', description: 'Human-readable status label', sample: 'In Progress' },
-    { name: 'stageName', description: 'Current process stage', sample: 'Name Approval' },
-    { name: 'notes', description: 'Customer-visible update note', sample: 'Application filed with the MCA' },
-    { name: 'link', description: 'Link to application timeline', sample: 'https://biznexa.com/dashboard/applications/app-1' },
+    { name: 'reason', description: 'Status change note or reason', sample: 'Application filed with the MCA' },
+    { name: 'link', description: 'Link to application timeline', sample: 'https://biznexa.com/dashboard' },
   ],
   'expert.assigned': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
     { name: 'expertName', description: 'Assigned specialist or manager', sample: 'Priya Verma' },
     { name: 'applicationNumber', description: 'Application reference code', sample: 'BN10025' },
+    { name: 'applicationCode', description: 'Application reference code', sample: 'BN10025' },
     { name: 'serviceName', description: 'Service name', sample: 'GST Registration' },
-    { name: 'link', description: 'Link to application page', sample: 'https://biznexa.com/dashboard/applications/app-1' },
+    { name: 'link', description: 'Link to application page', sample: 'https://biznexa.com/dashboard' },
   ],
   'consultation.booked': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
-    { name: 'consultantName', description: 'Consultant name', sample: 'CA Amit Gupta' },
+    { name: 'expertName', description: 'Consultant name', sample: 'CA Amit Gupta' },
     { name: 'date', description: 'Date of the consultation', sample: '25-Oct-2026' },
     { name: 'time', description: 'Time of the consultation (IST)', sample: '11:00 AM IST' },
+    { name: 'meetingLink', description: 'Video meeting link', sample: 'https://meet.google.com/xyz-abc' },
     { name: 'link', description: 'Link to consultation details', sample: 'https://biznexa.com/dashboard/consultations' },
   ],
   'consultation.reminder': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
-    { name: 'consultantName', description: 'Consultant name', sample: 'CA Amit Gupta' },
-    { name: 'date', description: 'Date of the consultation', sample: '25-Oct-2026' },
-    { name: 'time', description: 'Time of the consultation (IST)', sample: '11:00 AM IST' },
+    { name: 'expertName', description: 'Consultant name', sample: 'CA Amit Gupta' },
+    { name: 'minutesBefore', description: 'Minutes before meeting starts', sample: '15' },
+    { name: 'meetingLink', description: 'Video meeting link', sample: 'https://meet.google.com/xyz-abc' },
     { name: 'link', description: 'Link to join consultation', sample: 'https://biznexa.com/dashboard/consultations' },
   ],
   'consultation.cancelled': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
-    { name: 'consultantName', description: 'Consultant name', sample: 'CA Amit Gupta' },
+    { name: 'expertName', description: 'Consultant name', sample: 'CA Amit Gupta' },
     { name: 'date', description: 'Scheduled date of cancelled consultation', sample: '25-Oct-2026' },
     { name: 'reason', description: 'Cancellation reason', sample: 'Consultant emergency' },
     { name: 'link', description: 'Link to reschedule consultation', sample: 'https://biznexa.com/consultants' },
@@ -289,59 +298,60 @@ export const NOTIFICATION_EVENT_VARIABLES: Record<NotificationEvent, TemplateVar
   'certificate.issued': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
     { name: 'certificateNumber', description: 'Issued certificate number', sample: 'BN-ISO-2026-089' },
+    { name: 'entityName', description: 'Legal name of the business entity', sample: 'Acme Technologies Pvt Ltd' },
+    { name: 'applicationNumber', description: 'Application reference code', sample: 'BN10025' },
+    { name: 'applicationCode', description: 'Application reference code', sample: 'BN10025' },
     { name: 'serviceName', description: 'Associated service name', sample: 'ISO 9001 Certification' },
     { name: 'link', description: 'Link to view/download certificate', sample: 'https://biznexa.com/dashboard/certificates' },
   ],
   'certificate.expiring': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
     { name: 'certificateNumber', description: 'Expiring certificate number', sample: 'BN-ISO-2026-089' },
+    { name: 'entityName', description: 'Legal name of the business entity', sample: 'Acme Technologies Pvt Ltd' },
     { name: 'daysLeft', description: 'Days remaining until expiry', sample: '30' },
-    { name: 'renewUrl', description: 'Renewal link', sample: 'https://biznexa.com/services/iso/iso-9001' },
     { name: 'link', description: 'Direct certificate view link', sample: 'https://biznexa.com/dashboard/certificates' },
   ],
   'compliance.reminder': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
-    { name: 'title', description: 'Compliance title / item', sample: 'Annual ROC Filing' },
+    { name: 'complianceName', description: 'Compliance title / item', sample: 'Annual ROC Filing' },
+    { name: 'entityName', description: 'Legal name of the business entity', sample: 'Acme Technologies Pvt Ltd' },
     { name: 'dueDate', description: 'Due date in DD-MMM-YYYY', sample: '30-Oct-2026' },
-    { name: 'daysLeft', description: 'Days left until due date', sample: '15' },
-    { name: 'renewUrl', description: 'Compliance renewal / service URL', sample: 'https://biznexa.com/services/compliance' },
     { name: 'link', description: 'Link to dashboard reminders', sample: 'https://biznexa.com/dashboard' },
   ],
   'ticket.created': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
-    { name: 'ticketNumber', description: 'Support ticket number', sample: 'TKT-2026-000101' },
+    { name: 'ticketCode', description: 'Support ticket reference code', sample: 'TKT-2026-000101' },
     { name: 'subject', description: 'Ticket subject line', sample: 'Clarification regarding DSC requirement' },
-    { name: 'link', description: 'Link to view ticket conversation', sample: 'https://biznexa.com/dashboard/support/tkt-1' },
+    { name: 'link', description: 'Link to view ticket conversation', sample: 'https://biznexa.com/dashboard/support' },
   ],
   'ticket.replied': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
-    { name: 'ticketNumber', description: 'Support ticket number', sample: 'TKT-2026-000101' },
-    { name: 'subject', description: 'Ticket subject line', sample: 'Clarification regarding DSC requirement' },
-    { name: 'authorName', description: 'Name of the support respondent', sample: 'Support Team' },
-    { name: 'messagePreview', description: 'Preview of the reply message', sample: 'We have updated your DSC token status.' },
-    { name: 'link', description: 'Link to reply back', sample: 'https://biznexa.com/dashboard/support/tkt-1' },
+    { name: 'ticketCode', description: 'Support ticket reference code', sample: 'TKT-2026-000101' },
+    { name: 'replyExcerpt', description: 'Preview or excerpt of the reply message', sample: 'We have updated your DSC token status.' },
+    { name: 'link', description: 'Link to reply back', sample: 'https://biznexa.com/dashboard/support' },
   ],
   'ticket.resolved': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
-    { name: 'ticketNumber', description: 'Support ticket number', sample: 'TKT-2026-000101' },
-    { name: 'subject', description: 'Ticket subject line', sample: 'Clarification regarding DSC requirement' },
-    { name: 'link', description: 'Link to view resolved ticket', sample: 'https://biznexa.com/dashboard/support/tkt-1' },
+    { name: 'ticketCode', description: 'Support ticket reference code', sample: 'TKT-2026-000101' },
+    { name: 'resolution', description: 'Resolution explanation', sample: 'Issue was resolved by updating the filing portal credentials.' },
+    { name: 'link', description: 'Link to view resolved ticket', sample: 'https://biznexa.com/dashboard/support' },
   ],
   'message.received': [
-    { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
-    { name: 'applicationNumber', description: 'Application reference code', sample: 'BN10025' },
-    { name: 'senderName', description: 'Staff member name', sample: 'Priya Verma' },
-    { name: 'preview', description: 'Preview snippet of message', sample: 'Please check the name approval options.' },
-    { name: 'link', description: 'Link to application messages tab', sample: 'https://biznexa.com/dashboard/applications/app-1?tab=messages' },
+    { name: 'recipientName', description: 'Name of message recipient', sample: 'Rajesh Sharma' },
+    { name: 'applicationCode', description: 'Application reference code', sample: 'BN10025' },
+    { name: 'serviceName', description: 'Associated service name', sample: 'Private Limited Company Registration' },
+    { name: 'senderName', description: 'Name of the sender', sample: 'Priya Verma' },
+    { name: 'messageExcerpt', description: 'Excerpt or snippet of message', sample: 'Please check the name approval options.' },
+    { name: 'link', description: 'Link to application conversation', sample: 'https://biznexa.com/dashboard/applications/app-1' },
   ],
   'privacy.export_ready': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
-    { name: 'expiryDays', description: 'Days before export archive expires', sample: '7' },
-    { name: 'downloadUrl', description: 'Download link for the zip file', sample: 'https://biznexa.com/dashboard/privacy' },
+    { name: 'expiresOn', description: 'Expiration date of the data export archive', sample: '25-Oct-2026' },
     { name: 'link', description: 'Link to privacy dashboard', sample: 'https://biznexa.com/dashboard/privacy' },
   ],
   'privacy.request_rejected': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
+    { name: 'requestType', description: 'Type of privacy request', sample: 'data export' },
     { name: 'reason', description: 'Rejection reason', sample: 'Active ongoing applications require completion before deletion' },
     { name: 'link', description: 'Link to privacy dashboard', sample: 'https://biznexa.com/dashboard/privacy' },
   ],
@@ -349,6 +359,16 @@ export const NOTIFICATION_EVENT_VARIABLES: Record<NotificationEvent, TemplateVar
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
   ],
 };
+
+export function extractTemplateVariables(templateStr: string): string[] {
+  const variableRegex = /{{\s*([a-zA-Z0-9_]+)\s*}}/g;
+  const used = new Set<string>();
+  let match: RegExpExecArray | null;
+  while ((match = variableRegex.exec(templateStr)) !== null) {
+    used.add(match[1]);
+  }
+  return Array.from(used);
+}
 
 export function getSampleVariablesForEvent(event: string): Record<string, string> {
   const vars = NOTIFICATION_EVENT_VARIABLES[event as NotificationEvent];
