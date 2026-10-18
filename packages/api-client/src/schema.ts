@@ -3380,6 +3380,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/blog/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminBlogPostsController_list"];
+        put?: never;
+        post: operations["AdminBlogPostsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/blog/posts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["AdminBlogPostsController_update"];
+        post?: never;
+        delete: operations["AdminBlogPostsController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/blog/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicBlogPostsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/blog/posts/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicBlogPostsController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bookings/{id}/review": {
         parameters: {
             query?: never;
@@ -7836,6 +7900,76 @@ export interface components {
             id: string;
             slug: string;
             name: string;
+        };
+        BlogPostList: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            slug: string;
+            excerpt: string | null;
+            content: string;
+            featuredImage: string | null;
+            authorName: string | null;
+            categoryId: string | null;
+            categories?: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            tags: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            seoTitle: string | null;
+            metaDescription: string | null;
+            /** @enum {string} */
+            status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+            /** Format: date-time */
+            publishAt: string | null;
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        }[];
+        BlogPost: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            slug: string;
+            excerpt: string | null;
+            content: string;
+            featuredImage: string | null;
+            authorName: string | null;
+            categoryId: string | null;
+            categories?: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            tags: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            seoTitle: string | null;
+            metaDescription: string | null;
+            /** @enum {string} */
+            status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+            /** Format: date-time */
+            publishAt: string | null;
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         CustomerReview: {
             /** Format: uuid */
@@ -15485,6 +15619,161 @@ export interface operations {
             header?: never;
             path: {
                 id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AdminBlogPostsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlogPostList"];
+                };
+            };
+        };
+    };
+    AdminBlogPostsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    slug: string;
+                    excerpt: string | null;
+                    content: string;
+                    featuredImage: string | null;
+                    authorName: string | null;
+                    categoryIds: string[];
+                    tagIds: string[];
+                    seoTitle: string | null;
+                    metaDescription: string | null;
+                    /** @enum {string} */
+                    status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+                    /** Format: date-time */
+                    publishAt: string | null;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlogPost"];
+                };
+            };
+        };
+    };
+    AdminBlogPostsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    slug: string;
+                    excerpt: string | null;
+                    content: string;
+                    featuredImage: string | null;
+                    authorName: string | null;
+                    categoryIds: string[];
+                    tagIds: string[];
+                    seoTitle: string | null;
+                    metaDescription: string | null;
+                    /** @enum {string} */
+                    status: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+                    /** Format: date-time */
+                    publishAt: string | null;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlogPost"];
+                };
+            };
+        };
+    };
+    AdminBlogPostsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PublicBlogPostsController_list: {
+        parameters: {
+            query: {
+                category: string;
+                tag: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PublicBlogPostsController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
             };
             cookie?: never;
         };
