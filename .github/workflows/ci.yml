@@ -39,6 +39,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @biznexa/types build
       - run: pnpm --filter @biznexa/types test
+      # Shared rich-text sanitiser (M9.4): the API and web import its build output.
+      - run: pnpm --filter @biznexa/rich-text build && pnpm --filter @biznexa/rich-text test
       - run: pnpm --filter @biznexa/ui typecheck && pnpm --filter @biznexa/ui test
       - run: pnpm --filter @biznexa/admin test
       - name: Database

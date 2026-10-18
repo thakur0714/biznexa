@@ -225,10 +225,15 @@ describe('Admin Application Documents (M4.8)', () => {
     expect(updatedDoc?.status).toBe('REJECTED');
     expect(updatedDoc?.rejectionReason).toBe('Blurry');
 
-    const notif = await prisma.notification.findFirst({
-      where: { userId: customerId, channel: 'IN_APP', event: 'document.rejected' },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Sent by the notification queue (M6.3), so it lands shortly after the request.
+    let notif = null;
+    for (let i = 0; i < 100 && !notif; i++) {
+      notif = await prisma.notification.findFirst({
+        where: { userId: customerId, channel: 'IN_APP', event: 'document.rejected' },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (!notif) await new Promise((r) => setTimeout(r, 50));
+    }
     expect(notif).not.toBeNull();
     expect(notif?.title).toBe('Document Rejected');
     expect(notif?.body).toContain('Blurry');

@@ -162,3 +162,27 @@ Admin applications list and detail, assignment, status updates and the document 
 - 12 unit tests in `@biznexa/mobile` covering theme tokens, API client headers and error parsing, secure storage persistence, and auth schema validation.
 - All 8 workspace packages passing typecheck (`turbo run typecheck`), lint (`turbo run lint`), and tests (`turbo run test`).
 
+## M8.11 — Customer Consultations (18-Oct-2026)
+
+- Added the customer Consultations page with upcoming and past bookings, IST session times, booking status and fees.
+- Confirmed sessions show their meeting link; completed sessions link to the review flow.
+- Customers can cancel or reschedule more than 24 hours before a session. Rescheduling lists the consultant’s available times, and the lifecycle API rechecks the policy and slot under lock.
+
+## M8.12 — Consultation Reviews (18-Oct-2026)
+
+- Customers can submit one 1–5 star review with an optional comment after a booking reaches `COMPLETED`. The booking's unique review relation enforces one review per booking.
+- New reviews await moderation. Admins can approve or reject with a reason; every moderation decision is written to the audit log.
+- Approval updates the consultant's average rating and review count in the same transaction. Consultant profiles show approved reviews and calculate their rating breakdown from approved reviews only.
+
+## M8.13 — Consultant Portal (18-Oct-2026)
+
+- Added consultant-only portal navigation and pages for bookings, assigned applications, messages, and earnings.
+- Consultants see only their own bookings and assigned applications. Booking outcomes call the existing cx-9 endpoint; application detail reuses the existing M4.11 message thread.
+- Conversation list shows unread counts. Earnings include only `COMPLETED` bookings and calculate fee less the consultant record’s commission rate, in paise with Indian currency formatting.
+- Added API e2e coverage proving cross-consultant isolation and 403 responses for customers; regenerated OpenAPI and API client types.
+## M5.13 — Customer data isolation (18-Oct-2026)
+
+### Checked and tested
+- Every customer route was reviewed for ownership checks; no leak was found, so no code changed.
+- API: `test/data-isolation.e2e-spec.ts` (86 tests). Customer A gets 404 for every one of customer B's applications, documents, deliverables, payments, invoices, credit notes, certificates, messages, attachments, tickets, bookings, businesses, notifications and data exports — the same answer as an id that doesn't exist. B's ids inside A's requests (files, business, application) are refused, signed download links can't be pointed at another resource, lists/counts/dashboard show A nothing of B's, and B's data is checked unchanged afterwards.
+- Browser: `e2e/customer-isolation.spec.ts` on desktop and mobile — A opens B's application by URL and sees "Application not found"; A's My Services, Businesses and Support pages show none of B's things.

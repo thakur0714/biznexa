@@ -47,7 +47,7 @@ describe('PortalShell two-factor gate', () => {
   it('redirects consultants from other admin routes and shows only consultant portal navigation', async () => {
     auth.user = { ...staff({ required: true, enabled: true, verified: true }), roles: ['CONSULTANT'], permissions: [PERMS.ADMIN_ACCESS, PERMS.APPLICATIONS_VIEW_ASSIGNED] };
     render(<PortalShell>admin route</PortalShell>);
-    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith('/consultant/profile'));
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith('/consultant/bookings'));
     expect(screen.queryByText('admin route')).toBeNull();
 
     nav.pathname = '/consultant/profile';

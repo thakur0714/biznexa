@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import type { BookingCheckout, BookingView, DomainEventName, DomainEventPayloads, PaymentCallbackInput } from '@biznexa/types';
 import { AuditService } from '../audit/audit.service';
 import { expireStaleHolds, liveOverlap, lockConsultant } from '../bookings/booking-holds';
@@ -137,7 +138,9 @@ export class BookingPaymentsService {
       }
     }
 
-    await tx.booking.update({ where: { id: booking.id }, data: { status: 'CONFIRMED', holdExpiresAt: null } });
+    const meetingLink = `https://meet.jit.si/BizNexa-${randomUUID()}`;
+    await tx.booking.update({ where: { id: booking.id }, data: { status: 'CONFIRMED', holdExpiresAt: null, meetingLink } });
+    await tx.bookingStatusHistory.create({ data: { bookingId: booking.id, fromStatus: booking.status, toStatus: 'CONFIRMED', actorId: null, metadata: { paymentId } } });
     await this.audit.log(
       {
         actorId: null,
