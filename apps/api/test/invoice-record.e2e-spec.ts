@@ -40,8 +40,9 @@ const slugs = [`e2e-inv-${run}`, `e2e-inv-part-${run}`];
 const codes: string[] = [];
 const eventIds: string[] = [];
 
-// Invoice date: 1 July of a year between 2900 and 2999, inside one financial year.
-const AT = new Date(`${2900 + Math.floor(Math.random() * 100)}-07-01T06:30:00Z`);
+// Invoice date: 1 July of a year between 3500 and 3999, inside one financial year — this spec's own range
+// (invoice-pdf uses 3000–3499, invoice-numbers 2200–2829), so the counter it deletes at the end is its alone.
+const AT = new Date(`${3500 + Math.floor(Math.random() * 500)}-07-01T06:30:00Z`);
 const FY = financialYear(AT);
 
 // ₹1,000 fee + 18 % GST, and (part package) ₹4,500 government fee with a 30 % advance.
@@ -141,9 +142,14 @@ beforeAll(async () => {
   invoices = app.get(InvoicesService);
   // Invoice PDFs (M3.23) are generated in the background and can land during a later test: not counted here.
   app.get(EventBus).onAny((e) => void (e.name !== 'pdf.generated' && events.push(e)));
-  // Every invoice of this run (listener and sweep both go through `issue`) is dated in this run's year.
+  // Every invoice of this run (listener and sweep both go through `issue`) is dated in this run's year. Anything
+  // else this process issues (the 10-minute sweep can pick up another suite's payment) keeps today's date, so it
+  // never takes a number from the counter deleted in afterAll.
   const issue = invoices.issue.bind(invoices);
-  issueAt = (paymentId) => issue(paymentId, AT);
+  issueAt = async (paymentId) => {
+    const ours = (await prisma.payment.count({ where: { id: paymentId, order: { customer: users } } })) > 0;
+    return ours ? issue(paymentId, AT) : issue(paymentId);
+  };
   jest.spyOn(invoices, 'issue').mockImplementation(issueAt);
   ({ token: alice, id: aliceId } = await register(1));
 

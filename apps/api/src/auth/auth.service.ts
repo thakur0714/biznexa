@@ -5,7 +5,7 @@ import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { OtpService } from './otp.service';
-import { SessionMeta, TokenService } from './token.service';
+import { passwordFingerprint, SessionMeta, TokenService } from './token.service';
 import { env } from '../config/env';
 import { requiresTwoFactor, type ChangePasswordInput, type TwoFactorState, type UpdateProfileInput } from '@biznexa/types';
 
@@ -124,18 +124,32 @@ export class AuthService {
     if (!user) throw new BadRequestException('This code has expired. Please request a new one.');
 
     if (purpose === 'RESET_PASSWORD') {
-      return { resetToken: await this.tokens.resetToken(user.id) };
+      return { resetToken: await this.tokens.resetToken(user.id, user.passwordHash) };
     }
+    // Pre-hijacking (M12.1), as for Google: an OTP login proves who owns a mobile/email the account never
+    // verified, so whoever registered with it loses the password and every session.
+    const takeover = purpose === 'LOGIN' && !(channel === 'MOBILE' ? user.mobileVerified : user.emailVerified);
     const verified = await this.prisma.user.update({
       where: { id: user.id },
-      data: channel === 'MOBILE' ? { mobileVerified: true } : { emailVerified: true },
+      data: { ...(channel === 'MOBILE' ? { mobileVerified: true } : { emailVerified: true }), ...(takeover ? { passwordHash: null } : {}) },
     });
+    if (takeover) {
+      await this.tokens.revokeAll(user.id);
+      await this.audit.log({ actorId: user.id, action: 'user.otp_login_unverified', entityType: 'User', entityId: user.id });
+    }
     return this.session(verified, meta);
   }
 
   async resetPassword(resetToken: string, newPassword: string) {
-    const userId = this.tokens.verifyResetToken(resetToken);
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(newPassword, BCRYPT_ROUNDS) } });
+    const { userId, fingerprint } = this.tokens.verifyResetToken(resetToken);
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    // Only the password the token was issued for may be replaced: a used (or superseded) token is refused.
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+    if (!user || passwordFingerprint(user.passwordHash) !== fingerprint) {
+      throw new UnauthorizedException('This reset link has expired. Please start again.');
+    }
+    const { count } = await this.prisma.user.updateMany({ where: { id: userId, passwordHash: user.passwordHash }, data: { passwordHash } });
+    if (count === 0) throw new UnauthorizedException('This reset link has expired. Please start again.');
     await this.tokens.revokeAll(userId);
     await this.audit.log({ actorId: userId, action: 'user.password_reset', entityType: 'User', entityId: userId });
     return { message: 'Password updated. Please log in with your new password.' };
@@ -167,7 +181,17 @@ export class AuthService {
         },
       });
     } else if (!user.googleId) {
-      user = await this.prisma.user.update({ where: { id: user.id }, data: { googleId: p.sub, emailVerified: true } });
+      // Pre-hijacking (M12.1): someone may have registered this email without owning it. Google has just proved
+      // who owns it, so an unverified account loses its password and every session before it is linked.
+      const takeover = !user.emailVerified;
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { googleId: p.sub, emailVerified: true, ...(takeover ? { passwordHash: null } : {}) },
+      });
+      if (takeover) {
+        await this.tokens.revokeAll(user.id);
+        await this.audit.log({ actorId: user.id, action: 'user.google_link_unverified', entityType: 'User', entityId: user.id });
+      }
     }
     return this.session(user, meta);
   }

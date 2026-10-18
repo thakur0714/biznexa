@@ -2,8 +2,10 @@ import { Controller, Get, Request } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ReminderListResponse, reminderListResponseSchema } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
+import { CustomerOnly } from '../common/auth.decorators';
 
 @ApiTags('reminders')
+@CustomerOnly()
 @Controller('reminders')
 export class RemindersController {
   constructor(private readonly prisma: PrismaService) {}

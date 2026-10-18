@@ -10,7 +10,7 @@ import {
   privacyOtpResponseSchema,
   type CreateDataRequestInput,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser, Public } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, Public, SignedIn } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { PrivacyService } from './privacy.service';
 import { DataExportService } from './data-export.service';
@@ -18,6 +18,7 @@ import { DataExportService } from './data-export.service';
 /** The signed-in customer's data export and account deletion requests (DPDP, M5.12). */
 @ApiTags('privacy')
 @ApiBearerAuth()
+@SignedIn()
 @Controller('privacy')
 export class PrivacyController {
   constructor(private readonly privacy: PrivacyService, private readonly exports: DataExportService) {}

@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import {
   bookingCheckoutSchema,
   bookingListSchema,
@@ -16,14 +17,16 @@ import {
   type BookingConsultantOutcomeInput,
   type PaymentCallbackInput,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser, PERMS, RequirePermissions } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, CustomerOnly, PERMS, RequirePermissions, SignedIn } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
+import { PAYMENT_LIMIT } from '../common/rate-limits';
 import { BookingPaymentsService } from '../payments/booking-payments.service';
 import { BookingsService } from './bookings.service';
 
 /** The signed-in customer's consultation bookings (M8.8). Another customer's booking looks missing (404). */
 @ApiTags('bookings')
 @ApiBearerAuth()
+@CustomerOnly()
 @Controller('bookings')
 export class BookingsController {
   constructor(private readonly bookings: BookingsService, private readonly payments: BookingPaymentsService) {}
@@ -60,6 +63,7 @@ export class BookingsController {
     res.send(await this.bookings.calendar(u.id, id));
   }
 
+  @SignedIn() // the consultant's own booking (service checks); overrides the class-level @CustomerOnly
   @RequirePermissions(PERMS.ADMIN_ACCESS)
   @ApiZodResponse('BookingView', bookingViewSchema)
   @Put(':id/meeting-link')
@@ -79,6 +83,7 @@ export class BookingsController {
     return this.bookings.reschedule(u.id, id, new Date(body.startAt));
   }
 
+  @SignedIn() // the consultant's own booking (service checks); overrides the class-level @CustomerOnly
   @RequirePermissions(PERMS.ADMIN_ACCESS)
   @Post(':id/outcome')
   @HttpCode(200)
@@ -92,6 +97,7 @@ export class BookingsController {
   @ApiResponse({ status: 409, description: 'Already paid, or the hold ran out (pick a slot again)' })
   @ApiResponse({ status: 502, description: 'The payment gateway refused the order; try again' })
   @ApiResponse({ status: 503, description: 'The payment gateway could not be reached; try again' })
+  @Throttle(PAYMENT_LIMIT)
   @Post(':id/payment')
   @HttpCode(200)
   pay(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() u: AuthUser) {
@@ -102,6 +108,7 @@ export class BookingsController {
   @ApiZodResponse('BookingView', bookingViewSchema)
   @ApiResponse({ status: 400, description: 'Bad body, or the signature or ids don’t match a payment of this booking' })
   @ApiResponse({ status: 404, description: 'No such booking among yours' })
+  @Throttle(PAYMENT_LIMIT)
   @Post(':id/payment/callback')
   @HttpCode(200)
   callback(@Param('id', new ParseUUIDPipe()) id: string, @ZodBody(paymentCallbackInput) body: PaymentCallbackInput, @CurrentUser() u: AuthUser) {
