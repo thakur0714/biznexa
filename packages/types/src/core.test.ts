@@ -13,7 +13,15 @@ import {
   registerSchema,
   updateProfileSchema,
   changePasswordSchema,
+  BOOKING_CHANGE_WINDOW_HOURS,
 } from './index';
+
+describe('bookings constants', () => {
+  it('BOOKING_CHANGE_WINDOW_HOURS is a positive integer', () => {
+    expect(Number.isInteger(BOOKING_CHANGE_WINDOW_HOURS)).toBe(true);
+    expect(BOOKING_CHANGE_WINDOW_HOURS).toBeGreaterThan(0);
+  });
+});
 
 describe('calculatePrice', () => {
   it('uses CGST + SGST when seller and buyer are in the same state', () => {
