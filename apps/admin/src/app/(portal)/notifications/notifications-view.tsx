@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo, type FormEvent } from 'react';
 import {
-  NOTIFICATION_EVENTS,
   NOTIFICATION_CHANNELS,
   NOTIFICATION_EVENT_VARIABLES,
   getSampleVariablesForEvent,
@@ -105,6 +104,7 @@ function TemplateEditor() {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     api
       .call((c) => c.GET('/api/admin/notifications/templates', {}))
