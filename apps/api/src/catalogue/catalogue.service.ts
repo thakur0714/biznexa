@@ -114,6 +114,14 @@ export class CatalogueService {
   }
 
   async popular(limit = 8) {
+    const setting = await this.prisma.setting.findUnique({ where: { key: 'home.cms' }, select: { value: true } });
+    const value = setting?.value as { popularServiceIds?: unknown } | null;
+    if (Array.isArray(value?.popularServiceIds) && value.popularServiceIds.length) {
+      const ids = value.popularServiceIds.filter((id): id is string => typeof id === 'string');
+      const selected = await this.prisma.service.findMany({ where: { ...activeService, isActive: true, id: { in: ids } }, include: cardInclude });
+      const byId = new Map(selected.map((s) => [s.id, s]));
+      return ids.map((id) => byId.get(id)).filter((s): s is CardRow => Boolean(s)).slice(0, limit).map(toCard);
+    }
     const rows = await this.prisma.service.findMany({
       where: { ...activeService, isPopular: true },
       orderBy: { popularity: 'desc' },
