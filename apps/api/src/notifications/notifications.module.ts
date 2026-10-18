@@ -15,10 +15,15 @@ import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 
 import { NotificationEventsListener } from './notification-events.listener';
+import { NOTIFICATION_QUEUE_OPTIONS, NotificationQueueService } from './delivery/notification-queue.service';
+import { NotificationDeliveriesService } from './delivery/notification-deliveries.service';
+import { AdminNotificationDeliveriesController } from './delivery/admin-notification-deliveries.controller';
+import { DeliveryCallbacksService, deliveryCallbackConfigProvider } from './delivery/delivery-callbacks.service';
+import { DeliveryCallbacksController } from './delivery/delivery-callbacks.controller';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [NotificationsController],
+  controllers: [NotificationsController, AdminNotificationDeliveriesController, DeliveryCallbacksController],
   providers: [
     emailProviderFactory,
     smsProviderFactory,
@@ -33,8 +38,15 @@ import { NotificationEventsListener } from './notification-events.listener';
     TemplateEngineService,
     NotificationsService,
     NotificationEventsListener,
+    // Production timing (delivery-policy.ts); tests override it with fast retries.
+    { provide: NOTIFICATION_QUEUE_OPTIONS, useValue: {} },
+    NotificationQueueService,
+    NotificationDeliveriesService,
+    deliveryCallbackConfigProvider,
+    DeliveryCallbacksService,
   ],
   exports: [
+    NotificationQueueService,
     EmailProvider,
     SmsProvider,
     FcmProvider,

@@ -76,11 +76,13 @@ beforeAll(async () => {
     written.push(key);
     return write(key, data);
   });
-  // Only this suite's kind: invoices without a PDF (M3.23) are queued at start-up too.
+  // Only this suite's kind.
   eventBus = app.get(EventBus);
   eventBus.onAny((e) => void ((e.name !== 'pdf.generated' || e.payload.kind === KIND) && events.push(e)));
   startupCompletion = generated('left-over');
   await app.init();
+  // The start-up sweep is off in tests (QUEUE_BOOT_SWEEP, setup-env.js): run it for this suite's kind only.
+  await pdfs.queueMissing([KIND]);
 });
 
 beforeEach(() => {
