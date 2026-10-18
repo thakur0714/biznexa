@@ -29,8 +29,8 @@ describe('visibleNav', () => {
     expect(slugs(SUPPORT)).toEqual(['', 'customers', 'support', 'leads', 'payments']);
   });
 
-  it('shows consultants only their profile and availability portal', () => {
-    expect(visibleNav(CONSULTANT, NAV, ['CONSULTANT']).flatMap((g) => g.items.map((i) => i.slug))).toEqual(['consultant/profile', 'consultant/availability']);
+  it('shows consultants only their own portal sections', () => {
+    expect(visibleNav(CONSULTANT, NAV, ['CONSULTANT']).flatMap((g) => g.items.map((i) => i.slug))).toEqual(['consultant/profile', 'consultant/availability', 'consultant/bookings', 'consultant/applications', 'consultant/messages', 'consultant/earnings']);
   });
 
   it('drops groups that end up empty for regular permission filtered navigation', () => {

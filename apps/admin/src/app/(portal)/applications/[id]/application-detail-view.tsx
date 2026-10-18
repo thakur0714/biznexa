@@ -223,7 +223,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
           ))}
           {notes.length === 0 && <p className="text-muted">No internal notes yet.</p>}
         </div>
-        <form onSubmit={async (e) => {
+        {user?.permissions.includes('applications.update') && <form onSubmit={async (e) => {
           e.preventDefault();
           const el = (e.target as HTMLFormElement).elements.namedItem('noteContent') as HTMLInputElement | null;
           if (!el || !el.value.trim()) return;
@@ -240,12 +240,12 @@ export function ApplicationDetailView({ id }: { id: string }) {
         }} className="flex gap-2">
           <input name="noteContent" placeholder="Write a note..." className="flex-1 border border-rule p-2 rounded text-sm" />
           <Button variant="ink" type="submit">Add Note</Button>
-        </form>
+        </form>}
       </section>
 
       <MessagesPanel applicationId={id} />
 
-      <DeliverablesPanel applicationId={id} status={data.status as import('@biznexa/types').ApplicationStatus} />
+      {user?.permissions.includes('applications.update') && <DeliverablesPanel applicationId={id} status={data.status as import('@biznexa/types').ApplicationStatus} />}
 
       <section className="p-4 bg-white border border-rule rounded-md">
         <h2 className="font-semibold text-lg mb-4">History</h2>

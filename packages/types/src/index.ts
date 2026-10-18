@@ -35,6 +35,7 @@ export * from './reminders';
 export * from './tickets';
 export * from './reports';
 export * from './consultants';
+export * from './consultant-portal';
 export * from './availability';
 export * from './bookings';
 export * from './media';
