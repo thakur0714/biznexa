@@ -66,6 +66,10 @@ const CONSULTANT_PORTAL_NAV: NavGroup[] = [{
   items: [
     { slug: 'consultant/profile', label: 'My profile', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
     { slug: 'consultant/availability', label: 'Availability', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
+    { slug: 'consultant/bookings', label: 'Bookings', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
+    { slug: 'consultant/applications', label: 'Assigned applications', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
+    { slug: 'consultant/messages', label: 'Messages', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
+    { slug: 'consultant/earnings', label: 'Earnings', requires: { all: [PERMS.ADMIN_ACCESS] }, built: true },
   ],
 }];
 

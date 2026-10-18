@@ -14608,6 +14608,110 @@
         ]
       }
     },
+    "/api/consultants/me/portal/bookings": {
+      "get": {
+        "operationId": "ConsultantPortalController_bookings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantPortalBookings"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultant portal"
+        ]
+      }
+    },
+    "/api/consultants/me/portal/applications": {
+      "get": {
+        "operationId": "ConsultantPortalController_applications",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantPortalApplications"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultant portal"
+        ]
+      }
+    },
+    "/api/consultants/me/portal/conversations": {
+      "get": {
+        "operationId": "ConsultantPortalController_conversations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantPortalConversations"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultant portal"
+        ]
+      }
+    },
+    "/api/consultants/me/portal/earnings": {
+      "get": {
+        "operationId": "ConsultantPortalController_earnings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsultantPortalEarnings"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "consultant portal"
+        ]
+      }
+    },
     "/api/bookings": {
       "post": {
         "operationId": "BookingsController_create",
@@ -34607,6 +34711,240 @@
           "minNoticeMinutes",
           "weekly",
           "exceptions"
+        ],
+        "additionalProperties": false
+      },
+      "ConsultantPortalBookings": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "upcoming": {
+                  "type": "boolean"
+                },
+                "startAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "meetingLink": {
+                  "type": "string",
+                  "format": "uri",
+                  "nullable": true
+                },
+                "fee": {
+                  "type": "integer"
+                },
+                "customerName": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "status",
+                "type",
+                "upcoming",
+                "startAt",
+                "endAt",
+                "meetingLink",
+                "fee",
+                "customerName"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ConsultantPortalApplications": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "serviceName": {
+                  "type": "string"
+                },
+                "customerName": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "status",
+                "createdAt",
+                "serviceName",
+                "customerName"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ConsultantPortalConversations": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "applicationId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "applicationCode": {
+                  "type": "string"
+                },
+                "serviceName": {
+                  "type": "string"
+                },
+                "unreadCount": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "applicationId",
+                "applicationCode",
+                "serviceName",
+                "unreadCount"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ConsultantPortalEarnings": {
+        "type": "object",
+        "properties": {
+          "commissionPercent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "bookingId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "completedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "fee": {
+                  "type": "integer"
+                },
+                "commission": {
+                  "type": "integer"
+                },
+                "net": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "bookingId",
+                "code",
+                "completedAt",
+                "fee",
+                "commission",
+                "net"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "monthlyTotals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}$"
+                },
+                "fee": {
+                  "type": "integer"
+                },
+                "commission": {
+                  "type": "integer"
+                },
+                "net": {
+                  "type": "integer"
+                },
+                "bookings": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "month",
+                "fee",
+                "commission",
+                "net",
+                "bookings"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "commissionPercent",
+          "items",
+          "monthlyTotals"
         ],
         "additionalProperties": false
       },

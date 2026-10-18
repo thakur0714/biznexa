@@ -352,7 +352,8 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [ ] **M8.10 — Booking lifecycle.** `[Sonnet]` Reschedule/cancel per policy, COMPLETED / NO_SHOW by consultant, state machine tests.
 - [x] **M8.11 — Customer Consultations page.** `[Sonnet]` Upcoming/past, join link, reschedule/cancel, leave review.
 - [x] **M8.12 — Reviews.** `[Sonnet]` Only after COMPLETED booking, one per booking; admin moderation; rating aggregates updated.
-- [ ] **M8.13 — Consultant portal: bookings, assigned applications, messages, earnings (fee − commission).** `[Sonnet]`
+- [x] **M8.13 — Consultant portal: bookings, assigned applications, messages, earnings (fee − commission).** `[Sonnet]`
+  - Done 18-Oct-2026: Consultant-only portal navigation and pages for upcoming/past bookings (join link; outcome buttons reuse cx-9 `POST /api/bookings/:id/outcome`), assigned applications and their existing M4.11 message thread, conversations with unread counts, and completed-booking earnings. API collections scope every read to the signed-in consultant; earnings use the consultant’s stored commission rate and paise amounts. E2E covers consultant-to-consultant isolation and customer 403s.
 - [ ] **M8.14 — Featured consultants on homepage** `[Sonnet]` + E2E: filter → book → pay → confirmation with link. CHANGELOG.
 
 ---
