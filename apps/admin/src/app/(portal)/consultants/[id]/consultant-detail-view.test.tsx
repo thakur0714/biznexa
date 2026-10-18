@@ -6,6 +6,7 @@ import { ConsultantDetailView } from './consultant-detail-view';
 const ID = '11111111-1111-4111-8111-111111111111';
 const FILE_ID = '33333333-3333-4333-8333-333333333333';
 const calls: Array<{ url: string; options?: { params?: { path?: { id?: string; requestId?: string } }; body?: unknown } }> = [];
+const featuredCalls: Array<{ url: string; body?: unknown }> = [];
 let detail: AdminConsultantDetail;
 const fakeClient = {
   GET: vi.fn(async () => ({ data: detail, response: new Response(null, { status: 200 }) })),
@@ -13,7 +14,7 @@ const fakeClient = {
     calls.push({ url, options });
     return { data: { id: ID, verificationStatus: 'APPROVED' }, response: new Response(null, { status: 201 }) };
   }),
-  PATCH: vi.fn(async () => ({ data: detail, response: new Response(null, { status: 200 }) })),
+  PATCH: vi.fn(async (url: string, options?: { body?: unknown }) => { featuredCalls.push({ url, body: options?.body }); return { data: detail, response: new Response(null, { status: 200 }) }; }),
 };
 const fakeApi = { call: async (send: (client: typeof fakeClient) => Promise<{ data: unknown }>) => (await send(fakeClient)).data };
 
@@ -24,6 +25,7 @@ vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { permissions: ['consulta
 
 beforeEach(() => {
   calls.length = 0;
+  featuredCalls.length = 0;
   fakeClient.GET.mockClear(); fakeClient.POST.mockClear(); fakeClient.PATCH.mockClear();
   detail = adminConsultantDetailSchema.parse({
     id: ID, userId: '22222222-2222-4222-8222-222222222222', name: 'Asha Rao', email: 'asha@example.com',
@@ -63,5 +65,15 @@ describe('ConsultantDetailView', () => {
     expect(await screen.findByText('₹1,500 requested · PENDING')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Approve fee' }));
     await waitFor(() => expect(calls).toContainEqual({ url: '/api/admin/consultants/{id}/fee-requests/{requestId}/approve', options: { params: { path: { id: ID, requestId: '55555555-5555-4555-8555-555555555555' } } } }));
+  });
+
+  it('lets staff feature an approved consultant from the detail page', async () => {
+    detail = adminConsultantDetailSchema.parse({ ...detail, verificationStatus: 'APPROVED' });
+    render(<ConsultantDetailView id={ID} />);
+    const toggle = await screen.findByRole('checkbox', { name: 'Featured consultant' });
+    expect((toggle as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(toggle);
+    await waitFor(() => expect(featuredCalls).toContainEqual({ url: '/api/admin/consultants/{id}/featured', body: { isFeatured: true } }));
+    await waitFor(() => expect((screen.getByRole('checkbox', { name: 'Featured consultant' }) as HTMLInputElement).checked).toBe(true));
   });
 });

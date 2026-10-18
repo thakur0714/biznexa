@@ -1,5 +1,11 @@
 # Changelog
 
+## M8.14 — Featured consultants (18-Oct-2026)
+
+- Added a homepage section backed by `GET /api/public/consultants?featured=true`; it is hidden when there are no featured consultants and sits alongside the homepage CMS sections.
+- Added the audited Featured toggle to the consultant admin detail page for approved consultants and exposed the meeting link on booking confirmation.
+- Added Playwright coverage for filtering consultants, booking a slot, completing mock payment, and seeing the confirmation link on desktop and mobile.
+
 ## M9.5 / M9.6 — CMS (in progress, 18-Oct-2026)
 
 - Added CMS page draft, publish and unpublish endpoints requiring `cms.manage`; writes are audit logged and rich HTML is saved through `richTextInput`.

@@ -359,8 +359,8 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [x] **M8.12 — Reviews.** `[Sonnet]` Only after COMPLETED booking, one per booking; admin moderation; rating aggregates updated.
 - [x] **M8.13 — Consultant portal: bookings, assigned applications, messages, earnings (fee − commission).** `[Sonnet]`
   - Done 18-Oct-2026: Consultant-only portal navigation and pages for upcoming/past bookings (join link; outcome buttons reuse cx-9 `POST /api/bookings/:id/outcome`), assigned applications and their existing M4.11 message thread, conversations with unread counts, and completed-booking earnings. API collections scope every read to the signed-in consultant; earnings use the consultant’s stored commission rate and paise amounts. E2E covers consultant-to-consultant isolation and customer 403s.
-- [ ] **M8.14 — Featured consultants on homepage** `[Sonnet]` + E2E: filter → book → pay → confirmation with link. CHANGELOG.
-  - *Part 1 merged 18-Oct-2026 (Jules #58, fixed by Claude):* `isFeatured` on consultants, admin toggle API, `featured` filter on the public directory. Left: homepage section + the filter → book → pay → confirmation E2E.
+- [x] **M8.14 — Featured consultants on homepage** `[Sonnet]` + E2E: filter → book → pay → confirmation with link. CHANGELOG.
+  - *Done 18-Oct-2026 (cx-13):* The homepage requests `/api/public/consultants?featured=true&limit=4`, shows up to four featured consultants beside the M9.6 CMS sections, and omits the section when the result is empty. The consultant detail page has an approved-only Featured toggle using the existing audited API. Booking confirmation now links to the meeting room. Playwright completes consultant filtering, account signup, slot hold, mock payment, and confirmation on desktop and mobile.
 
 ---
 

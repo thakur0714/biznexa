@@ -74,6 +74,17 @@ export function ConsultantDetailView({ id }: { id: string }) {
     finally { setSaving(false); }
   }
 
+  async function toggleFeatured(isFeatured: boolean) {
+    if (!detail || saving || detail.verificationStatus !== 'APPROVED') return;
+    setSaving(true); setError(''); setSuccess('');
+    try {
+      await api.call((client) => client.PATCH('/api/admin/consultants/{id}/featured', { params: { path: { id } }, body: { isFeatured } }));
+      setDetail((current) => current ? { ...current, isFeatured } : current);
+      setSuccess(isFeatured ? 'Consultant added to featured.' : 'Consultant removed from featured.');
+    } catch (cause: unknown) { setError(cause instanceof Error ? cause.message : 'Could not update the featured setting.'); }
+    finally { setSaving(false); }
+  }
+
   async function decideFeeChange(requestId: string, decision: 'approve' | 'reject') {
     if (saving || (decision === 'reject' && feeReason.trim().length < 3)) return;
     setSaving(true); setError(''); setSuccess('');
@@ -109,6 +120,11 @@ export function ConsultantDetailView({ id }: { id: string }) {
       {error && <Notice tone="error">{error}</Notice>}{success && <Notice tone="success">{success}</Notice>}
       {loading || !detail || !form ? <p role="status">Loading consultant review…</p> : <>
         <header><h1 className="text-2xl font-semibold">{detail.name}</h1><p className="mt-1 text-sm text-muted">{detail.email} · {detail.verificationStatus} · {detail.category.replaceAll('_', ' ')} · {formatINR(detail.feePerSession)} per session</p></header>
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white p-4" aria-labelledby="consultant-featured-heading">
+          <div><h2 id="consultant-featured-heading" className="font-semibold">Featured consultant</h2><p className="text-sm text-muted">Featured consultants can appear on the public homepage.</p></div>
+          <label className="flex min-h-11 items-center gap-3 font-medium"><input type="checkbox" aria-label="Featured consultant" checked={detail.isFeatured} disabled={saving || detail.verificationStatus !== 'APPROVED'} onChange={(event) => void toggleFeatured(event.target.checked)} />Featured</label>
+          {detail.verificationStatus !== 'APPROVED' && <p className="w-full text-sm text-muted">Approve this consultant before featuring them.</p>}
+        </section>
         <section className="space-y-3 rounded-lg border border-rule bg-white p-4" aria-labelledby="consultant-documents-heading">
           <h2 id="consultant-documents-heading" className="text-lg font-semibold">Verification documents</h2>
           {detail.documents.length ? <ul className="divide-y divide-rule">{detail.documents.map((document) => <li key={document.id} className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"><div><p className="font-medium">{document.kind.replaceAll('_', ' ')}</p><p className="text-sm text-muted">{document.fileName} · {document.scanStatus}</p></div><Button variant="outline" disabled={document.scanStatus !== 'CLEAN'} onClick={() => void openFile(document.fileId)}>Open</Button></li>)}</ul> : <p className="text-sm text-muted">No verification documents uploaded.</p>}
