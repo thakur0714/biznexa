@@ -60,6 +60,14 @@ export const TICKET_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
 export const CERTIFICATE_STATUSES = ['ACTIVE', 'SUSPENDED', 'WITHDRAWN', 'EXPIRED'] as const;
 export type CertificateStatus = (typeof CERTIFICATE_STATUSES)[number];
 
+export const BOOKING_LIFECYCLE_STATUSES = ['CONFIRMED', 'RESCHEDULED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'] as const;
+export type BookingLifecycleStatus = (typeof BOOKING_LIFECYCLE_STATUSES)[number];
+export const BOOKING_TRANSITIONS: Record<BookingLifecycleStatus, BookingLifecycleStatus[]> = {
+  CONFIRMED: ['RESCHEDULED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'],
+  RESCHEDULED: ['CONFIRMED'],
+  CANCELLED: [], COMPLETED: [], NO_SHOW: [],
+};
+
 const CERTIFICATE_TRANSITIONS: Record<CertificateStatus, CertificateStatus[]> = {
   ACTIVE: ['SUSPENDED', 'WITHDRAWN', 'EXPIRED'],
   SUSPENDED: ['ACTIVE', 'WITHDRAWN', 'EXPIRED'],
@@ -72,6 +80,7 @@ const MACHINES = {
   document: DOCUMENT_TRANSITIONS,
   ticket: TICKET_TRANSITIONS,
   certificate: CERTIFICATE_TRANSITIONS,
+  booking: BOOKING_TRANSITIONS,
 } as const;
 
 export type Machine = keyof typeof MACHINES;

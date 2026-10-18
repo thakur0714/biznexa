@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "BizNexa",
+    "slug": "biznexa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#1f2b7a"
+    },
+    "android": {
+      "package": "com.biznexa.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#1f2b7a"
+      },
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
+    },
+    "extra": {
+      "platformTarget": "android-tester-apk",
+      "decisionDate": "2026-10-18",
+      "distribution": "internal-testers-only",
+      "noIos": true,
+      "noStore": true
+    }
+  }
+}

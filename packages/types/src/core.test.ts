@@ -102,6 +102,17 @@ describe('state machines', () => {
     expect(canTransition('application', 'DELIVERED', 'CANCELLED')).toBe(false);
     expect(() => assertTransition('application', 'CANCELLED', 'IN_PROGRESS')).toThrow(/Invalid application/);
   });
+
+  it('allows booking lifecycle actions and keeps terminal states closed', () => {
+    expect(canTransition('booking', 'CONFIRMED', 'RESCHEDULED')).toBe(true);
+    expect(canTransition('booking', 'CONFIRMED', 'CANCELLED')).toBe(true);
+    expect(canTransition('booking', 'CONFIRMED', 'COMPLETED')).toBe(true);
+    expect(canTransition('booking', 'CONFIRMED', 'NO_SHOW')).toBe(true);
+    expect(canTransition('booking', 'RESCHEDULED', 'CONFIRMED')).toBe(true);
+    expect(canTransition('booking', 'CANCELLED', 'CONFIRMED')).toBe(false);
+    expect(canTransition('booking', 'COMPLETED', 'NO_SHOW')).toBe(false);
+    expect(canTransition('booking', 'NO_SHOW', 'COMPLETED')).toBe(false);
+  });
   it('requires re-upload after rejection', () => {
     expect(canTransition('document', 'REJECTED', 'UPLOADED')).toBe(true);
     expect(canTransition('document', 'REJECTED', 'APPROVED')).toBe(false);

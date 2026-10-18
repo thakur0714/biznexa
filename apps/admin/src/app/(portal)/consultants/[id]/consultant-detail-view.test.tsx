@@ -28,7 +28,7 @@ beforeEach(() => {
   detail = adminConsultantDetailSchema.parse({
     id: ID, userId: '22222222-2222-4222-8222-222222222222', name: 'Asha Rao', email: 'asha@example.com',
     category: 'CA', verificationStatus: 'PENDING', city: 'Pune', state: 'Maharashtra', experienceYears: 8,
-    feePerSession: 120000, createdAt: '2026-10-17T08:00:00.000Z', updatedAt: '2026-10-17T08:00:00.000Z',
+    feePerSession: 120000, isFeatured: false, createdAt: '2026-10-17T08:00:00.000Z', updatedAt: '2026-10-17T08:00:00.000Z',
     slug: 'asha-rao', qualification: 'CA', membershipNo: 'ICAI-1', expertise: ['GST'], languages: ['English'],
     area: null, bio: null, consultationTypes: ['AUDIO'], rejectionReason: null,
     documents: [{ id: '44444444-4444-4444-8444-444444444444', kind: 'QUALIFICATION_PROOF', fileId: FILE_ID, fileName: 'degree.pdf', mimeType: 'application/pdf', scanStatus: 'CLEAN', createdAt: '2026-10-17T08:00:00.000Z' }],
