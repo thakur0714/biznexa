@@ -10,6 +10,7 @@ import {
   formatDateTime,
   istDay,
   financialYear,
+  formatMonth,
   registerSchema,
   updateProfileSchema,
   changePasswordSchema,
@@ -150,6 +151,10 @@ describe('formatting', () => {
   it('computes the Indian financial year', () => {
     expect(financialYear(new Date('2026-10-09T00:00:00Z'))).toBe('2026-27');
     expect(financialYear(new Date('2027-02-01T00:00:00Z'))).toBe('2026-27');
+  });
+  it('formats month from YYYY-MM to MMM-YYYY', () => {
+    expect(formatMonth('2026-10')).toBe('Oct-2026');
+    expect(formatMonth('2027-01')).toBe('Jan-2027');
   });
 });
 

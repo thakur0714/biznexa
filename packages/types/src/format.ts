@@ -41,3 +41,9 @@ export function financialYear(value: Date = new Date()): string {
   const y = get('month') >= 4 ? get('year') : get('year') - 1;
   return `${y}-${String((y + 1) % 100).padStart(2, '0')}`;
 }
+
+/** MMM-YYYY from YYYY-MM string, e.g. Oct-2026 */
+export function formatMonth(value: string): string {
+  const [year, month] = value.split('-');
+  return `${MONTHS[Number(month) - 1]}-${year}`;
+}
