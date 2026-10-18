@@ -8,6 +8,8 @@ import { consultationTypeSchema } from './consultants';
 import { istYear } from './applications';
 import { PAYMENT_GATEWAYS, PAYMENT_STATUSES } from './payments';
 
+export const BOOKING_CHANGE_WINDOW_HOURS = 24;
+
 export const BOOKING_STATUSES = ['PENDING_PAYMENT', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW', 'RESCHEDULED', 'EXPIRED'] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
