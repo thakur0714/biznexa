@@ -13,7 +13,7 @@ import {
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
 import { Card, Badge, Button } from '../components/common';
-import type { ServiceCard, CategorySummary, ServiceList } from '@biznexa/types';
+import type { ServiceCard, CategorySummary, ServiceList } from '@biznexa/api-client';
 
 interface ServicesBrowseScreenProps {
   route?: {

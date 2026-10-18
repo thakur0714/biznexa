@@ -10,7 +10,7 @@ import {
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
 import { Card, Badge, Button } from '../components/common';
-import type { ServiceDetail } from '@biznexa/types';
+import type { ServiceDetail } from '@biznexa/api-client';
 
 interface ServiceDetailScreenProps {
   route: {
