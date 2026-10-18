@@ -523,8 +523,14 @@ export class ConsultantsService {
     if (!consultant) throw new NotFoundException('Consultant not found');
     const ratings = await this.prisma.review.groupBy({
       by: ['rating'],
-      where: { consultantId: consultant.id, isPublished: true },
+      where: { consultantId: consultant.id, status: 'APPROVED' },
       _count: { _all: true },
+    });
+    const verifiedReviews = await this.prisma.review.findMany({
+      where: { consultantId: consultant.id, status: 'APPROVED' },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, rating: true, text: true, createdAt: true },
     });
     const breakdown = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
     for (const rating of ratings) breakdown[String(rating.rating) as keyof typeof breakdown] = rating._count._all;
@@ -554,7 +560,7 @@ export class ConsultantsService {
         breakdown,
       },
       services: consultant.services.map(({ service }) => ({ ...service, category: service.category.name })),
-      verifiedReviews: [],
+      verifiedReviews: verifiedReviews.map((review) => ({ ...review, createdAt: review.createdAt.toISOString() })),
     });
   }
 }
