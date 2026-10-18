@@ -1,3 +1,4 @@
+import { resolve, sep } from 'node:path';
 import { z } from 'zod';
 
 /** Validated environment. The app refuses to start with missing or weak secrets in production. */
@@ -22,6 +23,8 @@ const baseSchema = z
     UPLOAD_DIR: z.string().min(1).default('uploads'),
     /** Hard cap per file whatever a document requirement says. */
     UPLOAD_MAX_MB: z.coerce.number().int().min(1).max(100).default(25),
+    /** Public website images (M9.4, D60), served at /api/media without a login. Must not overlap UPLOAD_DIR. */
+    MEDIA_DIR: z.string().min(1).default('media'),
     /** Upload virus scanning (D23). `stub` only flags the EICAR test file and is refused in production. */
     VIRUS_SCANNER: z.enum(['stub', 'clamav']).default('stub'),
     CLAMAV_HOST: z.string().min(1).default('localhost'),
@@ -29,6 +32,8 @@ const baseSchema = z
     SMS_PROVIDER: z.enum(['console', 'msg91']).default('console'),
     MSG91_AUTH_KEY: z.string().optional().default(''),
     MSG91_OTP_TEMPLATE_ID: z.string().optional().default(''),
+    /** Token in the MSG91 delivery report URL (M6.3). Empty = reports switched off; SMS stays SENT. */
+    MSG91_WEBHOOK_TOKEN: z.string().optional().default(''),
     /** `console` = in-memory (nothing sent), `smtp` = Mailpit in dev (docker compose), `sendgrid` in production. */
     EMAIL_PROVIDER: z.enum(['console', 'sendgrid', 'smtp']).default('console'),
     EMAIL_FROM: z.string().default('BizNexa <no-reply@biznexa.com>'),
@@ -38,6 +43,8 @@ const baseSchema = z
     SMTP_PASS: z.string().optional().default(''),
     SMTP_SECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
     SENDGRID_API_KEY: z.string().optional().default(''),
+    /** SendGrid Event Webhook verification key (M6.3). Empty = delivery events switched off; email stays SENT. */
+    SENDGRID_WEBHOOK_PUBLIC_KEY: z.string().optional().default(''),
     FCM_PROVIDER: z.enum(['fake', 'firebase']).default('fake'),
     FIREBASE_PROJECT_ID: z.string().optional().default(''),
     FIREBASE_SERVICE_ACCOUNT_KEY: z.string().optional().default(''),
@@ -55,6 +62,12 @@ const baseSchema = z
     PDF_RENDERER: z.enum(['playwright', 'stub']).default('playwright'),
     /** Redis key prefix for queues; tests use their own so a running dev API never picks up test jobs. */
     QUEUE_PREFIX: z.string().min(1).default('bn'),
+    /**
+     * On start, queue work left over from before (PDFs not yet generated, files not yet scanned). Off in the API
+     * tests: the suites share one database, so one suite's app would pick up another's records and write files
+     * into its own upload folder.
+     */
+    QUEUE_BOOT_SWEEP: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** Comma-separated list of approved partner API keys for public certificate verification */
     CERT_VERIFY_API_KEYS: z.string().optional().default(''),
   });
@@ -65,6 +78,16 @@ function validateRazorpay(v: RawEnv, ctx: z.RefinementCtx): void {
   if (v.PAYMENT_GATEWAY !== 'razorpay') return;
   for (const k of ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'] as const) {
     if (!v[k]) ctx.addIssue({ code: 'custom', path: [k], message: 'Required when PAYMENT_GATEWAY=razorpay' });
+  }
+}
+
+/** Public media must never be able to serve a private upload, so neither folder may contain the other. */
+function validateMediaDir(v: RawEnv, ctx: z.RefinementCtx): void {
+  const media = resolve(v.MEDIA_DIR);
+  const uploads = resolve(v.UPLOAD_DIR);
+  const inside = (a: string, b: string) => a === b || a.startsWith(b + sep);
+  if (inside(media, uploads) || inside(uploads, media)) {
+    ctx.addIssue({ code: 'custom', path: ['MEDIA_DIR'], message: 'MEDIA_DIR and UPLOAD_DIR must be separate folders' });
   }
 }
 
@@ -114,6 +137,7 @@ function validateProductionProviders(v: RawEnv, ctx: z.RefinementCtx): void {
 
 const schema = baseSchema.superRefine((v, ctx) => {
   validateRazorpay(v, ctx);
+  validateMediaDir(v, ctx);
   if (v.NODE_ENV === 'production') {
     validateProductionSecrets(v, ctx);
     validateProductionProviders(v, ctx);

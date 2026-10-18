@@ -26,6 +26,14 @@ export const createBookingInputSchema = z
   .strict();
 export type CreateBookingInput = z.infer<typeof createBookingInputSchema>;
 
+export const bookingMeetingLinkSchema = z.object({ meetingLink: z.string().url().max(2048).refine((u) => ['https:', 'http:'].includes(new URL(u).protocol), 'Enter a valid meeting URL') }).strict();
+export type BookingMeetingLinkInput = z.infer<typeof bookingMeetingLinkSchema>;
+
+export const bookingCancelInputSchema = z.object({ reason: z.string().trim().min(1).max(500).optional() }).strict();
+export const bookingRescheduleInputSchema = z.object({ startAt: z.string().datetime({ offset: true }) }).strict();
+export const bookingConsultantOutcomeSchema = z.object({ status: z.enum(['COMPLETED', 'NO_SHOW']) }).strict();
+export type BookingConsultantOutcomeInput = z.infer<typeof bookingConsultantOutcomeSchema>;
+
 export const bookingViewSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
@@ -37,6 +45,7 @@ export const bookingViewSchema = z.object({
   fee: z.number().int(),
   /** Until when a PENDING_PAYMENT booking holds its slot; null once settled. */
   holdExpiresAt: z.string().datetime().nullable(),
+  meetingLink: z.string().url().nullable(),
   consultant: z.object({ slug: z.string(), name: z.string() }),
   /** The latest payment attempt, if any. */
   payment: z.object({ id: z.string().uuid(), status: z.enum(PAYMENT_STATUSES), amount: z.number().int() }).nullable(),

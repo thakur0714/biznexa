@@ -82,6 +82,8 @@ export const notificationResultSchema = z.object({
   skipped: z.boolean().optional(),
   reason: z.string().optional(),
   error: z.string().optional(),
+  /** The failure will not go away by trying again (no address, bad number, provider refused): not retried (M6.3). */
+  permanent: z.boolean().optional(),
 });
 export type NotificationResult = z.infer<typeof notificationResultSchema>;
 
@@ -105,11 +107,11 @@ export interface RenderedNotification {
 /** Escapes HTML special characters in values for EMAIL channel. */
 export function escapeHtml(str: string): string {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 /** In-app notification item representation (M6.7). */
@@ -425,4 +427,56 @@ export const previewNotificationTemplateResponse = z.object({
 });
 export type PreviewNotificationTemplateResponse = z.infer<typeof previewNotificationTemplateResponse>;
 
+/**
+ * Delivery log (M6.3, D59): one row per notification × channel. QUEUED until the job runs (also between
+ * retries); SENT when the provider accepted it; DELIVERED when the provider confirmed delivery (or in-app);
+ * FAILED after a permanent error or the last retry; SKIPPED when nothing was to be sent (opted out, no device).
+ */
+export const NOTIFICATION_DELIVERY_STATUSES = ['QUEUED', 'SENT', 'DELIVERED', 'FAILED', 'SKIPPED'] as const;
+export type NotificationDeliveryStatus = (typeof NOTIFICATION_DELIVERY_STATUSES)[number];
+export const notificationDeliveryStatusSchema = z.enum(NOTIFICATION_DELIVERY_STATUSES);
+
+/** Filters for GET /api/admin/notifications/deliveries. `user` is a user id, or part of a name / email / mobile. */
+export const notificationDeliveryFilterSchema = z.object({
+  status: notificationDeliveryStatusSchema.optional(),
+  channel: notificationChannelSchema.optional(),
+  event: z.string().max(100).optional(),
+  user: z.string().trim().max(200).optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type NotificationDeliveryFilter = z.infer<typeof notificationDeliveryFilterSchema>;
+
+/** A delivery log row as staff see it: no message content, no address. */
+export const notificationDeliverySchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  userName: z.string().nullable(),
+  userEmail: z.string().nullable(),
+  event: z.string(),
+  channel: notificationChannelSchema,
+  templateId: z.string().uuid().nullable(),
+  status: notificationDeliveryStatusSchema,
+  attempts: z.number().int(),
+  lastError: z.string().nullable(),
+  providerMessageId: z.string().nullable(),
+  sendAt: z.string().datetime().nullable(),
+  sentAt: z.string().datetime().nullable(),
+  deliveredAt: z.string().datetime().nullable(),
+  failedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type NotificationDelivery = z.infer<typeof notificationDeliverySchema>;
+
+export const notificationDeliveryPageSchema = z.object({
+  items: z.array(notificationDeliverySchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  limit: z.number().int(),
+  pages: z.number().int(),
+});
+export type NotificationDeliveryPage = z.infer<typeof notificationDeliveryPageSchema>;
 
