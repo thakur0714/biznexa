@@ -3,7 +3,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { env } from './config/env';
 import { PrismaModule, PrismaService } from './prisma/prisma.service';
 import { AuditModule } from './audit/audit.module';
@@ -49,6 +49,21 @@ class HealthController {
     await this.prisma.$queryRaw`SELECT 1`;
     if (!(await this.queues.ping())) throw new ServiceUnavailableException('Redis is unreachable');
     return { status: 'ok', time: new Date().toISOString() };
+  }
+}
+
+@ApiTags('mobile')
+@Controller('mobile')
+class MobileVersionController {
+  constructor(private readonly prisma: PrismaService) {}
+
+  @Public()
+  @ApiOkResponse({ schema: { type: 'object', properties: { minSupportedVersion: { type: 'string' } }, required: ['minSupportedVersion'] } })
+  @Get('version')
+  async version() {
+    const setting = await this.prisma.setting.findUnique({ where: { key: 'mobile.minSupportedVersion' }, select: { value: true } });
+    const value = setting?.value;
+    return { minSupportedVersion: typeof value === 'string' ? value : '1.0.0' };
   }
 }
 
@@ -100,7 +115,7 @@ class HealthController {
     BlogModule,
     ReviewsModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, MobileVersionController],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },

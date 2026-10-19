@@ -11,6 +11,7 @@ import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { formatDate, formatINR, type DashboardSummary } from '@biznexa/types';
 import { UpcomingDueDates } from './upcoming-due-dates';
+import { EmailVerificationDialog } from '@/components/email-verification-dialog';
 
 export function DashboardHome() {
   const { user, signIn, signOut } = useAuth();
@@ -22,6 +23,7 @@ export function DashboardHome() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [summaryError, setSummaryError] = useState('');
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [verifyEmailOpen, setVerifyEmailOpen] = useState(false);
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -78,6 +80,8 @@ export function DashboardHome() {
           ) : card;
         })}
       </div>
+      {!user.emailVerified && user.email && <section className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-amber/40 bg-amber-050 p-5"><p><span className="font-semibold">Email address not verified</span><span className="block text-sm text-muted">Verify your email to protect your account.</span></p><Button variant="ink" size="sm" onClick={() => setVerifyEmailOpen(true)}>Verify email</Button></section>}
+      <EmailVerificationDialog open={verifyEmailOpen} onClose={() => setVerifyEmailOpen(false)} />
       {summaryError && <Notice tone="error">{summaryError}</Notice>}
 
       <div className="flex flex-wrap items-center justify-between gap-3">

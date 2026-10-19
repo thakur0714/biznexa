@@ -24,7 +24,7 @@ const PASSWORD = 'secret123';
 
 async function register(n: number) {
   const res = await http.post('/api/auth/register').send({ name: 'Sec Test', mobile: mobile(n), email: email(n), password: PASSWORD, consent: true }).expect(201);
-  return { id: res.body.user.id as string, cookie: res.headers['set-cookie'] as unknown as string[] };
+  return { id: res.body.user.id as string, accessToken: res.body.accessToken as string, emailCode: res.body.emailOtp.devCode as string, cookie: res.headers['set-cookie'] as unknown as string[] };
 }
 
 beforeAll(async () => {
@@ -128,6 +128,15 @@ describe('Google sign-in on an existing account', () => {
     await googleSays(3).expect(200);
     expect((await prisma.user.findUniqueOrThrow({ where: { id } })).googleId).toBe(`google-${run}-3`);
     await http.post('/api/auth/login').send({ email: email(3), password: PASSWORD }).expect(200);
+  });
+
+  it('keeps the password when Google links an email verified with its email OTP', async () => {
+    const { id, accessToken, emailCode } = await register(6);
+    const account = await prisma.user.findUniqueOrThrow({ where: { id } });
+    await http.post('/api/auth/email/verify/confirm').set('authorization', `Bearer ${accessToken}`).send({ code: emailCode }).expect(200);
+    await googleSays(6).expect(200);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id } })).passwordHash).toBe(account.passwordHash);
+    await http.post('/api/auth/login').send({ email: email(6), password: PASSWORD }).expect(200);
   });
 });
 

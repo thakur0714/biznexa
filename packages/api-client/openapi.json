@@ -15,6 +15,35 @@
         ]
       }
     },
+    "/api/mobile/version": {
+      "get": {
+        "operationId": "MobileVersionController_version",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "minSupportedVersion": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "minSupportedVersion"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "mobile"
+        ]
+      }
+    },
     "/api/admin/audit": {
       "get": {
         "operationId": "AuditController_list",
@@ -743,6 +772,101 @@
           },
           "409": {
             "description": "Email already in use"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/email/verify/request": {
+      "post": {
+        "operationId": "AuthController_requestEmailVerification",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "expiresIn": {
+                      "type": "number"
+                    },
+                    "resendAfter": {
+                      "type": "number"
+                    },
+                    "devCode": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "expiresIn",
+                    "resendAfter"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/email/verify/confirm": {
+      "post": {
+        "operationId": "AuthController_confirmEmailVerification",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "emailVerified": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "emailVerified"
+                  ]
+                }
+              }
+            }
           }
         },
         "security": [

@@ -10,6 +10,7 @@ import {
   getStoredBiometricsEnabled,
   setStoredBiometricsEnabled,
 } from './secure-storage';
+import { clearOfflineCache } from '../api/offline-cache';
 import { promptBiometricAuth, checkBiometrics } from './biometrics';
 
 export interface MobileSessionData {
@@ -292,6 +293,7 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
       // Continue cleanup even if server logout request fails
     }
     await removeStoredRefreshToken();
+    await clearOfflineCache().catch(() => undefined);
     registeredDeviceToken.current = null;
     setToken(null);
     setUser(null);

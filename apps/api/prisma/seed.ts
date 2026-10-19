@@ -194,6 +194,7 @@ async function seedContent() {
   for (const [key, value] of Object.entries(settings)) {
     await prisma.setting.upsert({ where: { key }, update: {}, create: { key, value: value as object } });
   }
+  await prisma.setting.upsert({ where: { key: 'mobile.minSupportedVersion' }, update: {}, create: { key: 'mobile.minSupportedVersion', value: '1.0.0' } });
 
   if (!(await prisma.testimonial.count())) {
     await prisma.testimonial.createMany({ data: TESTIMONIALS.map((t, i) => ({ ...t, sortOrder: i })) });
