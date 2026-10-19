@@ -10,7 +10,39 @@
 Browsers share cookies across ports on the same host, so in local dev the website and the admin portal share the `bn_rt` refresh cookie on `localhost`. To keep a customer session and a staff session open side by side, open the admin portal at `http://127.0.0.1:3001` instead. In production the two apps run on separate hostnames, so their cookies never mix.
 
 ## Health
-- API: `GET /api/health` → `{ "status": "ok" }` (checks the database).
+- API liveness: `GET /api/health` → `{ "status": "ok", "time": "…" }`.
+- API readiness: `GET /api/health/ready` → `{ "status": "ready" }`; returns 503 when PostgreSQL or Redis is unavailable.
+
+## Monitoring (M12.8)
+### Uptime checks
+Create HTTPS GET checks every minute, with a 30-second timeout and alert after 2 consecutive failures:
+- Website: `https://biznexa.com/` (expect 200).
+- API liveness: `https://<api-host>/api/health` (expect 200 and `status=ok`).
+- API readiness: `https://<api-host>/api/health/ready` (expect 200 and `status=ready`).
+- Admin: `https://<admin-host>/login` (expect 200).
+
+Use the deployed API and admin hostnames in place of the two host placeholders. The readiness check verifies both database and Redis connectivity.
+
+### Alerts
+- **Error rate:** in Sentry, alert when an environment has 20 or more unhandled errors in 5 minutes; page on-call for production and notify the team for staging.
+- **5xx:** create a log metric from API JSON records where `message=http_request` and `statusCode >= 500`; alert at 10 events in 5 minutes or a 5xx rate above 2% over 5 minutes (minimum 50 requests).
+- **Queue backlog:** alert if any BullMQ queue has more than 100 waiting jobs for 5 minutes, its oldest waiting job exceeds 15 minutes, or the `dead-letter` queue has any waiting jobs. Export these Redis/BullMQ counts to the infrastructure metrics service; the API does not expose a public queue metrics endpoint.
+
+### Sentry DSNs
+Create separate Sentry projects for API, website, admin, and mobile. Put each project's DSN in its deployment environment:
+- API: `SENTRY_DSN` in the API environment / secret store (documented in `apps/api/.env.example`).
+- Website: `NEXT_PUBLIC_SENTRY_DSN` in the web build/runtime environment (`apps/web/.env.example`).
+- Admin: `NEXT_PUBLIC_SENTRY_DSN` in the admin build/runtime environment (`apps/admin/.env.example`).
+- Mobile: `EXPO_PUBLIC_SENTRY_DSN` in the Expo build environment (`apps/mobile/App.tsx`).
+
+An empty DSN disables that app's SDK. Keep DSNs separate by project; web and admin variables are public client configuration, so use only their Sentry project DSNs. Event hooks remove user identity, request bodies, headers/cookies, query strings and PII-like email/mobile/token values before sending.
+
+## Android preview APK (M11.11)
+- Cloud build: `pnpm dlx eas-cli build --platform android --profile preview` (run from `apps/mobile`).
+- Local build (requires Android SDK and local EAS build prerequisites): `pnpm dlx eas-cli build --platform android --profile preview --local` (run from `apps/mobile`).
+- `preview` produces an installable APK for internal testers. Do not use the production profile for this tester distribution; it produces an AAB for a later release.
+- Bump `expo.version` in `apps/mobile/app.json` for the human-readable version and increment `expo.android.versionCode` for every Android binary. Add a dated entry to `apps/mobile/CHANGELOG.md`.
+- To require an update, update the `mobile.minSupportedVersion` Setting to the new minimum version (for example, `2.0.0`). Admin does not currently expose this setting, so run this SQL against the production database: `INSERT INTO "Setting" (key, value, "updatedAt") VALUES ('mobile.minSupportedVersion', '"2.0.0"'::jsonb, now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = now();`. The API serves it from `/api/mobile/version`; the mobile app blocks versions lower than that value.
 
 ## Common tasks
 | Task | Command |

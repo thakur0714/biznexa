@@ -1,5 +1,5 @@
 import { Controller, Get, Module, ServiceUnavailableException } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -28,6 +28,7 @@ import { CustomersModule } from './customers/customers.module';
 import { AuthGuard } from './common/auth.guard';
 import { Public } from './common/auth.decorators';
 import { PrismaExceptionFilter } from './common/prisma-exception.filter';
+import { SentryExceptionInterceptor } from './common/sentry-exception.interceptor';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { TicketsModule } from './tickets/tickets.module';
@@ -49,6 +50,18 @@ class HealthController {
     await this.prisma.$queryRaw`SELECT 1`;
     if (!(await this.queues.ping())) throw new ServiceUnavailableException('Redis is unreachable');
     return { status: 'ok', time: new Date().toISOString() };
+  }
+
+  @Public()
+  @Get('ready')
+  async readiness() {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+    } catch {
+      throw new ServiceUnavailableException('Database is unreachable');
+    }
+    if (!(await this.queues.ping())) throw new ServiceUnavailableException('Redis is unreachable');
+    return { status: 'ready' };
   }
 }
 
@@ -120,6 +133,7 @@ class MobileVersionController {
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: PrismaExceptionFilter },
+    { provide: APP_INTERCEPTOR, useClass: SentryExceptionInterceptor },
   ],
 })
 export class AppModule {}
