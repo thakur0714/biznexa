@@ -23,7 +23,10 @@ async function grants(roleKey: string) {
   return rows.map((r) => r.permission.key).sort();
 }
 
-beforeAll(() => jest.spyOn(console, 'log').mockImplementation(() => undefined));
+beforeAll(async () => {
+  jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  await seedAccess(prisma);
+});
 
 afterAll(async () => {
   await prisma.role.deleteMany({ where: { key: { startsWith: run } } });
@@ -32,6 +35,13 @@ afterAll(async () => {
 });
 
 describe('seedAccess', () => {
+  it('grants users.manage only to ADMIN when the production seed is applied', async () => {
+    const permission = await prisma.permission.findUnique({ where: { key: 'users.manage' }, select: { id: true } });
+    expect(permission).toBeTruthy();
+    const assigned = await prisma.rolePermission.findMany({ where: { permissionId: permission!.id }, select: { role: { select: { key: true } } } });
+    expect(assigned.map((grant) => grant.role.key)).toEqual(['ADMIN']);
+  });
+
   it('creates missing roles with their default permissions', async () => {
     await seedAccess(prisma, permissions, roles);
     expect(await grants(MANAGER)).toEqual([p('edit'), p('view')]);

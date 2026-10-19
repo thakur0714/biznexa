@@ -3588,6 +3588,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/staff-users/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffUsersController_roles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/staff-users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffUsersController_list"];
+        put?: never;
+        post: operations["StaffUsersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/staff-users/{id}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["StaffUsersController_updateRoles"];
+        trace?: never;
+    };
+    "/api/admin/staff-users/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["StaffUsersController_setActive"];
+        trace?: never;
+    };
+    "/api/admin/staff-users/{id}/reset-2fa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StaffUsersController_resetTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8273,6 +8353,53 @@ export interface components {
             moderationReason: string | null;
             /** Format: date-time */
             createdAt: string;
+        };
+        AdminStaffRoleOptions: {
+            key: string;
+            name: string;
+        }[];
+        AdminStaffList: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                email: string | null;
+                mobile: string | null;
+                roles: {
+                    key: string;
+                    name: string;
+                }[];
+                /** @enum {string} */
+                status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION" | "DELETED";
+                active: boolean;
+                twoFactorEnabled: boolean;
+                /** Format: date-time */
+                lastLoginAt: string | null;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+        };
+        AdminStaffActionResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            email: string | null;
+            mobile: string | null;
+            roles: {
+                key: string;
+                name: string;
+            }[];
+            /** @enum {string} */
+            status: "ACTIVE" | "BLOCKED" | "DEACTIVATED" | "PENDING_DELETION" | "DELETED";
+            active: boolean;
+            twoFactorEnabled: boolean;
+            /** Format: date-time */
+            lastLoginAt: string | null;
+        };
+        AdminStaff2FAReset: {
+            /** @enum {boolean} */
+            success: true;
         };
     };
     responses: never;
@@ -16309,6 +16436,153 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewModerationResult"];
+                };
+            };
+        };
+    };
+    StaffUsersController_roles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStaffRoleOptions"];
+                };
+            };
+        };
+    };
+    StaffUsersController_list: {
+        parameters: {
+            query?: {
+                q?: string;
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStaffList"];
+                };
+            };
+        };
+    };
+    StaffUsersController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** Format: email */
+                    email: string;
+                    mobile: string;
+                    roles: string[];
+                    temporaryPassword: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStaffActionResponse"];
+                };
+            };
+        };
+    };
+    StaffUsersController_updateRoles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    roles: string[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStaffActionResponse"];
+                };
+            };
+        };
+    };
+    StaffUsersController_setActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    active: boolean;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStaffActionResponse"];
+                };
+            };
+        };
+    };
+    StaffUsersController_resetTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminStaff2FAReset"];
                 };
             };
         };
