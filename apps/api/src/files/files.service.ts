@@ -137,8 +137,12 @@ export class FilesService {
 
     const messageAttachment = await this.prisma.messageAttachment.findUnique({
       where: { fileId: file.id },
-      include: { message: { include: { conversation: { select: { applicationId: true } } } } },
+      include: { message: { include: { conversation: { select: { applicationId: true, ticket: { select: { customerId: true } } } } } } },
     });
+
+    // Ticket attachments: support staff, and the ticket's customer.
+    const ticket = messageAttachment?.message.conversation.ticket;
+    if (ticket && (user.permissions?.includes(PERMS.TICKETS_MANAGE) || ticket.customerId === user.id)) return true;
 
     if (messageAttachment?.message.conversation.applicationId) {
       if (
