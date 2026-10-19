@@ -1,5 +1,11 @@
 # Changelog
 
+## M4.17 — Fulfilment integration E2E (19-Oct-2026)
+
+- Added a run-scoped API integration flow: operations rejects a document, the customer uploads a replacement, operations approves it, advances the application to `IN_PROGRESS`, adds a deliverable and completes delivery.
+- Asserted every resulting status-history transition, application/document audit rows, and customer notifications for document review and each status change. Existing authorization coverage remains distributed across the M4 authorization, route-access, and focused feature suites.
+- No production bug found. Focused integration: 1 test passed. Full checks: typecheck passed; lint passed with warnings and 0 errors; types 494 passed; API 1,032 passed (104 suites); admin 205 passed. Web build compiled with webpack but static prerendering was blocked by sandbox access to the local API; Turbopack also failed to start a worker. The escalation retry was rejected by automatic review after the account hit its usage limit.
+
 ## M9.8 — Blog public pages (19-Oct-2026)
 
 - Replaced the Resources placeholder with a paged blog listing, category/tag pages, and sanitized article details with canonical metadata, Open Graph images and Article JSON-LD.

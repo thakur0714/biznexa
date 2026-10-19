@@ -224,7 +224,7 @@ Gaps found while planning are moved into Milestone 2.5 below.
 - [x] **M4.16 — Audit log viewer.** `[Sonnet]` Filter by actor, entity, date; before/after diff view.
   - *Done 13-Oct-2026 (Jules, batch J2):* `GET /api/admin/audit` (`audit.view`, read-only), server-side paging (default 50, max 100, newest first), filters (actor, entity type/id, action, from/to) validated by `auditLogFilterSchema`; actor name/email in the same query; before/after redacted recursively (case-insensitive key match). Migration `add_audit_log_indexes` (`createdAt`, `actorId+createdAt`). Admin `/audit` page with filters and before/after diff. Integration tests incl. redaction and 403 without `audit.view`.
   - *Follow-ups:* redaction matches exact keys only — add `panEnc`, `codeHash`, `tokenHash` (or pattern match without catching `company`). The old `(actorId)` index is now redundant.
-- [ ] **M4.17 — M4 integration + E2E.** `[Sonnet]` Ops reviews → rejects → (customer re-upload in M5) → approves → in progress → delivers. Authorization tests for every new route. Update CHANGELOG.
+- [x] **M4.17 — M4 integration + E2E.** `[Sonnet]` Ops reviews → rejects → customer re-upload → approves → in progress → delivers. Authorization coverage spans `m4-authorization.e2e-spec.ts`, route-access coverage and the focused M4 route suites; the new integration test asserts the complete lifecycle, status history, audit rows and customer notifications. No production bug found.
 
 ---
 
