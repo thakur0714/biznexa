@@ -10,6 +10,11 @@ import { canSee, findNavItem } from '@/lib/nav';
 
 const labels: Record<(typeof reviewModerationStatuses)[number], string> = { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected' };
 
+/** Moderating the last review on a later page leaves it empty: the last page that still has reviews, or null. */
+export function emptyPageFallback(list: Pick<AdminReviewList, 'items' | 'page' | 'pages'>): number | null {
+  return !list.items.length && list.page > 1 ? Math.max(1, Math.min(list.page - 1, list.pages)) : null;
+}
+
 export function ReviewsView() {
   const api = useApi();
   const { user } = useAuth();
@@ -26,18 +31,23 @@ export function ReviewsView() {
   const load = useCallback(async () => {
     try {
       const value = await api.call((client) => client.GET('/api/admin/reviews', { params: { query: { status, page, pageSize } } }));
-      setResult(adminReviewListSchema.parse(value));
+      const list = adminReviewListSchema.parse(value);
+      const back = emptyPageFallback(list);
+      if (back) setPage(back); else setResult(list);
       setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load reviews.');
     } finally { setLoading(false); }
-  }, [api, status, page, pageSize]);
+  }, [api, status, page, pageSize, setPage]);
 
   useEffect(() => {
     let live = true;
-    setLoading(true);
     api.call((client) => client.GET('/api/admin/reviews', { params: { query: { status, page, pageSize } } })).then((value) => {
-      if (live) { setResult(adminReviewListSchema.parse(value)); setError(''); }
+      if (!live) return;
+      const list = adminReviewListSchema.parse(value);
+      const back = emptyPageFallback(list);
+      if (back) setPage(back); else setResult(list);
+      setError('');
     }).catch((cause: unknown) => {
       if (live) setError(cause instanceof Error ? cause.message : 'Could not load reviews.');
     }).finally(() => { if (live) setLoading(false); });
