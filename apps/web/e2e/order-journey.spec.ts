@@ -5,14 +5,10 @@ import { expect, test } from '@playwright/test';
 
 /**
  * Full order journey (M3.24): mobile OTP login → package → form → PDF upload → coupon → mock payment,
- * completed by a webhook signed like the mock gateway → success view with the Application ID.
+ * completed through the mock checkout endpoint → success view and customer-visible refund.
  * Requires the API in development mode with the mock gateway (no Razorpay keys), seeded data, and the
  * database on this machine (an admin is created per run with the create-admin script).
  */
-
-function hmacHex(secret: string, data: string): string {
-  return crypto.createHmac('sha256', secret).update(data).digest('hex');
-}
 
 function base32Decode(input: string): Buffer {
   const clean = input.replace(/[\s=-]/g, '').toUpperCase();
@@ -42,7 +38,7 @@ function totpCode(secret: string, step = Math.floor(Date.now() / 1000 / 30)): st
   return String(bin % 1000000).padStart(6, '0');
 }
 
-test('full order journey from login to payment success with coupon and document upload', async ({ page, request }) => {
+test('full order journey covers payment success and a customer-visible refund', async ({ page, request }) => {
   test.setTimeout(120_000);
   const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
   const runId = Date.now().toString().slice(-6) + Math.floor(Math.random() * 1000);
@@ -166,50 +162,16 @@ test('full order journey from login to payment success with coupon and document 
   await page.getByRole('button', { name: /Pay ₹/i }).click();
 
   const paymentResponse = await paymentResponsePromise;
-  const checkoutData = (await paymentResponse.json()) as { gatewayOrderId: string; amount: number };
-  const { gatewayOrderId, amount } = checkoutData;
+  const checkoutData = (await paymentResponse.json()) as { gatewayOrderId: string; paymentId: string; amount: number };
+  const { amount } = checkoutData;
 
   await expect(page.getByText(/Test mode: the mock payment gateway is in use/i)).toBeVisible();
 
-  // 8. Complete the payment via signed webhook
-  const paymentId = `pay_mock_${runId}`;
-  const eventId = `evt_mock_${runId}`;
-  const webhookSecret = 'mock-webhook-secret'; // MockPaymentGateway.webhookSecret
-
-  const entity = {
-    id: paymentId,
-    entity: 'payment',
-    amount,
-    currency: 'INR',
-    status: 'captured',
-    order_id: gatewayOrderId,
-    method: 'upi',
-    amount_refunded: 0,
-    captured: true,
-    error_description: null,
-    created_at: Math.floor(Date.now() / 1000),
-  };
-
-  const payload = JSON.stringify({
-    entity: 'event',
-    account_id: 'acc_mock',
-    event: 'payment.captured',
-    contains: ['payment'],
-    payload: { payment: { entity } },
-    created_at: Math.floor(Date.now() / 1000),
+  // 8. Complete the payment through the development gateway's real mock checkout route.
+  const mockPaymentRes = await request.post(`${apiUrl}/api/payments/mock/${checkoutData.paymentId}/pay`, {
+    headers: { Authorization: paymentResponse.request().headers()['authorization']! },
   });
-
-  const signature = hmacHex(webhookSecret, payload);
-
-  const webhookRes = await request.post(`${apiUrl}/api/payments/webhook`, {
-    headers: {
-      'content-type': 'application/json',
-      'x-razorpay-signature': signature,
-      'x-razorpay-event-id': eventId,
-    },
-    data: payload,
-  });
-  expect(webhookRes.status()).toBe(200);
+  expect(mockPaymentRes.status()).toBe(200);
 
   // 9. The mock gateway opens no window, so the summary does not move on by itself: reload it, then open the payment page
   await page.reload();
@@ -223,4 +185,14 @@ test('full order journey from login to payment success with coupon and document 
   await expect(appIdElement).toBeVisible();
   const applicationIdCode = await appIdElement.innerText();
   expect(applicationIdCode).toMatch(/^BN\d+$/);
+
+  const refundResponse = await request.post(`${apiUrl}/api/admin/payments/${checkoutData.paymentId}/refunds`, {
+    headers: { Authorization: `Bearer ${adminToken}`, 'idempotency-key': crypto.randomUUID() },
+    data: { amount, reason: 'Playwright refund journey' },
+  });
+  expect(refundResponse.status()).toBe(201);
+  expect(await refundResponse.json()).toMatchObject({ amount, reason: 'Playwright refund journey', status: 'INITIATED' });
+
+  await page.goto('/dashboard/payments');
+  await expect(page.locator('span.text-amber-700:visible').filter({ hasText: 'Refund in progress:' }).first()).toBeVisible();
 });
