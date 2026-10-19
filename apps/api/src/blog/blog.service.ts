@@ -118,6 +118,7 @@ export class AdminBlogService implements OnModuleInit {
         before: null,
         after: category,
       });
+      await this.events.emit('blog.taxonomy_changed', { entityType: 'category', operation: 'created' });
       return category;
     } catch (e: unknown) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
@@ -144,6 +145,7 @@ export class AdminBlogService implements OnModuleInit {
         before: existing,
         after: category,
       });
+      await this.events.emit('blog.taxonomy_changed', { entityType: 'category', operation: 'updated' });
       return category;
     } catch (e: unknown) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
@@ -166,6 +168,7 @@ export class AdminBlogService implements OnModuleInit {
       before: existing,
       after: null,
     });
+    await this.events.emit('blog.taxonomy_changed', { entityType: 'category', operation: 'deleted' });
   }
 
   // --- Tags ---
@@ -185,6 +188,7 @@ export class AdminBlogService implements OnModuleInit {
         before: null,
         after: tag,
       });
+      await this.events.emit('blog.taxonomy_changed', { entityType: 'tag', operation: 'created' });
       return tag;
     } catch (e: unknown) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
@@ -211,6 +215,7 @@ export class AdminBlogService implements OnModuleInit {
         before: existing,
         after: tag,
       });
+      await this.events.emit('blog.taxonomy_changed', { entityType: 'tag', operation: 'updated' });
       return tag;
     } catch (e: unknown) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
@@ -233,6 +238,7 @@ export class AdminBlogService implements OnModuleInit {
       before: existing,
       after: null,
     });
+    await this.events.emit('blog.taxonomy_changed', { entityType: 'tag', operation: 'deleted' });
   }
 }
 

@@ -78,6 +78,41 @@ describe('Public blog pages API', () => {
     expect(detail.body.categories).toEqual([expect.objectContaining({ id: categoryId })]);
   });
 
+  it('caches published post details and invalidates them on blog post changes', async () => {
+    const slug = `${prefix}-published-a`;
+    await app.get(EventBus).emit('blog.post_changed', { postId: 'warm-cache', slug });
+    const findFirst = jest.spyOn(prisma.blogPost, 'findFirst');
+    const path = `/api/public/blog/posts/${slug}`;
+    const first = await http.get(path).expect(200);
+    const second = await http.get(path).expect(200);
+    expect(second.body).toEqual(first.body);
+    expect(findFirst).toHaveBeenCalledTimes(1);
+
+    const updated = await prisma.blogPost.update({ where: { slug }, data: { title: `Updated ${run}` } });
+    await app.get(EventBus).emit('blog.post_changed', { postId: updated.id, slug });
+    const refreshed = await http.get(path).expect(200);
+    expect(refreshed.body.title).toBe(`Updated ${run}`);
+    expect(findFirst).toHaveBeenCalledTimes(2);
+    findFirst.mockRestore();
+  });
+
+  it('caches blog taxonomy and invalidates it on taxonomy changes', async () => {
+    await app.get(EventBus).emit('blog.taxonomy_changed', { entityType: 'category', operation: 'updated' });
+    const findMany = jest.spyOn(prisma.blogCategory, 'findMany');
+    const first = await http.get('/api/public/blog/categories').expect(200);
+    await http.get('/api/public/blog/categories').expect(200);
+    expect(findMany).toHaveBeenCalledTimes(1);
+
+    const name = `Renamed ${run}`;
+    await prisma.blogCategory.update({ where: { id: categoryId }, data: { name } });
+    await app.get(EventBus).emit('blog.taxonomy_changed', { entityType: 'category', operation: 'updated' });
+    const refreshed = await http.get('/api/public/blog/categories').expect(200);
+    expect(refreshed.body).toContainEqual(expect.objectContaining({ id: categoryId, name }));
+    expect(findMany).toHaveBeenCalledTimes(2);
+    expect(first.body).not.toContainEqual(expect.objectContaining({ id: categoryId, name }));
+    findMany.mockRestore();
+  });
+
   it('searches published posts by typo-tolerant title and tag while hiding drafts and future posts', async () => {
     await prisma.blogPost.createMany({ data: [
       { slug: `${prefix}-search-title`, title: `Zebra Trademark Compliance ${run}`, content: 'Article', status: 'PUBLISHED', publishedAt: new Date(), categoryId },
