@@ -24,3 +24,9 @@ export async function fetchCachedList<T>(key: string, fetcher: () => Promise<T>)
   await writeCachedList(key, data).catch(() => undefined);
   return { data, offline: false };
 }
+
+/** On logout: this device must not keep showing the account's records. */
+export async function clearOfflineCache(): Promise<void> {
+  const keys = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith('biznexa:offline:'));
+  if (keys.length) await AsyncStorage.multiRemove(keys);
+}

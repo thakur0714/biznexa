@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { Prisma } from '../generated/prisma/client';
@@ -26,6 +26,8 @@ export interface RegisterDto {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   private googleClient?: OAuth2Client;
 
   constructor(
@@ -93,7 +95,7 @@ export class AuthService {
       },
     });
     const otp = await this.otp.issue('MOBILE', dto.mobile, 'VERIFY_MOBILE', { ip: meta.ip });
-    const emailOtp = dto.email ? await this.otp.issue('EMAIL', dto.email.toLowerCase(), 'VERIFY_EMAIL', { ip: meta.ip }) : undefined;
+    const emailOtp = dto.email ? await this.sendEmailVerification(dto.email, meta.ip) : undefined;
     const session = await this.session(user, meta);
     return { ...session, otp, ...(emailOtp ? { emailOtp } : {}) };
   }
@@ -118,6 +120,16 @@ export class AuthService {
     // Same response whether or not the account exists (no account enumeration).
     const result = await this.otp.issue(channel, target, purpose, { ip, deliver: !!user });
     return { message: 'If this account exists, a code has been sent.', ...result };
+  }
+
+  /** The account is already saved: a failed email send must not fail registration or a profile update (they can resend). */
+  private async sendEmailVerification(email: string, ip?: string) {
+    try {
+      return await this.otp.issue('EMAIL', email, 'VERIFY_EMAIL', { ip });
+    } catch (e) {
+      this.logger.warn(`Could not send the email verification code: ${e instanceof Error ? e.message : String(e)}`);
+      return undefined;
+    }
   }
 
   async requestEmailVerification(userId: string, ip?: string) {
@@ -273,7 +285,7 @@ export class AuthService {
       });
 
     await this.audit.log({ actorId: userId, action: 'user.profile_update', entityType: 'User', entityId: userId });
-    if (emailChanged && updated.email) await this.otp.issue('EMAIL', updated.email, 'VERIFY_EMAIL');
+    if (emailChanged && updated.email) await this.sendEmailVerification(updated.email);
     const { roles, permissions } = await this.tokens.rolesAndPermissions(userId);
     return this.publicUser(updated, roles, permissions, twoFactorPending && requiresTwoFactor(permissions));
   }
