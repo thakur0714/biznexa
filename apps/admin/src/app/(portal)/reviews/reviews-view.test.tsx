@@ -1,13 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ReviewsView } from './reviews-view';
+import { ReviewsView, emptyPageFallback } from './reviews-view';
 
 const REVIEW_ID = '11111111-1111-4111-8111-111111111111';
 const BOOKING_ID = '22222222-2222-4222-8222-222222222222';
 const row = { id: REVIEW_ID, bookingId: BOOKING_ID, rating: 4, text: 'Helpful advice', status: 'PENDING', moderationReason: null, createdAt: '2026-10-18T10:00:00.000Z', bookingCode: 'BKG-2026-000001', customerName: 'Maya', consultantName: 'Asha' };
 const requests: Array<{ method: string; path: string; body?: unknown }> = [];
 const fakeClient = {
-  GET: vi.fn(async (path: string) => { requests.push({ method: 'GET', path }); return { data: { items: [row] } }; }),
+  GET: vi.fn(async (path: string) => { requests.push({ method: 'GET', path }); return { data: { items: [row], total: 1, page: 1, pageSize: 20, pages: 1 } }; }),
   POST: vi.fn(async (path: string, options: { body?: unknown }) => { requests.push({ method: 'POST', path, body: options.body }); return { data: { ...row, status: 'APPROVED' } }; }),
 };
 const fakeApi = { call: async (send: (client: typeof fakeClient) => Promise<{ data: unknown }>) => (await send(fakeClient)).data };
@@ -30,5 +30,14 @@ describe('ReviewsView', () => {
     expect(reject).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Rejection reason'), { target: { value: 'Policy violation' } });
     expect(reject).toBeEnabled();
+  });
+});
+
+describe('emptyPageFallback', () => {
+  it('steps back from an emptied later page, and stays when the page has reviews or is page 1', () => {
+    expect(emptyPageFallback({ items: [], page: 3, pages: 2 })).toBe(2);
+    expect(emptyPageFallback({ items: [], page: 2, pages: 0 })).toBe(1);
+    expect(emptyPageFallback({ items: [], page: 1, pages: 0 })).toBeNull();
+    expect(emptyPageFallback({ items: [{ ...row, status: 'PENDING' as const }], page: 2, pages: 2 })).toBeNull();
   });
 });
