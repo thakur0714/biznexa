@@ -12,6 +12,7 @@ import {
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { ApplicationDocumentsService } from '../src/applications/application-documents.service';
 
 describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
   let app: NestExpressApplication;
@@ -382,6 +383,47 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
     expect(parsed.total).toBe(1);
     expect(parsed.items[0].status).toBe('SUBMITTED');
     expect(parsed.items[0].nextAction).toBe('upload_documents');
+  });
+
+  describe('pendingMandatoryMany query count', () => {
+    it('executes a constant number of queries regardless of application count', async () => {
+      const apps = await prisma.application.findMany({
+        where: { id: { in: createdAppIds } },
+        select: { id: true, status: true, serviceId: true, packageId: true },
+        take: 2,
+      });
+      const apps10 = await prisma.application.findMany({
+        where: { id: { in: createdAppIds } },
+        select: { id: true, status: true, serviceId: true, packageId: true },
+        take: 10,
+      });
+
+      const docsService = app.get(ApplicationDocumentsService);
+
+      const spyReq = jest.spyOn(prisma.serviceDocumentRequirement, 'findMany');
+      const spyDoc = jest.spyOn(prisma.applicationDocument, 'findMany');
+
+      spyReq.mockClear();
+      spyDoc.mockClear();
+
+      const result2 = await docsService.pendingMandatoryMany(apps);
+      const queryCount2 = spyReq.mock.calls.length + spyDoc.mock.calls.length;
+      expect(queryCount2).toBeGreaterThan(0);
+
+      spyReq.mockClear();
+      spyDoc.mockClear();
+
+      const result10 = await docsService.pendingMandatoryMany(apps10);
+      const queryCount10 = spyReq.mock.calls.length + spyDoc.mock.calls.length;
+
+      expect(queryCount10).toBe(queryCount2);
+
+      // Verify identical results one by one vs many
+      for (const a of apps10) {
+        const one = await docsService.pendingMandatory(a);
+        expect(result10.get(a.id)).toBe(one);
+      }
+    });
   });
 
   describe('GET /api/applications/:id/timeline (M5.4)', () => {
