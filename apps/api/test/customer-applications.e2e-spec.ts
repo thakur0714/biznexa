@@ -417,8 +417,6 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
       const queryCount10 = spyReq.mock.calls.length + spyDoc.mock.calls.length;
 
       expect(queryCount10).toBe(queryCount2);
-      spyReq.mockRestore();
-      spyDoc.mockRestore();
 
       // Verify identical results one by one vs many
       for (const a of apps10) {
