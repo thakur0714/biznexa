@@ -70,6 +70,7 @@ const baseSchema = z
     QUEUE_BOOT_SWEEP: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
     /** Comma-separated list of approved partner API keys for public certificate verification */
     CERT_VERIFY_API_KEYS: z.string().optional().default(''),
+    REVALIDATE_SECRET: z.string().optional().default(''),
   });
 
 type RawEnv = z.infer<typeof baseSchema>;
