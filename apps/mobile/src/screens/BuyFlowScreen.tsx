@@ -221,6 +221,11 @@ export function BuyFlowScreen({ route, navigation }: Props) {
     const accepted = requirementFileTypes(requirement.acceptedTypes);
     if (source === 'camera' || source === 'gallery') {
       if (!accepted.some((type) => type.startsWith('image/'))) { Alert.alert('Photo not accepted', 'This requirement accepts files only.'); return null; }
+      // launchCameraAsync fails without the permission (same check as ApplicationDetailScreen).
+      if (source === 'camera' && !(await ImagePicker.requestCameraPermissionsAsync()).granted) {
+        Alert.alert('Camera permission needed', 'Allow camera access in Settings, or choose a photo from the gallery.');
+        return null;
+      }
       const result = source === 'camera'
         ? await ImagePicker.launchCameraAsync({ quality: 0.85, allowsEditing: true, mediaTypes: ImagePicker.MediaTypeOptions.Images })
         : await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: true, mediaTypes: ImagePicker.MediaTypeOptions.Images });
