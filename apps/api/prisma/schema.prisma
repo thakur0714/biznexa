@@ -1121,6 +1121,7 @@ model Reminder {
   businessEntity      BusinessEntity? @relation(fields: [businessEntityId], references: [id])
 
   @@index([dueDate, status])
+  @@unique([type, sourceApplicationId, title])
 }
 
 // ─────────────────────── Notifications & support ───────────────────────

@@ -105,17 +105,27 @@ describe('Reminders (e2e)', () => {
     });
 
     const eventBus = app.get(EventBus);
-    await eventBus.emit('application.status_changed', {
-      applicationId: application.id,
-      from: 'IN_PROGRESS',
-      to: 'COMPLETED',
-      actorId: null,
-    });
+
+    // Fire the event twice in parallel to test idempotency and unique index protection
+    await Promise.all([
+      eventBus.emit('application.status_changed', {
+        applicationId: application.id,
+        from: 'IN_PROGRESS',
+        to: 'COMPLETED',
+        actorId: null,
+      }),
+      eventBus.emit('application.status_changed', {
+        applicationId: application.id,
+        from: 'IN_PROGRESS',
+        to: 'COMPLETED',
+        actorId: null,
+      })
+    ]);
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const reminders1 = await prisma.reminder.findMany({
-      where: { sourceApplicationId: application.id, type: 'SERVICE_RErenewal' },
+      where: { sourceApplicationId: application.id, type: 'SERVICE_RENEWAL' },
     });
     const rem = await prisma.reminder.findMany({
       where: { sourceApplicationId: application.id },
@@ -227,12 +237,23 @@ describe('Reminders (e2e)', () => {
     });
 
     const eventBus = app.get(EventBus);
-    await eventBus.emit('certificate.issued', {
-      certificateId: certificate.id,
-      certificateNumber: certificate.certificateNumber,
-      status: 'ACTIVE',
-      actorId: admin,
-    });
+
+    // Fire the event twice in parallel to test idempotency and unique index protection
+    await Promise.all([
+      eventBus.emit('certificate.issued', {
+        certificateId: certificate.id,
+        certificateNumber: certificate.certificateNumber,
+        status: 'ACTIVE',
+        actorId: admin,
+      }),
+      eventBus.emit('certificate.issued', {
+        certificateId: certificate.id,
+        certificateNumber: certificate.certificateNumber,
+        status: 'ACTIVE',
+        actorId: admin,
+      })
+    ]);
+
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const reminders1 = await prisma.reminder.findMany({
