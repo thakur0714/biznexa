@@ -16,6 +16,8 @@ import { NotificationsService } from './notifications.service';
 import { NotificationsController } from './notifications.controller';
 import { AdminNotificationTemplatesController } from './admin-notification-templates.controller';
 import { AdminNotificationTemplatesService } from './admin-notification-templates.service';
+import { AdminAnnouncementsController } from './admin-announcements.controller';
+import { AdminAnnouncementsService } from './admin-announcements.service';
 
 import { NotificationEventsListener } from './notification-events.listener';
 import { NOTIFICATION_QUEUE_OPTIONS, NotificationQueueService } from './delivery/notification-queue.service';
@@ -31,6 +33,7 @@ import { DeliveryCallbacksController } from './delivery/delivery-callbacks.contr
     AdminNotificationTemplatesController,
     AdminNotificationDeliveriesController,
     DeliveryCallbacksController,
+    AdminAnnouncementsController,
   ],
   providers: [
     emailProviderFactory,
@@ -47,6 +50,7 @@ import { DeliveryCallbacksController } from './delivery/delivery-callbacks.contr
     NotificationsService,
     NotificationEventsListener,
     AdminNotificationTemplatesService,
+    AdminAnnouncementsService,
     // Production timing (delivery-policy.ts); tests override it with fast retries.
     { provide: NOTIFICATION_QUEUE_OPTIONS, useValue: {} },
     NotificationQueueService,

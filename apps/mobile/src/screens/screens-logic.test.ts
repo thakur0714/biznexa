@@ -8,6 +8,7 @@ import {
   isKnownFileType,
   type FileMimeType,
 } from '@biznexa/types';
+import { canChangeBooking, getJoinLink } from './consultation-logic';
 
 describe('Screen formatting and logic', () => {
   it('formats Indian rupee amounts with appropriate grouping', () => {
@@ -93,5 +94,12 @@ describe('Screen formatting and logic', () => {
     expect(parseQr('BN-ISO-9001-2026')).toBe('BN-ISO-9001-2026');
     expect(parseQr('https://biznexa.in/verify?number=BN-ISO-001&t=sig')).toBe('BN-ISO-001');
     expect(parseQr('https://biznexa.in/verify/CERT-999?t=abc')).toBe('CERT-999');
+  });
+
+  it('shows booking actions only while confirmed; server enforces the configured window', () => {
+    expect(canChangeBooking({ status: 'CONFIRMED' })).toBe(true);
+    expect(canChangeBooking({ status: 'CANCELLED' })).toBe(false);
+    expect(getJoinLink({ status: 'CONFIRMED', meetingLink: 'https://meet.example/session' })).toBe('https://meet.example/session');
+    expect(getJoinLink({ status: 'PENDING_PAYMENT', meetingLink: 'https://meet.example/session' })).toBeNull();
   });
 });

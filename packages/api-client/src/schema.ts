@@ -580,6 +580,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/notifications/announcements/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminAnnouncementsController_count"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/notifications/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminAnnouncementsController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalogue/categories": {
         parameters: {
             query?: never;
@@ -3581,6 +3613,15 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             allowedVariables: string[];
+        };
+        AnnouncementCount: {
+            recipients: number;
+        };
+        AnnouncementSend: {
+            /** Format: uuid */
+            sourceKey: string;
+            recipients: number;
+            queued: number;
         };
         NotificationDeliveryPage: {
             items: {
@@ -9092,6 +9133,83 @@ export interface operations {
             };
         };
     };
+    AdminAnnouncementsController_count: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    segment: {
+                        /** @enum {string} */
+                        type: "ALL_CUSTOMERS";
+                    } | {
+                        /** @enum {string} */
+                        type: "ACTIVE_APPLICATION_CATEGORY";
+                        /** Format: uuid */
+                        categoryId: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "EXPIRING_CERTIFICATE";
+                        days: number;
+                    };
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementCount"];
+                };
+            };
+        };
+    };
+    AdminAnnouncementsController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title: string;
+                    body: string;
+                    channels: ("IN_APP" | "EMAIL" | "PUSH" | "SMS")[];
+                    segment: {
+                        /** @enum {string} */
+                        type: "ALL_CUSTOMERS";
+                    } | {
+                        /** @enum {string} */
+                        type: "ACTIVE_APPLICATION_CATEGORY";
+                        /** Format: uuid */
+                        categoryId: string;
+                    } | {
+                        /** @enum {string} */
+                        type: "EXPIRING_CERTIFICATE";
+                        days: number;
+                    };
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnnouncementSend"];
+                };
+            };
+        };
+    };
     CatalogueController_categories: {
         parameters: {
             query?: never;
@@ -13585,6 +13703,7 @@ export interface operations {
             content: {
                 "application/json": {
                     body: string;
+                    fileIds?: string[];
                 };
             };
         };
@@ -13864,6 +13983,7 @@ export interface operations {
             content: {
                 "application/json": {
                     body: string;
+                    fileIds?: string[];
                 };
             };
         };
@@ -13905,6 +14025,7 @@ export interface operations {
             content: {
                 "application/json": {
                     body: string;
+                    fileIds?: string[];
                 };
             };
         };

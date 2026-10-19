@@ -142,6 +142,7 @@ afterAll(async () => {
     }
     if (pkgId) await prisma.servicePackage.deleteMany({ where: { id: pkgId } });
     if (svcId) await prisma.service.deleteMany({ where: { id: svcId } });
+    await prisma.storedFile.deleteMany({ where: { fileKey: { startsWith: `tkt-att-${run}-` } } });
 
     await prisma.user.deleteMany({
       where: {
@@ -387,6 +388,24 @@ describe('M9.1 Ticket API and State Machine (e2e)', () => {
 
       expect(res.body.body).toBe('Thanks, here is additional info.');
       expect(res.body.sender.isStaff).toBe(false);
+    });
+
+    it('customer attaches own files; support staff can read them, other customers cannot', async () => {
+      const file = (ownerId: string, n: number) => prisma.storedFile.create({
+        data: { fileKey: `tkt-att-${run}-${n}`, ownerId, originalName: `att-${n}.pdf`, mimeType: 'application/pdf', sizeBytes: 100, sha256: `tkt-att-${run}-${n}`, scanStatus: 'CLEAN' },
+      });
+      const own = await file(userA.id, 1);
+      const foreign = await file(userB.id, 2);
+
+      await http.post(`/api/tickets/${ticketAId}/messages`).set(as(userA.token)).send({ body: 'Not mine', fileIds: [foreign.id] }).expect(400);
+
+      const res = await http.post(`/api/tickets/${ticketAId}/messages`).set(as(userA.token)).send({ body: 'Screenshot attached', fileIds: [own.id] }).expect(201);
+      expect(res.body.attachments).toEqual([{ id: own.id, fileName: 'att-1.pdf', mimeType: 'application/pdf', sizeBytes: 100 }]);
+
+      await http.post(`/api/tickets/${ticketAId}/messages`).set(as(userA.token)).send({ body: 'Again', fileIds: [own.id] }).expect(400);
+
+      await http.get(`/api/files/${own.id}`).set(as(supportToken)).expect(200);
+      await http.get(`/api/files/${own.id}`).set(as(userB.token)).expect(404);
     });
 
     it('customer B receives 404 when posting message to customer A’s ticket', async () => {

@@ -27,6 +27,7 @@ import {
 } from '@biznexa/types';
 import { AuditService } from '../audit/audit.service';
 import { EventBus } from '../events/event-bus';
+import { checkMessageAttachments } from '../files/message-attachments';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -73,6 +74,7 @@ export class TicketsService {
       createdAt: Date;
       readAt: Date | null;
       sender: { id: string; name: string };
+      messageAttachments?: { fileId: string; file: { originalName: string; mimeType: string; sizeBytes: number } }[];
     },
     customerId: string,
   ): Message {
@@ -86,6 +88,7 @@ export class TicketsService {
       },
       createdAt: m.createdAt.toISOString(),
       readAt: m.readAt ? m.readAt.toISOString() : null,
+      attachments: m.messageAttachments?.map((a) => ({ id: a.fileId, fileName: a.file.originalName, mimeType: a.file.mimeType, sizeBytes: a.file.sizeBytes })) ?? [],
     };
   }
 
@@ -102,7 +105,7 @@ export class TicketsService {
         where,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: limit,
-        include: { sender: { select: { id: true, name: true } } },
+        include: { sender: { select: { id: true, name: true } }, messageAttachments: { select: { fileId: true, file: { select: { originalName: true, mimeType: true, sizeBytes: true } } } } },
       }),
       db.message.count({ where }),
     ]);
@@ -309,13 +312,15 @@ export class TicketsService {
       }
 
       const conv = await this.ensureConversation(tx, ticket.id);
+      const fileIds = await checkMessageAttachments(tx, input.fileIds, customerId);
       const createdMsg = await tx.message.create({
         data: {
           conversationId: conv.id,
           senderId: customerId,
           body: input.body,
+          messageAttachments: { create: fileIds.map((fileId) => ({ fileId })) },
         },
-        include: { sender: { select: { id: true, name: true } } },
+        include: { sender: { select: { id: true, name: true } }, messageAttachments: { select: { fileId: true, file: { select: { originalName: true, mimeType: true, sizeBytes: true } } } } },
       });
 
       return { msg: createdMsg, updatedTicket: t };
