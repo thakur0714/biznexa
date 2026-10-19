@@ -3,6 +3,7 @@ import type { RootStackParamList } from './RootNavigator';
 export type NotificationDestination =
   | { screen: 'MainTabs'; params: undefined }
   | { screen: 'ApplicationDetail'; params: RootStackParamList['ApplicationDetail'] }
+  | { screen: 'BuyFlow'; params: RootStackParamList['BuyFlow'] }
   | { screen: 'Documents'; params: undefined }
   | { screen: 'Payments'; params: undefined }
   | { screen: 'Certificates'; params: undefined }
@@ -34,6 +35,14 @@ export function notificationDestination(link: unknown, event?: unknown): Notific
   }
   const application = path.match(/^\/dashboard\/applications\/([^/]+)(?:\/(documents|payments|messages))?\/?$/)
     ?? path.match(/^\/applications\/([^/]+)(?:\/(documents|payments|messages))?\/?$/);
+  const apply = path.match(/^\/apply\/([^/]+)\/([^/]+)(?:\/(documents|payment))?\/?$/);
+  if (apply) {
+    let serviceSlug: string;
+    let applicationId: string;
+    try { serviceSlug = decodeURIComponent(apply[1]); applicationId = decodeURIComponent(apply[2]); } catch { return home; }
+    const stage = apply[3] === 'documents' ? 'documents' : apply[3] === 'payment' ? 'payment' : 'form';
+    return { screen: 'BuyFlow', params: { slug: serviceSlug, applicationId, initialStep: stage } };
+  }
   if (application) {
     let applicationId: string;
     try { applicationId = decodeURIComponent(application[1]); } catch { return home; }

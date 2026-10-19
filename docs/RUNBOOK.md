@@ -44,6 +44,10 @@ An empty DSN disables that app's SDK. Keep DSNs separate by project; web and adm
 - Bump `expo.version` in `apps/mobile/app.json` for the human-readable version and increment `expo.android.versionCode` for every Android binary. Add a dated entry to `apps/mobile/CHANGELOG.md`.
 - To require an update, update the `mobile.minSupportedVersion` Setting to the new minimum version (for example, `2.0.0`). Admin does not currently expose this setting, so run this SQL against the production database: `INSERT INTO "Setting" (key, value, "updatedAt") VALUES ('mobile.minSupportedVersion', '"2.0.0"'::jsonb, now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = now();`. The API serves it from `/api/mobile/version`; the mobile app blocks versions lower than that value.
 
+## Native Razorpay checkout (M11.4)
+- `react-native-razorpay` includes native Android code and cannot run in Expo Go. Build/install an EAS development client after adding or upgrading the SDK: `pnpm dlx eas-cli build --platform android --profile development` from `apps/mobile`, then start Metro with `pnpm exec expo start --dev-client` and open the installed development client.
+- For checkout testing, set the API's Razorpay public/secret keys and webhook secret to test credentials. The app requests the order from the API; the server webhook is authoritative, and the app waits for the payment endpoint to return `PAID`. Use the existing mock checkout in local development when Razorpay keys are absent. UPI intent availability depends on Razorpay account configuration and an installed UPI app on the Android device.
+
 ## Common tasks
 | Task | Command |
 |------|---------|
