@@ -6,9 +6,10 @@ import { useAuth } from '../auth/auth-context';
 import { uploadMobileFile } from '../api/upload';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';
 import { colors, spacing } from '../theme';
+import { fetchCachedList } from '../api/offline-cache';
 
 export function SupportScreen({ route }: { route?: { params?: { ticketId?: string } }; navigation: { navigate: (screen: string, params?: Record<string, unknown>) => void } }) {
-  const { api, token } = useAuth();
+  const { api, token, user } = useAuth();
   const [tickets, setTickets] = useState<TicketSummary[]>([]);
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
   const [ticketId, setTicketId] = useState<string | null>(route?.params?.ticketId ?? null);
@@ -20,22 +21,28 @@ export function SupportScreen({ route }: { route?: { params?: { ticketId?: strin
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [offline, setOffline] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
+    if (!user) { setTickets([]); setTicket(null); setOffline(false); setLoading(false); return; }
     try {
       if (ticketId) {
         const { data, error: apiError } = await api.GET('/api/tickets/{id}', { params: { path: { id: ticketId } } });
         if (apiError || !data) throw new Error('Could not load this ticket.');
         setTicket(data as TicketDetail);
       } else {
-        const { data, error: apiError } = await api.GET('/api/tickets', { params: { query: { page: 1, limit: 100 } } });
-        if (apiError || !data) throw new Error('Could not load your tickets.');
-        setTickets((data as CustomerTicketListPage).items);
+        const result = await fetchCachedList(`tickets:${user.id}`, async () => {
+          const { data, error: apiError } = await api.GET('/api/tickets', { params: { query: { page: 1, limit: 100 } } });
+          if (apiError || !data) throw new Error('Could not load your tickets.');
+          return (data as CustomerTicketListPage).items;
+        });
+        setTickets(result.data);
+        setOffline(result.offline);
       }
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not load support.'); }
     finally { setLoading(false); }
-  }, [api, ticketId]);
+  }, [api, ticketId, user]);
   useEffect(() => { void load(); }, [load]);
 
   async function createTicket() {
@@ -83,8 +90,8 @@ export function SupportScreen({ route }: { route?: { params?: { ticketId?: strin
   </ScrollView>;
   return <View style={styles.flex}>
     <View style={styles.header}><Text style={styles.title}>Support tickets</Text><Button title="New ticket" size="sm" onPress={() => setCreating(true)} /></View>
-    <FlatList data={tickets} keyExtractor={(item) => item.id} contentContainerStyle={styles.content} ListEmptyComponent={<EmptyState title="No support tickets" description="Create a ticket and our team will help." />} renderItem={({ item }) => <TouchableOpacity onPress={() => { setTicketId(item.id); setLoading(true); }}><Card><Text style={styles.text}>{item.subject}</Text><Text style={styles.muted}>{item.code} · {item.status}</Text></Card></TouchableOpacity>} />
+    <FlatList data={tickets} keyExtractor={(item) => item.id} contentContainerStyle={styles.content} ListHeaderComponent={offline ? <Text accessibilityRole="alert" style={styles.offline}>Offline · showing your last loaded tickets</Text> : null} ListEmptyComponent={<EmptyState title="No support tickets" description="Create a ticket and our team will help." />} renderItem={({ item }) => <TouchableOpacity onPress={() => { setTicketId(item.id); setLoading(true); }}><Card><Text style={styles.text}>{item.subject}</Text><Text style={styles.muted}>{item.code} · {item.status}</Text></Card></TouchableOpacity>} />
   </View>;
 }
 
-const styles = StyleSheet.create({ flex: { flex: 1, backgroundColor: colors.paper }, content: { padding: spacing.lg, gap: spacing.md }, header: { padding: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, title: { fontSize: 22, fontWeight: '700', color: colors.night }, muted: { color: colors.muted, fontSize: 13 }, text: { color: colors.night, fontSize: 16, fontWeight: '600' }, link: { color: colors.ink, marginTop: 8 }, input: { borderWidth: 1, borderColor: colors.rule, borderRadius: 10, padding: 12, color: colors.night, backgroundColor: colors.white }, multiline: { minHeight: 130, textAlignVertical: 'top' } });
+const styles = StyleSheet.create({ flex: { flex: 1, backgroundColor: colors.paper }, content: { padding: spacing.lg, gap: spacing.md }, header: { padding: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, title: { fontSize: 22, fontWeight: '700', color: colors.night }, muted: { color: colors.muted, fontSize: 13 }, text: { color: colors.night, fontSize: 16, fontWeight: '600' }, link: { color: colors.ink, marginTop: 8 }, input: { borderWidth: 1, borderColor: colors.rule, borderRadius: 10, padding: 12, color: colors.night, backgroundColor: colors.white }, multiline: { minHeight: 130, textAlignVertical: 'top' }, offline: { backgroundColor: '#fff1c2', color: colors.night, textAlign: 'center', padding: spacing.sm, fontWeight: '600' } });

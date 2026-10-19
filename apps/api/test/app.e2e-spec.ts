@@ -22,6 +22,7 @@ import {
 } from '@biznexa/types';
 import { buildOpenApiDocument, configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { Prisma } from '../src/generated/prisma/client';
 import { qrSignature } from '../src/certificates/certificates.service';
 import { captchaLookupMap } from '../src/certificates/certificates.controller';
 import { EventBus } from '../src/events/event-bus';
@@ -105,6 +106,19 @@ describe('health', () => {
   it('reports ok', async () => {
     const res = await http.get('/api/health').expect(200);
     expect(res.body.status).toBe('ok');
+  });
+});
+
+describe('mobile minimum version', () => {
+  it('returns the supported version from the Setting store', async () => {
+    const original = await prisma.setting.findUnique({ where: { key: 'mobile.minSupportedVersion' }, select: { value: true } });
+    await prisma.setting.upsert({ where: { key: 'mobile.minSupportedVersion' }, update: { value: '1.4.0' }, create: { key: 'mobile.minSupportedVersion', value: '1.4.0' } });
+    try {
+      await http.get('/api/mobile/version').expect(200).expect({ minSupportedVersion: '1.4.0' });
+    } finally {
+      if (original) await prisma.setting.update({ where: { key: 'mobile.minSupportedVersion' }, data: { value: original.value === null ? Prisma.JsonNull : original.value as Prisma.InputJsonValue } });
+      else await prisma.setting.delete({ where: { key: 'mobile.minSupportedVersion' } });
+    }
   });
 });
 

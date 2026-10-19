@@ -1,6 +1,9 @@
 import React from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Sentry from '@sentry/react-native';
+import appConfig from './app.json';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createNavigationContainerRef, NavigationContainer } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
@@ -8,9 +11,35 @@ import { AuthProvider } from './src/auth/auth-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import type { RootStackParamList } from './src/navigation/RootNavigator';
 import { notificationDestination, notificationLink } from './src/navigation/notification-routing';
+import { useAuth } from './src/auth/auth-context';
+import { isVersionBelow } from './src/api/version';
+
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';
+Sentry.init({ dsn: sentryDsn, enabled: sentryDsn.length > 0, tracesSampleRate: 0 });
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 let pendingDestination: ReturnType<typeof notificationDestination> | null = null;
+
+function VersionGate({ children }: { children: React.ReactNode }) {
+  const { api } = useAuth();
+  const [minimum, setMinimum] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void api.GET('/api/mobile/version').then(({ data }) => {
+      if (alive && data) setMinimum(data.minSupportedVersion);
+    }).catch(() => undefined).finally(() => { if (alive) setChecked(true); });
+    return () => { alive = false; };
+  }, [api]);
+  if (!checked) return <View style={gateStyles.center}><ActivityIndicator /><Text style={gateStyles.message}>Checking for updates…</Text></View>;
+  if (minimum && isVersionBelow(appConfig.expo.version, minimum)) return <View style={gateStyles.center}>
+    <Text style={gateStyles.title}>Update required</Text>
+    <Text style={gateStyles.message}>BizNexa {minimum} or later is required. Install the latest version from your tester distribution, then reopen the app.</Text>
+  </View>;
+  return children;
+}
+
+const gateStyles = StyleSheet.create({ center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, backgroundColor: '#fff' }, title: { fontSize: 24, fontWeight: '700', color: '#17213f', textAlign: 'center' }, message: { marginTop: 12, fontSize: 15, color: '#586174', textAlign: 'center' } });
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: false, shouldSetBadge: false }),
@@ -31,7 +60,7 @@ function navigateToNotification(data: Record<string, unknown>) {
   }
 }
 
-export default function App() {
+export function App() {
   const responseHandled = useRef(false);
   useEffect(() => {
     const response = Notifications.addNotificationResponseReceivedListener((event) => {
@@ -71,9 +100,11 @@ export default function App() {
       <AuthProvider>
         <NavigationContainer ref={navigationRef} onReady={onNavigationReady}>
           <StatusBar style="dark" />
-          <RootNavigator />
+          <VersionGate><RootNavigator /></VersionGate>
         </NavigationContainer>
       </AuthProvider>
     </SafeAreaProvider>
   );
 }
+
+export default Sentry.wrap(App);

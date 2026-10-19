@@ -20,6 +20,11 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/mobile/version": {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never };
+        get: operations["MobileVersionController_version"];
+        put?: never; post?: never; delete?: never; options?: never; head?: never; patch?: never; trace?: never;
+    };
     "/api/admin/audit": {
         parameters: {
             query?: never;
@@ -8156,6 +8161,11 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    MobileVersionController_version: {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never };
+        requestBody?: never;
+        responses: { 200: { headers: { [name: string]: unknown }; content: { "application/json": { minSupportedVersion: string } } } };
+    };
     AuthController_requestEmailVerification: {
         parameters: { query?: never; header?: never; path?: never; cookie?: never };
         requestBody?: never;
