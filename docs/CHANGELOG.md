@@ -1,5 +1,9 @@
 # Changelog
 
+## No Docker (19-Oct-2026)
+
+- Removed `docker-compose.yml` and the API/web Dockerfiles (D70). README now installs PostgreSQL 16 and Redis 7 directly for local development; servers run each app with `pnpm build` + `pnpm start`.
+
 ## M9.5 — CMS pages admin (19-Oct-2026)
 
 - Completed CMS pages admin (D62): public `GET /api/cms/pages/:slug` now includes `contactEmail` and `contactPhone` for published rows, and API e2e tests verify draft privacy, non-admin 403s, HTML sanitisation, SEO/contact fields and audit logging across the full test suite.

@@ -42,7 +42,7 @@ An empty DSN disables that app's SDK. Keep DSNs separate by project; web and adm
 - Local build (requires Android SDK and local EAS build prerequisites): `pnpm dlx eas-cli build --platform android --profile preview --local` (run from `apps/mobile`).
 - `preview` produces an installable APK for internal testers. Do not use the production profile for this tester distribution; it produces an AAB for a later release.
 - Bump `expo.version` in `apps/mobile/app.json` for the human-readable version and increment `expo.android.versionCode` for every Android binary. Add a dated entry to `apps/mobile/CHANGELOG.md`.
-- To require an update, update the `mobile.minSupportedVersion` Setting to the new minimum version (for example, `2.0.0`). Admin does not currently expose this setting, so run this SQL against the production database: `INSERT INTO "Setting" (key, value, "updatedAt") VALUES ('mobile.minSupportedVersion', '"2.0.0"'::jsonb, now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = now();`. The API serves it from `/api/mobile/version`; the mobile app blocks versions lower than that value.
+- To require an update, update the `mobile.minSupportedVersion` Setting to the new minimum version (for example, `2.0.0`). Change it in the admin portal under Settings → mobile app version (`PUT /api/admin/settings/mobile-version`). The API serves it from `/api/mobile/version`; the mobile app blocks versions lower than that value.
 
 ## Native Razorpay checkout (M11.4)
 - `react-native-razorpay` includes native Android code and cannot run in Expo Go. Build/install an EAS development client after adding or upgrading the SDK: `pnpm dlx eas-cli build --platform android --profile development` from `apps/mobile`, then start Metro with `pnpm exec expo start --dev-client` and open the installed development client.
@@ -91,11 +91,11 @@ Verified row counts for 69 tables; temporary database will be dropped.
 
 ## PDF generation (M3.22, D49)
 Invoices and certificates are rendered from HTML by a `pdf` queue job with headless Chromium (`playwright-core`) and stored under `UPLOAD_DIR` like uploads; the record keeps the storage key (`Invoice.pdfKey`).
-- Production: `PDF_RENDERER=playwright` (the default; `stub` is refused). The API image installs Chromium's headless shell and its system libraries (`PLAYWRIGHT_BROWSERS_PATH=/ms-playwright`). Allow ≈300 MB of memory per API instance for it; one browser is shared, two renders at a time.
+- Production: `PDF_RENDERER=playwright` (the default; `stub` is refused). On the server, install Chromium's headless shell and its system libraries once from `apps/api`: `node node_modules/playwright-core/cli.js install --with-deps --only-shell chromium`. Allow ≈300 MB of memory per API instance for it; one browser is shared, two renders at a time.
 - Development: install Chromium once with `pnpm --filter @biznexa/api exec playwright-core install chromium --only-shell` (the web E2E install covers it on the same Playwright version), or set `PDF_RENDERER=stub` for plain-text PDFs.
 - Templates run with **no JavaScript and no network**: anything a template needs (logo, fonts, QR codes) must be inline (`data:` URLs, `<style>`). A broken image is a template bug, not an outage.
 - Failures retry with backoff (≈1 min in all), then go to the `dead-letter` queue. Restarting the API queues every record still without a PDF, so after fixing Chromium a restart is enough.
-- After upgrading `playwright-core`, rebuild the image (the Chromium build is tied to the version).
+- After upgrading `playwright-core`, run that install command again (the Chromium build is tied to the version).
 - **Invoice PDFs** (M3.23, D50) are made seconds after `invoice.issued`. To reprint one after a template or font change, clear its key (`UPDATE "Invoice" SET "pdfKey" = NULL WHERE number = 'BN/2627/000123'`) and either restart the API or have the customer click "Download invoice" again (a 409 queues it). The old file stays under `UPLOAD_DIR`; delete it by its old key if needed. Invoices are printed from the row as issued, so a Settings change never alters an existing invoice.
 
 ## Virus scanning (D23)
