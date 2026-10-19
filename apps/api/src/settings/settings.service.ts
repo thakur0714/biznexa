@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { Injectable } from '@nestjs/common';
-import { SELLER_SETTING_KEYS, REJECTION_PRESETS_KEY, readSellerSettings, sellerSettingValues, type SellerSettings, type SellerSettingsData, type RejectionPresets, type RejectionPresetsInput } from '@biznexa/types';
+import { SELLER_SETTING_KEYS, REJECTION_PRESETS_KEY, MOBILE_VERSION_KEY, readSellerSettings, sellerSettingValues, type SellerSettings, type SellerSettingsData, type RejectionPresets, type RejectionPresetsInput, type MobileVersion, type MobileVersionInput } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { Prisma } from '../generated/prisma/client';
@@ -83,5 +83,42 @@ export class SettingsService {
     });
     
     return this.rejectionPresets();
+  }
+
+  async mobileVersion(db: Prisma.TransactionClient = this.prisma): Promise<MobileVersion> {
+    const row = await db.setting.findUnique({ where: { key: MOBILE_VERSION_KEY }, select: { value: true, updatedAt: true } });
+    let minSupportedVersion = '1.0.0';
+    if (row && typeof row.value === 'string') {
+      minSupportedVersion = row.value;
+    }
+    return { minSupportedVersion, updatedAt: row?.updatedAt?.toISOString() ?? null };
+  }
+
+  async updateMobileVersion(data: MobileVersionInput, actorId: string): Promise<MobileVersion> {
+    const beforeRow = await this.prisma.setting.findUnique({ where: { key: MOBILE_VERSION_KEY }, select: { value: true } });
+    const oldVersion = typeof beforeRow?.value === 'string' ? beforeRow.value : '1.0.0';
+
+    if (oldVersion === data.minSupportedVersion) {
+      return this.mobileVersion();
+    }
+
+    const value = data.minSupportedVersion;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.setting.upsert({
+        where: { key: MOBILE_VERSION_KEY },
+        update: { value },
+        create: { key: MOBILE_VERSION_KEY, value },
+      });
+      await this.audit.log({
+        actorId,
+        action: 'settings.mobile-version.update',
+        entityType: 'Setting',
+        entityId: MOBILE_VERSION_KEY,
+        before: { minSupportedVersion: oldVersion },
+        after: { minSupportedVersion: data.minSupportedVersion },
+      }, tx);
+    });
+
+    return this.mobileVersion();
   }
 }

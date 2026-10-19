@@ -125,6 +125,19 @@ export const rejectionPresetsSchema = z.object({
 
 export type RejectionPresets = z.infer<typeof rejectionPresetsSchema>;
 
+/** Mobile app minimum supported version */
+export const MOBILE_VERSION_KEY = 'mobile.minSupportedVersion';
+
+export const mobileVersionInput = z.object({
+  minSupportedVersion: z.string().trim().regex(/^\d+(\.\d+){0,2}$/, 'Enter a valid version number (e.g. 1.0.0)')
+});
+export type MobileVersionInput = z.infer<typeof mobileVersionInput>;
+
+export const mobileVersionSchema = z.object({
+  minSupportedVersion: z.string(),
+  updatedAt: z.string().datetime({ offset: true }).nullable(),
+});
+export type MobileVersion = z.infer<typeof mobileVersionSchema>;
 
 /** `SellerSettingsData` → the value stored under each key (blanks as `''`, like the seed). */
 export function sellerSettingValues(d: SellerSettingsData): Record<string, unknown> {
