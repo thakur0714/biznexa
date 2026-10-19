@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button, Field, Notice, Select, TextArea, Checkbox, useToast } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
 import type { AnnouncementSegment } from '@biznexa/types';
+import type { components } from '@biznexa/api-client';
 
 export function AnnouncementsView() {
   const api = useApi();
@@ -17,6 +18,23 @@ export function AnnouncementsView() {
   const [count, setCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const [categories, setCategories] = useState<components['schemas']['AdminCategoryList'] | null>(null);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [categoriesError, setCategoriesError] = useState('');
+
+  useEffect(() => {
+    async function loadCategories() {
+      setCategoriesLoading(true); setCategoriesError('');
+      try {
+        const list = await api.call((c) => c.GET('/api/admin/catalogue/categories'));
+        setCategories(list);
+      } catch (err) { setCategoriesError('Could not load categories.'); }
+      finally { setCategoriesLoading(false); }
+    }
+    loadCategories();
+  }, [api]);
+
   const segment: AnnouncementSegment = segmentType === 'ALL_CUSTOMERS' ? { type: 'ALL_CUSTOMERS' } : segmentType === 'ACTIVE_APPLICATION_CATEGORY' ? { type: 'ACTIVE_APPLICATION_CATEGORY', categoryId } : { type: 'EXPIRING_CERTIFICATE', days: Number(days) };
   const toggle = (value: string) => setChannels((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
 
@@ -47,7 +65,23 @@ export function AnnouncementsView() {
     <Select id="announcement-audience" label="Audience" value={segmentType} onChange={(e) => { setSegmentType(e.target.value as typeof segmentType); setCount(null); }}>
       <option value="ALL_CUSTOMERS">All customers</option><option value="ACTIVE_APPLICATION_CATEGORY">Active applications in category</option><option value="EXPIRING_CERTIFICATE">Certificate expiring within N days</option>
     </Select>
-    {segmentType === 'ACTIVE_APPLICATION_CATEGORY' && <Field id="announcement-category" label="Category ID" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setCount(null); }} placeholder="Category UUID" />}
+    {segmentType === 'ACTIVE_APPLICATION_CATEGORY' && (
+      <>
+        <Select id="announcement-category" label="Category" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setCount(null); }} disabled={categoriesLoading || !!categoriesError}>
+          <option value="">{categoriesLoading ? 'Loading...' : 'Select a category'}</option>
+          {categories?.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+        {categoriesError && (
+          <p className="text-sm text-danger mt-1">
+            {categoriesError}
+          </p>
+        )}
+      </>
+    )}
     {segmentType === 'EXPIRING_CERTIFICATE' && <Field id="announcement-days" label="Days until expiry" type="number" min={1} max={365} value={days} onChange={(e) => { setDays(e.target.value); setCount(null); }} />}
     <fieldset className="space-y-2"><legend className="text-sm font-medium">Channels</legend>{['IN_APP', 'EMAIL', 'PUSH', 'SMS'].map((channel) => <Checkbox id={`announcement-${channel.toLowerCase()}`} key={channel} label={channel} checked={channels.includes(channel)} onChange={() => toggle(channel)} />)}<p className="text-xs text-muted-foreground">SMS is sent only when an active DLT template is configured.</p></fieldset>
     {error && <Notice tone="error">{error}</Notice>}
