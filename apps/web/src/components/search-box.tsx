@@ -1,15 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { formatINR } from '@biznexa/types';
 import { Icon } from './icons';
-import type { ServiceCard } from '@/lib/api';
+import type { CatalogueSearchResponse } from '@biznexa/types';
 
-interface Results {
-  services: ServiceCard[];
-  categories: { slug: string; name: string }[];
-}
+type Results = CatalogueSearchResponse;
 
 /** Service search with live suggestions (combobox pattern, keyboard friendly). */
 export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }: { size?: 'lg' | 'md'; autoFocus?: boolean; defaultValue?: string }) {
@@ -23,8 +20,9 @@ export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }:
 
   const options = results
     ? [
-        ...results.services.map((s) => ({ key: s.id, href: `/services/${s.category.slug}/${s.slug}`, label: s.name, meta: s.category.name, price: s.startingPrice })),
-        ...results.categories.map((c) => ({ key: c.slug, href: `/services/${c.slug}`, label: `All ${c.name} services`, meta: 'Category', price: null as number | null })),
+        ...results.services.map((s) => ({ key: s.id, group: 'Services', href: `/services/${s.category.slug}/${s.slug}`, label: s.name, meta: s.category.name, price: s.startingPrice })),
+        ...results.posts.map((p) => ({ key: p.slug, group: 'Articles', href: `/blog/${p.slug}`, label: p.title, meta: p.excerpt ?? 'Article', price: null as number | null })),
+        ...results.categories.map((c) => ({ key: c.slug, group: 'Categories', href: `/services/${c.slug}`, label: `All ${c.name} services`, meta: 'Category', price: null as number | null })),
       ]
     : [];
 
@@ -113,7 +111,9 @@ export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }:
         <ul id={listId} role="listbox" className="absolute inset-x-0 top-[calc(100%+8px)] z-30 max-h-[360px] overflow-auto rounded-lg border border-rule bg-white py-1.5 shadow-[0_20px_40px_-18px_rgba(18,26,69,0.4)]">
           {options.length === 0 && <li className="px-4 py-3 text-sm text-muted">No matching service. Try a simpler word like “GST” or “trademark”, or talk to an expert.</li>}
           {options.map((o, i) => (
-            <li key={o.key} id={`${listId}-${i}`} role="option" aria-selected={i === active}>
+            <Fragment key={o.key}>
+            {(i === 0 || options[i - 1].group !== o.group) && <li role="presentation" className="px-4 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{o.group}</li>}
+            <li id={`${listId}-${i}`} role="option" aria-selected={i === active}>
               <a
                 href={o.href}
                 onMouseEnter={() => setActive(i)}
@@ -130,6 +130,7 @@ export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }:
                 {o.price != null && <span className="num shrink-0 text-sm text-muted">from {formatINR(o.price)}</span>}
               </a>
             </li>
+            </Fragment>
           ))}
         </ul>
       )}

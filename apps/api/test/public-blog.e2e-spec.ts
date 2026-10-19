@@ -6,6 +6,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { EventBus } from '../src/events/event-bus';
 
 describe('Public blog pages API', () => {
   const run = randomUUID().slice(0, 10);
@@ -75,5 +76,37 @@ describe('Public blog pages API', () => {
     const detail = await http.get(`/api/public/blog/posts/${prefix}-published-a`).expect(200);
     expect(detail.body.content).not.toMatch(/script|bad\(\)/i);
     expect(detail.body.categories).toEqual([expect.objectContaining({ id: categoryId })]);
+  });
+
+  it('searches published posts by typo-tolerant title and tag while hiding drafts and future posts', async () => {
+    await prisma.blogPost.createMany({ data: [
+      { slug: `${prefix}-search-title`, title: `Zebra Trademark Compliance ${run}`, content: 'Article', status: 'PUBLISHED', publishedAt: new Date(), categoryId },
+      { slug: `${prefix}-search-tag`, title: `Zebra Filing Guide ${run}`, content: 'Article', status: 'PUBLISHED', publishedAt: new Date(), categoryId },
+      { slug: `${prefix}-search-draft`, title: `Zebra Draft ${run}`, content: 'Article', status: 'DRAFT', categoryId },
+      { slug: `${prefix}-search-future`, title: `Zebra Future ${run}`, content: 'Article', status: 'PUBLISHED', publishedAt: new Date(Date.now() + 60_000), categoryId },
+    ] });
+    const taggedPost = await prisma.blogPost.findUniqueOrThrow({ where: { slug: `${prefix}-search-tag` } });
+    await prisma.blogPost.update({ where: { id: taggedPost.id }, data: { tags: { connect: { id: tagId } } } });
+    const title = await http.get('/api/catalogue/search').query({ q: 'trademrak complianc' }).expect(200);
+    expect(title.body.posts).toContainEqual(expect.objectContaining({ type: 'post', slug: `${prefix}-search-title` }));
+    const tag = await http.get('/api/catalogue/search').query({ q: 'tag' }).expect(200);
+    expect(tag.body.posts).toContainEqual(expect.objectContaining({ type: 'post', slug: `${prefix}-search-tag` }));
+    expect(tag.body.posts.map((post: { slug: string }) => post.slug)).not.toContain(`${prefix}-search-draft`);
+    expect(tag.body.posts.map((post: { slug: string }) => post.slug)).not.toContain(`${prefix}-search-future`);
+    const mixed = await http.get('/api/catalogue/search').query({ q: 'trademark registration' }).expect(200);
+    expect(mixed.body.services[0].type).toBe('service');
+    await prisma.blogPost.deleteMany({ where: { slug: { startsWith: `${prefix}-search-` } } });
+  });
+
+  it('invalidates the cached search index when a post is published', async () => {
+    const slug = `${prefix}-publish-cache`;
+    const draft = await prisma.blogPost.create({ data: { slug, title: `CachePublished ${run}`, content: 'Article', status: 'DRAFT' } });
+    const before = await http.get('/api/catalogue/search').query({ q: 'cachepublished' }).expect(200);
+    expect(before.body.posts).not.toContainEqual(expect.objectContaining({ slug }));
+    await prisma.blogPost.update({ where: { id: draft.id }, data: { status: 'PUBLISHED', publishedAt: new Date() } });
+    await app.get(EventBus).emit('blog.post_changed', { postId: draft.id });
+    const after = await http.get('/api/catalogue/search').query({ q: 'cachepublished' }).expect(200);
+    expect(after.body.posts).toContainEqual(expect.objectContaining({ type: 'post', slug }));
+    await prisma.blogPost.delete({ where: { id: draft.id } });
   });
 });

@@ -26,6 +26,7 @@ import {
   adminCategoryListSchema,
   adminServiceDetailSchema,
   adminServiceListSchema,
+  catalogueSearchResponseSchema,
   formSchemaVersionListSchema,
   formSchemaVersionRef,
   formSchemaVersionSchema,
@@ -69,6 +70,7 @@ export class CatalogueController {
   }
 
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @ApiZodResponse('CatalogueSearchResponse', catalogueSearchResponseSchema)
   @ApiQuery({ name: 'q', required: false, description: 'What the visitor typed (typos are fine)' })
   @Get('search')
   search(@Query('q') q = '') {

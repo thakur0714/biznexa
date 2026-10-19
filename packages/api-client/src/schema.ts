@@ -3734,6 +3734,41 @@ export interface components {
             otpauthUrl: string;
             qrDataUrl: string;
         };
+        CatalogueSearchResponse: {
+            services: {
+                id: string;
+                slug: string;
+                name: string;
+                shortDescription: string;
+                icon: string | null;
+                estimatedTime: string | null;
+                startingPrice: number | null;
+                governmentFeeFrom: number;
+                popularity: number;
+                isPopular: boolean;
+                category: {
+                    slug: string;
+                    name: string;
+                };
+                subcategory: {
+                    slug: string;
+                    name: string;
+                } | null;
+                /** @enum {string} */
+                type: "service";
+            }[];
+            posts: {
+                /** @enum {string} */
+                type: "post";
+                title: string;
+                slug: string;
+                excerpt: string | null;
+            }[];
+            categories: {
+                slug: string;
+                name: string;
+            }[];
+        };
         AdminCategoryList: {
             /** Format: uuid */
             id: string;
@@ -9336,7 +9371,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CatalogueSearchResponse"];
+                };
             };
         };
     };
