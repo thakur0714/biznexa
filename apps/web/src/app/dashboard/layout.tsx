@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { Button } from '@biznexa/ui';
 import { Icon } from '@/components/icons';
@@ -52,6 +52,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const api = useApi();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
 
   const [drawerPath, setDrawerPath] = useState(pathname);
   if (drawerPath !== pathname) {
@@ -59,14 +61,51 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
     setDrawerOpen(false);
   }
 
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    triggerRef.current?.focus();
+  }, []);
+
   useEffect(() => {
     if (!drawerOpen) return;
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+
+    const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusables = Array.from(sidebar.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+      (node) => node.offsetParent !== null || node.getClientRects().length > 0,
+    );
+    if (focusables[0]) {
+      focusables[0].focus();
+    }
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDrawerOpen(false);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeDrawer();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const elements = Array.from(sidebar.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (node) => node.offsetParent !== null || node.getClientRects().length > 0,
+      );
+      if (elements.length === 0) return;
+      const first = elements[0]!;
+      const last = elements[elements.length - 1]!;
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (!active || !sidebar.contains(active) || active === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (!active || !sidebar.contains(active) || active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [drawerOpen]);
+  }, [drawerOpen, closeDrawer]);
 
   const refreshUnreadCount = useCallback(() => {
     if (!user) return;
@@ -104,6 +143,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="mb-6 flex items-center justify-between border-b border-rule pb-4 lg:hidden">
         <span className="text-sm font-semibold text-night">{currentSection}</span>
         <Button
+          ref={triggerRef}
           type="button"
           variant="outline"
           size="sm"
@@ -120,13 +160,17 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         <div
           className="fixed inset-0 z-30 bg-night/40 lg:hidden"
           aria-hidden="true"
-          onClick={() => setDrawerOpen(false)}
+          onClick={closeDrawer}
         />
       )}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[230px_1fr]">
         <aside
+          ref={sidebarRef}
           id="dashboard-sidebar"
+          role={drawerOpen ? 'dialog' : undefined}
+          aria-modal={drawerOpen ? 'true' : undefined}
+          aria-label={drawerOpen ? 'Dashboard navigation' : undefined}
           className={`fixed inset-y-0 left-0 z-40 w-[260px] overflow-y-auto border-r border-rule bg-white p-4 transition-transform lg:static lg:z-auto lg:w-auto lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:translate-x-0 ${
             drawerOpen ? 'translate-x-0' : 'invisible -translate-x-full lg:visible'
           }`}
@@ -135,7 +179,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             <span className="text-sm font-semibold text-night">My Account</span>
             <button
               type="button"
-              onClick={() => setDrawerOpen(false)}
+              onClick={closeDrawer}
               className="rounded-md p-1 text-muted hover:text-night"
               aria-label="Close dashboard menu"
             >

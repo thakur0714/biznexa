@@ -20,7 +20,7 @@ export type ButtonSize = keyof typeof sizes;
 
 /** Button classes, for elements that must look like a button but are not one (e.g. a plain `<a>`). */
 export function buttonClass(variant: ButtonVariant = 'primary', size: ButtonSize = 'md', extra = '') {
-  return `inline-flex items-center justify-center gap-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${extra}`;
+  return `inline-flex items-center justify-center gap-2 rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${extra}`;
 }
 
 export function Button({ variant = 'primary', size = 'md', className = '', ...rest }: ComponentProps<'button'> & { variant?: ButtonVariant; size?: ButtonSize }) {

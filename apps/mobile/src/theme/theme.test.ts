@@ -6,7 +6,7 @@ describe('Mobile Theme Tokens', () => {
     expect(colors.ink).toBe('#1f2b7a');
     expect(colors.night).toBe('#121a45');
     expect(colors.marigold).toBe('#f4b000');
-    expect(colors.seal).toBe('#0e8a5f');
+    expect(colors.seal).toBe('#0a6c4a');
     expect(colors.danger).toBe('#b42318');
     expect(colors.paper).toBe('#f6f7fb');
     expect(colors.rule).toBe('#dce0ee');

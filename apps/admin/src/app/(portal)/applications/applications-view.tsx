@@ -154,7 +154,10 @@ function ApplicationsPage() {
       {canAssign && (
         <div className="flex items-center gap-2 mb-4 p-4 bg-paper rounded border border-rule">
           <span className="text-sm font-medium">Selected: {selected.length}</span>
+          <label htmlFor="bulk-assignee-select" className="sr-only">Assign selected applications</label>
           <select 
+            id="bulk-assignee-select"
+            aria-label="Assign selected applications to staff member"
             className="border border-rule rounded p-2 text-sm"
             value={bulkAssignee}
             onChange={e => setBulkAssignee(e.target.value)}
@@ -167,10 +170,19 @@ function ApplicationsPage() {
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm whitespace-nowrap">
+        <table className="w-full text-left text-sm whitespace-nowrap" aria-label="Applications">
           <thead>
             <tr className="border-b text-muted">
-              {canAssign && <th className="py-2 pr-4"><input type="checkbox" onChange={e => setSelected(e.target.checked ? data?.items.map((i: import('@biznexa/types').AdminApplicationRow) => i.id) || [] : [])} checked={selected.length > 0 && selected.length === data?.items.length} /></th>}
+              {canAssign && (
+                <th className="py-2 pr-4">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all applications"
+                    onChange={e => setSelected(e.target.checked ? data?.items.map((i: import('@biznexa/types').AdminApplicationRow) => i.id) || [] : [])}
+                    checked={selected.length > 0 && selected.length === data?.items.length}
+                  />
+                </th>
+              )}
               <th className="py-2 pr-4 font-medium">Code</th>
               <th className="py-2 pr-4 font-medium">Status</th>
               <th className="py-2 pr-4 font-medium">Priority</th>
@@ -182,13 +194,22 @@ function ApplicationsPage() {
           </thead>
           <tbody className="align-top">
             {loading ? (
-              <tr><td colSpan={7} className="py-4 text-center text-muted">Loading...</td></tr>
+              <tr><td colSpan={canAssign ? 8 : 7} className="py-4 text-center text-muted">Loading...</td></tr>
             ) : !data?.items.length ? (
-              <tr><td colSpan={7} className="py-4 text-center text-muted">No applications found.</td></tr>
+              <tr><td colSpan={canAssign ? 8 : 7} className="py-4 text-center text-muted">No applications found.</td></tr>
             ) : (
               data.items.map((app: import('@biznexa/types').AdminApplicationRow) => (
                 <tr key={app.id} className="border-b">
-                  {canAssign && <td className="py-3 pr-4"><input type="checkbox" checked={selected.includes(app.id)} onChange={e => setSelected(prev => e.target.checked ? [...prev, app.id] : prev.filter(id => id !== app.id))} /></td>}
+                  {canAssign && (
+                    <td className="py-3 pr-4">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select application ${app.code}`}
+                        checked={selected.includes(app.id)}
+                        onChange={e => setSelected(prev => e.target.checked ? [...prev, app.id] : prev.filter(id => id !== app.id))}
+                      />
+                    </td>
+                  )}
                   <td className="py-3 pr-4 font-medium text-night">
                     <a href={`/applications/${app.id}`} className="hover:underline">{app.code}</a>
                   </td>

@@ -37,6 +37,7 @@ However, several **Blocker** and **High** severity issues prevent the platform f
 ## Detailed Findings
 
 ### Issue A11Y-01: Critical ARIA Feed Structure in Customer Notifications
+- **Status: FIXED** - Wrapped each notification feed item in an `<article aria-labelledby="...">` element conforming strictly to W3C WAI-ARIA feed requirements.
 - **Severity**: **Blocker**
 - **WCAG Success Criteria**: 4.1.2 Name, Role, Value (Level A), 1.3.1 Info and Relationships (Level A)
 - **Affected Page**: `/dashboard/notifications` (`apps/web/src/app/dashboard/notifications/notifications-view.tsx:168`)
@@ -52,6 +53,7 @@ However, several **Blocker** and **High** severity issues prevent the platform f
 ---
 
 ### Issue A11Y-02: Missing Form Labels on Checkboxes & Bulk Select in Admin Applications
+- **Status: FIXED** - Added `aria-label` attributes to the select-all header checkbox, individual row checkboxes, and bulk assignment select dropdown.
 - **Severity**: **Blocker**
 - **WCAG Success Criteria**: 1.3.1 Info and Relationships (Level A), 4.1.2 Name, Role, Value (Level A), 3.3.2 Labels or Instructions (Level A)
 - **Affected Page**: Admin Applications list (`/applications` on `http://localhost:3001/applications`, `apps/admin/src/app/(portal)/applications/applications-view.tsx:157, 173, 191`)
@@ -73,6 +75,7 @@ However, several **Blocker** and **High** severity issues prevent the platform f
 ---
 
 ### Issue A11Y-03: Focus Visible Indicator Fails Non-Text Contrast (1.90:1 vs 3.0:1 required)
+- **Status: FIXED** - Replaced low-contrast focus ring with `--color-ink` (`#1f2b7a`, contrast 12.3:1) on light surfaces and marigold on dark backgrounds in global styles and button/card components.
 - **Severity**: **High**
 - **WCAG Success Criteria**: 1.4.11 Non-text Contrast (Level AA), 2.4.7 Focus Visible (Level AA)
 - **Affected Pages**: Global across `apps/web` (`globals.css:26-30`) and `apps/admin` (`globals.css:24-28`)
@@ -95,6 +98,7 @@ However, several **Blocker** and **High** severity issues prevent the platform f
 ---
 
 ### Issue A11Y-04: Mobile Hamburger Menu Cannot Be Closed with Escape Key (360px)
+- **Status: FIXED** - Updated keydown listener in `site-header.tsx` to dismiss mobile navigation drawer when Escape is pressed.
 - **Severity**: **High**
 - **WCAG Success Criteria**: 2.1.1 Keyboard (Level A), 2.1.2 No Keyboard Trap (Level A)
 - **Affected Page**: Global website header on viewports < 1024px (`apps/web/src/components/site-header.tsx:36-47`)
@@ -117,6 +121,7 @@ However, several **Blocker** and **High** severity issues prevent the platform f
 ---
 
 ### Issue A11Y-05: Desktop "Services" Dropdown Focus Order Skips Dropdown Content
+- **Status: FIXED** - Relocated `#services-menu` dropdown inside `<nav>` directly after the Services trigger button for natural DOM tab sequence.
 - **Severity**: **High**
 - **WCAG Success Criteria**: 2.4.3 Focus Order (Level A)
 - **Affected Page**: Global website header (`apps/web/src/components/site-header.tsx:83-141`)
@@ -132,6 +137,7 @@ However, several **Blocker** and **High** severity issues prevent the platform f
 ---
 
 ### Issue A11Y-06: Mobile Sidebar Drawers Lack Focus Trapping (Admin & Customer Portals)
+- **Status: FIXED** - Implemented keyboard focus trapping, Escape close handling, and focus return to trigger button in customer dashboard and admin portal mobile drawers.
 - **Severity**: **High**
 - **WCAG Success Criteria**: 2.4.3 Focus Order (Level A), 2.1.2 No Keyboard Trap (Level A)
 - **Affected Pages**:
@@ -151,6 +157,7 @@ However, several **Blocker** and **High** severity issues prevent the platform f
 ---
 
 ### Issue A11Y-07: Insufficient Color Contrast on Warning & Success Badges
+- **Status: FIXED** - Darkened `--color-amber` to `#8a5000` (contrast > 5.6:1) and `--color-seal` to `#0a6c4a` (contrast > 5.2:1) in tokens to meet WCAG AA requirements.
 - **Severity**: **High**
 - **WCAG Success Criteria**: 1.4.3 Contrast (Minimum) (Level AA)
 - **Affected Pages**:
@@ -173,6 +180,7 @@ However, several **Blocker** and **High** severity issues prevent the platform f
 ---
 
 ### Issue A11Y-08: Admin Portal Layout Lacks "Skip to Content" Link
+- **Status: FIXED** - Added skip-to-content link in admin layout bypassing sidebar navigation to `<main id="main">`.
 - **Severity**: **High**
 - **WCAG Success Criteria**: 2.4.1 Bypass Blocks (Level A)
 - **Affected Page**: Entire Admin Portal (`apps/admin/src/app/layout.tsx`)
@@ -191,6 +199,7 @@ However, several **Blocker** and **High** severity issues prevent the platform f
 ---
 
 ### Issue A11Y-09: Form Controls Strip Outline Without Replacement Focus Indicator
+- **Status: FIXED** - Added `focus:border-ink focus-visible:ring-2 focus-visible:ring-ink/20` in shared Field/control styles, darkened placeholder text, and preserved card focus outlines.
 - **Severity**: **High**
 - **WCAG Success Criteria**: 2.4.7 Focus Visible (Level AA)
 - **Affected Pages**: All forms across Web and Admin (`packages/ui/src/field.tsx:3`, `apps/web/src/components/service-card.tsx:18`)
@@ -209,6 +218,7 @@ However, several **Blocker** and **High** severity issues prevent the platform f
 ---
 
 ### Issue A11Y-10: Prohibited ARIA Attribute on Consultant Booking Skeleton Loader
+- **Status: FIXED** - Added `role="status"` and accessible screen reader text `<span className="sr-only">Loading consultants…</span>` to the skeleton loading container.
 - **Severity**: **High**
 - **WCAG Success Criteria**: 4.1.2 Name, Role, Value (Level A)
 - **Affected Page**: `/consultants/[slug]/book` (`apps/web/src/app/consultants/[slug]/book/page.tsx`)

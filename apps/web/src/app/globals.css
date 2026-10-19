@@ -24,9 +24,15 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-marigold);
+  outline: 2px solid var(--color-ink);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+.bg-night :focus-visible,
+.bg-ink :focus-visible,
+[data-theme='dark'] :focus-visible {
+  outline-color: var(--color-marigold);
 }
 
 @media (prefers-reduced-motion: reduce) {
