@@ -46,19 +46,17 @@ export class DashboardService {
       }),
     ]);
 
-    const docsPending = await Promise.all(applications.map(async (application) =>
-      this.documents.pendingMandatory({
+    const docsPending = await this.documents.pendingMandatoryMany(applications.map((application) => ({
         id: application.id,
         status: application.status,
         serviceId: application.serviceId,
         packageId: application.packageId,
-      }),
-    ));
+    })));
     const unpaidOrders = orders.filter((order) => order.total > order.amountPaid).length;
 
     return {
       activeApplications,
-      pendingActions: docsPending.reduce((sum, count) => sum + count, 0) + unpaidOrders,
+      pendingActions: [...docsPending.values()].reduce((sum, count) => sum + count, 0) + unpaidOrders,
       unpaidBalance: orders.reduce((sum, order) => sum + Math.max(0, order.total - order.amountPaid), 0),
       upcomingDueDates: certificates.map((certificate) => ({
         id: certificate.id,

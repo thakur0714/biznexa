@@ -50,16 +50,38 @@ const activeService = { isActive: true, deletedAt: null } satisfies Prisma.Servi
 @Injectable()
 export class CatalogueService implements OnModuleInit {
   private searchCache?: { at: number; services: (ServiceCard & { type: 'service'; extra: string })[]; posts: { id: string; name: string; slug: string; excerpt: string | null; type: 'post'; popularity: number; extra: string }[] };
+  private readonly publicCache = new Map<string, { expiresAt: number; value: Promise<unknown> }>();
 
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly events: EventBus) {}
 
   onModuleInit() {
     this.events.on('blog.post_changed', () => this.invalidate());
+    this.events.on('catalogue.changed', () => this.invalidate());
+  }
+
+  private async cachedPublic<T>(key: string, load: () => Promise<T>): Promise<T> {
+    const cached = this.publicCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.value as Promise<T>;
+    if (this.publicCache.size >= 256) this.publicCache.clear();
+    const pending = load();
+    this.publicCache.set(key, { expiresAt: Date.now() + 60_000, value: pending });
+    try {
+      const value = await pending;
+      if (this.publicCache.get(key)?.value === pending) this.publicCache.set(key, { expiresAt: Date.now() + 60_000, value: pending });
+      return value;
+    } catch (error) {
+      if (this.publicCache.get(key)?.value === pending) this.publicCache.delete(key);
+      throw error;
+    }
   }
 
   // ─────────────── Public ───────────────
 
-  async categories() {
+  categories() {
+    return this.cachedPublic('categories', () => this.loadCategories());
+  }
+
+  private async loadCategories() {
     const cats = await this.prisma.category.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
@@ -75,7 +97,11 @@ export class CatalogueService implements OnModuleInit {
     return cats.map(({ services, ...c }) => ({ ...c, serviceCount: services.length, topServices: services.slice(0, 6) }));
   }
 
-  async category(slug: string) {
+  category(slug: string) {
+    return this.cachedPublic(`category:${slug}`, () => this.loadCategory(slug));
+  }
+
+  private async loadCategory(slug: string) {
     const c = await this.prisma.category.findFirst({
       where: { slug, isActive: true },
       include: { subcategories: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } } },
@@ -84,7 +110,11 @@ export class CatalogueService implements OnModuleInit {
     return c;
   }
 
-  async listServices(q: ListServicesQuery) {
+  listServices(q: ListServicesQuery) {
+    return this.cachedPublic(`services:${JSON.stringify(q)}`, () => this.loadServices(q));
+  }
+
+  private async loadServices(q: ListServicesQuery) {
     const rows = await this.prisma.service.findMany({
       where: {
         ...activeService,
@@ -118,7 +148,11 @@ export class CatalogueService implements OnModuleInit {
     return { items: cards.slice(start, start + q.limit), total, page: q.page, limit: q.limit, pages: Math.max(1, Math.ceil(total / q.limit)) };
   }
 
-  async popular(limit = 8) {
+  popular(limit = 8) {
+    return this.cachedPublic(`popular:${limit}`, () => this.loadPopular(limit));
+  }
+
+  private async loadPopular(limit: number) {
     const setting = await this.prisma.setting.findUnique({ where: { key: 'home.cms' }, select: { value: true } });
     const value = setting?.value as { popularServiceIds?: unknown } | null;
     if (Array.isArray(value?.popularServiceIds) && value.popularServiceIds.length) {
@@ -136,7 +170,11 @@ export class CatalogueService implements OnModuleInit {
     return rows.map(toCard);
   }
 
-  async serviceDetail(slug: string) {
+  serviceDetail(slug: string) {
+    return this.cachedPublic(`service:${slug}`, () => this.loadServiceDetail(slug));
+  }
+
+  private async loadServiceDetail(slug: string) {
     const s = await this.prisma.service.findFirst({
       where: { slug, ...activeService },
       include: {
@@ -204,12 +242,13 @@ export class CatalogueService implements OnModuleInit {
 
   private invalidate() {
     this.searchCache = undefined;
+    this.publicCache.clear();
   }
 
   async createCategory(input: z.infer<typeof categoryInput>, actorId: string) {
     const c = await this.prisma.category.create({ data: input });
     await this.audit.log({ actorId, action: 'category.create', entityType: 'Category', entityId: c.id, after: c });
-    this.invalidate();
+    await this.events.emit('catalogue.changed', { entityType: 'category' });
     return c;
   }
 
@@ -218,13 +257,14 @@ export class CatalogueService implements OnModuleInit {
     if (!before) throw new NotFoundException('Category not found');
     const c = await this.prisma.category.update({ where: { id }, data: input });
     await this.audit.log({ actorId, action: 'category.update', entityType: 'Category', entityId: id, before, after: c });
-    this.invalidate();
+    await this.events.emit('catalogue.changed', { entityType: 'category' });
     return c;
   }
 
   async createSubcategory(categoryId: string, input: z.infer<typeof subcategoryInput>, actorId: string) {
     const s = await this.prisma.subcategory.create({ data: { ...input, categoryId } });
     await this.audit.log({ actorId, action: 'subcategory.create', entityType: 'Subcategory', entityId: s.id, after: s });
+    await this.events.emit('catalogue.changed', { entityType: 'subcategory' });
     return s;
   }
 
@@ -398,7 +438,7 @@ export class CatalogueService implements OnModuleInit {
       },
     });
     await this.audit.log({ actorId, action: 'service.create', entityType: 'Service', entityId: created.id, after: input });
-    this.invalidate();
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return this.adminGetService(created.id);
   }
 
@@ -418,7 +458,7 @@ export class CatalogueService implements OnModuleInit {
     await this.prisma.service.update({ where: { id }, data: input });
     const after = await this.adminGetService(id);
     await this.audit.log({ actorId, action: 'service.update', entityType: 'Service', entityId: id, before, after });
-    this.invalidate();
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return after;
   }
 
@@ -427,7 +467,7 @@ export class CatalogueService implements OnModuleInit {
     await this.loadService(id);
     const s = await this.prisma.service.update({ where: { id }, data: { isActive: false, deletedAt: new Date() } });
     await this.audit.log({ actorId, action: 'service.delete', entityType: 'Service', entityId: id, after: { deletedAt: s.deletedAt } });
-    this.invalidate();
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return { message: 'Service removed from the catalogue' };
   }
 
@@ -455,7 +495,7 @@ export class CatalogueService implements OnModuleInit {
       }
     });
     await this.audit.log({ actorId, action: 'service.packages.update', entityType: 'Service', entityId: serviceId, before: before.packages, after: items });
-    this.invalidate();
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return this.adminGetService(serviceId);
   }
 
@@ -474,6 +514,7 @@ export class CatalogueService implements OnModuleInit {
       }
     });
     await this.audit.log({ actorId, action: 'service.documents.update', entityType: 'Service', entityId: serviceId, before: before.documents, after: items });
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return this.adminGetService(serviceId);
   }
 
@@ -494,6 +535,7 @@ export class CatalogueService implements OnModuleInit {
       }
     });
     await this.audit.log({ actorId, action: 'service.stages.update', entityType: 'Service', entityId: serviceId, before: before.stages, after: items });
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return this.adminGetService(serviceId);
   }
 
@@ -504,6 +546,7 @@ export class CatalogueService implements OnModuleInit {
       this.prisma.serviceFAQ.createMany({ data: items.map((f, i) => ({ ...f, serviceId, sortOrder: i })) }),
     ]);
     await this.audit.log({ actorId, action: 'service.faqs.update', entityType: 'Service', entityId: serviceId, before: before.faqs, after: items });
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return this.adminGetService(serviceId);
   }
 
@@ -522,6 +565,7 @@ export class CatalogueService implements OnModuleInit {
       before: before.related.map((r) => r.toId),
       after: ids,
     });
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return this.adminGetService(serviceId);
   }
 }
