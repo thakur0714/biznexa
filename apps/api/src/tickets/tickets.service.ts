@@ -27,6 +27,7 @@ import {
 } from '@biznexa/types';
 import { AuditService } from '../audit/audit.service';
 import { EventBus } from '../events/event-bus';
+import { checkMessageAttachments } from '../files/message-attachments';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -311,14 +312,7 @@ export class TicketsService {
       }
 
       const conv = await this.ensureConversation(tx, ticket.id);
-      const fileIds = input.fileIds ?? [];
-      if (fileIds.length) {
-        const files = await tx.storedFile.findMany({ where: { id: { in: fileIds }, ownerId: customerId }, select: { id: true, scanStatus: true } });
-        if (files.length !== fileIds.length) throw new BadRequestException('One or more attachments are unavailable.');
-        if (files.some((file) => file.scanStatus === 'INFECTED')) throw new BadRequestException('One or more attachments are unavailable.');
-        const attached = await tx.messageAttachment.findMany({ where: { fileId: { in: fileIds } }, select: { fileId: true } });
-        if (attached.length) throw new BadRequestException('One or more files are already attached to another message.');
-      }
+      const fileIds = await checkMessageAttachments(tx, input.fileIds, customerId);
       const createdMsg = await tx.message.create({
         data: {
           conversationId: conv.id,

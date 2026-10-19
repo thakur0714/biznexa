@@ -37,16 +37,12 @@ export class AdminAnnouncementsService {
   }
 
   async send(input: AnnouncementSendInput, actorId: string) {
-    const sms = input.channels.includes('SMS');
-    if (sms) {
-      const template = await this.prisma.notificationTemplate.findFirst({ where: { event: 'announcement.sent', channel: 'SMS', isActive: true, dltTemplateId: { not: null } }, select: { id: true } });
-      if (!template) throw new BadRequestException('SMS requires an active DLT template for announcements');
-    }
-    const users = await this.eligibleIds(input.segment);
-    const sourceKey = randomUUID();
     const smsTemplate = input.channels.includes('SMS')
       ? await this.prisma.notificationTemplate.findFirst({ where: { event: 'announcement.sent', channel: 'SMS', isActive: true, dltTemplateId: { not: null } }, select: { id: true } })
       : null;
+    if (input.channels.includes('SMS') && !smsTemplate) throw new BadRequestException('SMS requires an active DLT template for announcements');
+    const users = await this.eligibleIds(input.segment);
+    const sourceKey = randomUUID();
     let queued = 0;
     // Bound each slice so a large audience does not create an unbounded promise fan-out.
     for (let offset = 0; offset < users.length; offset += BATCH_SIZE) {
