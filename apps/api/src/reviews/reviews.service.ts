@@ -41,22 +41,34 @@ export class ReviewsService {
   }
 
   async listAdmin(query: AdminReviewQuery): Promise<AdminReviewList> {
-    const items = await this.prisma.review.findMany({
-      where: { status: query.status },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      select: {
-        id: true, bookingId: true, rating: true, text: true, status: true, moderationReason: true, createdAt: true,
-        booking: { select: { code: true, customer: { select: { name: true } } } },
-        consultant: { select: { user: { select: { name: true } } } },
-      },
+    const { page, pageSize } = query;
+    const [items, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where: { status: query.status },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true, bookingId: true, rating: true, text: true, status: true, moderationReason: true, createdAt: true,
+          booking: { select: { code: true, customer: { select: { name: true } } } },
+          consultant: { select: { user: { select: { name: true } } } },
+        },
+      }),
+      this.prisma.review.count({ where: { status: query.status } }),
+    ]);
+    return adminReviewListSchema.parse({
+      items: items.map(({ booking, consultant, ...item }) => ({
+        ...item,
+        bookingCode: booking.code,
+        customerName: booking.customer.name,
+        consultantName: consultant.user.name,
+        createdAt: item.createdAt.toISOString(),
+      })),
+      total,
+      page,
+      pageSize,
+      pages: Math.ceil(total / pageSize),
     });
-    return adminReviewListSchema.parse({ items: items.map(({ booking, consultant, ...item }) => ({
-      ...item,
-      bookingCode: booking.code,
-      customerName: booking.customer.name,
-      consultantName: consultant.user.name,
-      createdAt: item.createdAt.toISOString(),
-    })) });
   }
 
   async moderate(reviewId: string, staffId: string, input: ReviewModerationInput): Promise<ReviewView> {

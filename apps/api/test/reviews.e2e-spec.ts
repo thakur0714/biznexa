@@ -105,8 +105,14 @@ describe('reviews (M8.12)', () => {
   it('moderation needs consultants.manage, approves once, and updates the public rating', async () => {
     const [alice] = customers;
     await http.get('/api/admin/reviews').set(as(alice.token)).expect(403);
+    await http.get('/api/admin/reviews?pageSize=101').set(as(adminToken)).expect(400);
 
-    const pending = (await http.get('/api/admin/reviews').set(as(adminToken)).expect(200)).body.items as { id: string; rating: number; consultantName: string }[];
+    const listRes = await http.get('/api/admin/reviews?page=1&pageSize=20').set(as(adminToken)).expect(200);
+    const pending = listRes.body.items as { id: string; rating: number; consultantName: string }[];
+    expect(listRes.body).toMatchObject({ page: 1, pageSize: 20 });
+    expect(typeof listRes.body.total).toBe('number');
+    expect(typeof listRes.body.pages).toBe('number');
+
     const first = pending.find((r) => r.consultantName === 'Reviewer 0');
     expect(first).toMatchObject({ rating: 4 });
 
