@@ -1,5 +1,9 @@
 # Changelog
 
+## M9.5 — CMS pages admin (19-Oct-2026)
+
+- Completed CMS pages admin (D62): public `GET /api/cms/pages/:slug` now includes `contactEmail` and `contactPhone` for published rows, and API e2e tests verify draft privacy, non-admin 403s, HTML sanitisation, SEO/contact fields and audit logging across the full test suite.
+
 ## M12.7 — Full E2E suite (19-Oct-2026)
 
 - Added Playwright coverage for customer support tickets and a complete refund journey using the mock checkout, admin refund API and customer payments page. Existing browser tests cover buying, ops review/reject/re-upload and delivery, certificate verification, and consultant booking; all flows run on desktop and mobile.

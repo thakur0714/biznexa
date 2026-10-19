@@ -45,7 +45,7 @@ export class CmsController {
   async page(@Param('slug') slug: string) {
     const page = await this.prisma.cmsPage.findFirst({
       where: { slug, status: 'PUBLISHED' },
-      select: { slug: true, title: true, content: true, seoTitle: true, metaDescription: true, ogImageUrl: true, updatedAt: true },
+      select: { slug: true, title: true, content: true, seoTitle: true, metaDescription: true, ogImageUrl: true, contactEmail: true, contactPhone: true, updatedAt: true },
     });
     if (!page) throw new NotFoundException('Page not found');
     return page;
