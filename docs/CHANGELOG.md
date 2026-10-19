@@ -1,5 +1,12 @@
 # Changelog
 
+## M9.8 — Blog public pages (19-Oct-2026)
+
+- Replaced the Resources placeholder with a paged blog listing, category/tag pages, and sanitized article details with canonical metadata, Open Graph images and Article JSON-LD.
+- Added published-only public API schemas, bounded paging, filters, published-post taxonomy counts, and 404s for unknown slugs. Regenerated OpenAPI and `@biznexa/api-client` schema.
+- Added the homepage's latest three posts, published post/category/tag sitemap entries, 5-minute production revalidation, and loading/empty/error states.
+- Tests: 2 shared schema tests, 3 API integration tests, 2 Playwright runs (desktop and mobile). Full checks: types 494, API 1,031, admin 205; web production build passed.
+
 ## M8.14 — Featured consultants (18-Oct-2026)
 
 - Added a homepage section backed by `GET /api/public/consultants?featured=true`; it is hidden when there are no featured consultants and sits alongside the homepage CMS sections.
