@@ -404,6 +404,13 @@ describe('In-app inbox (M6.7)', () => {
         .expect(401);
     });
 
+    it('does not expose the removed device-tokens route aliases', async () => {
+      await http.post('/api/notifications/device-tokens').send({ token: tokenA }).expect(404);
+      await http.post('/api/notifications/device-tokens/register').send({ token: tokenA }).expect(404);
+      await http.post('/api/notifications/device-tokens/unregister').send({ token: tokenA }).expect(404);
+      await http.delete(`/api/notifications/device-tokens/${tokenA}`).expect(404);
+    });
+
     it('registers a device token for authenticated user (owner)', async () => {
       const res = await http
         .post('/api/notifications/devices/register')

@@ -224,7 +224,7 @@ Gaps found while planning are moved into Milestone 2.5 below.
 - [x] **M4.16 — Audit log viewer.** `[Sonnet]` Filter by actor, entity, date; before/after diff view.
   - *Done 13-Oct-2026 (Jules, batch J2):* `GET /api/admin/audit` (`audit.view`, read-only), server-side paging (default 50, max 100, newest first), filters (actor, entity type/id, action, from/to) validated by `auditLogFilterSchema`; actor name/email in the same query; before/after redacted recursively (case-insensitive key match). Migration `add_audit_log_indexes` (`createdAt`, `actorId+createdAt`). Admin `/audit` page with filters and before/after diff. Integration tests incl. redaction and 403 without `audit.view`.
   - *Follow-ups:* redaction matches exact keys only — add `panEnc`, `codeHash`, `tokenHash` (or pattern match without catching `company`). The old `(actorId)` index is now redundant.
-- [ ] **M4.17 — M4 integration + E2E.** `[Sonnet]` Ops reviews → rejects → (customer re-upload in M5) → approves → in progress → delivers. Authorization tests for every new route. Update CHANGELOG.
+- [x] **M4.17 — M4 integration + E2E.** `[Sonnet]` Ops reviews → rejects → customer re-upload → approves → in progress → delivers. Authorization coverage spans `m4-authorization.e2e-spec.ts`, route-access coverage and the focused M4 route suites; the new integration test asserts the complete lifecycle, status history, audit rows and customer notifications. No production bug found.
 
 ---
 
@@ -383,8 +383,11 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [x] **M9.7 — Blog admin.** `[Sonnet]` Categories, tags, featured image, author, SEO, publish/schedule (scheduled publish job).
   - *Done 18-Oct-2026 (cx-13):* Added audited admin post CRUD with title, slug, excerpt, `richTextInput`-sanitised editor body, media-library featured image, author, multiple categories/tags, SEO and DRAFT/SCHEDULED/PUBLISHED status. Added idempotent BullMQ scheduled publishing plus startup recovery, public endpoints that expose published posts only, and an admin screen for posts/categories/tags. Admin endpoints require `cms.manage`; tests cover private drafts/schedules, publishing, XSS removal and denied access.
   - *Part 1 merged 18-Oct-2026 (Jules #59):* admin CRUD API for blog categories and tags.
-- [ ] **M9.8 — Blog public pages.** `[Sonnet]` Listing, category/tag pages, detail with JSON-LD, latest posts on homepage, sitemap entries.
-- [ ] **M9.9 — Add blog posts to global search** `[Opus]` (decide: extend D6 ranker or move to Meilisearch — record in DECISIONS). Tests + CHANGELOG.
+- [x] **M9.8 — Blog public pages.** `[Sonnet]` Listing, category/tag pages, detail with JSON-LD, latest posts on homepage, sitemap entries.
+  - *Done 19-Oct-2026 (cx-14):* Added published-only API paging (`pageSize` ≤ 50), shared response schemas, category/tag filters and published-post counts; draft/future posts are excluded and unknown filter slugs return 404. The website now has the listing, category/tag and sanitized detail pages with SEO metadata, Article JSON-LD, related/latest links, loading/error/empty states, and the homepage’s 3-post section (hidden when empty). Sitemap includes every published post and public category/tag page. Data revalidates at 5 minutes in production; development skips data caching for live authoring and browser tests. Coverage: 3 API e2e + 2 type tests + Playwright on desktop/mobile.
+- [x] **M9.9 — Add blog posts to global search** `[Opus]` (decide: extend D6 ranker or move to Meilisearch — record in DECISIONS). Tests + CHANGELOG.
+  - *Done 19-Oct-2026:* The D6 60-second in-memory index now includes published posts (title, excerpt, tags and categories), excludes drafts/future posts, and clears on blog post changes. Search responses identify service/post types; the web suggestions show posts under Articles linking to `/blog/[slug]`. Services remain the first suggestion group and zero-result logging is unchanged. D66 records why the ranker still fits and when to move to Meilisearch. Tests: 1 shared contract test + 3 API e2e cases; full checks passed.
+  - *Follow-ups:* D66 suggests reconsidering Meilisearch above ~5,000 searchable rows or when managed synonyms/facets/relevance controls are needed.
 
 ---
 
@@ -419,7 +422,9 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
   - *Done 18-Oct-2026 (Antigravity):* Documents screen (`GET /api/applications/:id/documents`): mandatory/optional document checklist, reviewer rejection reasons, camera photo capture and gallery picker (`expo-image-picker`), document file selector (`expo-document-picker`), multipart upload with file validation (`POST /api/files`), and document submission/replacement (`POST /api/applications/:id/documents/:docId/upload`). Payments screen (`GET /api/orders`): list of payments, invoices with PDF download via `expo-file-system` & `expo-sharing`, and pay balance modal for partial payments.
 - [x] **M11.7 — Certificates + Verify + Scan QR.** `[Sonnet]`
   - *Done 18-Oct-2026 (Antigravity):* Certificates list screen (`GET /api/certificates`) with status badges (ACTIVE, EXPIRING, EXPIRED), issuance and validity dates in DD-MMM-YYYY format, and PDF certificate download/share. Public certificate verification by reference number (`GET /api/public/certificates/verify?number=...`) with QR code scanner screen (`expo-camera`) that parses certificate numbers or QR URLs and jumps directly to verification results.
-- [ ] **M11.8 — Notifications (FCM) with deep links** `[Sonnet]` to each screen.
+- [x] **M11.8 — Notifications (FCM) with deep links** `[Sonnet]` to each screen.
+  - *Done 19-Oct-2026:* Added Expo notifications and post-login permission/token registration; existing granted sessions refresh/register tokens, token changes re-register, and logout unregisters. Notification responses route to application detail, documents, payments, certificates or messages; unknown links open Home. Cold-start, background and foreground tap/presentation handling is wired through the navigation container. Removed the `device-tokens/*` aliases, retained only `devices/*`, updated callers/tests, and regenerated OpenAPI/client. Tests: mobile route mapping 3 tests; full API suite covers alias removal.
+  - *Follow-ups:* Real FCM delivery on a physical device/Firebase project was not tested; configure production push credentials and verify token delivery before release.
 - [ ] **M11.9 — Support tickets + consultation booking/join.** `[Sonnet]`
 - [ ] **M11.10 — Offline cache, force-update check, crash reporting (Sentry).** `[Sonnet]`
 - [ ] **M11.11 — Builds:** `[Sonnet]` Android AAB/APK, iOS TestFlight via EAS. CHANGELOG.

@@ -1178,115 +1178,7 @@
     },
     "/api/notifications/devices/register": {
       "post": {
-        "operationId": "NotificationsController_registerDeviceToken[0]",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "platform": {
-                    "type": "string",
-                    "enum": [
-                      "ios",
-                      "android",
-                      "web"
-                    ]
-                  }
-                },
-                "required": [
-                  "token"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceTokenActionResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/device-tokens/register": {
-      "post": {
-        "operationId": "NotificationsController_registerDeviceToken[1]",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "platform": {
-                    "type": "string",
-                    "enum": [
-                      "ios",
-                      "android",
-                      "web"
-                    ]
-                  }
-                },
-                "required": [
-                  "token"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceTokenActionResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/device-tokens": {
-      "post": {
-        "operationId": "NotificationsController_registerDeviceToken[2]",
+        "operationId": "NotificationsController_registerDeviceToken",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1340,53 +1232,7 @@
     },
     "/api/notifications/devices/unregister": {
       "post": {
-        "operationId": "NotificationsController_unregisterDeviceToken[0]",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "required": [
-                  "token"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceTokenActionResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/device-tokens/unregister": {
-      "post": {
-        "operationId": "NotificationsController_unregisterDeviceToken[1]",
+        "operationId": "NotificationsController_unregisterDeviceToken",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1432,42 +1278,7 @@
     },
     "/api/notifications/devices/{token}": {
       "delete": {
-        "operationId": "NotificationsController_deleteDeviceToken[0]",
-        "parameters": [
-          {
-            "name": "token",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceTokenActionResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/device-tokens/{token}": {
-      "delete": {
-        "operationId": "NotificationsController_deleteDeviceToken[1]",
+        "operationId": "NotificationsController_deleteDeviceToken",
         "parameters": [
           {
             "name": "token",
@@ -2143,7 +1954,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogueSearchResponse"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -16957,25 +16775,97 @@
         "operationId": "PublicBlogPostsController_list",
         "parameters": [
           {
-            "name": "category",
-            "required": true,
+            "name": "page",
+            "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 12
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1
             }
           },
           {
             "name": "tag",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicBlogPagedList"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/public/blog/categories": {
+      "get": {
+        "operationId": "PublicBlogPostsController_categories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicBlogTaxonomyList"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "blog"
+        ]
+      }
+    },
+    "/api/public/blog/tags": {
+      "get": {
+        "operationId": "PublicBlogPostsController_tags",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicBlogTagList"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -16998,7 +16888,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicBlogPostDetail"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -18007,6 +17904,163 @@
           "secret",
           "otpauthUrl",
           "qrDataUrl"
+        ],
+        "additionalProperties": false
+      },
+      "CatalogueSearchResponse": {
+        "type": "object",
+        "properties": {
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "shortDescription": {
+                  "type": "string"
+                },
+                "icon": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "estimatedTime": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "startingPrice": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "governmentFeeFrom": {
+                  "type": "number"
+                },
+                "popularity": {
+                  "type": "number"
+                },
+                "isPopular": {
+                  "type": "boolean"
+                },
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                "subcategory": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "name"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "service"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name",
+                "shortDescription",
+                "icon",
+                "estimatedTime",
+                "startingPrice",
+                "governmentFeeFrom",
+                "popularity",
+                "isPopular",
+                "category",
+                "subcategory",
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "posts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "post"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "excerpt": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "type",
+                "title",
+                "slug",
+                "excerpt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "slug",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "services",
+          "posts",
+          "categories"
         ],
         "additionalProperties": false
       },
@@ -38035,6 +38089,296 @@
           "publishedAt",
           "createdAt",
           "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "PublicBlogPagedList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "excerpt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "featuredImage": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "authorName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "publishedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "categories": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "slug": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "slug",
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "slug": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "slug",
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "title",
+                "slug",
+                "excerpt",
+                "featuredImage",
+                "authorName",
+                "publishedAt",
+                "categories",
+                "tags"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "pages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "total",
+          "pages"
+        ],
+        "additionalProperties": false
+      },
+      "PublicBlogTaxonomyList": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "slug": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "postCount": {
+              "type": "integer",
+              "exclusiveMinimum": true,
+              "minimum": 0
+            }
+          },
+          "required": [
+            "id",
+            "slug",
+            "name",
+            "postCount"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "PublicBlogTagList": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "slug": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "postCount": {
+              "type": "integer",
+              "exclusiveMinimum": true,
+              "minimum": 0
+            }
+          },
+          "required": [
+            "id",
+            "slug",
+            "name",
+            "postCount"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "PublicBlogPostDetail": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string",
+            "nullable": true
+          },
+          "featuredImage": {
+            "type": "string",
+            "nullable": true
+          },
+          "authorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "slug": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "slug": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "seoTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "metaDescription": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "title",
+          "slug",
+          "excerpt",
+          "featuredImage",
+          "authorName",
+          "publishedAt",
+          "categories",
+          "tags",
+          "content",
+          "seoTitle",
+          "metaDescription"
         ],
         "additionalProperties": false
       },

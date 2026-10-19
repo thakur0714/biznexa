@@ -115,7 +115,7 @@ export class NotificationsController {
   @ApiBearerAuth()
   @ApiZodResponse('DeviceTokenActionResponse', deviceTokenActionResponseSchema)
   @HttpCode(200)
-  @Post(['devices/register', 'device-tokens/register', 'device-tokens'])
+  @Post('devices/register')
   registerDeviceToken(
     @ZodBody(registerDeviceTokenInputSchema) body: RegisterDeviceTokenInput,
     @CurrentUser() user: AuthUser,
@@ -129,7 +129,7 @@ export class NotificationsController {
   @ApiBearerAuth()
   @ApiZodResponse('DeviceTokenActionResponse', deviceTokenActionResponseSchema)
   @HttpCode(200)
-  @Post(['devices/unregister', 'device-tokens/unregister'])
+  @Post('devices/unregister')
   unregisterDeviceToken(
     @ZodBody(unregisterDeviceTokenInputSchema) body: UnregisterDeviceTokenInput,
     @CurrentUser() user: AuthUser,
@@ -143,7 +143,7 @@ export class NotificationsController {
   @ApiBearerAuth()
   @ApiZodResponse('DeviceTokenActionResponse', deviceTokenActionResponseSchema)
   @HttpCode(200)
-  @Delete(['devices/:token', 'device-tokens/:token'])
+  @Delete('devices/:token')
   deleteDeviceToken(
     @Param('token') token: string,
     @CurrentUser() user: AuthUser,

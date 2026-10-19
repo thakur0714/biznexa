@@ -1,5 +1,30 @@
 # Changelog
 
+## M11.8 — Mobile notifications with deep links (19-Oct-2026)
+
+- Added `expo-notifications`, the Android notification channel, post-login permission prompt, native device-token registration/refresh, and token unregistration on logout. Added notification response handling for killed, background, and foreground states with a pure route mapper for application details, documents, payments, certificates and messages; unknown links return Home.
+- Kept the `devices/*` device-token API routes and removed the `device-tokens/*` aliases. Updated API integration tests and regenerated OpenAPI and `@biznexa/api-client`.
+- Tests: types 495 passed; API 1,035 passed; admin 205 passed; mobile 25 passed. Web production build passed with Webpack. Real Firebase delivery was not tested.
+
+## M9.9 — Blog posts in global search (19-Oct-2026)
+
+- Extended the D6 in-memory search index with published blog post titles, excerpts, tags and category names. Drafts and scheduled future posts stay private; post changes invalidate the 60-second index.
+- Added typed `service` / `post` result contracts and an Articles suggestion group linking to `/blog/[slug]`; service suggestions stay first and zero-result logging remains unchanged.
+- Added D66 for the in-memory ranker trade-off and the threshold for moving to Meilisearch. Tests: shared types 495 passed; API 1,035 passed; admin 205 passed; web production build passed with Webpack.
+
+## M4.17 — Fulfilment integration E2E (19-Oct-2026)
+
+- Added a run-scoped API integration flow: operations rejects a document, the customer uploads a replacement, operations approves it, advances the application to `IN_PROGRESS`, adds a deliverable and completes delivery.
+- Asserted every resulting status-history transition, application/document audit rows, and customer notifications for document review and each status change. Existing authorization coverage remains distributed across the M4 authorization, route-access, and focused feature suites.
+- No production bug found. Focused integration: 1 test passed. Full checks: typecheck passed; lint passed with warnings and 0 errors; types 494 passed; API 1,032 passed (104 suites); admin 205 passed. Web build compiled with webpack but static prerendering was blocked by sandbox access to the local API; Turbopack also failed to start a worker. The escalation retry was rejected by automatic review after the account hit its usage limit.
+
+## M9.8 — Blog public pages (19-Oct-2026)
+
+- Replaced the Resources placeholder with a paged blog listing, category/tag pages, and sanitized article details with canonical metadata, Open Graph images and Article JSON-LD.
+- Added published-only public API schemas, bounded paging, filters, published-post taxonomy counts, and 404s for unknown slugs. Regenerated OpenAPI and `@biznexa/api-client` schema.
+- Added the homepage's latest three posts, published post/category/tag sitemap entries, 5-minute production revalidation, and loading/empty/error states.
+- Tests: 2 shared schema tests, 3 API integration tests, 2 Playwright runs (desktop and mobile). Full checks: types 494, API 1,031, admin 205; web production build passed.
+
 ## M8.14 — Featured consultants (18-Oct-2026)
 
 - Added a homepage section backed by `GET /api/public/consultants?featured=true`; it is hidden when there are no featured consultants and sits alongside the homepage CMS sections.

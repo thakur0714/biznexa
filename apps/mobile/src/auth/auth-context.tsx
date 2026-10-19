@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import type { AuthMeResponse } from '@biznexa/types';
 import { createMobileApiClient, type ApiClient, MobileApiError } from '../api/client';
 import {
@@ -42,6 +44,7 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
   const [isLoading, setIsLoading] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [isBiometricsEnabled, setIsBiometricsEnabledState] = useState(false);
+  const registeredDeviceToken = useRef<string | null>(null);
 
   // Maintain reference to current in-memory token for client
   const getToken = useCallback(() => token, [token]);
@@ -97,6 +100,45 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
     [baseUrl, session]
   );
 
+  const registerDeviceToken = useCallback(async (accessToken: string, deviceToken: string) => {
+    const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+    const { response } = await api.POST('/api/notifications/devices/register', {
+      headers: { authorization: `Bearer ${accessToken}`, 'x-client': 'mobile' },
+      body: { token: deviceToken, platform },
+    });
+    if (response.ok) registeredDeviceToken.current = deviceToken;
+  }, [api]);
+
+  const syncDeviceTokenIfPermitted = useCallback(async (accessToken: string) => {
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
+    try {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', { name: 'BizNexa updates', importance: Notifications.AndroidImportance.DEFAULT });
+      }
+      const permission = await Notifications.getPermissionsAsync();
+      if (!permission.granted) return;
+      const devicePushToken = await Notifications.getDevicePushTokenAsync();
+      await registerDeviceToken(accessToken, devicePushToken.data);
+    } catch {
+      // Push registration is optional; authentication remains available if the OS or FCM is unavailable.
+    }
+  }, [registerDeviceToken]);
+
+  const requestPushPermissionAfterLogin = useCallback(async (accessToken: string) => {
+    if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
+    try {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', { name: 'BizNexa updates', importance: Notifications.AndroidImportance.DEFAULT });
+      }
+      const current = await Notifications.getPermissionsAsync();
+      const permission = current.granted ? current : await Notifications.requestPermissionsAsync();
+      if (!permission.granted) return;
+      await syncDeviceTokenIfPermitted(accessToken);
+    } catch {
+      // Push registration is optional; authentication remains available if the OS permission request fails.
+    }
+  }, [syncDeviceTokenIfPermitted]);
+
   const handleAuthSuccess = useCallback(async (data: MobileSessionData) => {
     setToken(data.accessToken);
     if (data.refreshToken) {
@@ -121,7 +163,17 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
       }
     }
     setIsLocked(false);
-  }, [api]);
+    void requestPushPermissionAfterLogin(data.accessToken);
+  }, [api, requestPushPermissionAfterLogin]);
+
+  useEffect(() => {
+    if (!token) return;
+    void syncDeviceTokenIfPermitted(token);
+    const listener = Notifications.addPushTokenListener((next) => {
+      void registerDeviceToken(token, next.data).catch(() => undefined);
+    });
+    return () => listener.remove();
+  }, [token, registerDeviceToken, syncDeviceTokenIfPermitted]);
 
   const loginWithPassword = useCallback(async (email: string, password: string) => {
     const { data, error, response } = await api.POST('/api/auth/login', {
@@ -211,6 +263,24 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
   const logout = useCallback(async () => {
     try {
       if (token) {
+        let deviceToken = registeredDeviceToken.current;
+        if (!deviceToken && (Platform.OS === 'ios' || Platform.OS === 'android')) {
+          try {
+            deviceToken = (await Notifications.getDevicePushTokenAsync()).data;
+          } catch {
+            // A missing native token is fine; continue with the API session logout.
+          }
+        }
+        if (deviceToken) {
+          try {
+            await api.POST('/api/notifications/devices/unregister', {
+              headers: { authorization: `Bearer ${token}`, 'x-client': 'mobile' },
+              body: { token: deviceToken },
+            });
+          } catch {
+            // Continue server logout and local cleanup if device unregistration fails.
+          }
+        }
         await api.POST('/api/auth/logout', {
           headers: {
             authorization: `Bearer ${token}`,
@@ -222,6 +292,7 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
       // Continue cleanup even if server logout request fails
     }
     await removeStoredRefreshToken();
+    registeredDeviceToken.current = null;
     setToken(null);
     setUser(null);
     setIsLocked(false);

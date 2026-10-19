@@ -413,39 +413,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["NotificationsController_registerDeviceToken[0]"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/device-tokens/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["NotificationsController_registerDeviceToken[1]"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/device-tokens": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["NotificationsController_registerDeviceToken[2]"];
+        post: operations["NotificationsController_registerDeviceToken"];
         delete?: never;
         options?: never;
         head?: never;
@@ -461,23 +429,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["NotificationsController_unregisterDeviceToken[0]"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/device-tokens/unregister": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["NotificationsController_unregisterDeviceToken[1]"];
+        post: operations["NotificationsController_unregisterDeviceToken"];
         delete?: never;
         options?: never;
         head?: never;
@@ -494,23 +446,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["NotificationsController_deleteDeviceToken[0]"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/device-tokens/{token}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["NotificationsController_deleteDeviceToken[1]"];
+        delete: operations["NotificationsController_deleteDeviceToken"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3428,6 +3364,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/blog/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicBlogPostsController_categories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/blog/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicBlogPostsController_tags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/blog/posts/{slug}": {
         parameters: {
             query?: never;
@@ -3701,6 +3669,41 @@ export interface components {
             secret: string;
             otpauthUrl: string;
             qrDataUrl: string;
+        };
+        CatalogueSearchResponse: {
+            services: {
+                id: string;
+                slug: string;
+                name: string;
+                shortDescription: string;
+                icon: string | null;
+                estimatedTime: string | null;
+                startingPrice: number | null;
+                governmentFeeFrom: number;
+                popularity: number;
+                isPopular: boolean;
+                category: {
+                    slug: string;
+                    name: string;
+                };
+                subcategory: {
+                    slug: string;
+                    name: string;
+                } | null;
+                /** @enum {string} */
+                type: "service";
+            }[];
+            posts: {
+                /** @enum {string} */
+                type: "post";
+                title: string;
+                slug: string;
+                excerpt: string | null;
+            }[];
+            categories: {
+                slug: string;
+                name: string;
+            }[];
         };
         AdminCategoryList: {
             /** Format: uuid */
@@ -7971,6 +7974,71 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        PublicBlogPagedList: {
+            items: {
+                title: string;
+                slug: string;
+                excerpt: string | null;
+                featuredImage: string | null;
+                authorName: string | null;
+                /** Format: date-time */
+                publishedAt: string;
+                categories: {
+                    /** Format: uuid */
+                    id: string;
+                    slug: string;
+                    name: string;
+                }[];
+                tags: {
+                    /** Format: uuid */
+                    id: string;
+                    slug: string;
+                    name: string;
+                }[];
+            }[];
+            page: number;
+            pageSize: number;
+            total: number;
+            pages: number;
+        };
+        PublicBlogTaxonomyList: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            postCount: number;
+        }[];
+        PublicBlogTagList: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            postCount: number;
+        }[];
+        PublicBlogPostDetail: {
+            title: string;
+            slug: string;
+            excerpt: string | null;
+            featuredImage: string | null;
+            authorName: string | null;
+            /** Format: date-time */
+            publishedAt: string;
+            categories: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            tags: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            content: string;
+            seoTitle: string | null;
+            metaDescription: string | null;
+        };
         CustomerReview: {
             /** Format: uuid */
             id: string;
@@ -8711,7 +8779,7 @@ export interface operations {
             };
         };
     };
-    "NotificationsController_registerDeviceToken[0]": {
+    NotificationsController_registerDeviceToken: {
         parameters: {
             query?: never;
             header?: never;
@@ -8738,61 +8806,7 @@ export interface operations {
             };
         };
     };
-    "NotificationsController_registerDeviceToken[1]": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    token: string;
-                    /** @enum {string} */
-                    platform?: "ios" | "android" | "web";
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceTokenActionResponse"];
-                };
-            };
-        };
-    };
-    "NotificationsController_registerDeviceToken[2]": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    token: string;
-                    /** @enum {string} */
-                    platform?: "ios" | "android" | "web";
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceTokenActionResponse"];
-                };
-            };
-        };
-    };
-    "NotificationsController_unregisterDeviceToken[0]": {
+    NotificationsController_unregisterDeviceToken: {
         parameters: {
             query?: never;
             header?: never;
@@ -8817,53 +8831,7 @@ export interface operations {
             };
         };
     };
-    "NotificationsController_unregisterDeviceToken[1]": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    token: string;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceTokenActionResponse"];
-                };
-            };
-        };
-    };
-    "NotificationsController_deleteDeviceToken[0]": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceTokenActionResponse"];
-                };
-            };
-        };
-    };
-    "NotificationsController_deleteDeviceToken[1]": {
+    NotificationsController_deleteDeviceToken: {
         parameters: {
             query?: never;
             header?: never;
@@ -9239,7 +9207,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CatalogueSearchResponse"];
+                };
             };
         };
     };
@@ -15750,9 +15720,11 @@ export interface operations {
     };
     PublicBlogPostsController_list: {
         parameters: {
-            query: {
-                category: string;
-                tag: string;
+            query?: {
+                page?: number;
+                pageSize?: number;
+                category?: string;
+                tag?: string;
             };
             header?: never;
             path?: never;
@@ -15764,7 +15736,47 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PublicBlogPagedList"];
+                };
+            };
+        };
+    };
+    PublicBlogPostsController_categories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBlogTaxonomyList"];
+                };
+            };
+        };
+    };
+    PublicBlogPostsController_tags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBlogTagList"];
+                };
             };
         };
     };
@@ -15783,7 +15795,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PublicBlogPostDetail"];
+                };
             };
         };
     };
