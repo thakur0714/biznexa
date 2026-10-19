@@ -54,9 +54,11 @@ describe('Reminders (e2e)', () => {
 
   afterAll(async () => {
     try {
+      await prisma.reminder.deleteMany({ where: { userId: { in: customerIds } } });
+      await prisma.certificate.deleteMany({ where: { certificateNumber: { startsWith: prefix } } });
+      await prisma.certificationBody.deleteMany({ where: { name: { startsWith: prefix } } });
       await prisma.application.deleteMany({ where: { code: { startsWith: prefix } } });
       await prisma.businessEntity.deleteMany({ where: { legalName: { startsWith: prefix } } });
-      await prisma.reminder.deleteMany({ where: { userId: { in: customerIds } } });
       await prisma.servicePackage.deleteMany({ where: { service: { slug: { startsWith: prefix } } } });
       await prisma.service.deleteMany({ where: { slug: { startsWith: prefix } } });
       // Left-over categories with no services sorted first and broke the catalogue test.
@@ -105,17 +107,27 @@ describe('Reminders (e2e)', () => {
     });
 
     const eventBus = app.get(EventBus);
-    await eventBus.emit('application.status_changed', {
-      applicationId: application.id,
-      from: 'IN_PROGRESS',
-      to: 'COMPLETED',
-      actorId: null,
-    });
+
+    // Fire the event twice in parallel to test idempotency and unique index protection
+    await Promise.all([
+      eventBus.emit('application.status_changed', {
+        applicationId: application.id,
+        from: 'IN_PROGRESS',
+        to: 'COMPLETED',
+        actorId: null,
+      }),
+      eventBus.emit('application.status_changed', {
+        applicationId: application.id,
+        from: 'IN_PROGRESS',
+        to: 'COMPLETED',
+        actorId: null,
+      })
+    ]);
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const reminders1 = await prisma.reminder.findMany({
-      where: { sourceApplicationId: application.id, type: 'SERVICE_RErenewal' },
+      where: { sourceApplicationId: application.id, type: 'SERVICE_RENEWAL' },
     });
     const rem = await prisma.reminder.findMany({
       where: { sourceApplicationId: application.id },
@@ -227,12 +239,23 @@ describe('Reminders (e2e)', () => {
     });
 
     const eventBus = app.get(EventBus);
-    await eventBus.emit('certificate.issued', {
-      certificateId: certificate.id,
-      certificateNumber: certificate.certificateNumber,
-      status: 'ACTIVE',
-      actorId: admin,
-    });
+
+    // Fire the event twice in parallel to test idempotency and unique index protection
+    await Promise.all([
+      eventBus.emit('certificate.issued', {
+        certificateId: certificate.id,
+        certificateNumber: certificate.certificateNumber,
+        status: 'ACTIVE',
+        actorId: admin,
+      }),
+      eventBus.emit('certificate.issued', {
+        certificateId: certificate.id,
+        certificateNumber: certificate.certificateNumber,
+        status: 'ACTIVE',
+        actorId: admin,
+      })
+    ]);
+
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const reminders1 = await prisma.reminder.findMany({
@@ -257,6 +280,45 @@ describe('Reminders (e2e)', () => {
       where: { sourceApplicationId: application.id, type: 'CERTIFICATE_EXPIRY' },
     });
     expect(reminders2).toHaveLength(1); // Still 1
+  });
+
+  it('a certificate without an application (manual issue) still gets only one reminder for parallel events', async () => {
+    const entity = await prisma.businessEntity.create({
+      data: { ownerId: userA.id, legalName: `${prefix} Entity Manual`, entityType: 'PRIVATE_LIMITED' },
+    });
+    const certBody = await prisma.certificationBody.create({ data: { name: `${prefix} Manual Body` } });
+    const certificate = await prisma.certificate.create({
+      data: {
+        businessEntityId: entity.id,
+        certificateNumber: `${prefix}-MAN-1`,
+        verificationId: `${prefix}-v-man-1`,
+        type: 'ISO 14001',
+        status: 'ACTIVE',
+        organizationName: 'Org',
+        certificationBodyId: certBody.id,
+        issueDate: new Date(),
+        validFrom: new Date(),
+        validUntil: new Date(Date.now() + 365 * 24 * 3600 * 1000),
+      },
+    });
+
+    const eventBus = app.get(EventBus);
+    const issued = {
+      certificateId: certificate.id,
+      certificateNumber: certificate.certificateNumber,
+      status: 'ACTIVE' as const,
+      actorId: admin,
+    };
+    await Promise.all([eventBus.emit('certificate.issued', issued), eventBus.emit('certificate.issued', issued)]);
+    await eventBus.emit('certificate.issued', issued);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const reminders = await prisma.reminder.findMany({
+      where: { type: 'CERTIFICATE_EXPIRY', sourceKey: `certificate:${certificate.id}` },
+    });
+    expect(reminders).toHaveLength(1);
+    expect(reminders[0].sourceApplicationId).toBeNull();
+    expect(reminders[0].userId).toBe(userA.id);
   });
 
   it('GET /api/reminders shows only own scheduled reminders, soonest first, other customer sees none', async () => {
