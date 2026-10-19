@@ -77,8 +77,7 @@ export function HomeScreen({ navigation }: Readonly<HomeScreenProps>) {
         params: { query: { q: text.trim() } },
       });
       if (res.data) {
-        const searchData = res.data as unknown as { services: ServiceCard[] };
-        setSearchResults(searchData.services);
+        setSearchResults(res.data.services);
       }
     } catch {
       // ignore
