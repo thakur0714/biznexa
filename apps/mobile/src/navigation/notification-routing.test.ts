@@ -19,6 +19,11 @@ describe('notification deep links', () => {
     expect(notificationDestination('/dashboard', 'certificate.issued')).toEqual({ screen: 'Certificates', params: undefined });
   });
 
+  it('routes support ticket and consultation notifications to their native sections', () => {
+    expect(notificationDestination('/dashboard/support/tickets/tkt-1', 'ticket.replied')).toEqual({ screen: 'Support', params: { ticketId: 'tkt-1' } });
+    expect(notificationDestination('/dashboard/consultations/bkg-1', 'consultation.reminder')).toEqual({ screen: 'Consultations', params: { bookingId: 'bkg-1' } });
+  });
+
   it('returns Home for missing or unrecognized links and reads all supported payload keys', () => {
     expect(notificationDestination(undefined)).toEqual({ screen: 'MainTabs', params: undefined });
     expect(notificationDestination('/dashboard/unbuilt')).toEqual({ screen: 'MainTabs', params: undefined });

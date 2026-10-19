@@ -12,6 +12,7 @@ import { EventBus } from '../events/event-bus';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { findVisibleApplication } from './application-access';
+import { checkMessageAttachments } from '../files/message-attachments';
 
 @Injectable()
 export class MessagesService {
@@ -136,42 +137,6 @@ export class MessagesService {
     return this.listThread(app, q);
   }
 
-  private async checkAttachments(
-    tx: Prisma.TransactionClient,
-    fileIds: string[] | undefined,
-    senderId: string,
-  ) {
-    if (!fileIds || !fileIds.length) return [];
-
-    const files = await tx.storedFile.findMany({ where: { id: { in: fileIds } } });
-    if (files.length !== fileIds.length) {
-      throw new BadRequestException('One or more files could not be found.');
-    }
-
-    for (const file of files) {
-      if (file.ownerId !== senderId) {
-        throw new BadRequestException('One or more files belong to another user.');
-      }
-      if (file.scanStatus === 'INFECTED') {
-        throw new BadRequestException('A virus was found in one of the files. Please upload a clean copy.');
-      }
-
-      const doc = await tx.applicationDocument.findFirst({ where: { fileKey: file.fileKey } });
-      if (doc) throw new BadRequestException('One or more files are already used by a document.');
-
-      const deliv = await tx.finalDeliverable.findFirst({ where: { fileKey: file.fileKey } });
-      if (deliv) throw new BadRequestException('One or more files are already used by a deliverable.');
-
-      const cDoc = await tx.consultantDocument.findFirst({ where: { fileId: file.id } });
-      if (cDoc) throw new BadRequestException('One or more files are already used by a consultant document.');
-
-      const msgAttach = await tx.messageAttachment.findFirst({ where: { fileId: file.id } });
-      if (msgAttach) throw new BadRequestException('One or more files are already attached to another message.');
-    }
-
-    return fileIds;
-  }
-
   async postStaff(
     applicationId: string,
     input: PostMessageInput,
@@ -183,7 +148,7 @@ export class MessagesService {
           id: true,
           customerId: true,
         });
-        const validFileIds = await this.checkAttachments(tx, input.fileIds, u.id);
+        const validFileIds = await checkMessageAttachments(tx, input.fileIds, u.id);
         const conv = await this.ensureConversation(tx, visibleApp.id);
         const created = await tx.message.create({
           data: {
@@ -232,7 +197,7 @@ export class MessagesService {
     try {
       const { msg, app } = await this.prisma.$transaction(async (tx) => {
         const ownedApp = await this.findCustomerApplication(tx, u.id, applicationId);
-        const validFileIds = await this.checkAttachments(tx, input.fileIds, u.id);
+        const validFileIds = await checkMessageAttachments(tx, input.fileIds, u.id);
         const conv = await this.ensureConversation(tx, ownedApp.id);
         const created = await tx.message.create({
           data: {

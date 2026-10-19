@@ -15,6 +15,13 @@ export interface SeedTemplate {
  * One template per event and channel (5 channels).
  */
 export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
+  ...(['EMAIL', 'SMS', 'PUSH', 'IN_APP', 'WHATSAPP'] as const).map((channel) => ({
+    event: 'announcement.sent' as const,
+    channel,
+    subject: channel === 'SMS' || channel === 'WHATSAPP' ? undefined : 'Announcement',
+    body: 'A BizNexa announcement is available.',
+    dltTemplateId: null,
+  })),
   // ────────────────── auth.registered ──────────────────
   {
     event: 'auth.registered',
