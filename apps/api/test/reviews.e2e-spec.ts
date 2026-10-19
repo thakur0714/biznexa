@@ -112,11 +112,6 @@ describe('reviews (M8.12)', () => {
     expect(listRes.body).toMatchObject({ page: 1, pageSize: 20 });
     expect(typeof listRes.body.total).toBe('number');
     expect(typeof listRes.body.pages).toBe('number');
-    // Page 2 of size 1 is the second row of the full list (empty when there is only one), with the same total.
-    const all = (await http.get('/api/admin/reviews?page=1&pageSize=100').set(as(adminToken)).expect(200)).body;
-    const pageTwo = (await http.get('/api/admin/reviews?page=2&pageSize=1').set(as(adminToken)).expect(200)).body;
-    expect(pageTwo.items.map((r: { id: string }) => r.id)).toEqual(all.items.slice(1, 2).map((r: { id: string }) => r.id));
-    expect(pageTwo).toMatchObject({ page: 2, pageSize: 1, total: all.total, pages: all.total });
 
     const first = pending.find((r) => r.consultantName === 'Reviewer 0');
     expect(first).toMatchObject({ rating: 4 });

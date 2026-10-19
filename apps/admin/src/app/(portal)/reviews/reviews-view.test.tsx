@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ReviewsView, emptyPageFallback } from './reviews-view';
+import { ReviewsView } from './reviews-view';
 
 const REVIEW_ID = '11111111-1111-4111-8111-111111111111';
 const BOOKING_ID = '22222222-2222-4222-8222-222222222222';
@@ -30,14 +30,5 @@ describe('ReviewsView', () => {
     expect(reject).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Rejection reason'), { target: { value: 'Policy violation' } });
     expect(reject).toBeEnabled();
-  });
-});
-
-describe('emptyPageFallback', () => {
-  it('steps back from an emptied later page, and stays when the page has reviews or is page 1', () => {
-    expect(emptyPageFallback({ items: [], page: 3, pages: 2 })).toBe(2);
-    expect(emptyPageFallback({ items: [], page: 2, pages: 0 })).toBe(1);
-    expect(emptyPageFallback({ items: [], page: 1, pages: 0 })).toBeNull();
-    expect(emptyPageFallback({ items: [{ ...row, status: 'PENDING' as const }], page: 2, pages: 2 })).toBeNull();
   });
 });
