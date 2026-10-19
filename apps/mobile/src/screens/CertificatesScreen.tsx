@@ -22,6 +22,7 @@ import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';
 import { resolveApiUrl } from '../api/client';
+import { fetchCachedList } from '../api/offline-cache';
 
 interface CertificatesScreenProps {
   route?: {
@@ -61,6 +62,7 @@ export function CertificatesScreen({ route, navigation }: CertificatesScreenProp
   const [isLoadingMyCerts, setIsLoadingMyCerts] = useState(false);
   const [myCertsError, setMyCertsError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [offline, setOffline] = useState(false);
 
   // Verify State
   const [searchQuery, setSearchQuery] = useState(route?.params?.scannedNumber || '');
@@ -77,13 +79,13 @@ export function CertificatesScreen({ route, navigation }: CertificatesScreenProp
       setMyCertsError(null);
 
       try {
-        const res = await api.GET('/api/certificates');
-        if (res.data) {
-          const list = res.data as CustomerCertificateList;
-          setMyCerts(list.items);
-        } else if (res.error) {
-          setMyCertsError('Failed to load certificates');
-        }
+        const result = await fetchCachedList(`certificates:${user.id}`, async () => {
+          const res = await api.GET('/api/certificates');
+          if (!res.data) throw new Error('Failed to load certificates');
+          return (res.data as CustomerCertificateList).items;
+        });
+        setMyCerts(result.data);
+        setOffline(result.offline);
       } catch (e) {
         setMyCertsError(e instanceof Error ? e.message : 'Network error');
       } finally {
@@ -213,6 +215,7 @@ export function CertificatesScreen({ route, navigation }: CertificatesScreenProp
               data={myCerts}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.listContent}
+              ListHeaderComponent={offline ? <Text style={{ backgroundColor: '#fff1c2', color: colors.night, padding: spacing.sm, textAlign: 'center', fontWeight: '600' }}>Offline · showing your last loaded certificates</Text> : null}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}

@@ -430,7 +430,8 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [x] **M11.9 — Support tickets + consultation booking/join.** `[Sonnet]`
   - *Done 19-Oct-2026 (Codex cx-15):* Mobile adds customer ticket list/create/thread with attachments via the existing upload and ticket-message APIs, consultant directory and slot selection, web checkout handoff, booking list/join, and server-enforced cancel/reschedule actions. Support/ticket and consultation deep links route into native screens.
   - *Follow-ups:* checkout continues in the web booking flow until native Razorpay (M11.4); booking changes are offered for confirmed bookings and the API enforces `BOOKING_CHANGE_WINDOW_HOURS`. API e2e verification depends on a local DB whose migrations match the checked-in schema.
-- [ ] **M11.10 — Offline cache, force-update check, crash reporting (Sentry).** `[Sonnet]`
+- [x] **M11.10 — Offline cache, force-update check, crash reporting (Sentry).** `[Sonnet]`
+  - *Done 19-Oct-2026 (Codex cx-16):* Per-user AsyncStorage cache for application, certificate and support ticket lists with an offline banner; public `GET /api/mobile/version` reads `mobile.minSupportedVersion` (seeded as `1.0.0`) and the app blocks outdated versions; Sentry captures crashes only when `EXPO_PUBLIC_SENTRY_DSN` is configured. Tests cover dotted version comparison and cache fallback.
 - [ ] **M11.11 — Builds:** `[Sonnet]` Android AAB/APK, iOS TestFlight via EAS. CHANGELOG.
 
 ---
