@@ -8208,6 +8208,10 @@ export interface components {
                 customerName: string;
                 consultantName: string;
             }[];
+            total: number;
+            page: number;
+            pageSize: number;
+            pages: number;
         };
         ReviewModerationResult: {
             /** Format: uuid */
@@ -16192,6 +16196,8 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "PENDING" | "APPROVED" | "REJECTED";
+                page?: number;
+                pageSize?: number;
             };
             header?: never;
             path?: never;

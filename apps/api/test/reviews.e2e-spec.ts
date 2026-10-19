@@ -105,8 +105,19 @@ describe('reviews (M8.12)', () => {
   it('moderation needs consultants.manage, approves once, and updates the public rating', async () => {
     const [alice] = customers;
     await http.get('/api/admin/reviews').set(as(alice.token)).expect(403);
+    await http.get('/api/admin/reviews?pageSize=101').set(as(adminToken)).expect(400);
 
-    const pending = (await http.get('/api/admin/reviews').set(as(adminToken)).expect(200)).body.items as { id: string; rating: number; consultantName: string }[];
+    const listRes = await http.get('/api/admin/reviews?page=1&pageSize=20').set(as(adminToken)).expect(200);
+    const pending = listRes.body.items as { id: string; rating: number; consultantName: string }[];
+    expect(listRes.body).toMatchObject({ page: 1, pageSize: 20 });
+    expect(typeof listRes.body.total).toBe('number');
+    expect(typeof listRes.body.pages).toBe('number');
+    // Page 2 of size 1 is the second row of the full list (empty when there is only one), with the same total.
+    const all = (await http.get('/api/admin/reviews?page=1&pageSize=100').set(as(adminToken)).expect(200)).body;
+    const pageTwo = (await http.get('/api/admin/reviews?page=2&pageSize=1').set(as(adminToken)).expect(200)).body;
+    expect(pageTwo.items.map((r: { id: string }) => r.id)).toEqual(all.items.slice(1, 2).map((r: { id: string }) => r.id));
+    expect(pageTwo).toMatchObject({ page: 2, pageSize: 1, total: all.total, pages: all.total });
+
     const first = pending.find((r) => r.consultantName === 'Reviewer 0');
     expect(first).toMatchObject({ rating: 4 });
 
