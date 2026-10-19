@@ -12,8 +12,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { env } from './config/env';
 import { addZodComponents } from './common/openapi';
-import { StructuredJsonLogger } from './common/structured-json-logger';
-import { redactString } from './common/redacting-logger';
+import { RedactingLogger, redactString } from './common/redacting-logger';
 import { corsOrigins, helmetOptions, refreshCookieOriginCheck } from './common/security';
 import { REFRESH_COOKIE } from './auth/auth.controller';
 
@@ -27,7 +26,8 @@ export function configureApp(app: NestExpressApplication) {
     const requestId = randomUUID();
     const started = Date.now();
     res.setHeader('X-Request-Id', requestId);
-    res.on('finish', () => {
+    // One line per request; not in tests, where it would print thousands of lines.
+    if (cfg.NODE_ENV !== 'test') res.on('finish', () => {
       process.stdout.write(`${JSON.stringify({ timestamp: new Date().toISOString(), level: 'info', message: 'http_request', requestId, method: req.method, path: redactString(req.path), statusCode: res.statusCode, durationMs: Date.now() - started })}\n`);
     });
     next();
@@ -75,7 +75,9 @@ async function bootstrap() {
     },
   });
   // rawBody keeps the exact request bytes on `req.rawBody`: payment webhook signatures are checked over them.
-  const app = configureApp(await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true, logger: new StructuredJsonLogger() }));
+  // RedactingLogger scrubs emails, mobiles, PANs and tokens from every log line (M12.2); JSON lines in production (M12.8).
+  const logger = new RedactingLogger({ json: cfg.NODE_ENV === 'production' });
+  const app = configureApp(await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true, logger }));
 
   if (cfg.NODE_ENV !== 'production') SwaggerModule.setup('api/docs', app, buildOpenApiDocument(app));
 
