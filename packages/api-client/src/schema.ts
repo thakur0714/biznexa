@@ -2372,6 +2372,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/cms/pages/{slug}/discard-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdminCmsController_discardDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/cms/pages/{slug}/unpublish": {
         parameters: {
             query?: never;
@@ -4773,6 +4789,22 @@ export interface components {
             status: "DRAFT" | "PUBLISHED";
             /** Format: date-time */
             updatedAt: string;
+            draftTitle?: string | null;
+            draftContent?: ({
+                html: string;
+            } | {
+                blocks: {
+                    /** @enum {string} */
+                    type: "paragraph" | "heading" | "list";
+                    text?: string;
+                    items?: string[];
+                }[];
+            }) | null;
+            draftSeoTitle?: string | null;
+            draftMetaDescription?: string | null;
+            draftOgImageUrl?: string | null;
+            draftContactEmail?: string | null;
+            draftContactPhone?: string | null;
         }[];
         CmsPage: {
             id: string;
@@ -4798,6 +4830,22 @@ export interface components {
             status: "DRAFT" | "PUBLISHED";
             /** Format: date-time */
             updatedAt: string;
+            draftTitle?: string | null;
+            draftContent?: ({
+                html: string;
+            } | {
+                blocks: {
+                    /** @enum {string} */
+                    type: "paragraph" | "heading" | "list";
+                    text?: string;
+                    items?: string[];
+                }[];
+            }) | null;
+            draftSeoTitle?: string | null;
+            draftMetaDescription?: string | null;
+            draftOgImageUrl?: string | null;
+            draftContactEmail?: string | null;
+            draftContactPhone?: string | null;
         };
         StoredFile: {
             /** Format: uuid */
@@ -13707,6 +13755,27 @@ export interface operations {
         requestBody?: never;
         responses: {
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CmsPage"];
+                };
+            };
+        };
+    };
+    AdminCmsController_discardDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -12733,6 +12733,36 @@
         ]
       }
     },
+    "/api/admin/cms/pages/{slug}/discard-draft": {
+      "post": {
+        "operationId": "AdminCmsController_discardDraft",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsPage"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin · cms"
+        ]
+      }
+    },
     "/api/admin/cms/pages/{slug}/unpublish": {
       "post": {
         "operationId": "AdminCmsController_unpublishPage",
@@ -23362,6 +23392,85 @@
             "updatedAt": {
               "type": "string",
               "format": "date-time"
+            },
+            "draftTitle": {
+              "type": "string",
+              "nullable": true
+            },
+            "draftContent": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "html": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "html"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "blocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "paragraph",
+                              "heading",
+                              "list"
+                            ]
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "blocks"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "nullable": true
+            },
+            "draftSeoTitle": {
+              "type": "string",
+              "nullable": true
+            },
+            "draftMetaDescription": {
+              "type": "string",
+              "nullable": true
+            },
+            "draftOgImageUrl": {
+              "type": "string",
+              "nullable": true
+            },
+            "draftContactEmail": {
+              "type": "string",
+              "nullable": true
+            },
+            "draftContactPhone": {
+              "type": "string",
+              "nullable": true
             }
           },
           "required": [
@@ -23483,6 +23592,85 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "draftTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "draftContent": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "html": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "html"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "blocks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "paragraph",
+                            "heading",
+                            "list"
+                          ]
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "blocks"
+                ],
+                "additionalProperties": false
+              }
+            ],
+            "nullable": true
+          },
+          "draftSeoTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "draftMetaDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "draftOgImageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "draftContactEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "draftContactPhone": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [

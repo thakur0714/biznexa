@@ -10,6 +10,8 @@ import { z } from 'zod';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { isMediaPath, safeLinkHref } from '@biznexa/types';
 import { EventBus } from '../events/event-bus';
+import { env } from '../config/env';
+import { Prisma } from '../generated/prisma/client';
 
 const mediaUrl = z.string().trim().max(500).nullable().refine((url) => url === null || isMediaPath(url), 'Choose an image uploaded to the public media library');
 const safeUrl = z.string().trim().max(500).nullable().refine((url) => url === null || safeLinkHref(url) !== null, 'Enter a safe web link');
@@ -24,6 +26,8 @@ const pageSchema = z.object({
   seoTitle: z.string().nullable(), metaDescription: z.string().nullable(), ogImageUrl: z.string().nullable(),
   contactEmail: z.string().nullable(), contactPhone: z.string().nullable(),
   status: z.enum(['DRAFT', 'PUBLISHED']), updatedAt: z.string().datetime(),
+  draftTitle: z.string().nullable().optional(), draftContent: z.union([z.object({ html: z.string() }), z.object({ blocks: z.array(legacyBlockSchema) })]).nullable().optional(),
+  draftSeoTitle: z.string().nullable().optional(), draftMetaDescription: z.string().nullable().optional(), draftOgImageUrl: z.string().nullable().optional(), draftContactEmail: z.string().nullable().optional(), draftContactPhone: z.string().nullable().optional(),
 });
 const bannerSchema = z.object({ id: z.string(), title: z.string(), subtitle: z.string().nullable(), imageUrl: z.string().nullable(), linkUrl: z.string().nullable(), placement: z.string(), sortOrder: z.number(), isActive: z.boolean() });
 const testimonialSchema = z.object({ id: z.string(), name: z.string(), company: z.string().nullable(), quote: z.string(), rating: z.number(), sortOrder: z.number(), isActive: z.boolean() });
@@ -124,8 +128,9 @@ class AdminCmsController {
   @Put('pages')
   async savePage(@ZodBody(pageInput) body: PageInput, @CurrentUser() user: AuthUser) {
     const before = await this.prisma.cmsPage.findUnique({ where: { slug: body.slug } });
-    const page = await this.prisma.cmsPage.upsert({ where: { slug: body.slug }, create: { ...body, status: 'DRAFT' }, update: { title: body.title, content: body.content, seoTitle: body.seoTitle, metaDescription: body.metaDescription, ogImageUrl: body.ogImageUrl, contactEmail: body.contactEmail, contactPhone: body.contactPhone } });
-    // Saving keeps the page's status: a published page stays live with the edit, a new one starts as a draft.
+    const page = before?.status === 'PUBLISHED'
+      ? await this.prisma.cmsPage.update({ where: { slug: body.slug }, data: { draftTitle: body.title, draftContent: body.content, draftSeoTitle: body.seoTitle, draftMetaDescription: body.metaDescription, draftOgImageUrl: body.ogImageUrl, draftContactEmail: body.contactEmail, draftContactPhone: body.contactPhone } })
+      : await this.prisma.cmsPage.upsert({ where: { slug: body.slug }, create: { ...body, status: 'DRAFT' }, update: { title: body.title, content: body.content, seoTitle: body.seoTitle, metaDescription: body.metaDescription, ogImageUrl: body.ogImageUrl, contactEmail: body.contactEmail, contactPhone: body.contactPhone } });
     await this.audit.log({ actorId: user.id, action: 'cms.page.save', entityType: 'CmsPage', entityId: page.id, before, after: page });
     return page;
   }
@@ -136,8 +141,33 @@ class AdminCmsController {
   async publishPage(@Param('slug') slug: string, @CurrentUser() user: AuthUser) {
     const before = await this.prisma.cmsPage.findUnique({ where: { slug } });
     if (!before) throw new NotFoundException('Page not found');
-    const page = await this.prisma.cmsPage.update({ where: { slug }, data: { status: 'PUBLISHED' } });
-    await this.audit.log({ actorId: user.id, action: 'cms.page.publish', entityType: 'CmsPage', entityId: page.id, before: { status: before.status }, after: { status: page.status } });
+    const hasDraft = before.draftTitle !== null;
+    const page = await this.prisma.cmsPage.update({ where: { slug }, data: { ...(hasDraft ? { title: before.draftTitle!, content: before.draftContent!, seoTitle: before.draftSeoTitle, metaDescription: before.draftMetaDescription, ogImageUrl: before.draftOgImageUrl, contactEmail: before.draftContactEmail, contactPhone: before.draftContactPhone, draftTitle: null, draftContent: Prisma.DbNull, draftSeoTitle: null, draftMetaDescription: null, draftOgImageUrl: null, draftContactEmail: null, draftContactPhone: null } : {}), status: 'PUBLISHED' } });
+    await this.audit.log({ actorId: user.id, action: 'cms.page.publish', entityType: 'CmsPage', entityId: page.id, before, after: page });
+    await this.revalidateWeb(slug);
+    return page;
+  }
+
+  private async revalidateWeb(slug: string) {
+    const secret = env().REVALIDATE_SECRET;
+    const webUrl = env().PUBLIC_WEB_URL;
+    if (!secret || !webUrl) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    try {
+      await fetch(`${webUrl}/api/revalidate`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': secret }, body: JSON.stringify({ slugs: [slug] }), signal: controller.signal });
+    } catch { /* Publishing remains saved if the web cache is unavailable; the cache TTL is bounded. */ }
+    finally { clearTimeout(timer); }
+  }
+
+  @RequirePermissions(PERMS.CMS_MANAGE)
+  @ApiZodResponse('CmsPage', pageSchema)
+  @Post('pages/:slug/discard-draft')
+  async discardDraft(@Param('slug') slug: string, @CurrentUser() user: AuthUser) {
+    const before = await this.prisma.cmsPage.findUnique({ where: { slug } });
+    if (!before) throw new NotFoundException('Page not found');
+    const page = await this.prisma.cmsPage.update({ where: { slug }, data: { draftTitle: null, draftContent: Prisma.DbNull, draftSeoTitle: null, draftMetaDescription: null, draftOgImageUrl: null, draftContactEmail: null, draftContactPhone: null } });
+    await this.audit.log({ actorId: user.id, action: 'cms.page.discard_draft', entityType: 'CmsPage', entityId: page.id, before, after: page });
     return page;
   }
 
@@ -149,6 +179,7 @@ class AdminCmsController {
     if (!before) throw new NotFoundException('Page not found');
     const page = await this.prisma.cmsPage.update({ where: { slug }, data: { status: 'DRAFT' } });
     await this.audit.log({ actorId: user.id, action: 'cms.page.unpublish', entityType: 'CmsPage', entityId: page.id, before: { status: before.status }, after: { status: page.status } });
+    await this.revalidateWeb(slug);
     return page;
   }
 }
