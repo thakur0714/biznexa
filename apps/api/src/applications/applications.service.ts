@@ -95,33 +95,28 @@ export class ApplicationsService {
       }),
     ]);
 
-    const items = await Promise.all(
-      rows.map(async (r) => {
-        const pendingMandatory = await this.documents.pendingMandatory({
-          id: r.id,
+    const pendingMap = await this.documents.pendingMandatoryMany(rows);
+
+    const items = rows.map((r) => {
+      const pendingMandatory = pendingMap.get(r.id) ?? 0;
+      const orderBalance = r.order ? Math.max(0, r.order.total - r.order.amountPaid) : 0;
+      return {
+        id: r.id,
+        code: r.code,
+        status: r.status,
+        statusLabel: APPLICATION_STATUS_LABEL[r.status],
+        serviceName: r.service.name,
+        serviceSlug: r.service.slug,
+        packageName: r.package.name,
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+        nextAction: customerNextAction({
           status: r.status,
-          serviceId: r.serviceId,
-          packageId: r.packageId,
-        });
-        const orderBalance = r.order ? Math.max(0, r.order.total - r.order.amountPaid) : 0;
-        return {
-          id: r.id,
-          code: r.code,
-          status: r.status,
-          statusLabel: APPLICATION_STATUS_LABEL[r.status],
-          serviceName: r.service.name,
-          serviceSlug: r.service.slug,
-          packageName: r.package.name,
-          createdAt: r.createdAt.toISOString(),
-          updatedAt: r.updatedAt.toISOString(),
-          nextAction: customerNextAction({
-            status: r.status,
-            pendingMandatory,
-            orderBalance,
-          }),
-        };
-      }),
-    );
+          pendingMandatory,
+          orderBalance,
+        }),
+      };
+    });
 
     return {
       items,
