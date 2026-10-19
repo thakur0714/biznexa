@@ -72,20 +72,8 @@ export class RemindersService implements OnModuleInit {
     const type = 'CERTIFICATE_EXPIRY';
     const title = `${certificate.type} certificate ${certificate.certificateNumber} expires`;
 
-    // Idempotent: same type + sourceApplicationId (+ the same certificate for CERTIFICATE_EXPIRY - put the certificate number in the title and check it)
-    // "never create a second reminder with the same type + sourceApplicationId (+ the same certificate for CERTIFICATE_EXPIRY — put the certificate number in the title and check it)"
-    const duplicateCheck = await this.prisma.reminder.findFirst({
-      where: {
-        type,
-        title, // check title for certificate number
-        sourceApplicationId,
-      },
-    });
-
-    if (duplicateCheck) return;
-
-    await this.prisma.reminder.create({
-      data: {
+    await this.prisma.reminder.createMany({
+      data: [{
         userId,
         type,
         title,
@@ -94,7 +82,9 @@ export class RemindersService implements OnModuleInit {
         renewServiceSlug,
         businessEntityId: certificate.businessEntityId,
         sourceApplicationId,
-      },
+        sourceKey: `certificate:${certificate.id}`,
+      }],
+      skipDuplicates: true,
     });
   }
 
@@ -125,17 +115,8 @@ export class RemindersService implements OnModuleInit {
     const type = 'SERVICE_RENEWAL';
     const title = `${application.service.name} due again`;
 
-    const duplicateCheck = await this.prisma.reminder.findFirst({
-      where: {
-        type,
-        sourceApplicationId: application.id,
-      },
-    });
-
-    if (duplicateCheck) return;
-
-    await this.prisma.reminder.create({
-      data: {
+    await this.prisma.reminder.createMany({
+      data: [{
         userId: application.customerId,
         businessEntityId: application.businessEntityId,
         type,
@@ -144,7 +125,9 @@ export class RemindersService implements OnModuleInit {
         offsets: application.service.reminderOffsets,
         renewServiceSlug: application.service.slug,
         sourceApplicationId: application.id,
-      },
+        sourceKey: `application:${application.id}`,
+      }],
+      skipDuplicates: true,
     });
   }
 }
