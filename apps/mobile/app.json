@@ -11,6 +11,7 @@
     },
     "android": {
       "package": "com.biznexa.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#1f2b7a"
       },

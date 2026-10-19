@@ -107,6 +107,12 @@ describe('health', () => {
     const res = await http.get('/api/health').expect(200);
     expect(res.body.status).toBe('ok');
   });
+
+  it('reports ready when the database and Redis are available', async () => {
+    const res = await http.get('/api/health/ready').expect(200);
+    expect(res.body).toEqual({ status: 'ready' });
+    expect(res.headers['x-request-id']).toEqual(expect.any(String));
+  });
 });
 
 describe('mobile minimum version', () => {

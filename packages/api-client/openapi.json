@@ -15,6 +15,20 @@
         ]
       }
     },
+    "/api/health/ready": {
+      "get": {
+        "operationId": "HealthController_readiness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "health"
+        ]
+      }
+    },
     "/api/mobile/version": {
       "get": {
         "operationId": "MobileVersionController_version",
