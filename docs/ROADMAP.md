@@ -459,6 +459,6 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [ ] **M12.7 — Full E2E suite** `[Sonnet]` for all flows in §10 Quality; coverage ≥ 80% for business logic.
 - [x] **M12.8 — Monitoring.** `[Sonnet]` Done 19-Oct-2026: DSN-gated Sentry for API/web/admin (mobile already configured), PII-scrubbed events and JSON API request logs with request IDs; `/api/health/ready` checks PostgreSQL and Redis. Runbook documents uptime URLs, alerts and DSN placement.
 - [ ] **M12.9 — Infra.** `[Opus]` AWS ap-south-1, staging + production, secrets manager, CI/CD deploy, CloudFront.
-- [ ] **M12.10 — Backups.** `[Sonnet]` Daily automated backup + PITR + a tested restore (documented in RUNBOOK).
+- [x] **M12.10 — Backups.** `[Sonnet]` Daily automated backup + PITR + a tested restore (documented in RUNBOOK). *Done 19-Oct-2026: local backup/restore scripts and 69-table restore drill pass; AWS daily/PITR/S3 setup remains to do at M12.9.*
 - [ ] **M12.11 — Staging UAT** `[Sonnet]` with demo logins for every role; fix list.
 - [ ] **M12.12 — Replace placeholders** `[Haiku]` (prices, testimonials, cert-body names, policy text, logo/brand) and run the production launch checklist. Final CHANGELOG + all §14 acceptance criteria ticked.
