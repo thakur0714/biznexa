@@ -260,6 +260,16 @@ export interface paths {
         patch: operations["AuthController_updateMe"];
         trace?: never;
     };
+    "/api/auth/email/verify/request": {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never };
+        get?: never; put?: never; post: operations["AuthController_requestEmailVerification"];
+        delete?: never; options?: never; head?: never; patch?: never; trace?: never;
+    };
+    "/api/auth/email/verify/confirm": {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never };
+        get?: never; put?: never; post: operations["AuthController_confirmEmailVerification"];
+        delete?: never; options?: never; head?: never; patch?: never; trace?: never;
+    };
     "/api/auth/password/change": {
         parameters: {
             query?: never;
@@ -8146,6 +8156,16 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    AuthController_requestEmailVerification: {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never };
+        requestBody?: never;
+        responses: { 200: { headers: { [name: string]: unknown }; content: { "application/json": { expiresIn: number; resendAfter: number; devCode?: string } } } };
+    };
+    AuthController_confirmEmailVerification: {
+        parameters: { query?: never; header?: never; path?: never; cookie?: never };
+        requestBody: { content: { "application/json": { code: string } } };
+        responses: { 200: { headers: { [name: string]: unknown }; content: { "application/json": { emailVerified: boolean } } } };
+    };
     HealthController_health: {
         parameters: {
             query?: never;

@@ -31,6 +31,7 @@ enum OtpChannel {
 enum OtpPurpose {
   LOGIN
   VERIFY_MOBILE
+  VERIFY_EMAIL
   RESET_PASSWORD
   /// Re-check before an account deletion request (M5.12).
   ACCOUNT_DELETION

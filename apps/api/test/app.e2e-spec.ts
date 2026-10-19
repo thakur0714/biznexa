@@ -126,6 +126,7 @@ describe('registration & login', () => {
     expect(res.body.user.roles).toEqual(['CUSTOMER']);
     expect(res.body.user.mobileVerified).toBe(false);
     expect(res.body.otp.devCode).toMatch(/^\d{6}$/);
+    expect(res.body.emailOtp.devCode).toMatch(/^\d{6}$/);
 
     // verify the mobile number with the code
     await http.post('/api/auth/otp/verify').send({ channel: 'MOBILE', target: mobile(1), purpose: 'VERIFY_MOBILE', code: res.body.otp.devCode }).expect(200);
@@ -142,6 +143,22 @@ describe('registration & login', () => {
     await http.post('/api/auth/login').send({ email: email(1), password: 'wrong-pass1' }).expect(401);
     const token = await loginAs(email(1), 'secret123');
     expect(token).toBeTruthy();
+  });
+
+  it('verifies only the signed-in user email and rejects a wrong code', async () => {
+    const first = await http.post('/api/auth/register').send({ name: 'Email Owner', mobile: mobile(11), email: email(11), password: 'secret123', consent: true }).expect(201);
+    const second = await http.post('/api/auth/register').send({ name: 'Other Owner', mobile: mobile(12), email: email(12), password: 'secret123', consent: true }).expect(201);
+    const firstToken = first.body.accessToken as string;
+    const secondToken = second.body.accessToken as string;
+    await prisma.otpCode.updateMany({ where: { target: email(11), purpose: 'VERIFY_EMAIL' }, data: { createdAt: new Date(Date.now() - 31_000) } });
+    const issued = await http.post('/api/auth/email/verify/request').set('authorization', `Bearer ${firstToken}`).expect(200);
+    expect(issued.body.devCode).toMatch(/^\d{6}$/);
+    const wrong = issued.body.devCode === '000000' ? '111111' : '000000';
+    await http.post('/api/auth/email/verify/confirm').set('authorization', `Bearer ${firstToken}`).send({ code: wrong }).expect(400);
+    await http.post('/api/auth/email/verify/confirm').set('authorization', `Bearer ${secondToken}`).send({ code: issued.body.devCode }).expect(400);
+    await http.post('/api/auth/email/verify/confirm').set('authorization', `Bearer ${firstToken}`).send({ code: issued.body.devCode }).expect(200);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: first.body.user.id } })).emailVerified).toBe(true);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: second.body.user.id } })).emailVerified).toBe(false);
   });
 });
 
