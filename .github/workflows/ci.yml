@@ -59,7 +59,7 @@ jobs:
         run: |
           npx tsc -p tsconfig.json --noEmit
           node node_modules/playwright-core/cli.js install --with-deps --only-shell chromium
-          npx jest
+          npx jest --coverage
       - name: Build API, web and admin
         run: |
           pnpm --filter @biznexa/api build

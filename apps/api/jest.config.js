@@ -18,7 +18,7 @@ module.exports = {
   testTimeout: 30000,
   maxWorkers: 3,
   setupFiles: ['<rootDir>/test/setup-env.js'],
-  collectCoverage: true,
+  // Coverage gate runs with `pnpm test` (jest --coverage) only, so a single-file `npx jest <file>` still passes.
   collectCoverageFrom: [
     '<rootDir>/src/applications/application-status.service.ts',
     '<rootDir>/src/coupons/coupons.service.ts',
