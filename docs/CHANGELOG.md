@@ -1,5 +1,9 @@
 # Changelog
 
+## No Docker (19-Oct-2026)
+
+- Removed `docker-compose.yml` and the API/web Dockerfiles (D70). README now installs PostgreSQL 16 and Redis 7 directly for local development; servers run each app with `pnpm build` + `pnpm start`.
+
 ## M11.8 — Mobile notifications with deep links (19-Oct-2026)
 
 - Added `expo-notifications`, the Android notification channel, post-login permission prompt, native device-token registration/refresh, and token unregistration on logout. Added notification response handling for killed, background, and foreground states with a pure route mapper for application details, documents, payments, certificates and messages; unknown links return Home.
