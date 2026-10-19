@@ -26,7 +26,7 @@ function VersionGate({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false);
   useEffect(() => {
     let alive = true;
-    void api.GET('/api/mobile/version').then(({ data }) => {
+    void api.GET('/api/mobile/version', { signal: AbortSignal.timeout(5000) }).then(({ data }) => {
       if (alive && data) setMinimum(data.minSupportedVersion);
     }).catch(() => undefined).finally(() => { if (alive) setChecked(true); });
     return () => { alive = false; };
