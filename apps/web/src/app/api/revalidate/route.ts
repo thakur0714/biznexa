@@ -40,6 +40,11 @@ export async function POST(req: NextRequest) {
   revalidatePath('/blog', 'layout');
   revalidatePath('/');
   revalidatePath('/sitemap.xml');
+  const paths: Record<string, string> = { about: '/about', terms: '/terms', privacy: '/privacy', 'refund-policy': '/refund-policy', contact: '/contact' };
+  for (const slug of parsed.data.slugs) {
+    const path = paths[slug];
+    if (path) revalidatePath(path);
+  }
 
   return NextResponse.json({ revalidated: true });
 }

@@ -1,5 +1,7 @@
 # Decisions
 
+**D65: Published CMS pages keep a separate draft copy (19-Oct-2026).** `CmsPage` keeps its current columns as the published version and adds nullable `draft*` columns. Editing a published page writes only the draft columns; publishing atomically copies all draft values to the live columns and clears them, and discard only clears the draft columns. A never-published DRAFT page continues to edit its live columns. Public page queries select only live columns. This avoids a second page identity and lets existing public URLs and reads remain stable.
+
 Choices made where the prompt was silent or where the environment forced a trade-off. Newest first.
 
 | # | Decision | Why |
