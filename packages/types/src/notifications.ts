@@ -6,6 +6,7 @@ export const notificationChannelSchema = z.enum(NOTIFICATION_CHANNELS);
 
 /** Events supported for notifications from spec §7.9 (matching events.ts where applicable). */
 export const NOTIFICATION_EVENTS = [
+  'announcement.sent',
   'auth.registered',
   'auth.otp',
   'payment.succeeded',
@@ -32,6 +33,23 @@ export const NOTIFICATION_EVENTS = [
   'privacy.account_deleted',
 ] as const;
 export type NotificationEvent = (typeof NOTIFICATION_EVENTS)[number];
+
+export const announcementSegmentSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('ALL_CUSTOMERS') }),
+  z.object({ type: z.literal('ACTIVE_APPLICATION_CATEGORY'), categoryId: z.string().uuid() }),
+  z.object({ type: z.literal('EXPIRING_CERTIFICATE'), days: z.number().int().min(1).max(365) }),
+]);
+export const announcementCountInputSchema = z.object({ segment: announcementSegmentSchema });
+export const announcementSendInputSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  body: z.string().trim().min(1).max(5000),
+  channels: z.array(z.enum(['IN_APP', 'EMAIL', 'PUSH', 'SMS'])).min(1).max(4).refine((items) => new Set(items).size === items.length, 'Channels must be unique'),
+  segment: announcementSegmentSchema,
+});
+export const announcementCountSchema = z.object({ recipients: z.number().int().min(0) });
+export const announcementSendResponseSchema = z.object({ sourceKey: z.string().uuid(), recipients: z.number().int().min(0), queued: z.number().int().min(0) });
+export type AnnouncementSegment = z.infer<typeof announcementSegmentSchema>;
+export type AnnouncementSendInput = z.infer<typeof announcementSendInputSchema>;
 export const notificationEventSchema = z.enum(NOTIFICATION_EVENTS);
 
 export const NOTIFICATION_CATEGORIES = ['TRANSACTIONAL', 'MARKETING'] as const;
@@ -193,6 +211,7 @@ export interface TemplateVariableInfo {
 }
 
 export const NOTIFICATION_EVENT_VARIABLES: Record<NotificationEvent, TemplateVariableInfo[]> = {
+  'announcement.sent': [],
   'auth.registered': [
     { name: 'customerName', description: 'Name of the customer', sample: 'Rajesh Sharma' },
   ],

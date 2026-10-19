@@ -86,3 +86,6 @@ Staff cancelling applications explicitly requires the `APPLICATIONS_VIEW_ALL` pe
 
 **D62: Consultation booking cancellation and reschedule policy (17-Oct-2026)**
 Customers may cancel or reschedule a confirmed consultation until 24 hours before its start. The booking fee is not automatically refunded by cancellation; refund handling remains a manual support/payment workflow until a refund policy is agreed. Rescheduling keeps the paid booking and fee, requires an available future slot, and records a RESCHEDULED → CONFIRMED history pair. Consultants may mark COMPLETED or NO_SHOW only after the scheduled end time.
+
+**D63: Manual announcements use queue deliveries as their campaign record (19-Oct-2026)**
+An announcement is represented by one generated `sourceKey` shared by all recipient/channel `NotificationDelivery` rows, with event `announcement.sent` and category `MARKETING`. Counts exclude opted-out customers; the dispatcher checks preferences again at delivery time to cover preference changes after queueing. SMS is enabled only with an active DLT-backed announcement template. The existing delivery log is the delivery-statistics source, avoiding a second campaign/delivery table.
