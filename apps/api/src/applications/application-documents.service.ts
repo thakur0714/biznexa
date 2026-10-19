@@ -220,6 +220,80 @@ export class ApplicationDocumentsService {
     return (await this.build(app, db)).pendingMandatory;
   }
 
+  /** Batch version of pendingMandatory to avoid N+1 queries. */
+  async pendingMandatoryMany(apps: AppRow[], db: Prisma.TransactionClient = this.prisma): Promise<Map<string, number>> {
+    if (apps.length === 0) return new Map();
+
+    const applicationIds = apps.map((a) => a.id);
+    const serviceIds = [...new Set(apps.map((a) => a.serviceId))];
+
+    const [requirements, documents, requests] = await Promise.all([
+      db.serviceDocumentRequirement.findMany({ where: { serviceId: { in: serviceIds } }, orderBy: { sortOrder: 'asc' }, select: { serviceId: true, ...requirementSelect } }),
+      db.applicationDocument.findMany({
+        where: { applicationId: { in: applicationIds }, fileKey: { not: null } },
+        orderBy: { version: 'desc' },
+        select: { applicationId: true, ...documentSelect },
+      }),
+      db.applicationDocument.findMany({
+        where: { applicationId: { in: applicationIds }, requirementId: null, requestId: { not: null }, version: 1 },
+        orderBy: { createdAt: 'asc' },
+        select: { applicationId: true, requestId: true, name: true, description: true, createdAt: true },
+      }),
+    ]);
+
+    const reqsByService = new Map<string, typeof requirements>();
+    for (const r of requirements) {
+      reqsByService.set(r.serviceId, [...(reqsByService.get(r.serviceId) ?? []), r]);
+    }
+
+    const docsByApp = new Map<string, typeof documents>();
+    for (const d of documents) {
+      docsByApp.set(d.applicationId, [...(docsByApp.get(d.applicationId) ?? []), d]);
+    }
+
+    const requestsByApp = new Map<string, typeof requests>();
+    for (const r of requests) {
+      requestsByApp.set(r.applicationId, [...(requestsByApp.get(r.applicationId) ?? []), r]);
+    }
+
+    const result = new Map<string, number>();
+
+    for (const app of apps) {
+      const appReqs = reqsByService.get(app.serviceId) ?? [];
+      const appDocs = docsByApp.get(app.id) ?? [];
+      const appRequests = requestsByApp.get(app.id) ?? [];
+
+      const byRequirement = new Map<string, DocumentRow[]>();
+      const byRequest = new Map<string, DocumentRow[]>();
+      for (const d of appDocs) {
+        if (d.requirementId) byRequirement.set(d.requirementId, [...(byRequirement.get(d.requirementId) ?? []), d]);
+        else if (d.requestId) byRequest.set(d.requestId, [...(byRequest.get(d.requestId) ?? []), d]);
+      }
+
+      const items: DocumentChecklistItem[] = appReqs
+        .filter((r) => requirementApplies(r, app.packageId) || byRequirement.has(r.id))
+        .map(({ packageIds: _p, ...requirement }) => {
+          const versions = (byRequirement.get(requirement.id) ?? []).map(toDocumentDto);
+          const [current = null, ...previous] = versions;
+          return { requirement, current, previous, canReplace: !current || canReplaceDocument(current.status) };
+        });
+
+      const additional: AdditionalDocumentItem[] = appRequests.map((r) => {
+        const [current = null, ...previous] = (byRequest.get(r.requestId!) ?? []).map(toDocumentDto);
+        return {
+          request: { id: r.requestId!, name: r.name, description: r.description, requestedAt: r.createdAt.toISOString() },
+          current,
+          previous,
+          canReplace: !current || canReplaceDocument(current.status),
+        };
+      });
+
+      result.set(app.id, pendingMandatoryCount(items, additional));
+    }
+
+    return result;
+  }
+
   private async build(app: AppRow, db: Prisma.TransactionClient = this.prisma): Promise<DocumentChecklist> {
     const [requirements, documents, requests] = await Promise.all([
       db.serviceDocumentRequirement.findMany({ where: { serviceId: app.serviceId }, orderBy: { sortOrder: 'asc' }, select: requirementSelect }),
