@@ -16,7 +16,6 @@ export function EmailVerificationDialog({ open, onClose }: { open: boolean; onCl
 
   async function requestCode() {
     setBusy(true); setError(''); setSuccess('');
-    setSent(true);
     try {
       await api.call((c) => c.POST('/api/auth/email/verify/request'));
       setSent(true);

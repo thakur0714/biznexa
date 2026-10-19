@@ -57,12 +57,12 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
     event: 'auth.otp',
     channel: 'EMAIL',
     subject: 'Your BizNexa Verification Code: {{otp}}',
-    body: '<p>Hello,</p><p>Your verification code is <strong>{{otp}}</strong>. It is valid for {{validMinutes}} minutes. Purpose: {{purpose}}. Do not share this code with anyone.</p>',
+    body: '<p>Hello,</p><p>Your verification code is <strong>{{otp}}</strong>. It is valid for {{validMinutes}} minutes. Do not share this code with anyone.</p>',
   },
   {
     event: 'auth.otp',
     channel: 'SMS',
-    body: '{{otp}} is your BizNexa verification code. Valid for {{validMinutes}} minutes. Purpose: {{purpose}}. Do not share this code.',
+    body: '{{otp}} is your BizNexa verification code. Valid for {{validMinutes}} minutes. Do not share this code.',
     dltTemplateId: null,
   },
   {
