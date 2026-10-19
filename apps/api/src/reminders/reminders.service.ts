@@ -82,6 +82,7 @@ export class RemindersService implements OnModuleInit {
         renewServiceSlug,
         businessEntityId: certificate.businessEntityId,
         sourceApplicationId,
+        sourceKey: `certificate:${certificate.id}`,
       }],
       skipDuplicates: true,
     });
@@ -124,6 +125,7 @@ export class RemindersService implements OnModuleInit {
         offsets: application.service.reminderOffsets,
         renewServiceSlug: application.service.slug,
         sourceApplicationId: application.id,
+        sourceKey: `application:${application.id}`,
       }],
       skipDuplicates: true,
     });
