@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, ConflictException, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, ConflictException, OnModuleInit, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../common/auth.decorators';
@@ -8,15 +8,44 @@ import { QueueService } from '../queue/queue.service';
 import type { BlogPostInput } from '@biznexa/types';
 import { sanitizeRichText } from '@biznexa/rich-text';
 import { EventBus } from '../events/event-bus';
+import { env } from '../config/env';
 
 @Injectable()
 export class AdminBlogService implements OnModuleInit {
+  private readonly logger = new Logger(AdminBlogService.name);
+
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly queues: QueueService, private readonly events: EventBus) {}
 
   async onModuleInit() {
+    // Not awaited: emit() waits for listeners, and a slow web app must not hold up the admin's save.
+    this.events.on('blog.post_changed', (e) => { void this.revalidateWeb(e.payload); });
     this.queues.process<{ postId: string }>('blog-publish', async ({ data }) => { await this.publishScheduled(data.postId); });
     const scheduled = await this.prisma.blogPost.findMany({ where: { status: 'SCHEDULED', publishAt: { not: null } }, select: { id: true, publishAt: true } });
     for (const post of scheduled) await this.enqueue(post.id, post.publishAt!);
+  }
+
+  private async revalidateWeb(payload: { postId: string; slug: string; previousSlug?: string }) {
+    const secret = env().REVALIDATE_SECRET;
+    const webUrl = env().PUBLIC_WEB_URL;
+    if (!secret || !webUrl) {
+      this.logger.debug('REVALIDATE_SECRET or PUBLIC_WEB_URL not set, skipping web revalidation');
+      return;
+    }
+    const slugs = [payload.slug];
+    if (payload.previousSlug && payload.previousSlug !== payload.slug) {
+      slugs.push(payload.previousSlug);
+    }
+    try {
+      const res = await fetch(`${webUrl}/api/revalidate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': secret },
+        body: JSON.stringify({ slugs }),
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!res.ok) this.logger.warn(`Failed to revalidate web: ${res.status} ${res.statusText}`);
+    } catch (e: unknown) {
+      this.logger.warn(`Failed to revalidate web: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   private async enqueue(id: string, at: Date) {
@@ -27,12 +56,12 @@ export class AdminBlogService implements OnModuleInit {
 
   private async publishScheduled(id: string) {
     const now = new Date();
-    const post = await this.prisma.blogPost.findFirst({ where: { id, status: 'SCHEDULED', publishAt: { lte: now } } });
+    const post = await this.prisma.blogPost.findFirst({ where: { id, status: 'SCHEDULED', publishAt: { lte: now } }, select: { id: true, slug: true, publishAt: true } });
     if (!post) return;
     const changed = await this.prisma.blogPost.updateMany({ where: { id, status: 'SCHEDULED', publishAt: { lte: now } }, data: { status: 'PUBLISHED', publishedAt: post.publishAt } });
     if (changed.count) {
       await this.audit.log({ action: 'blog_post.published', entityType: 'BlogPost', entityId: id, before: { status: 'SCHEDULED' }, after: { status: 'PUBLISHED', publishedAt: post.publishAt } });
-      await this.events.emit('blog.post_changed', { postId: id });
+      await this.events.emit('blog.post_changed', { postId: id, slug: post.slug });
     }
   }
 
@@ -46,7 +75,7 @@ export class AdminBlogService implements OnModuleInit {
     const { categories, ...result } = post; const response = { ...result, categories: categories.map(x => x.category) };
     await this.audit.log({ actorId: u.id, action: 'blog_post.created', entityType: 'BlogPost', entityId: post.id, after: response });
     if (post.status === 'SCHEDULED') await this.enqueue(post.id, post.publishAt!);
-    await this.events.emit('blog.post_changed', { postId: post.id });
+    await this.events.emit('blog.post_changed', { postId: post.id, slug: post.slug });
     return response;
   }
 
@@ -60,7 +89,7 @@ export class AdminBlogService implements OnModuleInit {
     await this.audit.log({ actorId: u.id, action: 'blog_post.updated', entityType: 'BlogPost', entityId: id, before, after: response });
     if (post.status === 'SCHEDULED') await this.enqueue(id, post.publishAt!);
     else await this.queues.queue('blog-publish').remove(`blog-publish-${id}`);
-    await this.events.emit('blog.post_changed', { postId: id });
+    await this.events.emit('blog.post_changed', { postId: id, slug: post.slug, previousSlug: before.slug !== post.slug ? before.slug : undefined });
     return response;
   }
 
@@ -69,7 +98,7 @@ export class AdminBlogService implements OnModuleInit {
     await this.prisma.blogPost.delete({ where: { id } });
     await this.queues.queue('blog-publish').remove(`blog-publish-${id}`);
     await this.audit.log({ actorId: u.id, action: 'blog_post.deleted', entityType: 'BlogPost', entityId: id, before, after: null });
-    await this.events.emit('blog.post_changed', { postId: id });
+    await this.events.emit('blog.post_changed', { postId: id, slug: before.slug });
   }
 
   // --- Categories ---
