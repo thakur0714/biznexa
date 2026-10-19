@@ -56,7 +56,10 @@ export function SupportScreen({ route }: { route?: { params?: { ticketId?: strin
         const uploaded = await uploadMobileFile({ uri: attachment.uri, name: attachment.name, mimeType: attachment.mimeType ?? 'application/octet-stream', token });
         fileIds = [uploaded.id];
       }
-      if (fileIds.length) await api.POST('/api/tickets/{id}/messages', { params: { path: { id: summary.id } }, body: { body: 'Attachment for this request', fileIds } });
+      if (fileIds.length) {
+        const { error: msgError } = await api.POST('/api/tickets/{id}/messages', { params: { path: { id: summary.id } }, body: { body: 'Attachment for this request', fileIds } });
+        if (msgError) throw new Error('Could not upload attachment message.');
+      }
       setCreating(false); setSubject(''); setMessage(''); setAttachment(null); setTicketId(summary.id);
     } catch (e) { Alert.alert('Could not create ticket', e instanceof Error ? e.message : 'Please try again.'); }
     finally { setBusy(false); }
@@ -65,9 +68,14 @@ export function SupportScreen({ route }: { route?: { params?: { ticketId?: strin
     if (!ticket || !reply.trim()) return;
     setBusy(true);
     try {
-      const { error: apiError } = await api.POST('/api/tickets/{id}/messages', { params: { path: { id: ticket.id } }, body: { body: reply.trim() } });
+      let fileIds: string[] = [];
+      if (attachment) {
+        const uploaded = await uploadMobileFile({ uri: attachment.uri, name: attachment.name, mimeType: attachment.mimeType ?? 'application/octet-stream', token });
+        fileIds = [uploaded.id];
+      }
+      const { error: apiError } = await api.POST('/api/tickets/{id}/messages', { params: { path: { id: ticket.id } }, body: { body: reply.trim(), fileIds: fileIds.length ? fileIds : undefined } });
       if (apiError) throw new Error('Message could not be sent.');
-      setReply(''); await load();
+      setReply(''); setAttachment(null); await load();
     } catch (e) { Alert.alert('Could not send message', e instanceof Error ? e.message : 'Please try again.'); }
     finally { setBusy(false); }
   }
@@ -79,7 +87,9 @@ export function SupportScreen({ route }: { route?: { params?: { ticketId?: strin
     <Button title="Back to tickets" variant="ghost" onPress={() => { setTicketId(null); setTicket(null); }} />
     <Text style={styles.title}>{ticket.subject}</Text><Text style={styles.muted}>{ticket.code} · {ticket.status}</Text>
     {ticket.messages.map((item) => <Card key={item.id}><Text style={styles.muted}>{item.sender.name}</Text><Text style={styles.text}>{item.body}</Text>{item.attachments?.map((file) => <Text key={file.id} style={styles.link}>📎 {file.fileName}</Text>)}</Card>)}
-    <TextInput value={reply} onChangeText={setReply} placeholder="Write a reply" multiline style={styles.input} /><Button title="Send reply" loading={busy} disabled={!reply.trim()} onPress={sendReply} />
+    <TextInput value={reply} onChangeText={setReply} placeholder="Write a reply" multiline style={styles.input} />
+    <Button title={attachment ? `Attach: ${attachment.name}` : 'Add attachment'} variant="secondary" onPress={chooseAttachment} />
+    <Button title="Send reply" loading={busy} disabled={!reply.trim()} onPress={sendReply} />
   </ScrollView>;
   if (creating) return <ScrollView contentContainerStyle={styles.content}>
     <Button title="Cancel" variant="ghost" onPress={() => setCreating(false)} /><Text style={styles.title}>New support ticket</Text>
