@@ -21,9 +21,20 @@ export interface paths {
         trace?: never;
     };
     "/api/mobile/version": {
-        parameters: { query?: never; header?: never; path?: never; cookie?: never };
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
         get: operations["MobileVersionController_version"];
-        put?: never; post?: never; delete?: never; options?: never; head?: never; patch?: never; trace?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
     "/api/admin/audit": {
         parameters: {
@@ -266,14 +277,36 @@ export interface paths {
         trace?: never;
     };
     "/api/auth/email/verify/request": {
-        parameters: { query?: never; header?: never; path?: never; cookie?: never };
-        get?: never; put?: never; post: operations["AuthController_requestEmailVerification"];
-        delete?: never; options?: never; head?: never; patch?: never; trace?: never;
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AuthController_requestEmailVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
     "/api/auth/email/verify/confirm": {
-        parameters: { query?: never; header?: never; path?: never; cookie?: never };
-        get?: never; put?: never; post: operations["AuthController_confirmEmailVerification"];
-        delete?: never; options?: never; head?: never; patch?: never; trace?: never;
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AuthController_confirmEmailVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
     "/api/auth/password/change": {
         parameters: {
@@ -8161,21 +8194,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    MobileVersionController_version: {
-        parameters: { query?: never; header?: never; path?: never; cookie?: never };
-        requestBody?: never;
-        responses: { 200: { headers: { [name: string]: unknown }; content: { "application/json": { minSupportedVersion: string } } } };
-    };
-    AuthController_requestEmailVerification: {
-        parameters: { query?: never; header?: never; path?: never; cookie?: never };
-        requestBody?: never;
-        responses: { 200: { headers: { [name: string]: unknown }; content: { "application/json": { expiresIn: number; resendAfter: number; devCode?: string } } } };
-    };
-    AuthController_confirmEmailVerification: {
-        parameters: { query?: never; header?: never; path?: never; cookie?: never };
-        requestBody: { content: { "application/json": { code: string } } };
-        responses: { 200: { headers: { [name: string]: unknown }; content: { "application/json": { emailVerified: boolean } } } };
-    };
     HealthController_health: {
         parameters: {
             query?: never;
@@ -8190,6 +8208,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    MobileVersionController_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        minSupportedVersion: string;
+                    };
+                };
             };
         };
     };
@@ -8611,6 +8650,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AuthController_requestEmailVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        expiresIn: number;
+                        resendAfter: number;
+                        devCode?: string;
+                    };
+                };
+            };
+        };
+    };
+    AuthController_confirmEmailVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        emailVerified: boolean;
+                    };
+                };
             };
         };
     };
