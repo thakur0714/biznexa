@@ -33,8 +33,7 @@ afterAll(async () => {
 
 describe('CMS page draft and publish', () => {
   it('keeps drafts private, sanitises on save and render, and denies staff without cms.manage', async () => {
-        const existing = await prisma.cmsPage.findUniqueOrThrow({ where: { slug } });
-    // Start from a draft (the seed publishes About); saving keeps whatever status the page has.
+    const existing = await prisma.cmsPage.findUniqueOrThrow({ where: { slug } });
     await prisma.cmsPage.update({ where: { slug }, data: { status: 'DRAFT' } });
     await http.put('/api/admin/cms/pages').set('authorization', `Bearer ${admin}`).send({
       slug, title: 'About draft', content: { html: '<p>Safe</p><script>alert(1)</script><img src=x onerror=alert(2)>' },
@@ -50,14 +49,25 @@ describe('CMS page draft and publish', () => {
     await http.post(`/api/admin/cms/pages/${slug}/publish`).set('authorization', `Bearer ${admin}`).expect(201);
     const published = await http.get(`/api/cms/pages/${slug}`).expect(200);
     expect(published.body.content).toEqual({ html: '<p>Safe</p>' });
-    // Editing a published page keeps it live with the new text.
+    // Saving an edit to a published page leaves the published copy live.
     await http.put('/api/admin/cms/pages').set('authorization', `Bearer ${admin}`).send({
       slug, title: 'About edited', content: { html: '<p>Edited</p>' },
       seoTitle: 'SEO', metaDescription: 'Description', ogImageUrl: null, contactEmail: null, contactPhone: null,
     }).expect(200);
+    expect((await http.get(`/api/cms/pages/${slug}`).expect(200)).body).toMatchObject({ title: 'About draft', content: { html: '<p>Safe</p>' } });
+    const adminDraft = (await http.get('/api/admin/cms/pages').set('authorization', `Bearer ${admin}`).expect(200)).body.find((row: { slug: string }) => row.slug === slug);
+    expect(adminDraft).toMatchObject({ draftTitle: 'About edited', draftContent: { html: '<p>Edited</p>' } });
+    await http.post(`/api/admin/cms/pages/${slug}/publish`).set('authorization', `Bearer ${admin}`).expect(201);
     expect((await http.get(`/api/cms/pages/${slug}`).expect(200)).body).toMatchObject({ title: 'About edited', content: { html: '<p>Edited</p>' } });
+    await http.put('/api/admin/cms/pages').set('authorization', `Bearer ${admin}`).send({ slug, title: 'About discarded', content: { html: '<p>Discard me</p>' }, seoTitle: null, metaDescription: null, ogImageUrl: null, contactEmail: null, contactPhone: null }).expect(200);
+    await http.post(`/api/admin/cms/pages/${slug}/discard-draft`).set('authorization', `Bearer ${admin}`).expect(201);
+    expect((await http.get(`/api/cms/pages/${slug}`).expect(200)).body).toMatchObject({ title: 'About edited', content: { html: '<p>Edited</p>' } });
+    // A never-published draft still saves directly to its working fields and publishes as before.
+    await prisma.cmsPage.update({ where: { slug }, data: { status: 'DRAFT' } });
+    await http.put('/api/admin/cms/pages').set('authorization', `Bearer ${admin}`).send({ slug, title: 'Draft page', content: { html: '<p>Draft</p>' }, seoTitle: null, metaDescription: null, ogImageUrl: null, contactEmail: null, contactPhone: null }).expect(200);
+    expect(await prisma.cmsPage.findUniqueOrThrow({ where: { slug } })).toMatchObject({ status: 'DRAFT', title: 'Draft page' });
     await http.post(`/api/admin/cms/pages/${slug}/unpublish`).set('authorization', `Bearer ${admin}`).expect(201);
     await http.get(`/api/cms/pages/${slug}`).expect(404);
-    await prisma.cmsPage.update({ where: { slug }, data: { title: existing.title, content: JSON.parse(JSON.stringify(existing.content)) as object, seoTitle: existing.seoTitle, metaDescription: existing.metaDescription, ogImageUrl: existing.ogImageUrl, contactEmail: existing.contactEmail, contactPhone: existing.contactPhone, status: existing.status } });
+    await prisma.cmsPage.update({ where: { slug }, data: { title: existing.title, content: JSON.parse(JSON.stringify(existing.content)) as object, seoTitle: existing.seoTitle, metaDescription: existing.metaDescription, ogImageUrl: existing.ogImageUrl, contactEmail: existing.contactEmail, contactPhone: existing.contactPhone, status: existing.status, draftTitle: existing.draftTitle, draftContent: existing.draftContent ?? undefined, draftSeoTitle: existing.draftSeoTitle, draftMetaDescription: existing.draftMetaDescription, draftOgImageUrl: existing.draftOgImageUrl, draftContactEmail: existing.draftContactEmail, draftContactPhone: existing.draftContactPhone } });
   });
 });
