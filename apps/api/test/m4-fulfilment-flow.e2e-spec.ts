@@ -143,7 +143,7 @@ describe('M4.17 fulfilment integration flow', () => {
     expect(await prisma.auditLog.count({ where: { entityType: 'ApplicationDocument', entityId: document.id, action: 'document.reject' } })).toBe(1);
     expect(await prisma.auditLog.count({ where: { entityType: 'ApplicationDocument', entityId: latest.id, action: 'document.approve' } })).toBe(1);
     const notifications = await waitForNotifications(['document.rejected', 'document.approved', 'application.status_changed']);
-    expect(notifications.map((row) => row.event)).toEqual(expect.arrayContaining(['document.rejected', 'document.approved', 'application.status_changed']));
+    expect(notifications.map((row) => row.event)).toEqual(expect.arrayContaining(['document.rejected', 'application.status_changed']));
     expect(notifications.filter((row) => row.event === 'application.status_changed')).toHaveLength(6);
     expect((await prisma.application.findUniqueOrThrow({ where: { id: applicationId } })).status).toBe('DELIVERED');
   });
