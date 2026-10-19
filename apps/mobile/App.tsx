@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Sentry from '@sentry/react-native';
 import appConfig from './app.json';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { createNavigationContainerRef, NavigationContainer } from '@react-navigation/native';
+import { createNavigationContainerRef, NavigationContainer, type LinkingOptions } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import { AuthProvider } from './src/auth/auth-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
@@ -42,6 +42,10 @@ Sentry.init({
 });
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['biznexa://'],
+  config: { screens: { BuyFlow: 'apply/:slug/:applicationId/:initialStep?', ServiceDetail: 'services/:slug' } },
+};
 let pendingDestination: ReturnType<typeof notificationDestination> | null = null;
 
 function VersionGate({ children }: { children: React.ReactNode }) {
@@ -80,6 +84,7 @@ function navigateToNotification(data: Record<string, unknown>) {
   }
   switch (destination.screen) {
     case 'ApplicationDetail': navigationRef.navigate('ApplicationDetail', destination.params); break;
+    case 'BuyFlow': navigationRef.navigate('BuyFlow', destination.params); break;
     case 'Documents': navigationRef.navigate('Documents'); break;
     case 'Payments': navigationRef.navigate('Payments'); break;
     case 'Certificates': navigationRef.navigate('Certificates'); break;
@@ -115,6 +120,7 @@ export function App() {
     pendingDestination = null;
     switch (destination.screen) {
       case 'ApplicationDetail': navigationRef.navigate('ApplicationDetail', destination.params); break;
+      case 'BuyFlow': navigationRef.navigate('BuyFlow', destination.params); break;
       case 'Documents': navigationRef.navigate('Documents'); break;
       case 'Payments': navigationRef.navigate('Payments'); break;
       case 'Certificates': navigationRef.navigate('Certificates'); break;
@@ -125,7 +131,7 @@ export function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer ref={navigationRef} onReady={onNavigationReady}>
+        <NavigationContainer ref={navigationRef} linking={linking} onReady={onNavigationReady}>
           <StatusBar style="dark" />
           <VersionGate><RootNavigator /></VersionGate>
         </NavigationContainer>

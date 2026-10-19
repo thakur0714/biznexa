@@ -41,7 +41,7 @@ export function ServiceDetailScreen({ route, navigation }: ServiceDetailScreenPr
         params: { path: { slug } },
       });
       if (res.data) {
-        const data = res.data as unknown as ServiceDetail;
+        const data = res.data as ServiceDetail;
         setService(data);
         const popularPkg = data.packages?.find((p) => p.isMostPopular);
         setSelectedPackageId(popularPkg ? popularPkg.id : data.packages?.[0]?.id ?? null);
@@ -247,8 +247,8 @@ export function ServiceDetailScreen({ route, navigation }: ServiceDetailScreenPr
             if (!user) {
               navigation.navigate('AuthModal');
             } else {
-              // Inform user
-              alert(`Ready to start ${service.name} (${selectedPkg?.name})`);
+              if (!selectedPkg) return;
+              navigation.navigate('BuyFlow', { slug: service.slug, packageId: selectedPkg.id });
             }
           }}
         />

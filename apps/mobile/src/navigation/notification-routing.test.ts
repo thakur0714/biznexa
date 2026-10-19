@@ -11,6 +11,12 @@ describe('notification deep links', () => {
     expect(notificationDestination('/dashboard/applications/app-6', 'document.requested')).toEqual({ screen: 'ApplicationDetail', params: { applicationId: 'app-6', initialTab: 'documents' } });
   });
 
+  it('routes native application-flow links to the matching step', () => {
+    expect(notificationDestination('/apply/fssai-registration/123')).toEqual({ screen: 'BuyFlow', params: { slug: 'fssai-registration', applicationId: '123', initialStep: 'form' } });
+    expect(notificationDestination('https://biznexa.test/apply/gst-registration/456/documents')).toEqual({ screen: 'BuyFlow', params: { slug: 'gst-registration', applicationId: '456', initialStep: 'documents' } });
+    expect(notificationDestination('/apply/gst-registration/456/payment')).toEqual({ screen: 'BuyFlow', params: { slug: 'gst-registration', applicationId: '456', initialStep: 'payment' } });
+  });
+
   it('routes general documents, payments, and certificates links', () => {
     expect(notificationDestination('/dashboard/documents')).toEqual({ screen: 'Documents', params: undefined });
     expect(notificationDestination('/dashboard/payments')).toEqual({ screen: 'Payments', params: undefined });
