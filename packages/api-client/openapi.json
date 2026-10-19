@@ -11089,6 +11089,76 @@
         ]
       }
     },
+    "/api/admin/settings/mobile-version": {
+      "get": {
+        "operationId": "AdminSettingsController_mobileVersion",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileVersion"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · settings"
+        ]
+      },
+      "put": {
+        "operationId": "AdminSettingsController_updateMobileVersion",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "minSupportedVersion": {
+                    "type": "string",
+                    "pattern": "^\\d+(\\.\\d+){0,2}$"
+                  }
+                },
+                "required": [
+                  "minSupportedVersion"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MobileVersion"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · settings"
+        ]
+      }
+    },
     "/api/payments": {
       "get": {
         "operationId": "PaymentsController_list",
@@ -32676,6 +32746,24 @@
         },
         "required": [
           "presets",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "MobileVersion": {
+        "type": "object",
+        "properties": {
+          "minSupportedVersion": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "minSupportedVersion",
           "updatedAt"
         ],
         "additionalProperties": false

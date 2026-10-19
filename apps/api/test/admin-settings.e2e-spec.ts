@@ -9,7 +9,7 @@
 import { Test } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { SELLER_SETTING_KEYS, REJECTION_PRESETS_KEY, gstinCheckChar, sellerSettingsSchema, rejectionPresetsSchema, stateName, type SellerSettings, type RejectionPresets } from '@biznexa/types';
+import { SELLER_SETTING_KEYS, REJECTION_PRESETS_KEY, MOBILE_VERSION_KEY, gstinCheckChar, sellerSettingsSchema, rejectionPresetsSchema, stateName, type SellerSettings, type RejectionPresets } from '@biznexa/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -22,6 +22,8 @@ let admin: string;
 let ops: string;
 let adminId: string;
 let original: { key: string; value: unknown }[];
+// mobile.minSupportedVersion is a seeded row that app.e2e also reads: restore it, never delete it.
+let originalMobileVersion: { value: unknown } | null;
 
 const run = `${Date.now().toString().slice(-7)}${Math.floor(Math.random() * 100)}`;
 const email = (n: number) => `e2e-st-${run}-${n}@example.com`;
@@ -50,10 +52,51 @@ beforeAll(async () => {
   http = request(app.getHttpServer()) as unknown as ReturnType<typeof request>;
   prisma = app.get(PrismaService);
   await prisma.setting.deleteMany({ where: { key: REJECTION_PRESETS_KEY } });
+  originalMobileVersion = await prisma.setting.findUnique({ where: { key: MOBILE_VERSION_KEY }, select: { value: true } });
   original = await prisma.setting.findMany({ where: { key: { in: KEYS } }, select: { key: true, value: true } });
   admin = (await staffSession(http, prisma, 'ADMIN', email(1))).accessToken;
   ops = (await staffSession(http, prisma, 'OPERATIONS', email(2))).accessToken;
   adminId = (await prisma.user.findUniqueOrThrow({ where: { email: email(1) } })).id;
+});
+
+describe('mobile version (M3.14)', () => {
+  const getVersion = (token: string) => http.get('/api/admin/settings/mobile-version').set(as(token));
+  const putVersion = (body: unknown, token: string) => http.put('/api/admin/settings/mobile-version').set(as(token)).send(body as object);
+
+  it('allows GET/PUT for settings.manage, refuses others', async () => {
+    // ops has documents.review but not settings.manage
+    await getVersion(ops).expect(403);
+    await putVersion({ minSupportedVersion: '1.2.3' }, ops).expect(403);
+  });
+
+  it('admin GET/PUT ok, writes an audit log', async () => {
+    const version = '2.7.0'; // not 1.4.0: app.e2e writes that, and an unchanged value writes no audit row
+    const res = await putVersion({ minSupportedVersion: version }, admin).expect(200);
+    expect(res.body.minSupportedVersion).toBe(version);
+
+    expect((await getVersion(admin).expect(200)).body.minSupportedVersion).toBe(version);
+
+    // Audit logs are stored via event bus. Wait for it.
+    await new Promise((r) => setTimeout(r, 200));
+
+    const log = await prisma.auditLog.findFirst({
+      where: { actorId: adminId, action: 'settings.mobile-version.update' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(log).not.toBeNull();
+    expect(log?.after).toEqual({ minSupportedVersion: version });
+  });
+
+  it('refuses invalid versions', async () => {
+    await putVersion({ minSupportedVersion: 'invalid' }, admin).expect(400);
+    await putVersion({ minSupportedVersion: '1.2.3.4' }, admin).expect(400);
+    await putVersion({ minSupportedVersion: '' }, admin).expect(400);
+  });
+
+  it('customer and support cannot access', async () => {
+    await http.get('/api/admin/settings/mobile-version').expect(401);
+    await http.put('/api/admin/settings/mobile-version').send({ minSupportedVersion: '1.2.0' }).expect(401);
+  });
 });
 
 afterAll(async () => {
@@ -61,6 +104,8 @@ afterAll(async () => {
   await prisma.setting.deleteMany({ where: { key: { in: [...KEYS.filter((k) => !kept.has(k)), REJECTION_PRESETS_KEY] } } });
   for (const [key, value] of kept) await prisma.setting.upsert({ where: { key }, update: { value: value as object }, create: { key, value: value as object } });
   await prisma.setting.deleteMany({ where: { key: REJECTION_PRESETS_KEY } });
+  if (originalMobileVersion) await prisma.setting.update({ where: { key: MOBILE_VERSION_KEY }, data: { value: originalMobileVersion.value as string } });
+  else await prisma.setting.deleteMany({ where: { key: MOBILE_VERSION_KEY } });
   await prisma.auditLog.deleteMany({ where: { actorId: adminId } });
   await prisma.user.deleteMany({ where: { email: { startsWith: `e2e-st-${run}` } } });
   await app.close();
@@ -158,7 +203,6 @@ describe('rejection presets (M4.9)', () => {
       where: { actorId: adminId, action: 'settings.rejection-presets.update' },
       orderBy: { createdAt: 'desc' },
     });
-    const allLogs = await prisma.auditLog.findMany(); console.log('ALL LOGS:', allLogs.filter(l => l.action.includes('settings.rejection-presets.update')));
     expect(log).not.toBeNull();
     expect(log?.after).toEqual({ presets });
   });
