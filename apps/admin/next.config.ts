@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { withSentryConfig } from '@sentry/nextjs/config';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:4000';
 
@@ -29,4 +30,4 @@ const config: NextConfig = {
   },
 };
 
-export default config;
+export default withSentryConfig(config, { silent: true, sourcemaps: { disable: true } });

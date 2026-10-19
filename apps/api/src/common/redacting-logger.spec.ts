@@ -29,6 +29,13 @@ describe('log redaction (M12.2)', () => {
     expect(out.err.stack).not.toContain('9876543210');
   });
 
+  it('removes email and mobile PII before a value can be logged or reported', () => {
+    expect(redact({ message: 'Failed for asha.rao@example.com', mobile: '9876543210' })).toEqual({
+      message: 'Failed for [email]',
+      mobile: '[redacted]',
+    });
+  });
+
   it('copes with circular objects', () => {
     const a: Record<string, unknown> = { name: 'x' };
     a.self = a;
