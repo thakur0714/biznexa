@@ -514,6 +514,7 @@ export class CatalogueService implements OnModuleInit {
       }
     });
     await this.audit.log({ actorId, action: 'service.documents.update', entityType: 'Service', entityId: serviceId, before: before.documents, after: items });
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return this.adminGetService(serviceId);
   }
 
@@ -534,6 +535,7 @@ export class CatalogueService implements OnModuleInit {
       }
     });
     await this.audit.log({ actorId, action: 'service.stages.update', entityType: 'Service', entityId: serviceId, before: before.stages, after: items });
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return this.adminGetService(serviceId);
   }
 
@@ -544,6 +546,7 @@ export class CatalogueService implements OnModuleInit {
       this.prisma.serviceFAQ.createMany({ data: items.map((f, i) => ({ ...f, serviceId, sortOrder: i })) }),
     ]);
     await this.audit.log({ actorId, action: 'service.faqs.update', entityType: 'Service', entityId: serviceId, before: before.faqs, after: items });
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return this.adminGetService(serviceId);
   }
 
@@ -562,6 +565,7 @@ export class CatalogueService implements OnModuleInit {
       before: before.related.map((r) => r.toId),
       after: ids,
     });
+    await this.events.emit('catalogue.changed', { entityType: 'service' });
     return this.adminGetService(serviceId);
   }
 }
