@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BOOKING_CHANGE_WINDOW_HOURS, addDays, formatDate, formatINR, istDate, type BookingView, type PublicConsultantSlots } from '@biznexa/types';
 import { useApi } from '@biznexa/api-client/react';
-import { Badge, Button, EmptyState, Notice } from '@biznexa/ui';
+import { Badge, Button, Dialog, EmptyState, Notice } from '@biznexa/ui';
 
 type Tab = 'UPCOMING' | 'PAST';
 const CANCEL_WINDOW = BOOKING_CHANGE_WINDOW_HOURS * 60 * 60 * 1000;
@@ -24,6 +24,8 @@ export function ConsultationsView() {
   const [rescheduling, setRescheduling] = useState<string | null>(null);
   const [slots, setSlots] = useState<PublicConsultantSlots['slots']>([]);
   const [slotValue, setSlotValue] = useState('');
+  const [cancelDialogBooking, setCancelDialogBooking] = useState<BookingView | null>(null);
+  const [cancelError, setCancelError] = useState('');
 
   const refresh = useCallback(async () => {
     try {
@@ -61,14 +63,21 @@ export function ConsultationsView() {
     });
   }, [bookings, tab, now]);
 
-  async function cancel(booking: BookingView) {
-    setBusyId(booking.id);
-    setError('');
+  function cancel(booking: BookingView) {
+    setCancelError('');
+    setCancelDialogBooking(booking);
+  }
+
+  async function confirmCancel() {
+    if (!cancelDialogBooking) return;
+    setBusyId(cancelDialogBooking.id);
+    setCancelError('');
     try {
-      await api.call((client) => client.POST('/api/bookings/{id}/cancel', { params: { path: { id: booking.id } }, body: {} }));
+      await api.call((client) => client.POST('/api/bookings/{id}/cancel', { params: { path: { id: cancelDialogBooking.id } }, body: {} }));
+      setCancelDialogBooking(null);
       await refresh();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not cancel this consultation.');
+      setCancelError(cause instanceof Error ? cause.message : 'Could not cancel this consultation.');
     } finally { setBusyId(null); }
   }
 
@@ -138,6 +147,19 @@ export function ConsultationsView() {
           </div>}
         </article>;
       })}</div>}
+      <Dialog
+        open={!!cancelDialogBooking}
+        onClose={() => { if (busyId !== cancelDialogBooking?.id) setCancelDialogBooking(null); }}
+        title="Cancel consultation?"
+        description={cancelDialogBooking ? `${cancelDialogBooking.consultant.name} · ${formatDate(cancelDialogBooking.startAt)} · ${new Date(cancelDialogBooking.startAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' })} IST` : ''}
+        footer={<>
+          <Button type="button" variant="outline" onClick={() => setCancelDialogBooking(null)} disabled={busyId === cancelDialogBooking?.id}>Keep booking</Button>
+          <Button type="button" className="bg-danger text-white hover:bg-danger/90" onClick={() => void confirmCancel()} disabled={busyId === cancelDialogBooking?.id}>{busyId === cancelDialogBooking?.id ? 'Cancelling...' : 'Cancel consultation'}</Button>
+        </>}
+      >
+        {cancelError && <div className="mb-4"><Notice tone="error">{cancelError}</Notice></div>}
+        <p className="text-sm text-muted">The booking fee is not refunded automatically.</p>
+      </Dialog>
     </main>
   );
 }
