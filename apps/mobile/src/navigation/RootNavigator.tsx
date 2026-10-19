@@ -9,6 +9,8 @@ import { CertificatesScreen } from '../screens/CertificatesScreen';
 import { QrScannerScreen } from '../screens/QrScannerScreen';
 import { AuthModalScreen } from '../screens/AuthModalScreen';
 import { BiometricLockScreen } from '../screens/BiometricLockScreen';
+import { SupportScreen } from '../screens/SupportScreen';
+import { ConsultationsScreen } from '../screens/ConsultationsScreen';
 import { useAuth } from '../auth/auth-context';
 import { colors } from '../theme';
 
@@ -24,6 +26,8 @@ export type RootStackParamList = {
   Certificates: { initialTab?: 'my' | 'verify'; scannedNumber?: string } | undefined;
   QrScanner: { onScan?: (certNumber: string) => void } | undefined;
   AuthModal: undefined;
+  Support: { ticketId?: string } | undefined;
+  Consultations: { bookingId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -103,6 +107,8 @@ export function RootNavigator() {
           presentation: 'modal',
         }}
       />
+      <Stack.Screen name="Support" component={SupportScreen} options={{ title: 'Support' }} />
+      <Stack.Screen name="Consultations" component={ConsultationsScreen} options={{ title: 'Consultations' }} />
     </Stack.Navigator>
   );
 }

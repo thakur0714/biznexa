@@ -427,7 +427,9 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
 - [x] **M11.8 — Notifications (FCM) with deep links** `[Sonnet]` to each screen.
   - *Done 19-Oct-2026:* Added Expo notifications and post-login permission/token registration; existing granted sessions refresh/register tokens, token changes re-register, and logout unregisters. Notification responses route to application detail, documents, payments, certificates or messages; unknown links open Home. Cold-start, background and foreground tap/presentation handling is wired through the navigation container. Removed the `device-tokens/*` aliases, retained only `devices/*`, updated callers/tests, and regenerated OpenAPI/client. Tests: mobile route mapping 3 tests; full API suite covers alias removal.
   - *Follow-ups:* Real FCM delivery on a physical device/Firebase project was not tested; configure production push credentials and verify token delivery before release.
-- [ ] **M11.9 — Support tickets + consultation booking/join.** `[Sonnet]`
+- [x] **M11.9 — Support tickets + consultation booking/join.** `[Sonnet]`
+  - *Done 19-Oct-2026 (Codex cx-15):* Mobile adds customer ticket list/create/thread with attachments via the existing upload and ticket-message APIs, consultant directory and slot selection, web checkout handoff, booking list/join, and server-enforced cancel/reschedule actions. Support/ticket and consultation deep links route into native screens.
+  - *Follow-ups:* checkout continues in the web booking flow until native Razorpay (M11.4); booking changes are offered for confirmed bookings and the API enforces `BOOKING_CHANGE_WINDOW_HOURS`. API e2e verification depends on a local DB whose migrations match the checked-in schema.
 - [ ] **M11.10 — Offline cache, force-update check, crash reporting (Sentry).** `[Sonnet]`
 - [ ] **M11.11 — Builds:** `[Sonnet]` Android AAB/APK, iOS TestFlight via EAS. CHANGELOG.
 

@@ -29,8 +29,7 @@ describe('Admin announcements (e2e)', () => {
     await prisma.user.update({ where: { id: customerId }, data: { notificationPrefs: { marketingOptOut: true, channelPreferences: {} } } });
   });
   afterAll(async () => {
-    if (customerId) await prisma.notificationDelivery.deleteMany({ where: { sourceKey: { startsWith: 'announcement-test-' } } });
-    await prisma.user.deleteMany({ where: { email: { in: [adminEmail, opsEmail, `announce-customer-${stamp}@example.com`] } } });
+    if (prisma) await prisma.user.deleteMany({ where: { email: { in: [adminEmail, opsEmail, `announce-customer-${stamp}@example.com`] } } });
     await app?.close();
   });
 

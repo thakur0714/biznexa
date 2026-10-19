@@ -73,6 +73,7 @@ export class TicketsService {
       createdAt: Date;
       readAt: Date | null;
       sender: { id: string; name: string };
+      messageAttachments?: { fileId: string; file: { originalName: string; mimeType: string; sizeBytes: number } }[];
     },
     customerId: string,
   ): Message {
@@ -86,6 +87,7 @@ export class TicketsService {
       },
       createdAt: m.createdAt.toISOString(),
       readAt: m.readAt ? m.readAt.toISOString() : null,
+      attachments: m.messageAttachments?.map((a) => ({ id: a.fileId, fileName: a.file.originalName, mimeType: a.file.mimeType, sizeBytes: a.file.sizeBytes })) ?? [],
     };
   }
 
@@ -102,7 +104,7 @@ export class TicketsService {
         where,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: limit,
-        include: { sender: { select: { id: true, name: true } } },
+        include: { sender: { select: { id: true, name: true } }, messageAttachments: { select: { fileId: true, file: { select: { originalName: true, mimeType: true, sizeBytes: true } } } } },
       }),
       db.message.count({ where }),
     ]);
@@ -309,13 +311,22 @@ export class TicketsService {
       }
 
       const conv = await this.ensureConversation(tx, ticket.id);
+      const fileIds = input.fileIds ?? [];
+      if (fileIds.length) {
+        const files = await tx.storedFile.findMany({ where: { id: { in: fileIds }, ownerId: customerId }, select: { id: true, scanStatus: true } });
+        if (files.length !== fileIds.length) throw new BadRequestException('One or more attachments are unavailable.');
+        if (files.some((file) => file.scanStatus === 'INFECTED')) throw new BadRequestException('One or more attachments are unavailable.');
+        const attached = await tx.messageAttachment.findMany({ where: { fileId: { in: fileIds } }, select: { fileId: true } });
+        if (attached.length) throw new BadRequestException('One or more files are already attached to another message.');
+      }
       const createdMsg = await tx.message.create({
         data: {
           conversationId: conv.id,
           senderId: customerId,
           body: input.body,
+          messageAttachments: { create: fileIds.map((fileId) => ({ fileId })) },
         },
-        include: { sender: { select: { id: true, name: true } } },
+        include: { sender: { select: { id: true, name: true } }, messageAttachments: { select: { fileId: true, file: { select: { originalName: true, mimeType: true, sizeBytes: true } } } } },
       });
 
       return { msg: createdMsg, updatedTicket: t };

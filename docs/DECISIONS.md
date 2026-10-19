@@ -89,3 +89,6 @@ Customers may cancel or reschedule a confirmed consultation until 24 hours befor
 
 **D63: Manual announcements use queue deliveries as their campaign record (19-Oct-2026)**
 An announcement is represented by one generated `sourceKey` shared by all recipient/channel `NotificationDelivery` rows, with event `announcement.sent` and category `MARKETING`. Counts exclude opted-out customers; the dispatcher checks preferences again at delivery time to cover preference changes after queueing. SMS is enabled only with an active DLT-backed announcement template. The existing delivery log is the delivery-statistics source, avoiding a second campaign/delivery table.
+
+**D64: Ticket attachments use the existing customer message route (19-Oct-2026)**
+Mobile ticket attachments are uploaded through the existing files API and attached as `fileIds` on `POST /api/tickets/:id/messages`, with owner and scan-status checks copied from the established application-message flow. This avoids a separate upload-to-ticket endpoint and keeps attachments in the existing conversation model.
