@@ -93,8 +93,9 @@ export class AuthService {
       },
     });
     const otp = await this.otp.issue('MOBILE', dto.mobile, 'VERIFY_MOBILE', { ip: meta.ip });
+    const emailOtp = dto.email ? await this.otp.issue('EMAIL', dto.email.toLowerCase(), 'VERIFY_EMAIL', { ip: meta.ip }) : undefined;
     const session = await this.session(user, meta);
-    return { ...session, otp };
+    return { ...session, otp, ...(emailOtp ? { emailOtp } : {}) };
   }
 
   async login(email: string, password: string, meta: SessionMeta) {
@@ -112,13 +113,33 @@ export class AuthService {
   }
 
   async requestOtp(channel: OtpChannel, target: string, purpose: OtpPurpose, ip?: string) {
+    if (purpose === 'VERIFY_EMAIL') throw new BadRequestException('Use the signed-in email verification flow.');
     const user = await this.findByTarget(channel, target);
     // Same response whether or not the account exists (no account enumeration).
     const result = await this.otp.issue(channel, target, purpose, { ip, deliver: !!user });
     return { message: 'If this account exists, a code has been sent.', ...result };
   }
 
+  async requestEmailVerification(userId: string, ip?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, emailVerified: true } });
+    if (!user?.email) throw new BadRequestException('Add an email address before verifying it.');
+    if (user.emailVerified) throw new BadRequestException('This email address is already verified.');
+    return this.otp.issue('EMAIL', user.email, 'VERIFY_EMAIL', { ip });
+  }
+
+  async confirmEmailVerification(userId: string, code: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, emailVerified: true } });
+    if (!user?.email) throw new BadRequestException('Add an email address before verifying it.');
+    if (user.emailVerified) return { emailVerified: true };
+    await this.otp.verify(user.email, 'VERIFY_EMAIL', code);
+    const { count } = await this.prisma.user.updateMany({ where: { id: userId, email: user.email, emailVerified: false }, data: { emailVerified: true } });
+    if (!count) throw new BadRequestException('Your email address changed. Request a new verification code.');
+    await this.audit.log({ actorId: userId, action: 'user.email_verified', entityType: 'User', entityId: userId });
+    return { emailVerified: true };
+  }
+
   async verifyOtp(channel: OtpChannel, target: string, purpose: OtpPurpose, code: string, meta: SessionMeta) {
+    if (purpose === 'VERIFY_EMAIL') throw new BadRequestException('Use the signed-in email verification flow.');
     await this.otp.verify(target, purpose, code);
     const user = await this.findByTarget(channel, target);
     if (!user) throw new BadRequestException('This code has expired. Please request a new one.');
@@ -129,9 +150,12 @@ export class AuthService {
     // Pre-hijacking (M12.1), as for Google: an OTP login proves who owns a mobile/email the account never
     // verified, so whoever registered with it loses the password and every session.
     const takeover = purpose === 'LOGIN' && !(channel === 'MOBILE' ? user.mobileVerified : user.emailVerified);
+    const verification = purpose === 'LOGIN'
+      ? (channel === 'MOBILE' ? { mobileVerified: true } : { emailVerified: true })
+      : purpose === 'VERIFY_MOBILE' && channel === 'MOBILE' ? { mobileVerified: true } : {};
     const verified = await this.prisma.user.update({
       where: { id: user.id },
-      data: { ...(channel === 'MOBILE' ? { mobileVerified: true } : { emailVerified: true }), ...(takeover ? { passwordHash: null } : {}) },
+      data: { ...verification, ...(takeover ? { passwordHash: null } : {}) },
     });
     if (takeover) {
       await this.tokens.revokeAll(user.id);
@@ -249,6 +273,7 @@ export class AuthService {
       });
 
     await this.audit.log({ actorId: userId, action: 'user.profile_update', entityType: 'User', entityId: userId });
+    if (emailChanged && updated.email) await this.otp.issue('EMAIL', updated.email, 'VERIFY_EMAIL');
     const { roles, permissions } = await this.tokens.rolesAndPermissions(userId);
     return this.publicUser(updated, roles, permissions, twoFactorPending && requiresTwoFactor(permissions));
   }

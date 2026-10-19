@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Patch, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
@@ -156,6 +156,26 @@ export class AuthController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.auth.updateProfile(user.id, body, user.twoFactorPending);
+  }
+
+  @ApiBearerAuth()
+  @ApiOkResponse({ schema: { type: 'object', properties: { expiresIn: { type: 'number' }, resendAfter: { type: 'number' }, devCode: { type: 'string' } }, required: ['expiresIn', 'resendAfter'] } })
+  @Throttle(OTP_LIMIT)
+  @HttpCode(200)
+  @Post('email/verify/request')
+  @SignedIn()
+  requestEmailVerification(@CurrentUser() user: AuthUser, @Req() req: Request) {
+    return this.auth.requestEmailVerification(user.id, req.ip);
+  }
+
+  @ApiBearerAuth()
+  @ApiOkResponse({ schema: { type: 'object', properties: { emailVerified: { type: 'boolean' } }, required: ['emailVerified'] } })
+  @Throttle(OTP_LIMIT)
+  @HttpCode(200)
+  @Post('email/verify/confirm')
+  @SignedIn()
+  confirmEmailVerification(@ZodBody(z.object({ code: z.string().regex(/^\d{6}$/) })) body: { code: string }, @CurrentUser() user: AuthUser) {
+    return this.auth.confirmEmailVerification(user.id, body.code);
   }
 
   @ApiBearerAuth()

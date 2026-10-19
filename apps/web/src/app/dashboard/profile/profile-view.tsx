@@ -7,6 +7,7 @@ import { Badge, Button, Checkbox, Dialog, Field, Notice } from '@biznexa/ui';
 import { Icon } from '@/components/icons';
 import { useAuth } from '@/lib/auth';
 import { useApi } from '@biznexa/api-client/react';
+import { EmailVerificationDialog } from '@/components/email-verification-dialog';
 
 const CHANNELS: readonly { id: NotificationChannel; label: string; desc: string }[] = [
   { id: 'EMAIL', label: 'Email', desc: 'Statements, invoices, and service updates' },
@@ -55,6 +56,7 @@ export function CustomerProfileView() {
   const [logoutAllOpen, setLogoutAllOpen] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
   const [logoutAllError, setLogoutAllError] = useState<string | null>(null);
+  const [verifyEmailOpen, setVerifyEmailOpen] = useState(false);
 
   // Load preferences
   useEffect(() => {
@@ -280,6 +282,7 @@ export function CustomerProfileView() {
                 <Badge tone={user?.emailVerified ? 'success' : 'warning'}>
                   {user?.emailVerified ? 'Email Verified' : 'Email Unverified'}
                 </Badge>
+                {!user?.emailVerified && user?.email && <Button type="button" size="sm" variant="outline" onClick={() => setVerifyEmailOpen(true)}>Verify email</Button>}
                 {user?.mobile && (
                   <Badge tone={user?.mobileVerified ? 'success' : 'neutral'}>
                     {user?.mobileVerified ? 'Mobile Verified' : 'Mobile Pending'}
@@ -477,6 +480,7 @@ export function CustomerProfileView() {
           Are you sure you want to proceed? Any unsaved work in other sessions may be lost.
         </p>
       </Dialog>
+      <EmailVerificationDialog open={verifyEmailOpen} onClose={() => setVerifyEmailOpen(false)} />
     </div>
   );
 }
