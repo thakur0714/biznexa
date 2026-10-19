@@ -18,6 +18,7 @@ import { formatDate } from '@biznexa/types';
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';
+import { fetchCachedList } from '../api/offline-cache';
 
 interface MyServicesScreenProps {
   navigation: {
@@ -88,6 +89,7 @@ export function MyServicesScreen({ navigation }: MyServicesScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
 
   const fetchApplications = useCallback(
     async (tab: CustomerApplicationTab, refresh = false) => {
@@ -105,17 +107,13 @@ export function MyServicesScreen({ navigation }: MyServicesScreenProps) {
       setError(null);
 
       try {
-        const res = await api.GET('/api/applications', {
-          params: {
-            query: { tab },
-          },
+        const result = await fetchCachedList(`applications:${user.id}:${tab}`, async () => {
+          const res = await api.GET('/api/applications', { params: { query: { tab } } });
+          if (!res.data) throw new Error('Failed to load your applications');
+          return res.data;
         });
-
-        if (res.data) {
-          setData(res.data);
-        } else {
-          setError('Failed to load your applications');
-        }
+        setData(result.data);
+        setOffline(result.offline);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Network error occurred');
       } finally {
@@ -198,6 +196,7 @@ export function MyServicesScreen({ navigation }: MyServicesScreenProps) {
           data={data?.items ?? []}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          ListHeaderComponent={offline ? <Text style={{ backgroundColor: '#fff1c2', color: colors.night, padding: spacing.sm, textAlign: 'center', fontWeight: '600' }}>Offline · showing your last loaded applications</Text> : null}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
