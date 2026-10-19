@@ -10,7 +10,7 @@ import type { ApplicationStatus, BookingLifecycleStatus, CertificateStatus } fro
 import type { FileScanStatus } from './uploads';
 
 export interface DomainEventPayloads {
-  'blog.post_changed': { postId: string };
+  'blog.post_changed': { postId: string; slug: string; previousSlug?: string };
   'application.status_changed': {
     applicationId: string;
     from: ApplicationStatus;

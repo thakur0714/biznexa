@@ -104,7 +104,7 @@ describe('Public blog pages API', () => {
     const before = await http.get('/api/catalogue/search').query({ q: 'cachepublished' }).expect(200);
     expect(before.body.posts).not.toContainEqual(expect.objectContaining({ slug }));
     await prisma.blogPost.update({ where: { id: draft.id }, data: { status: 'PUBLISHED', publishedAt: new Date() } });
-    await app.get(EventBus).emit('blog.post_changed', { postId: draft.id });
+    await app.get(EventBus).emit('blog.post_changed', { postId: draft.id, slug: draft.slug });
     const after = await http.get('/api/catalogue/search').query({ q: 'cachepublished' }).expect(200);
     expect(after.body.posts).toContainEqual(expect.objectContaining({ type: 'post', slug }));
     await prisma.blogPost.delete({ where: { id: draft.id } });
