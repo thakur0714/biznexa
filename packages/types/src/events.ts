@@ -11,6 +11,8 @@ import type { FileScanStatus } from './uploads';
 
 export interface DomainEventPayloads {
   'blog.post_changed': { postId: string; slug: string; previousSlug?: string };
+  'blog.taxonomy_changed': { entityType: 'category' | 'tag'; operation: 'created' | 'updated' | 'deleted' };
+  'catalogue.changed': { entityType: 'category' | 'subcategory' | 'service' | 'homepage' };
   'application.status_changed': {
     applicationId: string;
     from: ApplicationStatus;

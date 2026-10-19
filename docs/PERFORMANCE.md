@@ -31,6 +31,12 @@ The code review found one dashboard N+1 path that the seeded demo customer could
 
 The seed customer has no applications, so the load run does not quantify dashboard latency with a non-empty checklist. The test fixtures exercise the batch path and its data equivalence.
 
+## Public response caching — 19 Oct 2026
+
+Added bounded, request-coalescing in-memory caches for public catalogue categories, service lists, popular services and service detail (60-second TTL), plus published blog lists, taxonomies and post detail (300-second TTL). Successful writes publish `catalogue.changed`, `blog.post_changed` or `blog.taxonomy_changed` after the write and audit; these events evict the corresponding public caches. The homepage CMS update emits the catalogue event because it can change the configured popular-service list. Errors and not-found responses are not cached. No per-user or staff responses are cached.
+
+The web app already uses Next revalidation for catalogue and blog fetches. These API caches also cover mobile and direct API consumers. The cache is process-local: each API instance invalidates its own entries, and the TTL bounds staleness across instances. The public-blog and catalogue-cache integration suites passed (8 tests), including cache-hit query counts and refresh after domain events.
+
 Run the API baseline with the local API and seeded customer available:
 
 ```sh
