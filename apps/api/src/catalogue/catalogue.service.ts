@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { calculatePrice, type AdminCategoryRow, type AdminServiceDetail, type AdminServiceRow } from '@biznexa/types';
 import { z } from 'zod';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { Prisma } from '../generated/prisma/client';
 import { rank } from './search';
+import { EventBus } from '../events/event-bus';
 import {
   categoryInput,
   CreateServiceInput,
@@ -47,10 +48,14 @@ export type ServiceCard = ReturnType<typeof toCard>;
 const activeService = { isActive: true, deletedAt: null } satisfies Prisma.ServiceWhereInput;
 
 @Injectable()
-export class CatalogueService {
-  private searchCache?: { at: number; docs: (ServiceCard & { extra: string })[] };
+export class CatalogueService implements OnModuleInit {
+  private searchCache?: { at: number; services: (ServiceCard & { type: 'service'; extra: string })[]; posts: { id: string; name: string; slug: string; excerpt: string | null; type: 'post'; popularity: number; extra: string }[] };
 
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly events: EventBus) {}
+
+  onModuleInit() {
+    this.events.on('blog.post_changed', () => this.invalidate());
+  }
 
   // ─────────────── Public ───────────────
 
@@ -168,26 +173,31 @@ export class CatalogueService {
     };
   }
 
-  /** Global search across services and categories; logs zero-result queries for the admin. */
+  /** Global search across services, published blog posts and categories; logs zero-result queries for the admin. */
   async search(query: string) {
     const q = query.trim();
-    if (q.length < 2) return { services: [], categories: [] };
+    if (q.length < 2) return { services: [], posts: [], categories: [] };
 
     if (!this.searchCache || Date.now() - this.searchCache.at > 60_000) {
-      const rows = await this.prisma.service.findMany({ where: activeService, include: cardInclude });
+      const [rows, posts] = await Promise.all([
+        this.prisma.service.findMany({ where: activeService, include: cardInclude }),
+        this.prisma.blogPost.findMany({ where: { status: 'PUBLISHED', publishedAt: { lte: new Date() } }, select: { id: true, title: true, slug: true, excerpt: true, tags: { select: { name: true } }, categories: { select: { category: { select: { name: true } } } } } }),
+      ]);
       this.searchCache = {
         at: Date.now(),
-        docs: rows.map(toCard).map((c) => ({ ...c, extra: `${c.category.name} ${c.subcategory?.name ?? ''} ${c.shortDescription}` })),
+        services: rows.map(toCard).map((c) => ({ ...c, type: 'service' as const, extra: `${c.category.name} ${c.subcategory?.name ?? ''} ${c.shortDescription}` })),
+        posts: posts.map((post) => ({ id: post.id, name: post.title, slug: post.slug, excerpt: post.excerpt, type: 'post' as const, popularity: 0, extra: `${post.excerpt ?? ''} ${post.tags.map((tag) => tag.name).join(' ')} ${post.categories.map(({ category }) => category.name).join(' ')}` })),
       };
     }
-    const services = rank(this.searchCache.docs, q, 8).map(({ extra: _e, ...c }) => c);
+    const services = rank(this.searchCache.services, q, 8).map(({ extra: _e, ...c }) => c);
+    const posts = rank(this.searchCache.posts, q, 8).map(({ id: _id, name: title, extra: _extra, popularity: _popularity, ...post }) => ({ ...post, title }));
     const cats = await this.prisma.category.findMany({ where: { isActive: true }, select: { slug: true, name: true, tagline: true } });
     const categories = rank(cats.map((c) => ({ ...c, id: c.slug, extra: c.tagline ?? '', popularity: 0 })), q, 3).map(({ slug, name }) => ({ slug, name }));
 
-    if (!services.length && !categories.length) {
+    if (!services.length && !posts.length && !categories.length) {
       await this.prisma.searchQuery.create({ data: { query: q.slice(0, 100), resultCount: 0 } });
     }
-    return { services, categories };
+    return { services, posts, categories };
   }
 
   // ─────────────── Admin ───────────────

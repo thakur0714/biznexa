@@ -2143,7 +2143,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogueSearchResponse"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -18086,6 +18093,163 @@
           "secret",
           "otpauthUrl",
           "qrDataUrl"
+        ],
+        "additionalProperties": false
+      },
+      "CatalogueSearchResponse": {
+        "type": "object",
+        "properties": {
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "shortDescription": {
+                  "type": "string"
+                },
+                "icon": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "estimatedTime": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "startingPrice": {
+                  "type": "number",
+                  "nullable": true
+                },
+                "governmentFeeFrom": {
+                  "type": "number"
+                },
+                "popularity": {
+                  "type": "number"
+                },
+                "isPopular": {
+                  "type": "boolean"
+                },
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                "subcategory": {
+                  "type": "object",
+                  "properties": {
+                    "slug": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "slug",
+                    "name"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "service"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "name",
+                "shortDescription",
+                "icon",
+                "estimatedTime",
+                "startingPrice",
+                "governmentFeeFrom",
+                "popularity",
+                "isPopular",
+                "category",
+                "subcategory",
+                "type"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "posts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "post"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "excerpt": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "type",
+                "title",
+                "slug",
+                "excerpt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "slug",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "services",
+          "posts",
+          "categories"
         ],
         "additionalProperties": false
       },

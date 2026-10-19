@@ -385,7 +385,9 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
   - *Part 1 merged 18-Oct-2026 (Jules #59):* admin CRUD API for blog categories and tags.
 - [x] **M9.8 — Blog public pages.** `[Sonnet]` Listing, category/tag pages, detail with JSON-LD, latest posts on homepage, sitemap entries.
   - *Done 19-Oct-2026 (cx-14):* Added published-only API paging (`pageSize` ≤ 50), shared response schemas, category/tag filters and published-post counts; draft/future posts are excluded and unknown filter slugs return 404. The website now has the listing, category/tag and sanitized detail pages with SEO metadata, Article JSON-LD, related/latest links, loading/error/empty states, and the homepage’s 3-post section (hidden when empty). Sitemap includes every published post and public category/tag page. Data revalidates at 5 minutes in production; development skips data caching for live authoring and browser tests. Coverage: 3 API e2e + 2 type tests + Playwright on desktop/mobile.
-- [ ] **M9.9 — Add blog posts to global search** `[Opus]` (decide: extend D6 ranker or move to Meilisearch — record in DECISIONS). Tests + CHANGELOG.
+- [x] **M9.9 — Add blog posts to global search** `[Opus]` (decide: extend D6 ranker or move to Meilisearch — record in DECISIONS). Tests + CHANGELOG.
+  - *Done 19-Oct-2026:* The D6 60-second in-memory index now includes published posts (title, excerpt, tags and categories), excludes drafts/future posts, and clears on blog post changes. Search responses identify service/post types; the web suggestions show posts under Articles linking to `/blog/[slug]`. Services remain the first suggestion group and zero-result logging is unchanged. D66 records why the ranker still fits and when to move to Meilisearch. Tests: 1 shared contract test + 3 API e2e cases; full checks passed.
+  - *Follow-ups:* D66 suggests reconsidering Meilisearch above ~5,000 searchable rows or when managed synonyms/facets/relevance controls are needed.
 
 ---
 

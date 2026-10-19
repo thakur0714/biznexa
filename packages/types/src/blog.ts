@@ -35,6 +35,14 @@ export const publicBlogPostDetailSchema = publicBlogPostSchema.extend({
   content: z.string(), seoTitle: z.string().nullable(), metaDescription: z.string().nullable(),
 });
 export type PublicBlogPostDetail = z.infer<typeof publicBlogPostDetailSchema>;
+export const blogSearchResultSchema = z.object({ type: z.literal('post'), title: z.string(), slug: z.string(), excerpt: z.string().nullable() });
+export const catalogueSearchResponseSchema = z.object({
+  services: z.array(z.object({ id: z.string(), slug: z.string(), name: z.string(), shortDescription: z.string(), icon: z.string().nullable(), estimatedTime: z.string().nullable(), startingPrice: z.number().nullable(), governmentFeeFrom: z.number(), popularity: z.number(), isPopular: z.boolean(), category: z.object({ slug: z.string(), name: z.string() }), subcategory: z.object({ slug: z.string(), name: z.string() }).nullable(), type: z.literal('service') })),
+  posts: z.array(blogSearchResultSchema),
+  categories: z.array(z.object({ slug: z.string(), name: z.string() })),
+});
+export type BlogSearchResult = z.infer<typeof blogSearchResultSchema>;
+export type CatalogueSearchResponse = z.infer<typeof catalogueSearchResponseSchema>;
 export const publicBlogTaxonomySchema = z.object({ id: z.string().uuid(), slug: z.string(), name: z.string(), postCount: z.number().int().positive() });
 export type PublicBlogTaxonomy = z.infer<typeof publicBlogTaxonomySchema>;
 export const publicBlogListQuerySchema = z.object({

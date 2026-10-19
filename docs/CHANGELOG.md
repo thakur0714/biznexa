@@ -1,5 +1,11 @@
 # Changelog
 
+## M9.9 — Blog posts in global search (19-Oct-2026)
+
+- Extended the D6 in-memory search index with published blog post titles, excerpts, tags and category names. Drafts and scheduled future posts stay private; post changes invalidate the 60-second index.
+- Added typed `service` / `post` result contracts and an Articles suggestion group linking to `/blog/[slug]`; service suggestions stay first and zero-result logging remains unchanged.
+- Added D66 for the in-memory ranker trade-off and the threshold for moving to Meilisearch. Tests: shared types 495 passed; API 1,035 passed; admin 205 passed; web production build passed with Webpack.
+
 ## M4.17 — Fulfilment integration E2E (19-Oct-2026)
 
 - Added a run-scoped API integration flow: operations rejects a document, the customer uploads a replacement, operations approves it, advances the application to `IN_PROGRESS`, adds a deliverable and completes delivery.
