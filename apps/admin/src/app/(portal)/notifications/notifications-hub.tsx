@@ -6,6 +6,7 @@ import { PERMS } from '@biznexa/types';
 import { Button } from '@biznexa/ui';
 import { DeliveriesView } from './deliveries-view';
 import { NotificationsView } from './notifications-view';
+import { AnnouncementsView } from './announcements-view';
 
 export function NotificationsHub() {
   const { user } = useAuth();
@@ -13,7 +14,7 @@ export function NotificationsHub() {
   const canViewDeliveries = perms.includes(PERMS.NOTIFICATIONS_VIEW) || perms.includes(PERMS.ADMIN_ACCESS);
   const canManageTemplates = perms.includes(PERMS.SETTINGS_MANAGE) || perms.includes(PERMS.ADMIN_ACCESS);
 
-  const [tab, setTab] = useState<'deliveries' | 'templates'>('deliveries');
+  const [tab, setTab] = useState<'deliveries' | 'templates' | 'announcements'>('deliveries');
 
   if (canManageTemplates && !canViewDeliveries) {
     return <NotificationsView />;
@@ -40,8 +41,11 @@ export function NotificationsHub() {
         >
           Templates
         </Button>
+        <Button variant={tab === 'announcements' ? 'primary' : 'outline'} size="sm" onClick={() => setTab('announcements')}>
+          Announcements
+        </Button>
       </div>
-      {tab === 'templates' ? <NotificationsView /> : <DeliveriesView />}
+      {tab === 'templates' ? <NotificationsView /> : tab === 'announcements' ? <AnnouncementsView /> : <DeliveriesView />}
     </div>
   );
 }
