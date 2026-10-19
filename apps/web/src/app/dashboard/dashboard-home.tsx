@@ -74,7 +74,7 @@ export function DashboardHome() {
             </section>
           );
           return label === 'Pending actions' ? (
-            <Link key={label} href="/dashboard/pending" className="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink" aria-label="View pending actions">
+            <Link key={label} href="/dashboard/pending" className="rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
               {card}
             </Link>
           ) : card;

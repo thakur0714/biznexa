@@ -3,6 +3,7 @@ import { ApplicationDetailView } from './application-detail-view';
 
 export const metadata: Metadata = { title: 'Application Details' };
 
-export default function Page({ params }: { params: { id: string } }) {
-  return <ApplicationDetailView id={params.id} />;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <ApplicationDetailView id={id} />;
 }

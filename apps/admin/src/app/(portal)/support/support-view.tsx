@@ -643,6 +643,7 @@ function SupportQueue() {
         <div className="flex flex-wrap items-center gap-2">
           {/* Status filter */}
           <select
+            aria-label="Filter by status"
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value as TicketStatus | '');
@@ -660,6 +661,7 @@ function SupportQueue() {
 
           {/* Priority filter */}
           <select
+            aria-label="Filter by priority"
             value={priorityFilter}
             onChange={(e) => {
               setPriorityFilter(e.target.value as TicketPriority | '');
@@ -676,6 +678,7 @@ function SupportQueue() {
 
           {/* Assignee filter */}
           <select
+            aria-label="Filter by assignee"
             value={assigneeFilter}
             onChange={(e) => {
               setAssigneeFilter(e.target.value);
@@ -746,9 +749,9 @@ function SupportQueue() {
                 </div>
 
                 <div className="mt-2.5 flex flex-col justify-between gap-1 sm:flex-row sm:items-center">
-                  <h3 className="text-base font-semibold text-night group-hover:text-ink">
+                  <h2 className="text-base font-semibold text-night group-hover:text-ink">
                     {ticket.subject}
-                  </h3>
+                  </h2>
                   <div className="text-xs text-muted">
                     Assignee:{' '}
                     <span className="font-medium text-night">

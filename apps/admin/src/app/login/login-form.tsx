@@ -39,9 +39,9 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+    <main id="main" className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[400px]">
-        <Logo tag="Admin" label="BizNexa admin home" />
+        <Logo tag="Admin" />
         <h1 className="mt-8 text-2xl font-bold tracking-[-0.02em]">Staff login</h1>
         <p className="mt-1 text-muted">For BizNexa admins, operations, support and consultants.</p>
 
@@ -57,6 +57,6 @@ export function LoginForm() {
           </Button>
         </form>
       </div>
-    </div>
+    </main>
   );
 }

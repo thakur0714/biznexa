@@ -522,9 +522,9 @@ export function CustomerSupportView() {
               </div>
 
               <div className="mt-2.5">
-                <h3 className="text-base font-semibold text-night group-hover:text-ink">
+                <h2 className="text-base font-semibold text-night group-hover:text-ink">
                   {ticket.subject}
-                </h3>
+                </h2>
               </div>
 
               {ticket.applicationCode && (

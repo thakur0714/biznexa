@@ -169,7 +169,7 @@ function DeliveriesPage() {
       {error && <Notice tone="error">{error}</Notice>}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm whitespace-nowrap">
+        <table className="w-full text-left text-sm whitespace-nowrap" aria-label="Notification deliveries">
           <thead>
             <tr className="border-b text-muted">
               <th className="py-2 pr-4 font-medium">Queued</th>
