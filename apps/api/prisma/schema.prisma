@@ -1276,6 +1276,13 @@ model CmsPage {
   ogImageUrl      String?
   contactEmail    String?
   contactPhone    String?
+  draftTitle      String?
+  draftContent    Json?
+  draftSeoTitle   String?
+  draftMetaDescription String?
+  draftOgImageUrl String?
+  draftContactEmail String?
+  draftContactPhone String?
   status          PublishStatus @default(DRAFT)
   updatedAt       DateTime      @updatedAt
 }
