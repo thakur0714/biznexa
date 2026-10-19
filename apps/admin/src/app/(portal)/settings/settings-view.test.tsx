@@ -30,18 +30,33 @@ const seeded: SellerSettings = {
 let settings: SellerSettings;
 let puts: unknown[];
 let nextError: { status: number; body: unknown } | null;
+let mobileVersion = { minSupportedVersion: '1.0.0', updatedAt: '2026-10-01T05:00:00.000Z' };
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
 beforeEach(() => {
   auth.permissions = [PERMS.ADMIN_ACCESS, PERMS.SETTINGS_MANAGE];
   settings = seeded;
+  mobileVersion = { minSupportedVersion: '1.0.0', updatedAt: '2026-10-01T05:00:00.000Z' };
   puts = [];
   nextError = null;
   vi.stubGlobal(
     'fetch',
     vi.fn(async (req: Request) => {
       const url = new URL(req.url);
+
+      if (url.pathname === '/api/admin/settings/mobile-version') {
+        if (req.method === 'GET') return json(mobileVersion);
+        const body = await req.json();
+        mobileVersion = { minSupportedVersion: body.minSupportedVersion, updatedAt: new Date().toISOString() };
+        return json(mobileVersion);
+      }
+
+      if (url.pathname === '/api/admin/settings/rejection-presets') {
+        if (req.method === 'GET') return json({ presets: [], updatedAt: '2026-10-01T05:00:00.000Z' });
+        return json({ presets: await req.json(), updatedAt: new Date().toISOString() });
+      }
+
       if (url.pathname !== '/api/admin/settings/seller') return json({ message: 'Not found' }, 404);
       if (req.method === 'GET') return json(settings);
       const body = (await req.json()) as { address: typeof address; gstin: string; invoicePrefix: string };
@@ -110,6 +125,15 @@ describe('Seller settings page', () => {
     await waitFor(() => expect(screen.queryByText(/registered address is not set yet/)).toBeNull());
     expect(puts.at(-1)).toMatchObject({ legalName: 'BizNexa Private Limited', gstin: PUNJAB_GSTIN, address, invoicePrefix: 'BN' });
     expect(screen.getByText('Last changed 11-Oct-2026')).toBeTruthy();
+  });
+
+  it('loads and saves the mobile app version', async () => {
+    renderView();
+    const versionInput = await screen.findByLabelText('Minimum supported version');
+    fireEvent.change(versionInput, { target: { value: '1.5.0' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0]);
+    expect(await screen.findByText('Mobile app version saved')).toBeTruthy();
+    expect(mobileVersion.minSupportedVersion).toBe('1.5.0');
   });
 });
 

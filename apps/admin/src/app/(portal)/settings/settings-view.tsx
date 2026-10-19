@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { OPTION_SOURCES, formatDate, type RejectionPresets } from '@biznexa/types';
+import { OPTION_SOURCES, formatDate, type RejectionPresets, type MobileVersion } from '@biznexa/types';
 import { Button, LinkButton, Field, Notice, Select, useToast } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
@@ -20,6 +20,7 @@ export function SettingsView() {
     <div className="space-y-12">
       <SellerSettingsPage />
       <RejectionPresetsPage />
+      <MobileVersionPage />
       <div className="max-w-[800px] rounded-lg border border-rule bg-white p-6 shadow-xs">
         <h2 className="text-xl font-bold tracking-[-0.02em] text-night">Notification Templates</h2>
         <p className="mt-1 text-sm text-muted">
@@ -290,5 +291,82 @@ function RejectionPresetsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function MobileVersionPage() {
+  const api = useApi();
+  const toast = useToast();
+  const [saved, setSaved] = useState<MobileVersion | null>(null);
+  const [version, setVersion] = useState<string>('');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.call((c) => c.GET('/api/admin/settings/mobile-version')).then(
+      (s) => {
+        if (cancelled) return;
+        setSaved(s);
+        setVersion(s.minSupportedVersion);
+        setLoadError(null);
+      },
+      (err: Error) => !cancelled && setLoadError(err.message),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [api, reload]);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+    setSaving(true);
+    try {
+      const s = await api.call((c) => c.PUT('/api/admin/settings/mobile-version', { body: { minSupportedVersion: version } }));
+      setSaved(s);
+      setVersion(s.minSupportedVersion);
+      toast('Mobile app version saved', 'success');
+    } catch (err) {
+      if (err instanceof ClientApiError && err.errors.length) {
+        setFormError(err.errors[0].message);
+      } else setFormError((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="max-w-[800px]">
+      <h2 className="text-xl font-bold tracking-[-0.02em]">Mobile app</h2>
+      <p className="mt-1 text-muted">Older app versions will be asked to update.</p>
+
+      <div className="mt-6">
+        {loadError ? (
+          <div className="space-y-3">
+            <Notice tone="error">{loadError}</Notice>
+            <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
+              Try again
+            </Button>
+          </div>
+        ) : !saved ? (
+          <p className="text-muted" role="status">
+            Loading settings…
+          </p>
+        ) : (
+          <form onSubmit={submit} noValidate className="space-y-6">
+            {formError && <Notice tone="error">{formError}</Notice>}
+            <div className="flex gap-4 items-end">
+              <Field id="mobile-version" label="Minimum supported version" value={version} onChange={(e) => setVersion(e.target.value)} />
+              <Button variant="ink" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            </div>
+            {saved?.updatedAt && <span className="text-sm text-muted">Last changed {formatDate(saved.updatedAt)}</span>}
+          </form>
+        )}
+      </div>
+    </div>
+
   );
 }
