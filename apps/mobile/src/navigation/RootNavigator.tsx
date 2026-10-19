@@ -11,12 +11,14 @@ import { AuthModalScreen } from '../screens/AuthModalScreen';
 import { BiometricLockScreen } from '../screens/BiometricLockScreen';
 import { SupportScreen } from '../screens/SupportScreen';
 import { ConsultationsScreen } from '../screens/ConsultationsScreen';
+import { BuyFlowScreen } from '../screens/BuyFlowScreen';
 import { useAuth } from '../auth/auth-context';
 import { colors } from '../theme';
 
 export type RootStackParamList = {
   MainTabs: undefined;
   ServiceDetail: { slug: string };
+  BuyFlow: { slug: string; packageId?: string; applicationId?: string; initialStep?: 'form' | 'documents' | 'payment' };
   ApplicationDetail: {
     applicationId: string;
     initialTab?: 'timeline' | 'messages' | 'documents' | 'payments';
@@ -60,6 +62,7 @@ export function RootNavigator() {
           headerBackTitle: 'Back',
         }}
       />
+      <Stack.Screen name="BuyFlow" component={BuyFlowScreen} options={{ title: 'Apply for service' }} />
       <Stack.Screen
         name="ApplicationDetail"
         component={ApplicationDetailScreen}
