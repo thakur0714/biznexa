@@ -5,6 +5,7 @@ import request from 'supertest';
 import {
   customerApplicationListSchema,
   customerApplicationTimelineSchema,
+  dashboardSummarySchema,
   formatApplicationCode,
   formatOrderCode,
   GENERIC_SERVICE_FORM,
@@ -424,6 +425,22 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
         expect(result10.get(a.id)).toBe(one);
       }
     });
+  });
+
+  it('uses batched checklist counts in the dashboard without changing summary values', async () => {
+    const documents = app.get(ApplicationDocumentsService);
+    const batchSpy = jest.spyOn(documents, 'pendingMandatoryMany');
+    const response = await request(app.getHttpServer())
+      .get('/api/dashboard/summary')
+      .set('Authorization', `Bearer ${aliceToken}`)
+      .expect(200);
+
+    const summary = dashboardSummarySchema.parse(response.body);
+    expect(summary).toMatchObject({ activeApplications: 3, pendingActions: 3, unpaidBalance: 59000 });
+    expect(summary.recentActivity).toHaveLength(2);
+    expect(batchSpy).toHaveBeenCalledTimes(1);
+    expect(batchSpy.mock.calls[0][0]).toHaveLength(2);
+    batchSpy.mockRestore();
   });
 
   describe('GET /api/applications/:id/timeline (M5.4)', () => {
