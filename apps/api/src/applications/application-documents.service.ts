@@ -26,6 +26,11 @@ const requirementSelect = {
   maxSizeMb: true,
   packageIds: true,
 } satisfies Prisma.ServiceDocumentRequirementSelect;
+type RequirementRow = Prisma.ServiceDocumentRequirementGetPayload<{ select: typeof requirementSelect }>;
+
+// The first row of each additional document: what staff asked for, and when.
+const requestSelect = { requestId: true, name: true, description: true, createdAt: true } satisfies Prisma.ApplicationDocumentSelect;
+type RequestRow = Prisma.ApplicationDocumentGetPayload<{ select: typeof requestSelect }>;
 
 const documentSelect = {
   id: true,
@@ -237,61 +242,14 @@ export class ApplicationDocumentsService {
       db.applicationDocument.findMany({
         where: { applicationId: { in: applicationIds }, requirementId: null, requestId: { not: null }, version: 1 },
         orderBy: { createdAt: 'asc' },
-        select: { applicationId: true, requestId: true, name: true, description: true, createdAt: true },
+        select: { applicationId: true, ...requestSelect },
       }),
     ]);
 
-    const reqsByService = new Map<string, typeof requirements>();
-    for (const r of requirements) {
-      reqsByService.set(r.serviceId, [...(reqsByService.get(r.serviceId) ?? []), r]);
-    }
-
-    const docsByApp = new Map<string, typeof documents>();
-    for (const d of documents) {
-      docsByApp.set(d.applicationId, [...(docsByApp.get(d.applicationId) ?? []), d]);
-    }
-
-    const requestsByApp = new Map<string, typeof requests>();
-    for (const r of requests) {
-      requestsByApp.set(r.applicationId, [...(requestsByApp.get(r.applicationId) ?? []), r]);
-    }
-
-    const result = new Map<string, number>();
-
-    for (const app of apps) {
-      const appReqs = reqsByService.get(app.serviceId) ?? [];
-      const appDocs = docsByApp.get(app.id) ?? [];
-      const appRequests = requestsByApp.get(app.id) ?? [];
-
-      const byRequirement = new Map<string, DocumentRow[]>();
-      const byRequest = new Map<string, DocumentRow[]>();
-      for (const d of appDocs) {
-        if (d.requirementId) byRequirement.set(d.requirementId, [...(byRequirement.get(d.requirementId) ?? []), d]);
-        else if (d.requestId) byRequest.set(d.requestId, [...(byRequest.get(d.requestId) ?? []), d]);
-      }
-
-      const items: DocumentChecklistItem[] = appReqs
-        .filter((r) => requirementApplies(r, app.packageId) || byRequirement.has(r.id))
-        .map(({ packageIds: _p, ...requirement }) => {
-          const versions = (byRequirement.get(requirement.id) ?? []).map(toDocumentDto);
-          const [current = null, ...previous] = versions;
-          return { requirement, current, previous, canReplace: !current || canReplaceDocument(current.status) };
-        });
-
-      const additional: AdditionalDocumentItem[] = appRequests.map((r) => {
-        const [current = null, ...previous] = (byRequest.get(r.requestId!) ?? []).map(toDocumentDto);
-        return {
-          request: { id: r.requestId!, name: r.name, description: r.description, requestedAt: r.createdAt.toISOString() },
-          current,
-          previous,
-          canReplace: !current || canReplaceDocument(current.status),
-        };
-      });
-
-      result.set(app.id, pendingMandatoryCount(items, additional));
-    }
-
-    return result;
+    const reqsByService = groupBy(requirements, (r) => r.serviceId);
+    const docsByApp = groupBy(documents, (d) => d.applicationId);
+    const requestsByApp = groupBy(requests, (r) => r.applicationId);
+    return new Map(apps.map((app) => [app.id, assemble(app, reqsByService.get(app.serviceId) ?? [], docsByApp.get(app.id) ?? [], requestsByApp.get(app.id) ?? []).pendingMandatory]));
   }
 
   private async build(app: AppRow, db: Prisma.TransactionClient = this.prisma): Promise<DocumentChecklist> {
@@ -306,44 +264,54 @@ export class ApplicationDocumentsService {
       db.applicationDocument.findMany({
         where: { applicationId: app.id, requirementId: null, requestId: { not: null }, version: 1 },
         orderBy: { createdAt: 'asc' },
-        select: { requestId: true, name: true, description: true, createdAt: true },
+        select: requestSelect,
       }),
     ]);
+    return assemble(app, requirements, documents, requests);
+  }
+}
 
-    const byRequirement = new Map<string, DocumentRow[]>();
-    const byRequest = new Map<string, DocumentRow[]>();
-    for (const d of documents) {
-      if (d.requirementId) byRequirement.set(d.requirementId, [...(byRequirement.get(d.requirementId) ?? []), d]);
-      else if (d.requestId) byRequest.set(d.requestId, [...(byRequest.get(d.requestId) ?? []), d]);
-    }
+/** One application's checklist from its rows; shared by build() and pendingMandatoryMany() so both count alike. */
+function assemble(app: AppRow, requirements: RequirementRow[], documents: DocumentRow[], requests: RequestRow[]): DocumentChecklist {
+  const byRequirement = new Map<string, DocumentRow[]>();
+  const byRequest = new Map<string, DocumentRow[]>();
+  for (const d of documents) {
+    if (d.requirementId) byRequirement.set(d.requirementId, [...(byRequirement.get(d.requirementId) ?? []), d]);
+    else if (d.requestId) byRequest.set(d.requestId, [...(byRequest.get(d.requestId) ?? []), d]);
+  }
 
-    const items: DocumentChecklistItem[] = requirements
-      // A requirement later narrowed to other packages still shows here if something was uploaded for it.
-      .filter((r) => requirementApplies(r, app.packageId) || byRequirement.has(r.id))
-      .map(({ packageIds: _p, ...requirement }) => {
-        const versions = (byRequirement.get(requirement.id) ?? []).map(toDocumentDto);
-        const [current = null, ...previous] = versions;
-        return { requirement, current, previous, canReplace: !current || canReplaceDocument(current.status) };
-      });
-
-    const additional: AdditionalDocumentItem[] = requests.map((r) => {
-      const [current = null, ...previous] = (byRequest.get(r.requestId!) ?? []).map(toDocumentDto);
-      return {
-        request: { id: r.requestId!, name: r.name, description: r.description, requestedAt: r.createdAt.toISOString() },
-        current,
-        previous,
-        canReplace: !current || canReplaceDocument(current.status),
-      };
+  const items: DocumentChecklistItem[] = requirements
+    // A requirement later narrowed to other packages still shows here if something was uploaded for it.
+    .filter((r) => requirementApplies(r, app.packageId) || byRequirement.has(r.id))
+    .map(({ id, name, description, isMandatory, acceptedTypes, maxSizeMb }) => {
+      const versions = (byRequirement.get(id) ?? []).map(toDocumentDto);
+      const [current = null, ...previous] = versions;
+      return { requirement: { id, name, description, isMandatory, acceptedTypes, maxSizeMb }, current, previous, canReplace: !current || canReplaceDocument(current.status) };
     });
 
+  const additional: AdditionalDocumentItem[] = requests.map((r) => {
+    const [current = null, ...previous] = (byRequest.get(r.requestId!) ?? []).map(toDocumentDto);
     return {
-      applicationId: app.id,
-      canUpload: canUploadDocuments(app.status),
-      items,
-      additional,
-      pendingMandatory: pendingMandatoryCount(items, additional),
+      request: { id: r.requestId!, name: r.name, description: r.description, requestedAt: r.createdAt.toISOString() },
+      current,
+      previous,
+      canReplace: !current || canReplaceDocument(current.status),
     };
-  }
+  });
+
+  return {
+    applicationId: app.id,
+    canUpload: canUploadDocuments(app.status),
+    items,
+    additional,
+    pendingMandatory: pendingMandatoryCount(items, additional),
+  };
+}
+
+function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const row of rows) map.set(key(row), [...(map.get(key(row)) ?? []), row]);
+  return map;
 }
 
 /**
