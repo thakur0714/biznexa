@@ -51,14 +51,15 @@ export function SupportScreen({ route }: { route?: { params?: { ticketId?: strin
       const { data, error: apiError } = await api.POST('/api/tickets', { body: { subject, description: message, priority: 'MEDIUM' } });
       if (apiError || !data) throw new Error('Could not create your ticket.');
       const summary = data as TicketSummary;
-      let fileIds: string[] = [];
+      // The ticket exists now: if the attachment fails, open the ticket anyway (retrying would create a duplicate).
       if (attachment) {
-        const uploaded = await uploadMobileFile({ uri: attachment.uri, name: attachment.name, mimeType: attachment.mimeType ?? 'application/octet-stream', token });
-        fileIds = [uploaded.id];
-      }
-      if (fileIds.length) {
-        const { error: msgError } = await api.POST('/api/tickets/{id}/messages', { params: { path: { id: summary.id } }, body: { body: 'Attachment for this request', fileIds } });
-        if (msgError) throw new Error('Could not upload attachment message.');
+        try {
+          const uploaded = await uploadMobileFile({ uri: attachment.uri, name: attachment.name, mimeType: attachment.mimeType ?? 'application/octet-stream', token });
+          const { error: msgError } = await api.POST('/api/tickets/{id}/messages', { params: { path: { id: summary.id } }, body: { body: 'Attachment for this request', fileIds: [uploaded.id] } });
+          if (msgError) throw new Error('Attachment could not be sent.');
+        } catch {
+          Alert.alert('Ticket created', 'Your attachment could not be sent. Add it again from the ticket.');
+        }
       }
       setCreating(false); setSubject(''); setMessage(''); setAttachment(null); setTicketId(summary.id);
     } catch (e) { Alert.alert('Could not create ticket', e instanceof Error ? e.message : 'Please try again.'); }
