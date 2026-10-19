@@ -1116,12 +1116,14 @@ model Reminder {
   sentOffsets         Int[]          @default([])
   renewServiceSlug    String?
   sourceApplicationId String?
+  /// What created the reminder ("application:<id>" / "certificate:<id>"); unique per type so a replayed event can't add a second one.
+  sourceKey           String         @default(uuid())
   status              ReminderStatus @default(SCHEDULED)
   createdAt           DateTime       @default(now())
   businessEntity      BusinessEntity? @relation(fields: [businessEntityId], references: [id])
 
   @@index([dueDate, status])
-  @@unique([type, sourceApplicationId, title])
+  @@unique([type, sourceKey])
 }
 
 // ─────────────────────── Notifications & support ───────────────────────
