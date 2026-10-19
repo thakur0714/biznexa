@@ -23,3 +23,26 @@ export const blogPostSchema = z.object({
 });
 export const blogPostInput = z.object({ title: z.string().trim().min(1).max(200), slug: z.string().trim().min(1).max(160).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/), excerpt: z.string().trim().max(500).nullable(), content: z.string().max(100000), featuredImage: z.string().max(500).nullable().refine((url) => url === null || isMediaPath(url), 'Choose an image uploaded to the public media library'), authorName: z.string().trim().max(120).nullable(), categoryIds: z.array(z.string().uuid()).max(20), tagIds: z.array(z.string().uuid()).max(50), seoTitle: z.string().trim().max(160).nullable(), metaDescription: z.string().trim().max(320).nullable(), status: blogPostStatusSchema, publishAt: z.string().datetime().nullable() });
 export type BlogPostInput = z.infer<typeof blogPostInput>;
+
+// Public contracts deliberately omit internal/admin fields and share validation with the API.
+export const publicBlogPostSchema = z.object({
+  title: z.string(), slug: z.string(), excerpt: z.string().nullable(), featuredImage: z.string().nullable(),
+  authorName: z.string().nullable(), publishedAt: z.string().datetime(),
+  categories: z.array(blogCategorySchema), tags: z.array(tagSchema),
+});
+export type PublicBlogPost = z.infer<typeof publicBlogPostSchema>;
+export const publicBlogPostDetailSchema = publicBlogPostSchema.extend({
+  content: z.string(), seoTitle: z.string().nullable(), metaDescription: z.string().nullable(),
+});
+export type PublicBlogPostDetail = z.infer<typeof publicBlogPostDetailSchema>;
+export const publicBlogTaxonomySchema = z.object({ id: z.string().uuid(), slug: z.string(), name: z.string(), postCount: z.number().int().positive() });
+export type PublicBlogTaxonomy = z.infer<typeof publicBlogTaxonomySchema>;
+export const publicBlogListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(12),
+  category: z.string().trim().min(1).optional(),
+  tag: z.string().trim().min(1).optional(),
+});
+export type PublicBlogListQuery = z.infer<typeof publicBlogListQuerySchema>;
+export const publicBlogPagedListSchema = z.object({ items: z.array(publicBlogPostSchema), page: z.number().int(), pageSize: z.number().int(), total: z.number().int(), pages: z.number().int() });
+export type PublicBlogPagedList = z.infer<typeof publicBlogPagedListSchema>;

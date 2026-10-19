@@ -8,8 +8,11 @@ import { api, type CategorySummary, type ServiceCard as Card } from '@/lib/api';
 import type { PublicConsultantDirectory } from '@biznexa/types';
 import { ConsultantCard } from './consultants/consultant-card';
 import { RichText } from '@/components/rich-text';
+import { BlogPostCard } from '@/components/blog-post-card';
+import type { PublicBlogPagedList } from '@biznexa/types';
 
 export const revalidate = 300;
+const blogDataRevalidate = process.env.NODE_ENV === 'development' ? 0 : 300;
 
 const JOURNEY: { stage: string; verb: string; line: string }[] = [
   { stage: 'START', verb: 'Start', line: 'Register your business' },
@@ -30,13 +33,14 @@ const STEPS = [
 ];
 
 async function load() {
-  const [categories, popular, cms, featured] = await Promise.all([
+  const [categories, popular, cms, featured, latestPosts] = await Promise.all([
     api<CategorySummary[]>('/catalogue/categories').catch(() => []),
     api<Card[]>('/catalogue/popular').catch(() => []),
     api<{ banners: { id: string; title: string; subtitle: string | null; imageUrl: string | null; linkUrl: string | null }[]; testimonials: { id: string; name: string; company: string | null; quote: string; rating: number }[]; stats: { label: string; value: string }[]; faq: { question: string; answer: string }[] }>('/cms/homepage').catch(() => ({ banners: [], testimonials: [], stats: [], faq: [] })),
     api<PublicConsultantDirectory>('/public/consultants?featured=true&limit=4').catch(() => ({ items: [], total: 0, page: 1, limit: 4 })),
+    api<PublicBlogPagedList>('/public/blog/posts?page=1&pageSize=3', { revalidate: blogDataRevalidate }).then((result) => result.items).catch(() => []),
   ]);
-  return { categories, popular, cms, featured: featured.items };
+  return { categories, popular, cms, featured: featured.items, latestPosts };
 }
 
 /** Example of what a customer sees after buying — the core promise of the product. */
@@ -89,7 +93,7 @@ function TrackerPreview() {
 }
 
 export default async function HomePage() {
-  const { categories, popular, cms, featured } = await load();
+  const { categories, popular, cms, featured, latestPosts } = await load();
   const byStage = (stage: string) => categories.filter((c) => c.journeyStage === stage);
 
   return (
@@ -164,6 +168,8 @@ export default async function HomePage() {
       {cms.banners.length > 0 && <section aria-label="Featured"><Container className="grid gap-4 py-10 sm:grid-cols-2">{cms.banners.map((banner) => <a key={banner.id} href={banner.linkUrl || '/services'} className="overflow-hidden rounded-xl border border-rule bg-white">{banner.imageUrl && <img src={banner.imageUrl} alt="" className="h-44 w-full object-cover" />}<div className="p-5"><h2 className="text-xl font-bold">{banner.title}</h2>{banner.subtitle && <p className="mt-2 text-muted">{banner.subtitle}</p>}</div></a>)}</Container></section>}
       {featured.length > 0 && <section aria-labelledby="featured-consultants-h"><Container className="py-12"><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 id="featured-consultants-h" className="text-3xl font-bold tracking-[-0.02em]">Featured consultants</h2><p className="mt-1 text-muted">Meet trusted professionals ready to help your business.</p></div><LinkButton href="/consultants" variant="outline">Browse all consultants</LinkButton></div><div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{featured.map((consultant) => <ConsultantCard key={consultant.id} consultant={consultant} />)}</div></Container></section>}
       {cms.stats.length > 0 && <section className="border-y border-rule bg-white"><Container className="grid grid-cols-2 gap-6 py-8 text-center sm:grid-cols-4">{cms.stats.map((stat) => <div key={stat.label}><p className="text-3xl font-bold text-ink">{stat.value}</p><p className="mt-1 text-sm text-muted">{stat.label}</p></div>)}</Container></section>}
+
+      {latestPosts.length > 0 && <section aria-labelledby="latest-posts-heading"><Container className="py-14"><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 id="latest-posts-heading" className="text-3xl font-bold tracking-[-0.02em]">Latest posts</h2><p className="mt-1 text-muted">Practical guidance and updates for your business.</p></div><LinkButton href="/blog" variant="outline">View all articles</LinkButton></div><div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{latestPosts.map((post) => <BlogPostCard key={post.slug} post={post} />)}</div></Container></section>}
 
       {/* Popular services */}
       <section aria-labelledby="popular-h">

@@ -3428,6 +3428,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/blog/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicBlogPostsController_categories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/blog/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicBlogPostsController_tags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/blog/posts/{slug}": {
         parameters: {
             query?: never;
@@ -7970,6 +8002,71 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        PublicBlogPagedList: {
+            items: {
+                title: string;
+                slug: string;
+                excerpt: string | null;
+                featuredImage: string | null;
+                authorName: string | null;
+                /** Format: date-time */
+                publishedAt: string;
+                categories: {
+                    /** Format: uuid */
+                    id: string;
+                    slug: string;
+                    name: string;
+                }[];
+                tags: {
+                    /** Format: uuid */
+                    id: string;
+                    slug: string;
+                    name: string;
+                }[];
+            }[];
+            page: number;
+            pageSize: number;
+            total: number;
+            pages: number;
+        };
+        PublicBlogTaxonomyList: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            postCount: number;
+        }[];
+        PublicBlogTagList: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            postCount: number;
+        }[];
+        PublicBlogPostDetail: {
+            title: string;
+            slug: string;
+            excerpt: string | null;
+            featuredImage: string | null;
+            authorName: string | null;
+            /** Format: date-time */
+            publishedAt: string;
+            categories: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            tags: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            content: string;
+            seoTitle: string | null;
+            metaDescription: string | null;
         };
         CustomerReview: {
             /** Format: uuid */
@@ -15750,9 +15847,11 @@ export interface operations {
     };
     PublicBlogPostsController_list: {
         parameters: {
-            query: {
-                category: string;
-                tag: string;
+            query?: {
+                page?: number;
+                pageSize?: number;
+                category?: string;
+                tag?: string;
             };
             header?: never;
             path?: never;
@@ -15764,7 +15863,47 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PublicBlogPagedList"];
+                };
+            };
+        };
+    };
+    PublicBlogPostsController_categories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBlogTaxonomyList"];
+                };
+            };
+        };
+    };
+    PublicBlogPostsController_tags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicBlogTagList"];
+                };
             };
         };
     };
@@ -15783,7 +15922,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PublicBlogPostDetail"];
+                };
             };
         };
     };
