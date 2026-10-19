@@ -50,10 +50,13 @@ function VersionGate({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false);
   useEffect(() => {
     let alive = true;
-    void api.GET('/api/mobile/version').then(({ data }) => {
+    // Give up after 5 s and open the app. React Native 0.76 has no AbortSignal.timeout, so use a timer.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    void api.GET('/api/mobile/version', { signal: controller.signal }).then(({ data }) => {
       if (alive && data) setMinimum(data.minSupportedVersion);
-    }).catch(() => undefined).finally(() => { if (alive) setChecked(true); });
-    return () => { alive = false; };
+    }).catch(() => undefined).finally(() => { clearTimeout(timer); if (alive) setChecked(true); });
+    return () => { alive = false; clearTimeout(timer); controller.abort(); };
   }, [api]);
   if (!checked) return <View style={gateStyles.center}><ActivityIndicator /><Text style={gateStyles.message}>Checking for updates…</Text></View>;
   if (minimum && isVersionBelow(appConfig.expo.version, minimum)) return <View style={gateStyles.center}>
