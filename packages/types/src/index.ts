@@ -28,6 +28,7 @@ export * from './notifications';
 export * from './certificate-import';
 export * from './deliverables';
 export * from './admin-customers';
+export * from './admin-staff';
 export * from './messages';
 export * from './dashboard';
 export * from './pending-actions';

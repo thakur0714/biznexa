@@ -38,6 +38,7 @@ import { BookingsModule } from './bookings/bookings.module';
 import { PrivacyModule } from './privacy/privacy.module';
 import { BlogModule } from './blog/blog.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { StaffUsersModule } from './staff-users/staff-users.module';
 
 @ApiTags('health')
 @Controller('health')
@@ -127,6 +128,7 @@ class MobileVersionController {
     PrivacyModule,
     BlogModule,
     ReviewsModule,
+    StaffUsersModule,
   ],
   controllers: [HealthController, MobileVersionController],
   providers: [
