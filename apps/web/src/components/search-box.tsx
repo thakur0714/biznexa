@@ -20,9 +20,9 @@ export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }:
 
   const options = results
     ? [
-        ...results.services.map((s) => ({ key: s.id, group: 'Services', href: `/services/${s.category.slug}/${s.slug}`, label: s.name, meta: s.category.name, price: s.startingPrice })),
-        ...results.posts.map((p) => ({ key: p.slug, group: 'Articles', href: `/blog/${p.slug}`, label: p.title, meta: p.excerpt ?? 'Article', price: null as number | null })),
-        ...results.categories.map((c) => ({ key: c.slug, group: 'Categories', href: `/services/${c.slug}`, label: `All ${c.name} services`, meta: 'Category', price: null as number | null })),
+        ...results.services.map((s) => ({ key: `service:${s.id}`, group: 'Services', href: `/services/${s.category.slug}/${s.slug}`, label: s.name, meta: s.category.name, price: s.startingPrice })),
+        ...results.posts.map((p) => ({ key: `post:${p.slug}`, group: 'Articles', href: `/blog/${p.slug}`, label: p.title, meta: p.excerpt ?? 'Article', price: null as number | null })),
+        ...results.categories.map((c) => ({ key: `category:${c.slug}`, group: 'Categories', href: `/services/${c.slug}`, label: `All ${c.name} services`, meta: 'Category', price: null as number | null })),
       ]
     : [];
 

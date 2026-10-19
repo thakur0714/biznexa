@@ -12,8 +12,8 @@ export async function BlogListing({ category, tag, title, page = 1 }: { category
     const query = new URLSearchParams({ page: String(page), pageSize: '12', ...(category ? { category } : {}), ...(tag ? { tag } : {}) });
     const [list, categories, tags] = await Promise.all([
       api<PublicBlogPagedList>(`/public/blog/posts?${query}`, { revalidate: blogDataRevalidate }),
-      api<PublicBlogTaxonomy[]>('/public/blog/categories', { revalidate: 3600 }),
-      api<PublicBlogTaxonomy[]>('/public/blog/tags', { revalidate: 3600 }),
+      api<PublicBlogTaxonomy[]>('/public/blog/categories', { revalidate: 300 }),
+      api<PublicBlogTaxonomy[]>('/public/blog/tags', { revalidate: 300 }),
     ]);
     data = { list, categories, tags };
   } catch (error) {

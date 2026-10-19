@@ -7,13 +7,13 @@ import { BlogListing } from '../../blog-listing';
 export const revalidate = 300;
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  try { const tags = await api<PublicBlogTaxonomy[]>('/public/blog/tags', { revalidate: 3600 }); const tag = tags.find((entry) => entry.slug === slug); return tag ? { title: `${tag.name} articles`, alternates: { canonical: `/blog/tag/${slug}` } } : {}; } catch { return {}; }
+  try { const tags = await api<PublicBlogTaxonomy[]>('/public/blog/tags', { revalidate: 300 }); const tag = tags.find((entry) => entry.slug === slug); return tag ? { title: `${tag.name} articles`, alternates: { canonical: `/blog/tag/${slug}` } } : {}; } catch { return {}; }
 }
 export default async function BlogTagPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string }> }) {
   const [{ slug }, search] = await Promise.all([params, searchParams]);
   let tag: PublicBlogTaxonomy | undefined;
   try {
-    const tags = await api<PublicBlogTaxonomy[]>('/public/blog/tags', { revalidate: 3600 });
+    const tags = await api<PublicBlogTaxonomy[]>('/public/blog/tags', { revalidate: 300 });
     tag = tags.find((entry) => entry.slug === slug);
   } catch (error) { if (error instanceof ApiError && error.status === 404) notFound(); throw error; }
   if (!tag) notFound();
