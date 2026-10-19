@@ -21,6 +21,8 @@ export const customerReviewSchema = reviewViewSchema.nullable();
 
 export const adminReviewQuerySchema = z.object({
   status: z.enum(reviewModerationStatuses).default('PENDING'),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 export type AdminReviewQuery = z.infer<typeof adminReviewQuerySchema>;
 
@@ -29,7 +31,13 @@ export const adminReviewSchema = reviewViewSchema.extend({
   customerName: z.string(),
   consultantName: z.string(),
 });
-export const adminReviewListSchema = z.object({ items: z.array(adminReviewSchema) });
+export const adminReviewListSchema = z.object({
+  items: z.array(adminReviewSchema),
+  total: z.number().int(),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  pages: z.number().int(),
+});
 export type AdminReview = z.infer<typeof adminReviewSchema>;
 export type AdminReviewList = z.infer<typeof adminReviewListSchema>;
 
