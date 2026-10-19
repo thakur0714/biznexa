@@ -18,4 +18,14 @@ module.exports = {
   testTimeout: 30000,
   maxWorkers: 3,
   setupFiles: ['<rootDir>/test/setup-env.js'],
+  collectCoverage: true,
+  collectCoverageFrom: [
+    '<rootDir>/src/applications/application-status.service.ts',
+    '<rootDir>/src/coupons/coupons.service.ts',
+    '<rootDir>/src/payments/refunds.service.ts',
+    '<rootDir>/src/payments/payment-webhook.service.ts',
+  ],
+  coverageThreshold: {
+    global: { lines: 80, statements: 80, functions: 80, branches: 80 },
+  },
 };

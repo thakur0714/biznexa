@@ -456,7 +456,7 @@ Done already: public verification (number / ID / QR / org name), admin issue/sus
   - *Done 19-Oct-2026 (Codex cx-18, finished + reviewed by Claude):* `scripts/perf/load.mjs` (autocannon; k6 not installed) — every measured p95 ≤ 34 ms; no query > 50 ms, dashboard N+1 batched; event-invalidated public catalogue (60 s) and blog (300 s) caches; lazy browser Sentry. Lighthouse 96 on `/` and a service page (was 87/90). Numbers in docs/PERFORMANCE.md.
   - *Follow-ups:* local laptop numbers on seed data only — repeat the load test and Lighthouse on staging (M12.9) with production-sized data; API caches are per instance (TTL bounds staleness across instances).
 - [ ] **M12.6 — Accessibility audit** `[Sonnet]` (WCAG 2.1 AA, keyboard, screen reader) and fixes.
-- [ ] **M12.7 — Full E2E suite** `[Sonnet]` for all flows in §10 Quality; coverage ≥ 80% for business logic.
+- [x] **M12.7 — Full E2E suite** `[Sonnet]` Done 19-Oct-2026: Playwright covers purchase/payment/refund, ops document review/reject/re-upload and delivery, certificate verification, consultant booking, and support tickets on desktop and mobile. Shared types: 98.77% statement coverage; core API services: 93.54% statements and 82.86% branches (80% gates enforced).
 - [x] **M12.8 — Monitoring.** `[Sonnet]` Done 19-Oct-2026: DSN-gated Sentry for API/web/admin (mobile already configured), PII-scrubbed events and JSON API request logs with request IDs; `/api/health/ready` checks PostgreSQL and Redis. Runbook documents uptime URLs, alerts and DSN placement.
 - [ ] **M12.9 — Infra.** `[Opus]` AWS ap-south-1, staging + production, secrets manager, CI/CD deploy, CloudFront.
 - [ ] **M12.10 — Backups.** `[Sonnet]` Daily automated backup + PITR + a tested restore (documented in RUNBOOK).

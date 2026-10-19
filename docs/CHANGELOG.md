@@ -1,5 +1,11 @@
 # Changelog
 
+## M12.7 — Full E2E suite (19-Oct-2026)
+
+- Added Playwright coverage for customer support tickets and a complete refund journey using the mock checkout, admin refund API and customer payments page. Existing browser tests cover buying, ops review/reject/re-upload and delivery, certificate verification, and consultant booking; all flows run on desktop and mobile.
+- Added 80% coverage gates for shared types and the core API state-machine, coupon, payment-webhook and refund services. Coverage: shared types 98.77% statements; core API services 93.54% statements and 82.86% branches.
+- No application-code bugs were found or fixed. Validation: Playwright 32/32; API 1,059 tests across 107 suites.
+
 ## M11.8 — Mobile notifications with deep links (19-Oct-2026)
 
 - Added `expo-notifications`, the Android notification channel, post-login permission prompt, native device-token registration/refresh, and token unregistration on logout. Added notification response handling for killed, background, and foreground states with a pure route mapper for application details, documents, payments, certificates and messages; unknown links return Home.
