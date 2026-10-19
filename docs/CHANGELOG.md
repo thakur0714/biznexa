@@ -1,5 +1,11 @@
 # Changelog
 
+## M11.8 — Mobile notifications with deep links (19-Oct-2026)
+
+- Added `expo-notifications`, the Android notification channel, post-login permission prompt, native device-token registration/refresh, and token unregistration on logout. Added notification response handling for killed, background, and foreground states with a pure route mapper for application details, documents, payments, certificates and messages; unknown links return Home.
+- Kept the `devices/*` device-token API routes and removed the `device-tokens/*` aliases. Updated API integration tests and regenerated OpenAPI and `@biznexa/api-client`.
+- Tests: types 495 passed; API 1,035 passed; admin 205 passed; mobile 25 passed. Web production build passed with Webpack. Real Firebase delivery was not tested.
+
 ## M9.9 — Blog posts in global search (19-Oct-2026)
 
 - Extended the D6 in-memory search index with published blog post titles, excerpts, tags and category names. Drafts and scheduled future posts stay private; post changes invalidate the 60-second index.

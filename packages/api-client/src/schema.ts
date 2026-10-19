@@ -413,39 +413,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["NotificationsController_registerDeviceToken[0]"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/device-tokens/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["NotificationsController_registerDeviceToken[1]"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/device-tokens": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["NotificationsController_registerDeviceToken[2]"];
+        post: operations["NotificationsController_registerDeviceToken"];
         delete?: never;
         options?: never;
         head?: never;
@@ -461,23 +429,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["NotificationsController_unregisterDeviceToken[0]"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/device-tokens/unregister": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["NotificationsController_unregisterDeviceToken[1]"];
+        post: operations["NotificationsController_unregisterDeviceToken"];
         delete?: never;
         options?: never;
         head?: never;
@@ -494,23 +446,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["NotificationsController_deleteDeviceToken[0]"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/notifications/device-tokens/{token}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: operations["NotificationsController_deleteDeviceToken[1]"];
+        delete: operations["NotificationsController_deleteDeviceToken"];
         options?: never;
         head?: never;
         patch?: never;
@@ -8843,7 +8779,7 @@ export interface operations {
             };
         };
     };
-    "NotificationsController_registerDeviceToken[0]": {
+    NotificationsController_registerDeviceToken: {
         parameters: {
             query?: never;
             header?: never;
@@ -8870,61 +8806,7 @@ export interface operations {
             };
         };
     };
-    "NotificationsController_registerDeviceToken[1]": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    token: string;
-                    /** @enum {string} */
-                    platform?: "ios" | "android" | "web";
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceTokenActionResponse"];
-                };
-            };
-        };
-    };
-    "NotificationsController_registerDeviceToken[2]": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    token: string;
-                    /** @enum {string} */
-                    platform?: "ios" | "android" | "web";
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceTokenActionResponse"];
-                };
-            };
-        };
-    };
-    "NotificationsController_unregisterDeviceToken[0]": {
+    NotificationsController_unregisterDeviceToken: {
         parameters: {
             query?: never;
             header?: never;
@@ -8949,53 +8831,7 @@ export interface operations {
             };
         };
     };
-    "NotificationsController_unregisterDeviceToken[1]": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    token: string;
-                };
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceTokenActionResponse"];
-                };
-            };
-        };
-    };
-    "NotificationsController_deleteDeviceToken[0]": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                token: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceTokenActionResponse"];
-                };
-            };
-        };
-    };
-    "NotificationsController_deleteDeviceToken[1]": {
+    NotificationsController_deleteDeviceToken: {
         parameters: {
             query?: never;
             header?: never;

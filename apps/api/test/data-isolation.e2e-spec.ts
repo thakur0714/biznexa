@@ -232,7 +232,7 @@ beforeAll(async () => {
     })
   ).id;
   b.deviceToken = `iso-token-${run}-bob`;
-  await http.post('/api/notifications/device-tokens').set(as(bob.token)).send({ token: b.deviceToken, platform: 'android' }).expect(200);
+  await http.post('/api/notifications/devices/register').set(as(bob.token)).send({ token: b.deviceToken, platform: 'android' }).expect(200);
   b.reminder = (await prisma.reminder.create({ data: { userId: bob.id, businessEntityId: b.entity, type: 'CERTIFICATE_EXPIRY', title: 'Bob renewal', dueDate: new Date(Date.now() + 30 * 86_400_000) } })).id;
 
   // ---- Alice's own ----
@@ -375,9 +375,9 @@ describe('another customer’s ids inside the request body', () => {
   });
 
   it('cannot unregister their push token', async () => {
-    const res = await http.delete(`/api/notifications/device-tokens/${b.deviceToken}`).set(as(alice.token));
+    const res = await http.delete(`/api/notifications/devices/${b.deviceToken}`).set(as(alice.token));
     expect([403, 404]).toContain(res.status);
-    await http.post('/api/notifications/device-tokens/unregister').set(as(alice.token)).send({ token: b.deviceToken }).expect(res.status);
+    await http.post('/api/notifications/devices/unregister').set(as(alice.token)).send({ token: b.deviceToken }).expect(res.status);
   });
 });
 
@@ -477,7 +477,7 @@ describe('Bob’s data after all of the above', () => {
     await http.post(`/api/tickets/${b.ticket}/messages`).set(as(bob.token)).send({ body: 'Still mine' }).expect(201);
     await http.post(`/api/notifications/${b.notification}/read`).set(as(bob.token)).expect(200);
     await http.put(`/api/business-entities/${b.entity}`).set(as(bob.token)).send({ legalName: `Bob Secret Works ${run}`, entityType: 'PROPRIETORSHIP' }).expect(200);
-    await http.delete(`/api/notifications/device-tokens/${b.deviceToken}`).set(as(bob.token)).expect(200);
+    await http.delete(`/api/notifications/devices/${b.deviceToken}`).set(as(bob.token)).expect(200);
     await http.delete(`/api/business-entities/${b.entity}`).set(as(bob.token)).expect(200);
   });
 });

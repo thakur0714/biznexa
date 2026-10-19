@@ -1178,115 +1178,7 @@
     },
     "/api/notifications/devices/register": {
       "post": {
-        "operationId": "NotificationsController_registerDeviceToken[0]",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "platform": {
-                    "type": "string",
-                    "enum": [
-                      "ios",
-                      "android",
-                      "web"
-                    ]
-                  }
-                },
-                "required": [
-                  "token"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceTokenActionResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/device-tokens/register": {
-      "post": {
-        "operationId": "NotificationsController_registerDeviceToken[1]",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  "platform": {
-                    "type": "string",
-                    "enum": [
-                      "ios",
-                      "android",
-                      "web"
-                    ]
-                  }
-                },
-                "required": [
-                  "token"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceTokenActionResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/device-tokens": {
-      "post": {
-        "operationId": "NotificationsController_registerDeviceToken[2]",
+        "operationId": "NotificationsController_registerDeviceToken",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1340,53 +1232,7 @@
     },
     "/api/notifications/devices/unregister": {
       "post": {
-        "operationId": "NotificationsController_unregisterDeviceToken[0]",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "required": [
-                  "token"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceTokenActionResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/device-tokens/unregister": {
-      "post": {
-        "operationId": "NotificationsController_unregisterDeviceToken[1]",
+        "operationId": "NotificationsController_unregisterDeviceToken",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -1432,42 +1278,7 @@
     },
     "/api/notifications/devices/{token}": {
       "delete": {
-        "operationId": "NotificationsController_deleteDeviceToken[0]",
-        "parameters": [
-          {
-            "name": "token",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeviceTokenActionResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "tags": [
-          "notifications"
-        ]
-      }
-    },
-    "/api/notifications/device-tokens/{token}": {
-      "delete": {
-        "operationId": "NotificationsController_deleteDeviceToken[1]",
+        "operationId": "NotificationsController_deleteDeviceToken",
         "parameters": [
           {
             "name": "token",
