@@ -30,7 +30,7 @@ describe('Admin blog posts and scheduled publish', () => {
     const res = await http.post('/api/admin/blog/posts').set(auth()).send(base(`test-post-${run}-draft`)).expect(201);
     expect(res.body.content).not.toMatch(/script|onerror/i); expect(res.body.content).toContain('<strong>body</strong>');
     await http.get(`/api/public/blog/posts/test-post-${run}-draft`).expect(404);
-    expect((await http.get('/api/public/blog/posts')).body.some((p: { slug: string }) => p.slug === `test-post-${run}-draft`)).toBe(false);
+    expect((await http.get('/api/public/blog/posts')).body.items.some((p: { slug: string }) => p.slug === `test-post-${run}-draft`)).toBe(false);
     expect(await prisma.auditLog.count({ where: { entityId: res.body.id, action: 'blog_post.created' } })).toBe(1);
     await http.post('/api/admin/blog/posts').set(auth()).send(base(`test-post-${run}-draft`)).expect(409);
   });
