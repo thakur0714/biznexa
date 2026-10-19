@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, ConflictException, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, ConflictException, OnModuleInit, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../common/auth.decorators';
@@ -9,7 +9,6 @@ import type { BlogPostInput } from '@biznexa/types';
 import { sanitizeRichText } from '@biznexa/rich-text';
 import { EventBus } from '../events/event-bus';
 import { env } from '../config/env';
-import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class AdminBlogService implements OnModuleInit {
@@ -18,7 +17,8 @@ export class AdminBlogService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly queues: QueueService, private readonly events: EventBus) {}
 
   async onModuleInit() {
-    this.events.on('blog.post_changed', async (e) => this.revalidateWeb(e.payload));
+    // Not awaited: emit() waits for listeners, and a slow web app must not hold up the admin's save.
+    this.events.on('blog.post_changed', (e) => { void this.revalidateWeb(e.payload); });
     this.queues.process<{ postId: string }>('blog-publish', async ({ data }) => { await this.publishScheduled(data.postId); });
     const scheduled = await this.prisma.blogPost.findMany({ where: { status: 'SCHEDULED', publishAt: { not: null } }, select: { id: true, publishAt: true } });
     for (const post of scheduled) await this.enqueue(post.id, post.publishAt!);
@@ -36,15 +36,12 @@ export class AdminBlogService implements OnModuleInit {
       slugs.push(payload.previousSlug);
     }
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
       const res = await fetch(`${webUrl}/api/revalidate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': secret },
         body: JSON.stringify({ slugs }),
-        signal: controller.signal as any,
+        signal: AbortSignal.timeout(3000),
       });
-      clearTimeout(timeoutId);
       if (!res.ok) this.logger.warn(`Failed to revalidate web: ${res.status} ${res.statusText}`);
     } catch (e: unknown) {
       this.logger.warn(`Failed to revalidate web: ${e instanceof Error ? e.message : String(e)}`);

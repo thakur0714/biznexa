@@ -15,6 +15,9 @@ jest.mock('../src/config/env', () => {
   };
 });
 
+// The listener does not hold up emit(), so let its fetch run before checking.
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+
 describe('Blog Revalidation', () => {
   let service: AdminBlogService;
   let events: EventBus;
@@ -59,6 +62,7 @@ describe('Blog Revalidation', () => {
 
   it('calls web revalidate endpoint when post is changed (rename both slugs)', async () => {
     await events.emit('blog.post_changed', { postId: 'post-1', slug: 'my-post', previousSlug: 'old-slug' });
+    await settle();
     expect(global.fetch).toHaveBeenCalledWith('http://web/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': 'test-secret' },
@@ -69,6 +73,7 @@ describe('Blog Revalidation', () => {
 
   it('calls web revalidate endpoint when post deleted', async () => {
     await events.emit('blog.post_changed', { postId: 'post-1', slug: 'deleted-slug' });
+    await settle();
     expect(global.fetch).toHaveBeenCalledWith('http://web/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': 'test-secret' },
@@ -79,6 +84,7 @@ describe('Blog Revalidation', () => {
 
   it('calls web revalidate endpoint when post scheduled publish', async () => {
     await events.emit('blog.post_changed', { postId: 'post-1', slug: 'scheduled-slug' });
+    await settle();
     expect(global.fetch).toHaveBeenCalledWith('http://web/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-revalidate-secret': 'test-secret' },
@@ -90,6 +96,7 @@ describe('Blog Revalidation', () => {
   it('skips if no secret is set', async () => {
     require('../src/config/env')._setEnv({ REVALIDATE_SECRET: '', PUBLIC_WEB_URL: 'http://web' });
     await events.emit('blog.post_changed', { postId: 'post-1', slug: 'my-post' });
+    await settle();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -97,6 +104,7 @@ describe('Blog Revalidation', () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
     const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
     await expect(events.emit('blog.post_changed', { postId: 'post-1', slug: 'my-post' })).resolves.not.toThrow();
+    await settle();
     expect(warnSpy).toHaveBeenCalledWith('Failed to revalidate web: Network error');
     warnSpy.mockRestore();
   });
