@@ -7,9 +7,11 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { EventBus } from '../src/events/event-bus';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { staffSession } from './staff';
 
 describe('Public catalogue cache', () => {
   const slug = `cache-service-${randomUUID()}`;
+  const adminEmail = `cache-admin-${randomUUID()}@example.com`;
   let app: INestApplication;
   let prisma: PrismaService;
   let serviceId: string;
@@ -27,7 +29,9 @@ describe('Public catalogue cache', () => {
   });
 
   afterAll(async () => {
+    await prisma.serviceFAQ.deleteMany({ where: { serviceId } });
     await prisma.service.deleteMany({ where: { id: serviceId } });
+    await prisma.user.deleteMany({ where: { email: adminEmail } });
     await app.close();
   });
 
@@ -45,5 +49,16 @@ describe('Public catalogue cache', () => {
     expect(refreshed.body.shortDescription).toBe('After event');
     expect(findFirst).toHaveBeenCalledTimes(2);
     findFirst.mockRestore();
+  });
+
+  it('shows FAQ edits on the public service page at once (documents, stages, related use the same path)', async () => {
+    const http = request(app.getHttpServer());
+    const path = `/api/catalogue/services/${slug}`;
+    await http.get(path).expect(200);
+    const { accessToken } = await staffSession(http, prisma, 'ADMIN', adminEmail);
+    await http.put(`/api/admin/catalogue/services/${serviceId}/faqs`).set('authorization', `Bearer ${accessToken}`)
+      .send([{ question: 'Is this cached?', answer: 'Not after an edit.' }]).expect(200);
+    const after = await http.get(path).expect(200);
+    expect(after.body.faqs).toEqual([{ question: 'Is this cached?', answer: 'Not after an edit.' }]);
   });
 });

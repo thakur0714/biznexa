@@ -44,3 +44,17 @@ node scripts/perf/load.mjs
 ```
 
 `PERF_API_URL`, `PERF_CUSTOMER_EMAIL`, `PERF_CUSTOMER_PASSWORD`, `PERF_SERVICE_SLUG`, `PERF_BLOG_SLUG`, `PERF_REQUESTS`, and `PERF_CONNECTIONS` can override defaults. The seeded login defaults are for local development only.
+
+## After — 19 Oct 2026 (Claude review)
+
+Same setup (seeded local DB, API with `node -r @swc-node/register`, web `next build && next start`, Lighthouse 13.5.0 mobile emulation).
+
+| Check | Before | After |
+| --- | ---: | ---: |
+| Lighthouse Performance `/` | 87 | **96** (LCP 2.8 s, TBT 20 ms, CLS 0) |
+| Lighthouse Performance service page | 90 | **96** (LCP 2.8 s, TBT 10 ms, CLS 0) |
+| Highest API p95 (catalogue search) | 55 ms | 34 ms |
+
+Frontend change: the browser Sentry SDK is loaded only when `NEXT_PUBLIC_SENTRY_DSN` is set, and then lazily, so it no longer ships in the main bundle. Review fix: editing a service's documents, stages, FAQs or related services now evicts the public catalogue cache too (before, the public page could show the old values for up to 60 s plus the web's 300 s revalidation).
+
+**Limits of these numbers.** They come from 12 requests per endpoint on a laptop with a small seeded database. They show there is no slow query or N+1 on these paths, but they are not a capacity test. Re-run `scripts/perf/load.mjs` (with more `PERF_REQUESTS` / `PERF_CONNECTIONS`) and Lighthouse against staging once M12.9 infra exists, with production-sized data.
