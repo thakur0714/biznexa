@@ -15,7 +15,31 @@ import { useAuth } from './src/auth/auth-context';
 import { isVersionBelow } from './src/api/version';
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';
-Sentry.init({ dsn: sentryDsn, enabled: sentryDsn.length > 0, tracesSampleRate: 0 });
+Sentry.init({
+  dsn: sentryDsn,
+  enabled: sentryDsn.length > 0,
+  tracesSampleRate: 0,
+  beforeSend(event) {
+    const clean = (value: string) => value
+      .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email]')
+      .replace(/(?<![\w-])(?:\+?91[ -]?)?[6-9]\d{9}(?![\w-])/g, '[mobile]')
+      .replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[token]');
+    event.user = undefined;
+    event.extra = undefined;
+    event.tags = undefined;
+    event.contexts = undefined;
+    event.breadcrumbs = undefined;
+    event.message = event.message ? clean(event.message) : undefined;
+    event.transaction = event.transaction ? clean(event.transaction) : undefined;
+    if (event.request) {
+      event.request = { url: event.request.url ? clean(event.request.url.split('?')[0]) : undefined, method: event.request.method };
+    }
+    for (const exception of event.exception?.values ?? []) {
+      if (exception.value) exception.value = clean(exception.value);
+    }
+    return event;
+  },
+});
 
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 let pendingDestination: ReturnType<typeof notificationDestination> | null = null;

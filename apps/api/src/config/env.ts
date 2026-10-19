@@ -5,6 +5,7 @@ import { z } from 'zod';
 const baseSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    SENTRY_DSN: z.string().optional().default(''),
     PORT: z.coerce.number().default(4000),
     PUBLIC_WEB_URL: z.string().url().default('http://localhost:3000'),
     CORS_ORIGINS: z.string().default('http://localhost:3000'),
