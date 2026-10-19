@@ -1,6 +1,6 @@
 import { Controller, Get, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { sellerSettingsInput, sellerSettingsSchema, type SellerSettingsData, rejectionPresetsInput, rejectionPresetsSchema, type RejectionPresetsInput } from '@biznexa/types';
+import { sellerSettingsInput, sellerSettingsSchema, type SellerSettingsData, rejectionPresetsInput, rejectionPresetsSchema, type RejectionPresetsInput, mobileVersionInput, mobileVersionSchema, type MobileVersionInput } from '@biznexa/types';
 import { AuthUser, CurrentUser, PERMS, RequirePermissions, RequireAnyPermission } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { SettingsService } from './settings.service';
@@ -41,4 +41,17 @@ export class AdminSettingsController {
     return this.settings.updateRejectionPresets(body, u.id);
   }
 
+  @RequirePermissions(PERMS.SETTINGS_MANAGE)
+  @ApiZodResponse('MobileVersion', mobileVersionSchema)
+  @Get('mobile-version')
+  mobileVersion() {
+    return this.settings.mobileVersion();
+  }
+
+  @RequirePermissions(PERMS.SETTINGS_MANAGE)
+  @ApiZodResponse('MobileVersion', mobileVersionSchema)
+  @Put('mobile-version')
+  updateMobileVersion(@ZodBody(mobileVersionInput) body: MobileVersionInput, @CurrentUser() u: AuthUser) {
+    return this.settings.updateMobileVersion(body, u.id);
+  }
 }

@@ -49,18 +49,58 @@ beforeAll(async () => {
   await app.init();
   http = request(app.getHttpServer()) as unknown as ReturnType<typeof request>;
   prisma = app.get(PrismaService);
-  await prisma.setting.deleteMany({ where: { key: REJECTION_PRESETS_KEY } });
+  await prisma.setting.deleteMany({ where: { key: { in: [REJECTION_PRESETS_KEY, 'mobile.minSupportedVersion'] } } });
   original = await prisma.setting.findMany({ where: { key: { in: KEYS } }, select: { key: true, value: true } });
   admin = (await staffSession(http, prisma, 'ADMIN', email(1))).accessToken;
   ops = (await staffSession(http, prisma, 'OPERATIONS', email(2))).accessToken;
   adminId = (await prisma.user.findUniqueOrThrow({ where: { email: email(1) } })).id;
 });
 
+describe('mobile version (M3.14)', () => {
+  const getVersion = (token: string) => http.get('/api/admin/settings/mobile-version').set(as(token));
+  const putVersion = (body: unknown, token: string) => http.put('/api/admin/settings/mobile-version').set(as(token)).send(body as object);
+
+  it('allows GET/PUT for settings.manage, refuses others', async () => {
+    // ops has documents.review but not settings.manage
+    await getVersion(ops).expect(403);
+    await putVersion({ minSupportedVersion: '1.2.3' }, ops).expect(403);
+  });
+
+  it('admin GET/PUT ok, writes an audit log', async () => {
+    const version = '1.4.0';
+    const res = await putVersion({ minSupportedVersion: version }, admin).expect(200);
+    expect(res.body.minSupportedVersion).toBe(version);
+
+    expect((await getVersion(admin).expect(200)).body.minSupportedVersion).toBe(version);
+
+    // Audit logs are stored via event bus. Wait for it.
+    await new Promise((r) => setTimeout(r, 200));
+
+    const log = await prisma.auditLog.findFirst({
+      where: { actorId: adminId, action: 'settings.mobile-version.update' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(log).not.toBeNull();
+    expect(log?.after).toEqual({ minSupportedVersion: version });
+  });
+
+  it('refuses invalid versions', async () => {
+    await putVersion({ minSupportedVersion: 'invalid' }, admin).expect(400);
+    await putVersion({ minSupportedVersion: '1.2.3.4' }, admin).expect(400);
+    await putVersion({ minSupportedVersion: '' }, admin).expect(400);
+  });
+
+  it('customer and support cannot access', async () => {
+    await http.get('/api/admin/settings/mobile-version').expect(401);
+    await http.put('/api/admin/settings/mobile-version').send({ minSupportedVersion: '1.2.0' }).expect(401);
+  });
+});
+
 afterAll(async () => {
   const kept = new Map(original.map((r) => [r.key, r.value]));
-  await prisma.setting.deleteMany({ where: { key: { in: [...KEYS.filter((k) => !kept.has(k)), REJECTION_PRESETS_KEY] } } });
+  await prisma.setting.deleteMany({ where: { key: { in: [...KEYS.filter((k) => !kept.has(k)), REJECTION_PRESETS_KEY, 'mobile.minSupportedVersion'] } } });
   for (const [key, value] of kept) await prisma.setting.upsert({ where: { key }, update: { value: value as object }, create: { key, value: value as object } });
-  await prisma.setting.deleteMany({ where: { key: REJECTION_PRESETS_KEY } });
+  await prisma.setting.deleteMany({ where: { key: { in: [REJECTION_PRESETS_KEY, 'mobile.minSupportedVersion'] } } });
   await prisma.auditLog.deleteMany({ where: { actorId: adminId } });
   await prisma.user.deleteMany({ where: { email: { startsWith: `e2e-st-${run}` } } });
   await app.close();
@@ -158,7 +198,6 @@ describe('rejection presets (M4.9)', () => {
       where: { actorId: adminId, action: 'settings.rejection-presets.update' },
       orderBy: { createdAt: 'desc' },
     });
-    const allLogs = await prisma.auditLog.findMany(); console.log('ALL LOGS:', allLogs.filter(l => l.action.includes('settings.rejection-presets.update')));
     expect(log).not.toBeNull();
     expect(log?.after).toEqual({ presets });
   });
