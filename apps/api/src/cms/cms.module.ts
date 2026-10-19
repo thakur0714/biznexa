@@ -9,6 +9,7 @@ import { richTextInput } from './rich-text';
 import { z } from 'zod';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { isMediaPath, safeLinkHref } from '@biznexa/types';
+import { EventBus } from '../events/event-bus';
 
 const mediaUrl = z.string().trim().max(500).nullable().refine((url) => url === null || isMediaPath(url), 'Choose an image uploaded to the public media library');
 const safeUrl = z.string().trim().max(500).nullable().refine((url) => url === null || safeLinkHref(url) !== null, 'Enter a safe web link');
@@ -72,7 +73,7 @@ export class CmsController {
 @ApiTags('admin · cms')
 @Controller('admin/cms')
 class AdminCmsController {
-  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly events: EventBus) {}
 
   @RequirePermissions(PERMS.CMS_MANAGE)
   @ApiZodResponse('CmsHomepage', homepageSchema)
@@ -109,6 +110,7 @@ class AdminCmsController {
       return { ...value, banners: body.banners, testimonials: body.testimonials };
     });
     await this.audit.log({ actorId: user.id, action: 'cms.homepage.update', entityType: 'CmsHomepage', entityId: 'home', before, after });
+    await this.events.emit('catalogue.changed', { entityType: 'homepage' });
     return after;
   }
 
