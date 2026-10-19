@@ -4,7 +4,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 
 const schema = z.object({
-  slugs: z.array(z.string())
+  slugs: z.array(z.string().max(200)).max(10),
 });
 
 export async function POST(req: NextRequest) {
@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'Invalid payload' }, { status: 400 });
   }
 
+  // Every blog page (post, listing, category, tag), the home page's latest posts, and the sitemap.
   revalidatePath('/blog', 'layout');
+  revalidatePath('/');
   revalidatePath('/sitemap.xml');
 
   return NextResponse.json({ revalidated: true });
