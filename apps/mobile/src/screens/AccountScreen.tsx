@@ -82,6 +82,20 @@ export function AccountScreen({ navigation }: AccountScreenProps) {
 
               <View style={styles.menuDivider} />
 
+              <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Support')} activeOpacity={0.7}>
+                <View style={styles.menuItemLeft}><Ionicons name="help-circle-outline" size={20} color={colors.ink} /><Text style={styles.menuItemText}>Support tickets</Text></View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </TouchableOpacity>
+
+              <View style={styles.menuDivider} />
+
+              <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Consultations')} activeOpacity={0.7}>
+                <View style={styles.menuItemLeft}><Ionicons name="calendar-outline" size={20} color={colors.ink} /><Text style={styles.menuItemText}>Consultations & bookings</Text></View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              </TouchableOpacity>
+
+              <View style={styles.menuDivider} />
+
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => navigation.navigate('Documents')}

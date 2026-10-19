@@ -142,6 +142,7 @@ export const postTicketMessageInput = z
       .trim()
       .min(1, 'Message cannot be empty')
       .max(4000, 'Message cannot exceed 4000 characters'),
+    fileIds: z.array(z.string().uuid()).max(5).optional(),
   })
   .strict();
 export type PostTicketMessageInput = z.infer<typeof postTicketMessageInput>;
