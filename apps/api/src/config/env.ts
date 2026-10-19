@@ -35,7 +35,7 @@ const baseSchema = z
     MSG91_OTP_TEMPLATE_ID: z.string().optional().default(''),
     /** Token in the MSG91 delivery report URL (M6.3). Empty = reports switched off; SMS stays SENT. */
     MSG91_WEBHOOK_TOKEN: z.string().optional().default(''),
-    /** `console` = in-memory (nothing sent), `smtp` = Mailpit in dev (docker compose), `sendgrid` in production. */
+    /** `console` = in-memory (nothing sent), `smtp` = Mailpit in dev, `sendgrid` in production. */
     EMAIL_PROVIDER: z.enum(['console', 'sendgrid', 'smtp']).default('console'),
     EMAIL_FROM: z.string().default('BizNexa <no-reply@biznexa.com>'),
     SMTP_HOST: z.string().default('localhost'),

@@ -17,11 +17,14 @@ docs/       Prompt, decisions, changelog, runbook
 
 ## Run it locally (about 10 minutes)
 
-Requirements: Node 22+, pnpm 10+, PostgreSQL 16 (or Docker).
+Requirements: Node 22+, pnpm 10+, PostgreSQL 16, Redis 7. Mailpit is optional (catches dev emails at http://localhost:8025).
 
 ```bash
-# 1. Infrastructure (Postgres, Redis, MinIO)
-docker compose up -d
+# 1. Infrastructure (Postgres, Redis) — installed directly, no Docker
+#    macOS:  brew install postgresql@16 redis mailpit && brew services start postgresql@16 && brew services start redis
+#    Ubuntu: sudo apt install postgresql-16 redis-server
+#    Then create the database user that apps/api/.env.example expects:
+createuser -s biznexa && psql -d postgres -c "ALTER USER biznexa PASSWORD 'biznexa'" && createdb -O biznexa biznexa
 
 # 2. Install
 pnpm install
@@ -72,5 +75,5 @@ cd apps/web && pnpm e2e               # Playwright browser tests, desktop + mobi
 - Create the first admin with `ADMIN_NAME=… ADMIN_EMAIL=… ADMIN_MOBILE=… ADMIN_PASSWORD=… pnpm --filter @biznexa/api create-admin`.
 - The API refuses to start in production with weak secrets or the console SMS provider.
 - Run `npx prisma migrate deploy` as a release step before starting a new API version.
-- Dockerfiles: `apps/api/Dockerfile`, `apps/web/Dockerfile` (build from the repo root). CI: `.github/workflows/ci.yml`.
+- No Docker: each app runs with `pnpm build` then its own `pnpm start` (D70). CI: `.github/workflows/ci.yml`.
 - **Seed prices are placeholders** and **SAC codes must be confirmed by your CA** before invoices go live.

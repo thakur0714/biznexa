@@ -1,5 +1,19 @@
 # Changelog
 
+## No Docker (19-Oct-2026)
+
+- Removed `docker-compose.yml` and the API/web Dockerfiles (D70). README now installs PostgreSQL 16 and Redis 7 directly for local development; servers run each app with `pnpm build` + `pnpm start`.
+
+## M9.5 — CMS pages admin (19-Oct-2026)
+
+- Completed CMS pages admin (D62): public `GET /api/cms/pages/:slug` now includes `contactEmail` and `contactPhone` for published rows, and API e2e tests verify draft privacy, non-admin 403s, HTML sanitisation, SEO/contact fields and audit logging across the full test suite.
+
+## M12.7 — Full E2E suite (19-Oct-2026)
+
+- Added Playwright coverage for customer support tickets and a complete refund journey using the mock checkout, admin refund API and customer payments page. Existing browser tests cover buying, ops review/reject/re-upload and delivery, certificate verification, and consultant booking; all flows run on desktop and mobile.
+- Added 80% coverage gates for shared types and the core API state-machine, coupon, payment-webhook and refund services. Coverage: shared types 98.77% statements; core API services 93.54% statements and 82.86% branches.
+- No application-code bugs were found or fixed. Validation: Playwright 32/32; API 1,059 tests across 107 suites.
+
 ## M11.8 — Mobile notifications with deep links (19-Oct-2026)
 
 - Added `expo-notifications`, the Android notification channel, post-login permission prompt, native device-token registration/refresh, and token unregistration on logout. Added notification response handling for killed, background, and foreground states with a pure route mapper for application details, documents, payments, certificates and messages; unknown links return Home.
@@ -305,3 +319,4 @@ Report: `docs/reviews/SECURITY_REVIEW_2026-10-18.md`. Decisions: D64, D65.
 ### Test results
 - API suite run 3 times in a row: 83 suites, 794 tests, all passed each time.
 
+- Built the admin Enquiries page with API filtering

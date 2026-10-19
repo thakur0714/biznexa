@@ -42,3 +42,4 @@ export * from './media';
 export * from './reviews';
 export * from './privacy';
 export * from './blog';
+export * from './leads';

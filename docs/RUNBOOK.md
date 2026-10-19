@@ -42,7 +42,7 @@ An empty DSN disables that app's SDK. Keep DSNs separate by project; web and adm
 - Local build (requires Android SDK and local EAS build prerequisites): `pnpm dlx eas-cli build --platform android --profile preview --local` (run from `apps/mobile`).
 - `preview` produces an installable APK for internal testers. Do not use the production profile for this tester distribution; it produces an AAB for a later release.
 - Bump `expo.version` in `apps/mobile/app.json` for the human-readable version and increment `expo.android.versionCode` for every Android binary. Add a dated entry to `apps/mobile/CHANGELOG.md`.
-- To require an update, update the `mobile.minSupportedVersion` Setting to the new minimum version (for example, `2.0.0`). Admin does not currently expose this setting, so run this SQL against the production database: `INSERT INTO "Setting" (key, value, "updatedAt") VALUES ('mobile.minSupportedVersion', '"2.0.0"'::jsonb, now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = now();`. The API serves it from `/api/mobile/version`; the mobile app blocks versions lower than that value.
+- To require an update, update the `mobile.minSupportedVersion` Setting to the new minimum version (for example, `2.0.0`). Change it in the admin portal under Settings → mobile app version (`PUT /api/admin/settings/mobile-version`). The API serves it from `/api/mobile/version`; the mobile app blocks versions lower than that value.
 
 ## Native Razorpay checkout (M11.4)
 - `react-native-razorpay` includes native Android code and cannot run in Expo Go. Build/install an EAS development client after adding or upgrading the SDK: `pnpm dlx eas-cli build --platform android --profile development` from `apps/mobile`, then start Metro with `pnpm exec expo start --dev-client` and open the installed development client.
@@ -67,13 +67,35 @@ Uploaded documents, deliverables and generated PDFs live under the API's `UPLOAD
 - Responses: 413 too large, 415 wrong extension or content that does not match it, 404 when a user asks for a link to a file they may not read.
 - Find who uploaded a file: `SELECT "ownerId", "originalName", "createdAt" FROM "StoredFile" WHERE "fileKey" = '<key>';`
 
+## Backups and restore (M12.10)
+
+### Local backup scripts
+Install the PostgreSQL client tools (`pg_dump`, `pg_restore`, `psql`, `createdb`, `dropdb`) and `tar`. Set `DATABASE_URL` and `UPLOAD_DIR` in the environment without echoing them. `scripts/backup/backup.sh` creates paired UTC-stamped custom-format database dumps and upload archives under `BACKUP_DIR` (default `./backups`) and removes matching archives older than 14 days. Override retention with `--retention-days N` and output location with `--output-dir DIR`.
+
+Restore requires explicit destinations: `scripts/backup/restore.sh --database '<target database URL>' --uploads '<target folder>' --backup-dir '<backup folder>'`. It restores the latest matching pair, replacing the target database contents and files in the target folder. The script refuses an exact match with the current `DATABASE_URL` and a target folder matching `UPLOAD_DIR` unless `--force` is provided; use a separate target database and folder for drills. Protect dumps and archives as sensitive production data (they contain personal records), restrict filesystem access, and encrypt them at rest and in transit when copied off-host.
+
+`scripts/backup/verify-restore.sh` makes a local backup, creates a uniquely named temporary database, restores the dump and upload archive, compares the row count of every public table (except Prisma's migration bookkeeping table), then drops the temporary database on success or failure. Run it after database migrations and at least monthly. Keep and review its output. A first local launch attempt found stale PostgreSQL shared memory; after restoring the local PostgreSQL service, the drill passed. Real output (19-Oct-2026):
+
+```text
+Backup created: <BACKUP_DIR>/database-20261019T123529Z.dump and <BACKUP_DIR>/uploads-20261019T123529Z.tar.gz
+Application=34 ApplicationDocument=1 ApplicationStageHistory=73 AuditLog=14610 AvailabilitySlot=0 Banner=0 BlogCategory=6 BlogPost=0 BlogPostCategory=0 Booking=0 BookingStatusHistory=0 BusinessEntity=13 Category=16 Certificate=49 CertificateLookup=412 CertificateSequence=1 CertificationBody=50 CmsPage=4 Consultant=1 ConsultantDocument=0 ConsultantFeeChangeRequest=0 ConsultantService=0 Conversation=28 Coupon=3 CouponRedemption=1 CreditNote=6 CreditNoteSequence=1 CustomerProfile=61 DataRequest=0 DeviceToken=0 FinalDeliverable=0 InternalNote=0 Invoice=14 InvoiceSequence=1 Lead=2 Message=0 MessageAttachment=0 Notification=118 NotificationDelivery=315 NotificationTemplate=125 Order=28 OrderItem=28 OtpCode=7862 Payment=24 PaymentWebhookEvent=25 Permission=21 RefreshToken=722 Refund=9 Reminder=367 Review=0 Role=5 RolePermission=33 SearchQuery=5 Service=75 ServiceDocumentRequirement=279 ServiceFAQ=200 ServiceFormSchema=77 ServicePackage=205 ServiceRelation=219 ServiceStage=388 Setting=11 StoredFile=5 Subcategory=2 Tag=0 Testimonial=3 Ticket=0 User=324 UserRole=284 _BlogPostToTag=0
+Verified row counts for 69 tables; temporary database will be dropped.
+```
+
+### Production AWS plan — to do at M12.9
+- **RDS:** enable automated daily backups with 35-day retention and point-in-time recovery (PITR); monitor backup completion and copy snapshots cross-region/account per the approved recovery plan.
+- **Uploads:** store production uploads in S3 with versioning enabled, lifecycle rules for noncurrent versions and retention aligned with the RDS recovery window; deny public access and use encryption.
+- **Monthly restore drill:** restore an RDS snapshot to an isolated instance, restore a representative S3 version into an isolated bucket/prefix, point a staging build at them, run smoke checks and row/file consistency checks, record duration and gaps, then delete the temporary resources.
+- **Escalation:** page the BizNexa production on-call/application owner first; the incident lead contacts the AWS account owner and AWS Support for RDS/S3 recovery issues. Confirm named people, phone numbers and support-plan details during M12.9 before production.
+- **AWS setup remains pending M12.9.** The scripts here provide local backup/restore tooling only; they do not schedule production backups or configure AWS services.
+
 ## PDF generation (M3.22, D49)
 Invoices and certificates are rendered from HTML by a `pdf` queue job with headless Chromium (`playwright-core`) and stored under `UPLOAD_DIR` like uploads; the record keeps the storage key (`Invoice.pdfKey`).
-- Production: `PDF_RENDERER=playwright` (the default; `stub` is refused). The API image installs Chromium's headless shell and its system libraries (`PLAYWRIGHT_BROWSERS_PATH=/ms-playwright`). Allow ≈300 MB of memory per API instance for it; one browser is shared, two renders at a time.
+- Production: `PDF_RENDERER=playwright` (the default; `stub` is refused). On the server, install Chromium's headless shell and its system libraries once from `apps/api`: `node node_modules/playwright-core/cli.js install --with-deps --only-shell chromium`. Allow ≈300 MB of memory per API instance for it; one browser is shared, two renders at a time.
 - Development: install Chromium once with `pnpm --filter @biznexa/api exec playwright-core install chromium --only-shell` (the web E2E install covers it on the same Playwright version), or set `PDF_RENDERER=stub` for plain-text PDFs.
 - Templates run with **no JavaScript and no network**: anything a template needs (logo, fonts, QR codes) must be inline (`data:` URLs, `<style>`). A broken image is a template bug, not an outage.
 - Failures retry with backoff (≈1 min in all), then go to the `dead-letter` queue. Restarting the API queues every record still without a PDF, so after fixing Chromium a restart is enough.
-- After upgrading `playwright-core`, rebuild the image (the Chromium build is tied to the version).
+- After upgrading `playwright-core`, run that install command again (the Chromium build is tied to the version).
 - **Invoice PDFs** (M3.23, D50) are made seconds after `invoice.issued`. To reprint one after a template or font change, clear its key (`UPDATE "Invoice" SET "pdfKey" = NULL WHERE number = 'BN/2627/000123'`) and either restart the API or have the customer click "Download invoice" again (a 409 queues it). The old file stays under `UPLOAD_DIR`; delete it by its old key if needed. Invoices are printed from the row as issued, so a Settings change never alters an existing invoice.
 
 ## Virus scanning (D23)

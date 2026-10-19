@@ -12262,17 +12262,77 @@
         "operationId": "LeadsController_list",
         "parameters": [
           {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "source",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "service_page",
+                "contact",
+                "home",
+                "consultants"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
             "name": "page",
             "required": false,
             "in": "query",
             "schema": {
-              "type": "number"
+              "type": "number",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadListResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -12718,6 +12778,36 @@
         ],
         "responses": {
           "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CmsPage"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "admin · cms"
+        ]
+      }
+    },
+    "/api/admin/cms/pages/{slug}/discard-draft": {
+      "post": {
+        "operationId": "AdminCmsController_discardDraft",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "",
             "content": {
               "application/json": {
@@ -23044,6 +23134,88 @@
         ],
         "additionalProperties": false
       },
+      "LeadListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "mobile": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "city": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "serviceId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "serviceName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "message": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "source": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "mobile",
+                "email",
+                "city",
+                "serviceId",
+                "serviceName",
+                "message",
+                "source",
+                "createdAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "limit"
+        ],
+        "additionalProperties": false
+      },
       "MediaImage": {
         "type": "object",
         "properties": {
@@ -23362,6 +23534,85 @@
             "updatedAt": {
               "type": "string",
               "format": "date-time"
+            },
+            "draftTitle": {
+              "type": "string",
+              "nullable": true
+            },
+            "draftContent": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "html": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "html"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "blocks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "paragraph",
+                              "heading",
+                              "list"
+                            ]
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "blocks"
+                  ],
+                  "additionalProperties": false
+                }
+              ],
+              "nullable": true
+            },
+            "draftSeoTitle": {
+              "type": "string",
+              "nullable": true
+            },
+            "draftMetaDescription": {
+              "type": "string",
+              "nullable": true
+            },
+            "draftOgImageUrl": {
+              "type": "string",
+              "nullable": true
+            },
+            "draftContactEmail": {
+              "type": "string",
+              "nullable": true
+            },
+            "draftContactPhone": {
+              "type": "string",
+              "nullable": true
             }
           },
           "required": [
@@ -23483,6 +23734,85 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "draftTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "draftContent": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "html": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "html"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "blocks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "paragraph",
+                            "heading",
+                            "list"
+                          ]
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "blocks"
+                ],
+                "additionalProperties": false
+              }
+            ],
+            "nullable": true
+          },
+          "draftSeoTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "draftMetaDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "draftOgImageUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "draftContactEmail": {
+            "type": "string",
+            "nullable": true
+          },
+          "draftContactPhone": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [

@@ -63,7 +63,7 @@ All clients consume **one shared backend API**.
 | QR | `qrcode` library, signed verification URL |
 | Mobile | React Native (Expo) + TypeScript, sharing types/API client with web |
 | Auth | JWT access token (15 min) + rotating refresh token (httpOnly cookie on web, secure storage on mobile); Google OAuth; OTP login |
-| Infra | Docker; AWS (ECS/EC2 or similar) in **ap-south-1 (Mumbai)**; CloudFront CDN; GitHub Actions CI/CD |
+| Infra | Node.js apps on the server, no Docker (D70); AWS (ECS/EC2 or similar) in **ap-south-1 (Mumbai)**; CloudFront CDN; GitHub Actions CI/CD |
 | Monitoring | Sentry, structured logs, uptime checks |
 
 Repository layout:
@@ -449,7 +449,7 @@ AI business assistant, AI service recommendation, AI document checking (OCR + va
 
 Complete each milestone with tests and a short demo note in `docs/CHANGELOG.md`.
 
-1. **Foundation:** monorepo, CI/CD, Docker, env config, DB schema v1, auth (all methods), RBAC, audit log, file upload service, design system
+1. **Foundation:** monorepo, CI/CD, env config, DB schema v1, auth (all methods), RBAC, audit log, file upload service, design system
 2. **Catalogue:** categories/services/packages/documents/stages/FAQs admin + public listing and detail pages + search + seed data (Section 4)
 3. **Ordering:** dynamic form builder + renderer, cart/checkout, coupons, Razorpay payments + webhooks, invoices (PDF, GST)
 4. **Fulfilment:** application management, document review, assignment, status timeline, final documents, internal notes, messaging threads
