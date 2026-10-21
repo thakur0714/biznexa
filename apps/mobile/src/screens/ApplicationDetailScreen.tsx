@@ -82,9 +82,21 @@ function statusVariant(status: string): 'seal' | 'marigold' | 'ink' | 'danger' |
   }
 }
 
-export function ApplicationDetailScreen({ route, navigation }: ApplicationDetailScreenProps) {
+function loadStateContent(loading: boolean, hasError: boolean, loadingContent: React.ReactNode, errorContent: React.ReactNode, content: React.ReactNode): React.ReactNode {
+  if (loading) return loadingContent;
+  if (hasError) return errorContent;
+  return content;
+}
+
+function stageIndicator(isDone: boolean, isCurrent: boolean) {
+  if (isDone) return <Ionicons name="checkmark" size={14} color={colors.white} />;
+  if (isCurrent) return <View style={styles.stageInnerDot} />;
+  return <View style={styles.stageUpcomingDot} />;
+}
+
+export function ApplicationDetailScreen({ route, navigation }: Readonly<ApplicationDetailScreenProps>) {
   const { applicationId, initialTab = 'timeline' } = route.params;
-  const { api, token, user } = useAuth();
+  const { api, token } = useAuth();
 
   const [activeTab, setActiveTab] = useState<DetailTab>(initialTab);
 
@@ -111,7 +123,6 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [paymentsError, setPaymentsError] = useState<string | null>(null);
   const [isPayingBalance, setIsPayingBalance] = useState(false);
-  const [activeCheckout, setActiveCheckout] = useState<PaymentCheckout | null>(null);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -297,7 +308,7 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
   };
 
   // Send message attachment from photo picker
-  const handlePickMessageAttachment = async () => {
+  const handlePickMessageAttachment = () => {
     Alert.alert('Attach File', 'Choose source', [
       {
         text: 'Camera',
@@ -479,7 +490,6 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
 
       if (res.data) {
         const checkout = res.data as PaymentCheckout;
-        setActiveCheckout(checkout);
 
         if (checkout.gateway === 'MOCK') {
           Alert.alert(
@@ -501,7 +511,6 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
                     Alert.alert('Mock Payment Failed', e instanceof Error ? e.message : 'Error');
                   } finally {
                     setIsPayingBalance(false);
-                    setActiveCheckout(null);
                   }
                 },
               },
@@ -526,6 +535,10 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
     }
   };
 
+  const statusBadge = timeline?.status ? (
+    <Badge label={timeline.statusLabel || timeline.status} variant={statusVariant(timeline.status)} />
+  ) : null;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -543,12 +556,7 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
               {timeline?.serviceName || 'Service Details'}
             </Text>
           </View>
-          {timeline?.status && (
-            <Badge
-              label={timeline.statusLabel || timeline.status}
-              variant={statusVariant(timeline.status)}
-            />
-          )}
+          {statusBadge}
         </View>
 
         {/* Tab Segment Controls */}
@@ -584,11 +592,7 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
           contentContainerStyle={styles.scrollInner}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-          {timelineLoading ? (
-            <LoadingState message="Loading timeline…" />
-          ) : timelineError ? (
-            <ErrorState message={timelineError} onRetry={loadTimeline} />
-          ) : timeline ? (
+          {loadStateContent(timelineLoading, Boolean(timelineError), <LoadingState message="Loading timeline…" />, <ErrorState message={timelineError ?? ''} onRetry={loadTimeline} />, timeline ? (
             <>
               {/* Assigned Expert Card */}
               {timeline.assignedExpert && (
@@ -627,13 +631,7 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
                             isCurrent && styles.stageCircleCurrent,
                           ]}
                         >
-                          {isDone ? (
-                            <Ionicons name="checkmark" size={14} color={colors.white} />
-                          ) : isCurrent ? (
-                            <View style={styles.stageInnerDot} />
-                          ) : (
-                            <View style={styles.stageUpcomingDot} />
-                          )}
+                          {stageIndicator(isDone, isCurrent)}
                         </View>
                         {!isLast && (
                           <View
@@ -698,18 +696,14 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
                 </>
               )}
             </>
-          ) : null}
+          ) : null)}
         </ScrollView>
       )}
 
       {/* Tab 2: Messages */}
       {activeTab === 'messages' && (
         <View style={{ flex: 1 }}>
-          {messagesLoading && messages.length === 0 ? (
-            <LoadingState message="Loading message thread…" style={{ flex: 1 }} />
-          ) : messagesError ? (
-            <ErrorState message={messagesError} onRetry={loadMessages} style={{ flex: 1 }} />
-          ) : (
+          {loadStateContent(messagesLoading && messages.length === 0, Boolean(messagesError), <LoadingState message="Loading message thread…" style={{ flex: 1 }} />, <ErrorState message={messagesError ?? ''} onRetry={loadMessages} style={{ flex: 1 }} />, (
             <FlatList
               data={messages}
               keyExtractor={(item) => item.id}
@@ -793,7 +787,7 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
                 );
               }}
             />
-          )}
+          ))}
 
           {/* Message Input Box */}
           <View style={styles.messageInputContainer}>
@@ -840,11 +834,7 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
           contentContainerStyle={styles.scrollInner}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-          {documentsLoading ? (
-            <LoadingState message="Loading documents checklist…" />
-          ) : documentsError ? (
-            <ErrorState message={documentsError} onRetry={loadDocuments} />
-          ) : documents ? (
+          {loadStateContent(documentsLoading, Boolean(documentsError), <LoadingState message="Loading documents checklist…" />, <ErrorState message={documentsError ?? ''} onRetry={loadDocuments} />, documents ? (
             <>
               {/* Submission Notice Banner */}
               <View
@@ -1025,7 +1015,7 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
                 </>
               )}
             </>
-          ) : null}
+          ) : null)}
         </ScrollView>
       )}
 
@@ -1036,11 +1026,7 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
           contentContainerStyle={styles.scrollInner}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
-          {paymentsLoading && invoices.length === 0 ? (
-            <LoadingState message="Loading payment details…" />
-          ) : paymentsError ? (
-            <ErrorState message={paymentsError} onRetry={loadInvoices} />
-          ) : (
+          {loadStateContent(paymentsLoading && invoices.length === 0, Boolean(paymentsError), <LoadingState message="Loading payment details…" />, <ErrorState message={paymentsError ?? ''} onRetry={loadInvoices} />, (
             <>
               {/* Payment Action Card */}
               <Card style={styles.paymentSummaryCard}>
@@ -1105,7 +1091,7 @@ export function ApplicationDetailScreen({ route, navigation }: ApplicationDetail
                 ))
               )}
             </>
-          )}
+          ))}
         </ScrollView>
       )}
     </KeyboardAvoidingView>
