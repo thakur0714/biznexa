@@ -43,6 +43,9 @@ function Bodies() {
 
   const [deleting, setDeleting] = useState<CertificationBodyRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  let saveButtonLabel = 'Add body';
+  if (editing) saveButtonLabel = 'Save changes';
+  if (submitting) saveButtonLabel = 'Saving…';
 
   useEffect(() => {
     let cancelled = false;
@@ -77,8 +80,7 @@ function Bodies() {
     }
   };
 
-  const saveBody = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveBody = async () => {
     setFormErrors({});
 
     const errs: Record<string, string> = {};
@@ -223,9 +225,32 @@ function Bodies() {
     return bodies.filter(
       (b) =>
         b.name.toLowerCase().includes(q) ||
-        (b.accreditation && b.accreditation.toLowerCase().includes(q)),
+          b.accreditation?.toLowerCase().includes(q),
     );
   }, [bodies, query]);
+
+  let bodyContent: React.ReactNode;
+  if (loadError) bodyContent = <div className="space-y-3"><Notice tone="error">{loadError}</Notice><Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>Try again</Button></div>;
+  else if (!bodies) bodyContent = <p className="text-muted" role="status">Loading certification bodies…</p>;
+  else if (bodies.length === 0) bodyContent = <EmptyState title="No certification bodies yet" description="Add accredited bodies that issue ISO and other certifications." action={<Button variant="ink" size="sm" onClick={() => openEdit(null)}>Add body</Button>} />;
+  else {
+    bodyContent = (
+      <DataTable
+        caption="Certification bodies"
+        data={filtered}
+        columns={columns}
+        getRowId={(b) => b.id}
+        minWidth={600}
+        empty={
+          <EmptyState
+            title="Nothing matches this search"
+            description="Try a different query or clear search."
+            action={<Button variant="outline" size="sm" onClick={() => setQuery('')}>Clear search</Button>}
+          />
+        }
+      />
+    );
+  }
 
   return (
     <div className="max-w-[1000px]">
@@ -251,47 +276,7 @@ function Bodies() {
       </div>
 
       <div className="mt-4">
-        {loadError ? (
-          <div className="space-y-3">
-            <Notice tone="error">{loadError}</Notice>
-            <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
-              Try again
-            </Button>
-          </div>
-        ) : !bodies ? (
-          <p className="text-muted" role="status">
-            Loading certification bodies…
-          </p>
-        ) : bodies.length === 0 ? (
-          <EmptyState
-            title="No certification bodies yet"
-            description="Add accredited bodies that issue ISO and other certifications."
-            action={
-              <Button variant="ink" size="sm" onClick={() => openEdit(null)}>
-                Add body
-              </Button>
-            }
-          />
-        ) : (
-          <DataTable
-            caption="Certification bodies"
-            data={filtered}
-            columns={columns}
-            getRowId={(b) => b.id}
-            minWidth={600}
-            empty={
-              <EmptyState
-                title="Nothing matches this search"
-                description="Try a different query or clear search."
-                action={
-                  <Button variant="outline" size="sm" onClick={() => setQuery('')}>
-                    Clear search
-                  </Button>
-                }
-              />
-            }
-          />
-        )}
+        {bodyContent}
       </div>
 
       <Dialog
@@ -304,13 +289,13 @@ function Bodies() {
             <Button variant="outline" onClick={() => setEditing(undefined)} disabled={submitting}>
               Cancel
             </Button>
-            <Button variant="ink" disabled={submitting} onClick={saveBody}>
-              {submitting ? 'Saving…' : editing ? 'Save changes' : 'Add body'}
+            <Button variant="ink" disabled={submitting} onClick={() => void saveBody()}>
+              {saveButtonLabel}
             </Button>
           </>
         }
       >
-        <form onSubmit={saveBody} className="space-y-4 py-2" noValidate>
+        <form onSubmit={(event) => { event.preventDefault(); void saveBody(); }} className="space-y-4 py-2" noValidate>
           <Field
             id="body-name"
             label="Body name"

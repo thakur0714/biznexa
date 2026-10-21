@@ -103,7 +103,7 @@ describe('certificate bulk import UI state (M7.4)', () => {
     const escapeCsv = (val: string) => {
       let s = val;
       if (/^[=+\-@]/.test(s)) s = `'${s}`;
-      return `"${s.replace(/"/g, '""')}"`;
+      return `"${s.replaceAll('"', '""')}"`;
     };
     expect(escapeCsv('=HYPERLINK()')).toBe('"\'=HYPERLINK()"');
     expect(escapeCsv('Normal text')).toBe('"Normal text"');

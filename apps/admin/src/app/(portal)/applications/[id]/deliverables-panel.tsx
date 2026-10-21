@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { Button, Field, Notice } from '@biznexa/ui';
 import { formatDate, PERMS, type ApplicationStatus, type Deliverable, type FileLinkResult, type StoredFileResult } from '@biznexa/types';
 import { useAuth } from '@/lib/auth';
 
-export function DeliverablesPanel({ applicationId, status }: { applicationId: string; status: ApplicationStatus }) {
+export function DeliverablesPanel({ applicationId, status }: Readonly<{ applicationId: string; status: ApplicationStatus }>) {
   const api = useApi();
   const { user } = useAuth();
   const canAdd = Boolean(user?.permissions.includes(PERMS.APPLICATIONS_UPDATE)) && (status === 'IN_PROGRESS' || status === 'COMPLETED');
@@ -40,7 +40,30 @@ export function DeliverablesPanel({ applicationId, status }: { applicationId: st
     return () => { cancelled = true; };
   }, [api, applicationId, reloadCount]);
 
-  async function submit(event: FormEvent) {
+  let deliverablesContent: React.ReactNode;
+  if (loading) {
+    deliverablesContent = <p role="status" className="text-sm text-muted">Loading deliverables…</p>;
+  } else if (!items.length) {
+    deliverablesContent = <p className="text-sm text-muted">No final deliverables have been added.</p>;
+  } else {
+    deliverablesContent = (
+      <ul className="divide-y divide-rule">
+        {items.map((item) => (
+          <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+            <div className="min-w-0">
+              <p className="font-medium">{item.title}</p>
+              <p className="truncate text-sm text-muted">{item.fileName} · {formatDate(item.createdAt)}</p>
+            </div>
+            <Button variant="outline" size="sm" type="button" disabled={openingFileId === item.fileId} onClick={() => void openFile(item.fileId)}>
+              {openingFileId === item.fileId ? 'Opening…' : 'Open'}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  async function submit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!title.trim() || !file || submitting) return;
     setSubmitting(true);
@@ -95,25 +118,7 @@ export function DeliverablesPanel({ applicationId, status }: { applicationId: st
     <section className="space-y-4 rounded-md border border-rule bg-white p-4" aria-labelledby="deliverables-heading">
       <h2 id="deliverables-heading" className="text-lg font-semibold">Final deliverables</h2>
       {error && <Notice tone="error">{error}</Notice>}
-      {loading ? (
-        <p role="status" className="text-sm text-muted">Loading deliverables…</p>
-      ) : items.length ? (
-        <ul className="divide-y divide-rule">
-          {items.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
-              <div className="min-w-0">
-                <p className="font-medium">{item.title}</p>
-                <p className="truncate text-sm text-muted">{item.fileName} · {formatDate(item.createdAt)}</p>
-              </div>
-              <Button variant="outline" size="sm" type="button" disabled={openingFileId === item.fileId} onClick={() => void openFile(item.fileId)}>
-                {openingFileId === item.fileId ? 'Opening…' : 'Open'}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-muted">No final deliverables have been added.</p>
-      )}
+      {deliverablesContent}
 
       {canAdd && (
         <form onSubmit={submit} className="space-y-3 border-t border-rule pt-4">
