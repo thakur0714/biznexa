@@ -97,21 +97,24 @@ export class BookingPaymentsService {
    * A signed `payment.captured` / `payment.failed` for a booking's payment, inside the webhook's transaction
    * (the event row is already claimed). Takes the consultant row lock, the lock booking creation takes.
    */
+  /** `payment.failed`: the booking keeps its hold until it runs out, so the customer can try again. */
+  private async applyFailed(tx: Prisma.TransactionClient, payment: { id: string; status: string; gatewayPaymentId: string | null }, gp: GatewayPayment, body: unknown): Promise<BookingWebhookResult> {
+    const paymentId = payment.id;
+    if (SUCCEEDED.has(payment.status)) return { outcome: 'stale', paymentId, events: [] };
+    if (payment.status === 'FAILED' && payment.gatewayPaymentId === gp.id) return { outcome: 'duplicate', paymentId, events: [] };
+    await tx.payment.update({
+      where: { id: paymentId },
+      data: { status: 'FAILED', gatewayPaymentId: gp.id, method: gp.method, failureReason: gp.failureReason ?? 'Payment failed', rawWebhook: body as Prisma.InputJsonValue },
+    });
+    return { outcome: 'applied', paymentId, events: [] };
+  }
+
   async applyWebhook(tx: Prisma.TransactionClient, type: 'payment.captured' | 'payment.failed', paymentId: string, bookingId: string, gp: GatewayPayment, body: unknown, now = new Date()): Promise<BookingWebhookResult> {
     const { consultantId } = await tx.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { consultantId: true } });
     await lockConsultant(tx, consultantId);
     const payment = await tx.payment.findUniqueOrThrow({ where: { id: paymentId }, select: { id: true, amount: true, status: true, gatewayPaymentId: true } });
 
-    if (type === 'payment.failed') {
-      if (SUCCEEDED.has(payment.status)) return { outcome: 'stale', paymentId, events: [] };
-      if (payment.status === 'FAILED' && payment.gatewayPaymentId === gp.id) return { outcome: 'duplicate', paymentId, events: [] };
-      // The booking keeps its hold until it runs out; the customer can try again.
-      await tx.payment.update({
-        where: { id: paymentId },
-        data: { status: 'FAILED', gatewayPaymentId: gp.id, method: gp.method, failureReason: gp.failureReason ?? 'Payment failed', rawWebhook: body as Prisma.InputJsonValue },
-      });
-      return { outcome: 'applied', paymentId, events: [] };
-    }
+    if (type === 'payment.failed') return this.applyFailed(tx, payment, gp, body);
 
     if (gp.status !== 'captured') return { outcome: 'ignored', paymentId, events: [] };
     if (SUCCEEDED.has(payment.status)) return { outcome: payment.gatewayPaymentId === gp.id ? 'duplicate' : 'extra_capture', paymentId, events: [] };

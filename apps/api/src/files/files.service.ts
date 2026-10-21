@@ -42,17 +42,17 @@ const MB = 1024 * 1024;
 export function cleanFileName(name: string): string {
   const base = name.split(/[\\/]/).pop() ?? '';
   // eslint-disable-next-line no-control-regex
-  const cleaned = base.replace(/[\u0000-\u001f\u007f"]/g, '').trim();
+  const cleaned = base.replaceAll(/[\u0000-\u001f\u007f"]/g, '').trim();
   if (!cleaned) return 'file';
   if (cleaned.length <= 150) return cleaned;
-  const ext = cleaned.match(/\.[A-Za-z0-9]{1,8}$/)?.[0] ?? '';
+  const ext = /\.[A-Za-z0-9]{1,8}$/.exec(cleaned)?.[0] ?? '';
   return cleaned.slice(0, 150 - ext.length) + ext;
 }
 
 /** RFC 6266 header with an ASCII fallback and the UTF-8 name. */
 export function contentDisposition(type: Disposition, name: string): string {
-  const ascii = name.replace(/[^\x20-\x7e]/g, '_').replace(/[\\"]/g, '_');
-  const utf8 = encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  const ascii = name.replaceAll(/[^\x20-\x7e]/g, '_').replaceAll(/[\\"]/g, '_');
+  const utf8 = encodeURIComponent(name).replaceAll(/['()*]/g, (c) => `%${c.codePointAt(0)!.toString(16).toUpperCase()}`);
   return `${type}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
 }
 
@@ -109,23 +109,7 @@ export class FilesService {
       if (consultantDocument) return true;
     }
 
-    if (user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED)) {
-      const doc = await this.prisma.applicationDocument.findFirst({
-        where: {
-          fileKey: file.fileKey,
-          application: applicationScope(user),
-        },
-      });
-      if (doc) return true;
-
-      const deliverable = await this.prisma.finalDeliverable.findFirst({
-        where: {
-          fileKey: file.fileKey,
-          application: applicationScope(user),
-        },
-      });
-      if (deliverable) return true;
-    }
+    if (user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED) && (await this.inAssignedApplication(user, file))) return true;
 
     const customerDeliverable = await this.prisma.finalDeliverable.findFirst({
       where: {
@@ -135,39 +119,36 @@ export class FilesService {
     });
     if (customerDeliverable) return true;
 
+    return this.canReadMessageAttachment(user, file);
+  }
+
+  /** A document or final deliverable on an application this staff member is assigned to. */
+  private async inAssignedApplication(user: AuthUser, file: StoredFile) {
+    const where = { fileKey: file.fileKey, application: applicationScope(user) };
+    const doc = await this.prisma.applicationDocument.findFirst({ where });
+    if (doc) return true;
+    const deliverable = await this.prisma.finalDeliverable.findFirst({ where });
+    return !!deliverable;
+  }
+
+  /** A message attachment: ticket attachments for support staff and the ticket's customer; application chat for whoever can see the application. */
+  private async canReadMessageAttachment(user: AuthUser, file: StoredFile) {
     const messageAttachment = await this.prisma.messageAttachment.findUnique({
       where: { fileId: file.id },
       include: { message: { include: { conversation: { select: { applicationId: true, ticket: { select: { customerId: true } } } } } } },
     });
+    const conversation = messageAttachment?.message.conversation;
+    if (!conversation) return false;
 
-    // Ticket attachments: support staff, and the ticket's customer.
-    const ticket = messageAttachment?.message.conversation.ticket;
+    const ticket = conversation.ticket;
     if (ticket && (user.permissions?.includes(PERMS.TICKETS_MANAGE) || ticket.customerId === user.id)) return true;
+    if (!conversation.applicationId) return false;
 
-    if (messageAttachment?.message.conversation.applicationId) {
-      if (
-        user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ALL) ||
-        user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED)
-      ) {
-        const app = await this.prisma.application.findFirst({
-          where: {
-            id: messageAttachment.message.conversation.applicationId,
-            ...applicationScope(user),
-          },
-        });
-        if (app) return true;
-      } else {
-        const app = await this.prisma.application.findFirst({
-          where: {
-            id: messageAttachment.message.conversation.applicationId,
-            customerId: user.id,
-          },
-        });
-        if (app) return true;
-      }
-    }
-
-    return false;
+    const isStaff = user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ALL) || user.permissions?.includes(PERMS.APPLICATIONS_VIEW_ASSIGNED);
+    const app = await this.prisma.application.findFirst({
+      where: { id: conversation.applicationId, ...(isStaff ? applicationScope(user) : { customerId: user.id }) },
+    });
+    return !!app;
   }
 
   /** A file's details, including its scan status (clients poll this after uploading). */

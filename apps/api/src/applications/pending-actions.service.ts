@@ -3,6 +3,47 @@ import { needsUpload, type PendingAction, type PendingActionsResponse } from '@b
 import { PrismaService } from '../prisma/prisma.service';
 import { ApplicationDocumentsService } from './application-documents.service';
 
+type ApplicationRow = {
+  id: string;
+  code: string;
+  service: { name: string };
+  order: { status: string; total: number; amountPaid: number } | null;
+  conversation: { messages: { id: string }[] } | null;
+};
+type Checklist = Awaited<ReturnType<ApplicationDocumentsService['listForCustomer']>>[number]['checklist'];
+
+/** Documents still to upload: mandatory ones never uploaded, and anything rejected or requested later. */
+function documentActions(checklist: Checklist, application: ApplicationRow): PendingAction[] {
+  const href = `/dashboard/applications/${application.id}?tab=documents`;
+  const action = (name: string, reupload: boolean): PendingAction => ({
+    kind: reupload ? 'reupload_document' : 'upload_document',
+    applicationId: application.id,
+    applicationCode: application.code,
+    serviceName: application.service.name,
+    title: `${reupload ? 'Re-upload' : 'Upload'} ${name}`,
+    href,
+  });
+  const required = checklist.items
+    .filter((item) => needsUpload(item) && (item.requirement.isMandatory || item.current !== null))
+    .map((item) => action(item.requirement.name, item.current !== null));
+  const additional = checklist.additional.filter((item) => needsUpload(item)).map((item) => action(item.request.name, item.current !== null));
+  return [...required, ...additional];
+}
+
+/** A balance to pay and unread messages from the team. */
+function applicationActions(application: ApplicationRow): PendingAction[] {
+  const context = { applicationId: application.id, applicationCode: application.code, serviceName: application.service.name };
+  const actions: PendingAction[] = [];
+  const order = application.order;
+  if (order?.status === 'PARTIALLY_PAID' && order.total > order.amountPaid) {
+    actions.push({ kind: 'pay_balance', ...context, title: 'Pay the remaining balance', href: `/dashboard/applications/${application.id}?tab=payments` });
+  }
+  if (application.conversation?.messages.length) {
+    actions.push({ kind: 'read_message', ...context, title: 'Read a new message from our team', href: `/dashboard/applications/${application.id}?tab=messages` });
+  }
+  return actions;
+}
+
 @Injectable()
 export class PendingActionsService {
   constructor(
@@ -39,59 +80,9 @@ export class PendingActionsService {
 
     for (const group of documentGroups) {
       const application = appById.get(group.applicationId);
-      if (!application || !group.checklist.canUpload) continue;
-      const applicationHref = `/dashboard/applications/${application.id}?tab=documents`;
-
-      for (const item of group.checklist.items) {
-        if (!needsUpload(item) || (!item.requirement.isMandatory && item.current === null)) continue;
-        const reupload = item.current !== null;
-        actions.push({
-          kind: reupload ? 'reupload_document' : 'upload_document',
-          applicationId: application.id,
-          applicationCode: application.code,
-          serviceName: application.service.name,
-          title: `${reupload ? 'Re-upload' : 'Upload'} ${item.requirement.name}`,
-          href: applicationHref,
-        });
-      }
-
-      for (const item of group.checklist.additional) {
-        if (!needsUpload(item)) continue;
-        const reupload = item.current !== null;
-        actions.push({
-          kind: reupload ? 'reupload_document' : 'upload_document',
-          applicationId: application.id,
-          applicationCode: application.code,
-          serviceName: application.service.name,
-          title: `${reupload ? 'Re-upload' : 'Upload'} ${item.request.name}`,
-          href: applicationHref,
-        });
-      }
+      if (application && group.checklist.canUpload) actions.push(...documentActions(group.checklist, application));
     }
-
-    for (const application of applications) {
-      const context = {
-        applicationId: application.id,
-        applicationCode: application.code,
-        serviceName: application.service.name,
-      };
-      if (application.order?.status === 'PARTIALLY_PAID' && application.order.total > application.order.amountPaid) {
-        actions.push({
-          kind: 'pay_balance',
-          ...context,
-          title: 'Pay the remaining balance',
-          href: `/dashboard/applications/${application.id}?tab=payments`,
-        });
-      }
-      if (application.conversation?.messages.length) {
-        actions.push({
-          kind: 'read_message',
-          ...context,
-          title: 'Read a new message from our team',
-          href: `/dashboard/applications/${application.id}?tab=messages`,
-        });
-      }
-    }
+    for (const application of applications) actions.push(...applicationActions(application));
 
     return { items: actions };
   }

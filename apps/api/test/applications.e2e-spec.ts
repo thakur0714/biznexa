@@ -9,6 +9,7 @@ import { APPLICATION_CODE_PATTERN, draftApplicationSchema, GENERIC_SERVICE_FORM,
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { ApplicationsService } from '../src/applications/applications.service';
 
 let app: NestExpressApplication;
 let http: ReturnType<typeof request>;
@@ -188,7 +189,6 @@ describe('start an application (M3.8)', () => {
 
   it('hands out distinct codes straight from the service under heavy parallel load', async () => {
     // Forty unique customers still exercise simultaneous sequence allocation without opening 80 DB operations at once.
-    const { ApplicationsService } = await import('../src/applications/applications.service');
     const svc = app.get(ApplicationsService);
     await prisma.user.createMany({
       data: Array.from({ length: 40 }, (_, i) => ({ name: 'Load', email: `e2e-app-${run}-load-${i}@example.com`, passwordHash: 'x', consentAt: new Date() })),

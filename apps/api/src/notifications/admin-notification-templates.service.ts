@@ -14,6 +14,9 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 
+/** A blank or missing value clears the field. */
+const trimmedOrNull = (value: string | null | undefined) => value?.trim() || null;
+
 @Injectable()
 export class AdminNotificationTemplatesService {
   constructor(
@@ -83,9 +86,7 @@ export class AdminNotificationTemplatesService {
       throw new BadRequestException('Template body cannot be empty');
     }
 
-    const targetSubject = input.subject !== undefined
-      ? (input.subject && input.subject.trim() ? input.subject.trim() : null)
-      : existing.subject;
+    const targetSubject = input.subject === undefined ? existing.subject : trimmedOrNull(input.subject);
     const targetBody = input.body !== undefined ? input.body.trim() : existing.body;
 
     const usedVariables = extractTemplateVariables(`${targetSubject ?? ''} ${targetBody}`);
@@ -111,7 +112,7 @@ export class AdminNotificationTemplatesService {
       data.body = targetBody;
     }
     if (input.dltTemplateId !== undefined) {
-      data.dltTemplateId = input.dltTemplateId && input.dltTemplateId.trim() ? input.dltTemplateId.trim() : null;
+      data.dltTemplateId = trimmedOrNull(input.dltTemplateId);
     }
     if (input.isActive !== undefined) {
       data.isActive = input.isActive;
@@ -156,7 +157,7 @@ export class AdminNotificationTemplatesService {
 
   previewTemplate(input: PreviewNotificationTemplateInput): PreviewNotificationTemplateResponse {
     const combinedText = `${input.subject ?? ''} ${input.body}`;
-    const variableRegex = /{{\s*([a-zA-Z0-9_]+)\s*}}/g;
+    const variableRegex = /{{\s*(\w+)\s*}}/g;
 
     const usedSet = new Set<string>();
     let match: RegExpExecArray | null;
@@ -168,7 +169,7 @@ export class AdminNotificationTemplatesService {
     const defaultSamples = input.event ? getSampleVariablesForEvent(input.event) : {};
     const sampleVariables = {
       ...defaultSamples,
-      ...(input.sampleVariables ?? {}),
+      ...input.sampleVariables,
     };
 
     const allowed = input.event ? getAllowedVariablesForEvent(input.event) : [];
@@ -181,12 +182,12 @@ export class AdminNotificationTemplatesService {
     const escape = input.channel === 'EMAIL';
 
     const renderSnippet = (text: string): string => {
-      return text.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_m, varName: string) => {
+      return text.replaceAll(/{{\s*(\w+)\s*}}/g, (_m, varName: string) => {
         const val = sampleVariables[varName];
         if (val === undefined || val === null) {
           return `{{${varName}}}`;
         }
-        const str = String(val);
+        const str = typeof val === 'object' ? JSON.stringify(val) : String(val as string | number | boolean);
         return escape ? escapeHtml(str) : str;
       });
     };

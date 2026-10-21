@@ -25,6 +25,10 @@ export interface RenderTemplateOptions {
   contextInfo?: string;
 }
 
+/** A `{{ variable }}` placeholder. */
+const PLACEHOLDER = /{{\s*(\w+)\s*}}/g;
+const HAS_PLACEHOLDER = /{{\s*\w+\s*}}/;
+
 @Injectable()
 export class TemplateEngineService {
   constructor(private readonly prisma: PrismaService) {}
@@ -41,25 +45,25 @@ export class TemplateEngineService {
   ): string {
     const missingVars = new Set<string>();
 
-    const rendered = templateStr.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_match, varName: string) => {
+    const rendered = templateStr.replaceAll(PLACEHOLDER, (_match, varName: string) => {
       const val = variables[varName];
       if (val === undefined || val === null) {
         missingVars.add(varName);
         return '';
       }
-      const strVal = String(val);
+      const strVal = typeof val === 'object' ? JSON.stringify(val) : String(val as string | number | boolean);
       return options.escapeHtmlValues ? escapeHtml(strVal) : strVal;
     });
 
+    const ctx = options.contextInfo ? ` for ${options.contextInfo}` : '';
     if (missingVars.size > 0) {
       const list = Array.from(missingVars).join(', ');
-      const ctx = options.contextInfo ? ` for ${options.contextInfo}` : '';
       throw new MissingTemplateVariableError(`Missing required variable(s): ${list}${ctx}`);
     }
 
     // Safety check: ensure no unrendered {{variable}} remains
-    if (/{{\s*([a-zA-Z0-9_]+)\s*}}/.test(rendered)) {
-      throw new MissingTemplateVariableError(`Template contains unrendered placeholder${options.contextInfo ? ` for ${options.contextInfo}` : ''}`);
+    if (HAS_PLACEHOLDER.test(rendered)) {
+      throw new MissingTemplateVariableError(`Template contains unrendered placeholder${ctx}`);
     }
 
     return rendered;

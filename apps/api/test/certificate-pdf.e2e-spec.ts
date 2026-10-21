@@ -7,7 +7,8 @@ import { PERMS } from '@biznexa/types';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { StorageService } from '../src/files/storage.service';
+import { newFileKey, StorageService } from '../src/files/storage.service';
+import { Readable } from 'node:stream';
 import { signedPath } from '../src/files/files.service';
 import { EventBus } from '../src/events/event-bus';
 import { QueueService } from '../src/queue/queue.service';
@@ -281,8 +282,6 @@ describe('Certificate PDF template + generation (M7.3)', () => {
 
   it('upload-your-own PDF attaches stored file key and does not overwrite it', async () => {
     // Simulate upload via M2.5.6 upload service
-    const { newFileKey } = await import('../src/files/storage.service');
-    const { Readable } = await import('node:stream');
     const customKey = newFileKey();
     const customBytes = Buffer.from('%PDF-1.4 Custom Uploaded Certificate Content');
     await storage.write(customKey, Readable.from(customBytes));

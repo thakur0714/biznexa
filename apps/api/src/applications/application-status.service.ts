@@ -28,6 +28,14 @@ export type StatusChanged = DomainEventPayloads['application.status_changed'];
  *
  * Callers that already run a transaction use `transitionIn` and emit the returned event after their commit.
  */
+/** The trimmed note; required when cancelling, and kept under the column's limit. */
+function transitionNote(input: ApplicationTransition): string | undefined {
+  const note = input.note?.trim() || undefined;
+  if (note && note.length > APPLICATION_NOTE_MAX) throw new BadRequestException(`Keep the note under ${APPLICATION_NOTE_MAX} characters`);
+  if (input.to === 'CANCELLED' && !note) throw new BadRequestException('Enter the reason for cancelling');
+  return note;
+}
+
 @Injectable()
 export class ApplicationStatusService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly events: EventBus) {}
@@ -40,9 +48,7 @@ export class ApplicationStatusService {
 
   async transitionIn(tx: Prisma.TransactionClient, input: ApplicationTransition): Promise<StatusChanged> {
     const { applicationId, to, actorId, stageId } = input;
-    const note = input.note?.trim() || undefined;
-    if (note && note.length > APPLICATION_NOTE_MAX) throw new BadRequestException(`Keep the note under ${APPLICATION_NOTE_MAX} characters`);
-    if (to === 'CANCELLED' && !note) throw new BadRequestException('Enter the reason for cancelling');
+    const note = transitionNote(input);
 
     const app = await tx.application.findUnique({ where: { id: applicationId }, select: { id: true, status: true, serviceId: true } });
     if (!app) throw new NotFoundException('Application not found');

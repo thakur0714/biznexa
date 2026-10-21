@@ -1,11 +1,10 @@
 
-import { Controller, Get, Post, Put, Delete, Param, NotFoundException, ForbiddenException, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { internalNoteSchema, internalNoteListSchema, createInternalNoteInput, updateInternalNoteInput, type CreateInternalNoteInput, type UpdateInternalNoteInput, PERMS } from '@biznexa/types';
 import { AuthUser, CurrentUser, RequireAnyPermission } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody } from '../common/openapi';
 import { InternalNotesService } from './internal-notes.service';
-import { z } from 'zod';
 
 const uuid = new ParseUUIDPipe();
 

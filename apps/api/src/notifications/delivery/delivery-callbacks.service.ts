@@ -57,25 +57,18 @@ export class DeliveryCallbacksService {
     if (!this.config.msg91Token) throw new NotFoundException();
     if (!token || !safeEqual(token, this.config.msg91Token)) throw new UnauthorizedException('Bad token');
 
-    let reports: unknown = body;
-    if (reports && typeof reports === 'object' && !Array.isArray(reports) && 'data' in reports) reports = (reports as { data: unknown }).data;
-    if (typeof reports === 'string') {
-      try {
-        reports = JSON.parse(reports);
-      } catch {
-        throw new BadRequestException('Unreadable report');
-      }
-    }
-    if (!Array.isArray(reports)) throw new BadRequestException('Unreadable report');
+    const updates = msg91Reports(body).flatMap((r) => {
+      const id = typeof r?.requestId === 'string' ? r.requestId : '';
+      return (Array.isArray(r?.report) ? r.report : []).flatMap((line) => {
+        const desc = scalarText(line?.desc);
+        const outcome = msg91Outcome(scalarText(line?.status), desc);
+        return outcome ? [{ id, outcome, desc }] : [];
+      });
+    });
 
     let updated = 0;
-    for (const r of reports as { requestId?: unknown; report?: { status?: unknown; desc?: unknown }[] }[]) {
-      const id = typeof r?.requestId === 'string' ? r.requestId : '';
-      for (const line of Array.isArray(r?.report) ? r.report : []) {
-        const outcome = msg91Outcome(String(line?.status ?? ''), String(line?.desc ?? ''));
-        if (outcome) updated += await this.apply('SMS', id, outcome, String(line?.desc ?? ''));
-      }
-    }
+    // In report order, so a later status for the same message wins.
+    for (const u of updates) updated += await this.apply('SMS', u.id, u.outcome, u.desc); // NOSONAR
     return { updated };
   }
 
@@ -96,16 +89,41 @@ export class DeliveryCallbacksService {
     }
     if (!Array.isArray(events)) throw new BadRequestException('Unreadable events');
 
-    let updated = 0;
-    for (const e of events as { event?: unknown; sg_message_id?: unknown; reason?: unknown; type?: unknown }[]) {
+    const updates = (events as { event?: unknown; sg_message_id?: unknown; reason?: unknown; type?: unknown }[]).flatMap((e): { id: string; outcome: Outcome; reason?: string }[] => {
       // sg_message_id = "<X-Message-Id from the send>.<filter suffix>"
       const id = typeof e?.sg_message_id === 'string' ? e.sg_message_id.split('.')[0] : '';
-      if (e?.event === 'delivered') updated += await this.apply('EMAIL', id, 'DELIVERED');
-      else if (e?.event === 'bounce' || e?.event === 'dropped') updated += await this.apply('EMAIL', id, 'FAILED', `${e.event}${typeof e.reason === 'string' ? ` (${e.reason})` : ''}`);
-    }
+      if (e?.event === 'delivered') return [{ id, outcome: 'DELIVERED' }];
+      if (e?.event !== 'bounce' && e?.event !== 'dropped') return [];
+      const reason = typeof e.reason === 'string' ? `${e.event} (${e.reason})` : e.event;
+      return [{ id, outcome: 'FAILED', reason }];
+    });
+
+    let updated = 0;
+    // In event order, so a later status for the same message wins.
+    for (const u of updates) updated += await this.apply('EMAIL', u.id, u.outcome, u.reason); // NOSONAR
     if (updated) this.logger.log(`SendGrid: ${updated} delivery report(s) applied`);
     return { updated };
   }
+}
+
+/** Text of a string/number field from a provider payload; anything else is ''. */
+const scalarText = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
+
+type Msg91Report = { requestId?: unknown; report?: { status?: unknown; desc?: unknown }[] };
+
+/** MSG91 posts the list as JSON, or as a form whose `data` field holds the JSON. */
+function msg91Reports(body: unknown): Msg91Report[] {
+  let reports: unknown = body;
+  if (reports && typeof reports === 'object' && !Array.isArray(reports) && 'data' in reports) reports = (reports as { data: unknown }).data;
+  if (typeof reports === 'string') {
+    try {
+      reports = JSON.parse(reports);
+    } catch {
+      throw new BadRequestException('Unreadable report');
+    }
+  }
+  if (!Array.isArray(reports)) throw new BadRequestException('Unreadable report');
+  return reports as Msg91Report[];
 }
 
 export function msg91Outcome(status: string, desc: string): Outcome | null {

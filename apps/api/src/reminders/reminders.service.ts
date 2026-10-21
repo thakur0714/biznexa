@@ -44,7 +44,7 @@ export class RemindersService implements OnModuleInit {
       },
     });
 
-    if (!certificate || !certificate.validUntil) return;
+    if (!certificate?.validUntil) return;
 
     let userId: string | undefined;
     if (certificate.application?.customerId) {
@@ -96,7 +96,7 @@ export class RemindersService implements OnModuleInit {
       },
     });
 
-    if (!application || !application.service || !application.service.recurrence) return;
+    if (!application?.service?.recurrence) return;
 
     const recurrenceMap: Record<string, number> = {
       MONTHLY: 1,

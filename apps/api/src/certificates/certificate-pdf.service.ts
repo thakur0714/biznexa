@@ -125,7 +125,7 @@ export class CertificatePdfService implements OnModuleInit {
     return {
       stream,
       size,
-      disposition: contentDisposition(disposition, `Certificate ${cert.certificateNumber.replace(/\//g, '-')}.pdf`),
+      disposition: contentDisposition(disposition, `Certificate ${cert.certificateNumber.replaceAll('/', '-')}.pdf`),
     };
   }
 
@@ -153,7 +153,7 @@ export class CertificatePdfService implements OnModuleInit {
     return {
       stream,
       size,
-      disposition: contentDisposition(disposition, `Certificate ${cert.certificateNumber.replace(/\//g, '-')}.pdf`),
+      disposition: contentDisposition(disposition, `Certificate ${cert.certificateNumber.replaceAll('/', '-')}.pdf`),
     };
   }
 

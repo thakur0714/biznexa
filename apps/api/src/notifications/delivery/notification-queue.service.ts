@@ -40,7 +40,7 @@ interface DeliveryContent {
   recipient?: SendNotificationInput['recipient'] | null;
 }
 
-const FINISHED: NotificationDeliveryStatus[] = ['SENT', 'DELIVERED', 'SKIPPED'];
+const FINISHED = new Set<NotificationDeliveryStatus>(['SENT', 'DELIVERED', 'SKIPPED']);
 /** A QUEUED delivery untouched this long has probably lost its job (Redis was down when it was queued). */
 const STALE_QUEUED_MS = 15 * 60_000;
 
@@ -83,7 +83,7 @@ export class NotificationQueueService implements OnModuleInit, OnApplicationBoot
   onModuleInit() {
     this.queues.process<NotificationJob>(NOTIFICATIONS_QUEUE, (job: Job<NotificationJob>) => this.deliver(job), {
       concurrency: 5,
-      settings: { backoffStrategy: (attemptsMade: number) => retryDelayMs(attemptsMade, this.retryBaseMs, Math.random()) },
+      settings: { backoffStrategy: (attemptsMade: number) => retryDelayMs(attemptsMade, this.retryBaseMs, Math.random()) }, // NOSONAR: retry jitter, not security
     });
   }
 
@@ -91,7 +91,7 @@ export class NotificationQueueService implements OnModuleInit, OnApplicationBoot
   async onApplicationBootstrap() {
     if (!env().QUEUE_BOOT_SWEEP) return;
     const stale = await this.prisma.notificationDelivery.findMany({
-      where: { status: 'QUEUED', updatedAt: { lt: new Date(Date.now() - STALE_QUEUED_MS) }, createdAt: { gt: new Date(Date.now() - 7 * 24 * 3600_000) } },
+      where: { status: 'QUEUED', updatedAt: { lt: new Date(Date.now() - STALE_QUEUED_MS) }, createdAt: { gt: new Date(Date.now() - 7 * 24 * 3_600_000) } },
       select: { id: true, sendAt: true },
       take: 1000,
     });
@@ -152,22 +152,10 @@ export class NotificationQueueService implements OnModuleInit, OnApplicationBoot
    * The job. Idempotent: a delivery that was already sent (or skipped) is not sent again, and each try
    * is claimed first, so two jobs for one delivery cannot both send the same attempt.
    */
-  async deliver(job: Job<NotificationJob>): Promise<NotificationDeliveryStatus | 'missing' | 'busy'> {
-    const { deliveryId } = job.data;
-    const row = await this.prisma.notificationDelivery.findUnique({ where: { id: deliveryId } });
-    if (!row) return 'missing';
-    if (FINISHED.includes(row.status)) return row.status;
-
-    const claimed = await this.prisma.notificationDelivery.updateMany({
-      where: { id: row.id, status: { in: ['QUEUED', 'FAILED'] }, attempts: row.attempts },
-      data: { attempts: { increment: 1 }, status: 'QUEUED' },
-    });
-    if (!claimed.count) return 'busy';
-
-    const content = row.content as unknown as DeliveryContent;
-    let result: NotificationResult;
+  /** One try through the dispatcher; a thrown error becomes a failed result. */
+  private async send(row: { userId: string; channel: NotificationResult['channel']; event: string; category: string }, content: DeliveryContent): Promise<NotificationResult> {
     try {
-      result = await this.dispatcher.dispatch({
+      return await this.dispatcher.dispatch({
         userId: row.userId,
         channel: row.channel,
         event: row.event,
@@ -179,32 +167,51 @@ export class NotificationQueueService implements OnModuleInit, OnApplicationBoot
         ...(content.recipient ? { recipient: content.recipient } : {}),
       });
     } catch (err) {
-      result = {
+      return {
         success: false,
         channel: row.channel,
         error: err instanceof Error ? err.message : String(err),
         permanent: err instanceof UnknownNotificationChannelError || isPermanentFailure(err),
       };
     }
+  }
+
+  private async recordSent(row: { id: string; channel: string }, content: DeliveryContent, result: NotificationResult, now: Date): Promise<NotificationDeliveryStatus> {
+    // In-app has no provider: the row is in the inbox, so it is delivered. Other channels wait for a callback.
+    let status: NotificationDeliveryStatus = row.channel === 'IN_APP' ? 'DELIVERED' : 'SENT';
+    if (result.skipped) status = 'SKIPPED';
+    await this.prisma.notificationDelivery.update({
+      where: { id: row.id },
+      data: {
+        status,
+        providerMessageId: result.notificationId ?? null,
+        lastError: result.skipped ? safeErrorText(`Skipped: ${result.reason ?? 'nothing to send'}`) : null,
+        sentAt: result.skipped ? null : now,
+        deliveredAt: status === 'DELIVERED' ? now : null,
+        failedAt: null,
+        ...withoutRecipient(content),
+      },
+    });
+    return status;
+  }
+
+  async deliver(job: Job<NotificationJob>): Promise<NotificationDeliveryStatus | 'missing' | 'busy'> {
+    const { deliveryId } = job.data;
+    const row = await this.prisma.notificationDelivery.findUnique({ where: { id: deliveryId } });
+    if (!row) return 'missing';
+    if (FINISHED.has(row.status)) return row.status;
+
+    const claimed = await this.prisma.notificationDelivery.updateMany({
+      where: { id: row.id, status: { in: ['QUEUED', 'FAILED'] }, attempts: row.attempts },
+      data: { attempts: { increment: 1 }, status: 'QUEUED' },
+    });
+    if (!claimed.count) return 'busy';
+
+    const content = row.content as unknown as DeliveryContent;
+    const result = await this.send(row, content);
 
     const now = new Date();
-    if (result.success) {
-      // In-app has no provider: the row is in the inbox, so it is delivered. Other channels wait for a callback.
-      const status: NotificationDeliveryStatus = result.skipped ? 'SKIPPED' : row.channel === 'IN_APP' ? 'DELIVERED' : 'SENT';
-      await this.prisma.notificationDelivery.update({
-        where: { id: row.id },
-        data: {
-          status,
-          providerMessageId: result.notificationId ?? null,
-          lastError: result.skipped ? safeErrorText(`Skipped: ${result.reason ?? 'nothing to send'}`) : null,
-          sentAt: result.skipped ? null : now,
-          deliveredAt: status === 'DELIVERED' ? now : null,
-          failedAt: null,
-          ...withoutRecipient(content),
-        },
-      });
-      return status;
-    }
+    if (result.success) return this.recordSent(row, content, result, now);
 
     const error = safeErrorText(result.error ?? 'Unknown error');
     const final = result.permanent === true || job.attemptsMade + 1 >= (job.opts.attempts ?? 1);

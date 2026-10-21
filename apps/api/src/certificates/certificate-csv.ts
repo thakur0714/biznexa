@@ -8,72 +8,46 @@ export function escapeCsvCell(val: string | number | null | undefined): string {
   if (val == null) return '""';
   let s = String(val);
   if (/^[=+\-@]/.test(s)) s = `'${s}`;
-  return `"${s.replace(/"/g, '""')}"`;
+  return `"${s.replaceAll('"', '""')}"`;
 }
 
+/** RFC 4180-style parsing: quoted cells may hold commas, line breaks and doubled quotes; blank rows are dropped. */
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
-  let currentRow: string[] = [];
-  let currentCell = '';
+  let row: string[] = [];
+  let cell = '';
   let insideQuotes = false;
+  const endCell = () => {
+    row.push(cell.trim());
+    cell = '';
+  };
+  const endRow = () => {
+    endCell();
+    if (row.some((c) => c !== '')) rows.push(row);
+    row = [];
+  };
 
-  const len = text.length;
-  for (let i = 0; i < len; i++) {
+  for (let i = 0; i < text.length; i++) {
     const char = text[i];
-    const nextChar = text[i + 1];
-
     if (insideQuotes) {
-      if (char === '"') {
-        if (nextChar === '"') {
-          currentCell += '"';
-          i++;
-        } else {
-          insideQuotes = false;
-        }
-      } else {
-        currentCell += char;
-      }
-    } else {
-      if (char === '"') {
-        insideQuotes = true;
-      } else if (char === ',') {
-        currentRow.push(currentCell.trim());
-        currentCell = '';
-      } else if (char === '\r') {
-        if (nextChar === '\n') {
-          i++;
-        }
-        currentRow.push(currentCell.trim());
-        if (currentRow.some((c) => c !== '')) {
-          rows.push(currentRow);
-        }
-        currentRow = [];
-        currentCell = '';
-      } else if (char === '\n') {
-        currentRow.push(currentCell.trim());
-        if (currentRow.some((c) => c !== '')) {
-          rows.push(currentRow);
-        }
-        currentRow = [];
-        currentCell = '';
-      } else {
-        currentCell += char;
-      }
-    }
+      if (char !== '"') cell += char;
+      else if (text[i + 1] === '"') cell += text[++i];
+      else insideQuotes = false;
+    } else if (char === '"') insideQuotes = true;
+    else if (char === ',') endCell();
+    else if (char === '\n') endRow();
+    else if (char === '\r') {
+      if (text[i + 1] === '\n') i++;
+      endRow();
+    } else cell += char;
   }
 
-  if (currentCell !== '' || currentRow.length > 0) {
-    currentRow.push(currentCell.trim());
-    if (currentRow.some((c) => c !== '')) {
-      rows.push(currentRow);
-    }
-  }
-
+  if (cell !== '' || row.length > 0) endRow();
   return rows;
 }
 
 export function normalizeHeader(h: string): string {
-  return h.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return h.toLowerCase().replaceAll(/[^a-z0-9]/g, '');
 }
 
 const HEADER_MAP: Record<string, string[]> = {
@@ -106,16 +80,16 @@ export function mapHeaders(headers: string[]): Record<string, number> {
 export function parseCsvDate(str: string | undefined): Date | null {
   if (!str) return null;
   const trimmed = str.trim();
-  const dmyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  const dmyMatch = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/.exec(trimmed);
   if (dmyMatch) {
-    const day = parseInt(dmyMatch[1], 10);
-    const month = parseInt(dmyMatch[2], 10) - 1;
-    const year = parseInt(dmyMatch[3], 10);
+    const day = Number.parseInt(dmyMatch[1], 10);
+    const month = Number.parseInt(dmyMatch[2], 10) - 1;
+    const year = Number.parseInt(dmyMatch[3], 10);
     const d = new Date(Date.UTC(year, month, day));
-    if (!isNaN(d.getTime())) return d;
+    if (!Number.isNaN(d.getTime())) return d;
   }
   const d = new Date(trimmed);
-  if (!isNaN(d.getTime())) return d;
+  if (!Number.isNaN(d.getTime())) return d;
   return null;
 }
 

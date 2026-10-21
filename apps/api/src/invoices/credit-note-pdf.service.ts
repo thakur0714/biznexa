@@ -84,6 +84,6 @@ export class CreditNotePdfService implements OnModuleInit {
     const cn = await this.prisma.creditNote.findUnique({ where: { id }, select: { number: true, pdfKey: true } });
     if (!cn?.pdfKey) throw new NotFoundException('Credit note not found');
     const { stream, size } = await this.storage.read(cn.pdfKey);
-    return { stream, size, disposition: contentDisposition(disposition, `Credit note ${cn.number.replace(/\//g, '-')}.pdf`) };
+    return { stream, size, disposition: contentDisposition(disposition, `Credit note ${cn.number.replaceAll('/', '-')}.pdf`) };
   }
 }

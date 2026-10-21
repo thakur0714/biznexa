@@ -5,7 +5,7 @@ import type { AuthUser } from '../common/auth.decorators';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { ApplicationStatusService } from './application-status.service';
+import { ApplicationStatusService, type StatusChanged } from './application-status.service';
 import { EventBus } from '../events/event-bus';
 import { applicationScope, findVisibleApplication } from './application-access';
 import { decryptField } from '../common/encryption';
@@ -36,6 +36,20 @@ const rowSelect = {
 } satisfies Prisma.ApplicationSelect;
 
 /** Staff applications list (M4.2). Scoping comes first; the filters can only narrow it. */
+/** `me` is the signed-in staff member, `unassigned` is nobody, anything else a staff id. */
+function assigneeFilter(assignee: string, userId: string): string | null {
+  if (assignee === 'me') return userId;
+  return assignee === 'unassigned' ? null : assignee;
+}
+
+/** Created on or after `from` and on or before `to` (IST calendar days, both inclusive). */
+function createdBetween(from: string | undefined, to: string | undefined): Prisma.DateTimeFilter {
+  return {
+    ...(from ? { gte: istDayStart(from) } : {}),
+    ...(to ? { lt: new Date(istDayStart(to).getTime() + DAY_MS) } : {}),
+  };
+}
+
 @Injectable()
 export class AdminApplicationsService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly status: ApplicationStatusService, private readonly events: EventBus) {}
@@ -85,18 +99,11 @@ export class AdminApplicationsService {
     const and: Prisma.ApplicationWhereInput[] = [];
     and.push(q.status ? { status: { in: q.status } } : { status: { not: 'DRAFT' } });
     if (q.serviceId) and.push({ serviceId: q.serviceId });
-    if (q.assignee) and.push({ assignedToId: q.assignee === 'me' ? user.id : q.assignee === 'unassigned' ? null : q.assignee });
+    if (q.assignee) and.push({ assignedToId: assigneeFilter(q.assignee, user.id) });
     if (q.priority) and.push({ priority: q.priority });
     if (q.sla === 'overdue') and.push({ slaDueAt: { lt: now }, status: { notIn: CLOSED } });
     if (q.sla === 'due_soon') and.push({ slaDueAt: { gte: now, lt: new Date(now.getTime() + SLA_DUE_SOON_HOURS * HOUR_MS) }, status: { notIn: CLOSED } });
-    if (q.from || q.to) {
-      and.push({
-        createdAt: {
-          ...(q.from ? { gte: istDayStart(q.from) } : {}),
-          ...(q.to ? { lt: new Date(istDayStart(q.to).getTime() + DAY_MS) } : {}),
-        },
-      });
-    }
+    if (q.from || q.to) and.push({ createdAt: createdBetween(q.from, q.to) });
     if (q.q) {
       const term = q.q;
       const customers = await this.prisma.user.findMany({
@@ -104,7 +111,7 @@ export class AdminApplicationsService {
           OR: [
             { name: { contains: term, mode: 'insensitive' } },
             { email: { contains: term.toLowerCase() } },
-            { mobile: { contains: term.replace(/\D/g, '') || term } },
+            { mobile: { contains: term.replaceAll(/\D/g, '') || term } },
           ],
         },
         select: { id: true },
@@ -145,7 +152,7 @@ export class AdminApplicationsService {
 
     const escape = (v: string | null | undefined) => {
       if (!v) return '';
-      const text = String(v).replace(/"/g, '""');
+      const text = String(v).replaceAll('"', '""');
       if (/^[=+\-@]/.test(text)) return `"'${text}"`;
       return `"${text}"`;
     };
@@ -327,17 +334,16 @@ export class AdminApplicationsService {
       }
     }
 
-    const events: any[] = [];
+    const events: StatusChanged[] = [];
     await this.prisma.$transaction(async (tx) => {
+      // One at a time: they share the transaction's connection and the same assignee row.
       for (const id of applicationIds) {
-        const event = await this.assignIn(tx, id, assigneeId, u);
+        const event = await this.assignIn(tx, id, assigneeId, u); // NOSONAR
         if (event) events.push(event);
       }
     });
 
-    for (const e of events) {
-      await this.events.emit('application.status_changed', e);
-    }
+    await this.events.emitInOrder(events.map((e) => ['application.status_changed', e] as const));
   }
 
   async assign(id: string, assigneeId: string | null, u: AuthUser) {
@@ -374,14 +380,12 @@ export class AdminApplicationsService {
     }
 
     let event = null;
-    let finalStatus = app.status;
     if (app.status === 'DOCUMENTS_APPROVED' && assigneeId) {
       event = await this.status.transitionIn(tx, {
         applicationId: id,
         to: 'ASSIGNED',
         actorId: u.id,
       });
-      finalStatus = 'ASSIGNED';
     }
 
     await tx.application.update({

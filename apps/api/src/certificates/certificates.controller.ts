@@ -160,19 +160,7 @@ export class PublicCertificatesController {
 
     // The browser suite looks up from one IP across projects (API runs as development); never skipped in production.
     const e2eNoCaptcha = process.env.E2E_DISABLE_THROTTLE === '1' && process.env.NODE_ENV !== 'production';
-    if (!isPartnerApi && !e2eNoCaptcha) {
-      const ip = req.ip || 'anonymous';
-      if (captchaNeeded(ip)) {
-        if (!q.captchaToken) {
-          throw new HttpException({ statusCode: 429, captchaRequired: true, message: 'Please complete the captcha to continue.' }, HttpStatus.TOO_MANY_REQUESTS);
-        }
-        if (!(await this.captcha.verify(q.captchaToken, req.ip))) {
-          throw new HttpException({ statusCode: 429, captchaRequired: true, message: 'The captcha could not be verified. Please try again.' }, HttpStatus.TOO_MANY_REQUESTS);
-        }
-        // Solved: this IP (only this one) gets its free lookups again, and this lookup counts as the first.
-        captchaLookupMap.set(ip, { count: 1, resetAt: Date.now() + CAPTCHA_WINDOW_MS });
-      }
-    }
+    if (!isPartnerApi && !e2eNoCaptcha) await this.checkCaptcha(req, q.captchaToken);
 
     res.setHeader('X-RateLimit-Limit', limit.toString());
     res.setHeader('X-RateLimit-Remaining', remaining.toString());
@@ -185,12 +173,26 @@ export class PublicCertificatesController {
     });
   }
 
+  /** After the free lookups from one IP, a lookup needs a solved captcha (M12.3). */
+  private async checkCaptcha(req: Request, token: string | undefined) {
+    const ip = req.ip || 'anonymous';
+    if (!captchaNeeded(ip)) return;
+    if (!token) {
+      throw new HttpException({ statusCode: 429, captchaRequired: true, message: 'Please complete the captcha to continue.' }, HttpStatus.TOO_MANY_REQUESTS);
+    }
+    if (!(await this.captcha.verify(token, req.ip))) {
+      throw new HttpException({ statusCode: 429, captchaRequired: true, message: 'The captcha could not be verified. Please try again.' }, HttpStatus.TOO_MANY_REQUESTS);
+    }
+    // Solved: this IP (only this one) gets its free lookups again, and this lookup counts as the first.
+    captchaLookupMap.set(ip, { count: 1, resetAt: Date.now() + CAPTCHA_WINDOW_MS });
+  }
+
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiQuery({ name: 'organization', description: 'At least 3 characters of the organisation name' })
   @ApiZodResponse('CertificateOrgResult', certificateOrgResultSchema)
   @Get('search')
-  search(@Query('organization') organization = '', @Req() req: Request) {
-    return this.certs.searchByOrganization(String(organization).slice(0, 100), meta(req));
+  search(@Query('organization') organization: string | undefined, @Req() req: Request) {
+    return this.certs.searchByOrganization(String(organization ?? '').slice(0, 100), meta(req));
   }
 
   @Throttle(VERIFY_LIMIT)

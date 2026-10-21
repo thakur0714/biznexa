@@ -18,17 +18,17 @@ export class SmsChannel implements NotificationChannel {
     private readonly prisma: PrismaService,
   ) {}
 
+  private async recipientMobile(input: SendNotificationInput): Promise<string | undefined> {
+    if (input.recipient?.mobile) return input.recipient.mobile;
+    if (!input.userId) return undefined;
+    const user = await this.prisma.user.findUnique({ where: { id: input.userId }, select: { mobile: true } });
+    return user?.mobile ?? undefined;
+  }
+
   async send(input: SendNotificationInput): Promise<NotificationResult> {
     try {
       // 1. Resolve mobile number without logging it
-      let mobile = input.recipient?.mobile;
-      if (!mobile && input.userId) {
-        const user = await this.prisma.user.findUnique({
-          where: { id: input.userId },
-          select: { mobile: true },
-        });
-        mobile = user?.mobile ?? undefined;
-      }
+      const mobile = await this.recipientMobile(input);
 
       if (!mobile) {
         this.logger.warn(`[SmsChannel] Skipping SMS send: no mobile number for user=${input.userId} event=${input.event}`);
@@ -63,7 +63,7 @@ export class SmsChannel implements NotificationChannel {
       }
 
       // 3. Render body from TemplateEngineService
-      const variables = { ...(input.payload ?? {}) };
+      const variables = { ...input.payload };
       let text = input.body;
 
       try {

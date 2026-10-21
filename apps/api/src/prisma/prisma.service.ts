@@ -16,7 +16,7 @@ export class PrismaService extends PrismaClient<QueryLogOptions, 'query'> implem
     if (timing) {
       this.$on('query', (event) => {
         // Query text contains SQL placeholders but not parameter values. Never log event.params.
-        process.stdout.write(`${JSON.stringify({ level: 'prisma_query', durationMs: event.duration, query: event.query.replace(/\s+/g, ' ').trim() })}\n`);
+        process.stdout.write(`${JSON.stringify({ level: 'prisma_query', durationMs: event.duration, query: event.query.replaceAll(/\s+/g, ' ').trim() })}\n`);
       });
     }
   }

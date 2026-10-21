@@ -52,7 +52,7 @@ export class AuthController {
       secure: env().NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/api/auth',
-      maxAge: env().REFRESH_TTL_DAYS * 86400_000,
+      maxAge: env().REFRESH_TTL_DAYS * 86_400_000,
     });
     const { refreshToken: _omit, ...rest } = session;
     return rest;

@@ -25,6 +25,12 @@ import { BookingConfirmationService } from './booking-confirmation.service';
  * confirmed bookings + live holds) and inserts a PENDING_PAYMENT booking holding the slot for 10 minutes.
  * The `Booking_no_overlap` exclusion constraint backs the lock: two live bookings can never overlap.
  */
+/** iCalendar UTC timestamp: 20261019T103000Z. */
+const icsStamp = (d: Date) => d.toISOString().replaceAll(/[-:]/g, '').replace(/\.\d{3}/, '');
+/** iCalendar TEXT escaping (RFC 5545 3.3.11): backslash, semicolon, comma and line breaks. */
+const icsEscape = (s: string) =>
+  s.replaceAll('\\', String.raw`\\`).replaceAll(';', String.raw`\;`).replaceAll(',', String.raw`\,`).replaceAll(/\r?\n/g, String.raw`\n`);
+
 @Injectable()
 export class BookingsService {
   private readonly log = new Logger(BookingsService.name);
@@ -119,9 +125,15 @@ export class BookingsService {
   async calendar(customerId: string, id: string): Promise<string> {
     const row = await this.prisma.booking.findFirst({ where: { id, customerId, status: 'CONFIRMED' }, select: { code: true, startAt: true, endAt: true, meetingLink: true, consultant: { select: { user: { select: { name: true } } } } } });
     if (!row) throw new NotFoundException('Booking not found');
-    const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-    const escape = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
-    return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//BizNexa//Consultation//EN','BEGIN:VEVENT',`UID:${id}@biznexa`,`DTSTAMP:${stamp(new Date())}`,`DTSTART:${stamp(row.startAt)}`,`DTEND:${stamp(row.endAt)}`,`SUMMARY:${escape(`BizNexa consultation ${row.code}`)}`,`DESCRIPTION:${escape(`Consultation with ${row.consultant.user.name}${row.meetingLink ? `\\nJoin: ${row.meetingLink}` : ''}`)}`, ...(row.meetingLink ? [`URL:${row.meetingLink}`] : []),'END:VEVENT','END:VCALENDAR',''].join('\r\n');
+    const summary = icsEscape(`BizNexa consultation ${row.code}`);
+    let description = `Consultation with ${row.consultant.user.name}`;
+    if (row.meetingLink) description += `\nJoin: ${row.meetingLink}`;
+    return [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//BizNexa//Consultation//EN', 'BEGIN:VEVENT',
+      `UID:${id}@biznexa`, `DTSTAMP:${icsStamp(new Date())}`, `DTSTART:${icsStamp(row.startAt)}`, `DTEND:${icsStamp(row.endAt)}`,
+      `SUMMARY:${summary}`, `DESCRIPTION:${icsEscape(description)}`, ...(row.meetingLink ? [`URL:${row.meetingLink}`] : []),
+      'END:VEVENT', 'END:VCALENDAR', '',
+    ].join('\r\n');
   }
 
   async setMeetingLink(userId: string, id: string, meetingLink: string): Promise<BookingView> {
@@ -139,7 +151,7 @@ export class BookingsService {
     if (!row) throw new NotFoundException('Booking not found');
     await this.prisma.$transaction(async (tx) => {
       // Re-checked inside the transaction: two cancels at once change the row (and write history) only once.
-      const { count } = await tx.booking.updateMany({ where: { id, status: 'CONFIRMED', startAt: { gte: new Date(now.getTime() + BOOKING_CHANGE_WINDOW_HOURS * 3600_000) } }, data: { status: 'CANCELLED' } });
+      const { count } = await tx.booking.updateMany({ where: { id, status: 'CONFIRMED', startAt: { gte: new Date(now.getTime() + BOOKING_CHANGE_WINDOW_HOURS * 3_600_000) } }, data: { status: 'CANCELLED' } });
       if (!count) throw new ConflictException(`Bookings can be cancelled up to ${BOOKING_CHANGE_WINDOW_HOURS} hours before the session.`);
       assertTransition('booking', 'CONFIRMED', 'CANCELLED');
       await tx.bookingStatusHistory.create({ data: { bookingId: id, fromStatus: 'CONFIRMED', toStatus: 'CANCELLED', actorId: customerId, reason } });
@@ -161,7 +173,7 @@ export class BookingsService {
         // Same lock as creating a hold and confirming a payment, so the new slot cannot be taken in between.
         await lockConsultant(tx, row.consultantId);
         const current = await tx.booking.findUniqueOrThrow({ where: { id }, select: { status: true, startAt: true, endAt: true } });
-        if (current.status !== 'CONFIRMED' || current.startAt.getTime() - now.getTime() < BOOKING_CHANGE_WINDOW_HOURS * 3600_000 || startAt.getTime() <= now.getTime()) throw new ConflictException(tooLate);
+        if (current.status !== 'CONFIRMED' || current.startAt.getTime() - now.getTime() < BOOKING_CHANGE_WINDOW_HOURS * 3_600_000 || startAt.getTime() <= now.getTime()) throw new ConflictException(tooLate);
         const date = istDate(startAt);
         const rules = await this.availability.rules(tx, row.consultantId, date, date);
         const endAt = new Date(startAt.getTime() + rules.sessionMinutes * 60_000);

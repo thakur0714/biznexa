@@ -40,8 +40,10 @@ export class FormSchemasService {
 
   async get(serviceId: string, ref: FormSchemaVersionRef): Promise<FormSchemaVersion> {
     await this.findService(serviceId);
-    const where: Prisma.ServiceFormSchemaWhereInput =
-      ref === 'current' ? { serviceId, isCurrent: true } : ref === 'latest' ? { serviceId } : { serviceId, version: ref };
+    let where: Prisma.ServiceFormSchemaWhereInput;
+    if (ref === 'current') where = { serviceId, isCurrent: true };
+    else if (ref === 'latest') where = { serviceId };
+    else where = { serviceId, version: ref };
     const row = await this.prisma.serviceFormSchema.findFirst({ where, orderBy: { version: 'desc' } });
     if (!row) throw new NotFoundException(ref === 'current' ? 'This service has no active form yet' : 'Form version not found');
     return this.toVersion(row, await this.usage(serviceId, row.version));

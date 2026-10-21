@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { calculatePrice, type AdminCategoryRow, type AdminServiceDetail, type AdminServiceRow } from '@biznexa/types';
 import { z } from 'zod';
+import { inSequence } from '../common/in-sequence';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { Prisma } from '../generated/prisma/client';
@@ -451,7 +452,8 @@ export class CatalogueService implements OnModuleInit {
     if (input.slug !== undefined || input.categoryId !== undefined || input.subcategoryId !== undefined) {
       const categoryId = input.categoryId ?? before.categoryId;
       // Moving to another category without naming a subcategory drops the old one.
-      const subcategoryId = input.subcategoryId !== undefined ? input.subcategoryId : categoryId === before.categoryId ? before.subcategoryId : null;
+      let subcategoryId = input.subcategoryId;
+      if (subcategoryId === undefined) subcategoryId = categoryId === before.categoryId ? before.subcategoryId : null;
       await this.checkServiceRefs({ slug: input.slug, categoryId, subcategoryId }, id);
       input = { ...input, subcategoryId };
     }
@@ -477,22 +479,24 @@ export class CatalogueService implements OnModuleInit {
     await this.prisma.$transaction(async (tx) => {
       const keep = new Set(items.filter((p) => p.id).map((p) => p.id));
       const deleted: string[] = [];
-      for (const old of before.packages.filter((p) => !keep.has(p.id))) {
+      await inSequence(before.packages.filter((p) => !keep.has(p.id)), async (old) => {
         // Packages that orders or applications point at are only switched off.
-        if (old._count.applications + old._count.orderItems > 0) await tx.servicePackage.update({ where: { id: old.id }, data: { isActive: false } });
-        else {
-          await tx.servicePackage.delete({ where: { id: old.id } });
-          deleted.push(old.id);
+        if (old._count.applications + old._count.orderItems > 0) {
+          await tx.servicePackage.update({ where: { id: old.id }, data: { isActive: false } });
+          return;
         }
-      }
-      for (const [i, { id, ...p }] of items.entries()) {
-        if (id && before.packages.some((x) => x.id === id)) await tx.servicePackage.update({ where: { id }, data: { ...p, sortOrder: i } });
-        else await tx.servicePackage.create({ data: { ...p, ...(id ? { id } : {}), serviceId, sortOrder: i } });
-      }
+        await tx.servicePackage.delete({ where: { id: old.id } });
+        deleted.push(old.id);
+      });
+      await inSequence(items, ({ id, ...p }, i) =>
+        id && before.packages.some((x) => x.id === id)
+          ? tx.servicePackage.update({ where: { id }, data: { ...p, sortOrder: i } })
+          : tx.servicePackage.create({ data: { ...p, ...(id ? { id } : {}), serviceId, sortOrder: i } }),
+      );
       // Documents restricted to a deleted package no longer refer to it.
-      for (const d of before.documents.filter((d) => d.packageIds.some((p) => deleted.includes(p)))) {
-        await tx.serviceDocumentRequirement.update({ where: { id: d.id }, data: { packageIds: d.packageIds.filter((p) => !deleted.includes(p)) } });
-      }
+      await inSequence(before.documents.filter((d) => d.packageIds.some((p) => deleted.includes(p))), (d) =>
+        tx.serviceDocumentRequirement.update({ where: { id: d.id }, data: { packageIds: d.packageIds.filter((p) => !deleted.includes(p)) } }),
+      );
     });
     await this.audit.log({ actorId, action: 'service.packages.update', entityType: 'Service', entityId: serviceId, before: before.packages, after: items });
     await this.events.emit('catalogue.changed', { entityType: 'service' });
@@ -504,14 +508,15 @@ export class CatalogueService implements OnModuleInit {
     this.checkDocumentPackages(items, before.packages.map((p) => p.id));
     await this.prisma.$transaction(async (tx) => {
       const keep = new Set(items.filter((d) => d.id).map((d) => d.id));
-      for (const old of before.documents.filter((d) => !keep.has(d.id))) {
+      await inSequence(before.documents.filter((d) => !keep.has(d.id)), (old) => {
         if (old._count.documents) throw new BadRequestException(`"${old.name}" is used by existing applications and can't be removed`);
-        await tx.serviceDocumentRequirement.delete({ where: { id: old.id } });
-      }
-      for (const [i, { id, ...d }] of items.entries()) {
-        if (id && before.documents.some((x) => x.id === id)) await tx.serviceDocumentRequirement.update({ where: { id }, data: { ...d, sortOrder: i } });
-        else await tx.serviceDocumentRequirement.create({ data: { ...d, serviceId, sortOrder: i } });
-      }
+        return tx.serviceDocumentRequirement.delete({ where: { id: old.id } });
+      });
+      await inSequence(items, ({ id, ...d }, i) =>
+        id && before.documents.some((x) => x.id === id)
+          ? tx.serviceDocumentRequirement.update({ where: { id }, data: { ...d, sortOrder: i } })
+          : tx.serviceDocumentRequirement.create({ data: { ...d, serviceId, sortOrder: i } }),
+      );
     });
     await this.audit.log({ actorId, action: 'service.documents.update', entityType: 'Service', entityId: serviceId, before: before.documents, after: items });
     await this.events.emit('catalogue.changed', { entityType: 'service' });
@@ -523,16 +528,17 @@ export class CatalogueService implements OnModuleInit {
     const before = await this.loadService(serviceId);
     await this.prisma.$transaction(async (tx) => {
       const keep = new Set(items.filter((s) => s.id).map((s) => s.id));
-      for (const old of before.stages.filter((s) => !keep.has(s.id))) {
+      await inSequence(before.stages.filter((s) => !keep.has(s.id)), (old) => {
         if (old._count.history + old._count.current > 0) throw new BadRequestException(`"${old.name}" is part of existing application timelines and can't be removed`);
-        await tx.serviceStage.delete({ where: { id: old.id } });
-      }
+        return tx.serviceStage.delete({ where: { id: old.id } });
+      });
       // Move existing stages out of the way so the unique (serviceId, sortOrder) index allows reordering.
       await tx.serviceStage.updateMany({ where: { serviceId }, data: { sortOrder: { increment: 1000 } } });
-      for (const [i, { id, ...s }] of items.entries()) {
-        if (id && before.stages.some((x) => x.id === id)) await tx.serviceStage.update({ where: { id }, data: { ...s, sortOrder: i + 1 } });
-        else await tx.serviceStage.create({ data: { ...s, serviceId, sortOrder: i + 1 } });
-      }
+      await inSequence(items, ({ id, ...s }, i) =>
+        id && before.stages.some((x) => x.id === id)
+          ? tx.serviceStage.update({ where: { id }, data: { ...s, sortOrder: i + 1 } })
+          : tx.serviceStage.create({ data: { ...s, serviceId, sortOrder: i + 1 } }),
+      );
     });
     await this.audit.log({ actorId, action: 'service.stages.update', entityType: 'Service', entityId: serviceId, before: before.stages, after: items });
     await this.events.emit('catalogue.changed', { entityType: 'service' });

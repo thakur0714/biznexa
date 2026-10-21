@@ -18,17 +18,17 @@ export class EmailChannel implements NotificationChannel {
     private readonly prisma: PrismaService,
   ) {}
 
+  private async recipientEmail(input: SendNotificationInput): Promise<string | undefined> {
+    if (input.recipient?.email) return input.recipient.email;
+    if (!input.userId) return undefined;
+    const user = await this.prisma.user.findUnique({ where: { id: input.userId }, select: { email: true } });
+    return user?.email ?? undefined;
+  }
+
   async send(input: SendNotificationInput): Promise<NotificationResult> {
     try {
       // 1. Resolve recipient email without logging it (PII protection)
-      let toEmail = input.recipient?.email;
-      if (!toEmail && input.userId) {
-        const user = await this.prisma.user.findUnique({
-          where: { id: input.userId },
-          select: { email: true },
-        });
-        toEmail = user?.email ?? undefined;
-      }
+      const toEmail = await this.recipientEmail(input);
 
       if (!toEmail) {
         this.logger.warn(`[EmailChannel] Skipping email send: no email address for user=${input.userId} event=${input.event}`);
@@ -42,9 +42,7 @@ export class EmailChannel implements NotificationChannel {
 
       // 2. Prepare variables and invoice link. Signed file links last 5 minutes, so the email links to the
       // dashboard, where the customer downloads the PDF after logging in (payments page: M5.10).
-      const variables: Record<string, unknown> = {
-        ...(input.payload ?? {}),
-      };
+      const variables: Record<string, unknown> = { ...input.payload };
 
       const invoiceId =
         input.payload?.invoiceId ?? (input.event === 'invoice.issued' ? input.payload?.id : undefined);

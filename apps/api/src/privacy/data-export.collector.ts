@@ -9,6 +9,13 @@ import type { ZipEntry } from './zip';
  * customer can end up in it. Left out on purpose: secrets (password hash, 2FA, tokens), internal staff notes,
  * stage history hidden from the customer, raw gateway webhooks, file contents (the document list only).
  */
+/** What a conversation is about: an application, a booking or a support ticket. */
+function conversationAbout(c: { application: { code: string } | null; booking: { code: string } | null; ticket: { code: string } | null }) {
+  if (c.application) return { application: c.application.code };
+  if (c.booking) return { booking: c.booking.code };
+  return { ticket: c.ticket?.code ?? null };
+}
+
 export async function collectExport(prisma: PrismaService, userId: string, now = new Date()): Promise<ZipEntry[]> {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, include: { customerProfile: true } });
   const mine = { customerId: userId };
@@ -175,7 +182,7 @@ export async function collectExport(prisma: PrismaService, userId: string, now =
       total: c.total,
     })),
     'messages.json': conversations.map((c) => ({
-      about: c.application ? { application: c.application.code } : c.booking ? { booking: c.booking.code } : { ticket: c.ticket?.code ?? null },
+      about: conversationAbout(c),
       messages: c.messages.map((m) => ({
         from: m.senderId === userId ? 'you' : 'BizNexa',
         body: m.body,

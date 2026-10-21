@@ -8,7 +8,6 @@ import {
   adminConsultantActionResponseSchema,
   adminConsultantDetailSchema,
   adminConsultantListSchema,
-  adminConsultantSummarySchema,
   consultantApplicationResponseSchema,
   consultantOwnProfileSchema,
   consultantFeeChangeRequestSchema,
@@ -32,6 +31,31 @@ import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { liveBookingWhere } from '../bookings/booking-holds';
+
+/** Directory filters (M10): only approved consultants, then each filter the visitor set. */
+function publicDirectoryWhere(query: PublicConsultantDirectoryQuery): Prisma.ConsultantWhereInput {
+  const insensitive = (value: string) => ({ equals: value, mode: 'insensitive' as const });
+  const where: Prisma.ConsultantWhereInput = { verificationStatus: 'APPROVED' };
+  if (query.category) where.category = query.category;
+  if (query.state) where.state = insensitive(query.state);
+  if (query.city) where.city = insensitive(query.city);
+  if (query.area) where.area = insensitive(query.area);
+  if (query.minRating !== undefined) where.rating = { gte: query.minRating };
+  if (query.minExperience !== undefined) where.experienceYears = { gte: query.minExperience };
+  if (query.minFee !== undefined || query.maxFee !== undefined) where.feePerSession = { gte: query.minFee, lte: query.maxFee };
+  if (query.language) where.languages = { has: query.language };
+  if (query.consultationType) where.consultationTypes = { has: query.consultationType };
+  if (query.featured !== undefined) where.isFeatured = query.featured;
+  return where;
+}
+
+/** Directory sort orders; ties fall back to rating, then id so pages are stable. */
+const PUBLIC_DIRECTORY_ORDER: Record<PublicConsultantDirectoryQuery['sort'], Prisma.ConsultantOrderByWithRelationInput[]> = {
+  experience: [{ experienceYears: 'desc' }, { rating: 'desc' }, { id: 'asc' }],
+  fee_low: [{ feePerSession: 'asc' }, { rating: 'desc' }, { id: 'asc' }],
+  fee_high: [{ feePerSession: 'desc' }, { rating: 'desc' }, { id: 'asc' }],
+  rating: [{ rating: 'desc' }, { reviewCount: 'desc' }, { id: 'asc' }],
+};
 
 @Injectable()
 export class ConsultantsService {
@@ -71,7 +95,7 @@ export class ConsultantsService {
           throw new ConflictException('You have already submitted a consultant application.');
         }
         const user = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true } });
-        const baseSlug = user.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'consultant';
+        const baseSlug = user.name.toLowerCase().trim().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, '').slice(0, 40) || 'consultant';
         const created = await tx.consultant.create({
           data: {
             userId,
@@ -403,31 +427,8 @@ export class ConsultantsService {
     const today = istDate(now);
     const todayStart = istInstant(today, 0);
     const tomorrowStart = istInstant(addDays(today, 1), 0);
-    const where: Prisma.ConsultantWhereInput = {
-      verificationStatus: 'APPROVED',
-      ...(query.category ? { category: query.category } : {}),
-      ...(query.state ? { state: { equals: query.state, mode: 'insensitive' } } : {}),
-      ...(query.city ? { city: { equals: query.city, mode: 'insensitive' } } : {}),
-      ...(query.area ? { area: { equals: query.area, mode: 'insensitive' } } : {}),
-      ...(query.minRating !== undefined ? { rating: { gte: query.minRating } } : {}),
-      ...(query.minExperience !== undefined ? { experienceYears: { gte: query.minExperience } } : {}),
-      ...(query.minFee !== undefined || query.maxFee !== undefined ? {
-        feePerSession: {
-          ...(query.minFee !== undefined ? { gte: query.minFee } : {}),
-          ...(query.maxFee !== undefined ? { lte: query.maxFee } : {}),
-        },
-      } : {}),
-      ...(query.language ? { languages: { has: query.language } } : {}),
-      ...(query.consultationType ? { consultationTypes: { has: query.consultationType } } : {}),
-      ...(query.featured !== undefined ? { isFeatured: query.featured } : {}),
-    };
-    const orderBy: Prisma.ConsultantOrderByWithRelationInput[] = query.sort === 'experience'
-      ? [{ experienceYears: 'desc' }, { rating: 'desc' }, { id: 'asc' }]
-      : query.sort === 'fee_low'
-        ? [{ feePerSession: 'asc' }, { rating: 'desc' }, { id: 'asc' }]
-        : query.sort === 'fee_high'
-          ? [{ feePerSession: 'desc' }, { rating: 'desc' }, { id: 'asc' }]
-          : [{ rating: 'desc' }, { reviewCount: 'desc' }, { id: 'asc' }];
+    const where = publicDirectoryWhere(query);
+    const orderBy = PUBLIC_DIRECTORY_ORDER[query.sort];
 
     const select = {
       id: true, slug: true, category: true, qualification: true, city: true, state: true, area: true,

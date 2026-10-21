@@ -10,6 +10,12 @@ import { sanitizeRichText } from '@biznexa/rich-text';
 import { EventBus } from '../events/event-bus';
 import { env } from '../config/env';
 
+/** A post keeps its first publish time; it gets one when it is published now, and loses it otherwise. */
+function publishedAtAfterUpdate(status: string, before: { status: string; publishedAt: Date | null }): Date | null {
+  if (status !== 'PUBLISHED') return null;
+  return before.status === 'PUBLISHED' ? before.publishedAt : new Date();
+}
+
 @Injectable()
 export class AdminBlogService implements OnModuleInit {
   private readonly logger = new Logger(AdminBlogService.name);
@@ -21,7 +27,7 @@ export class AdminBlogService implements OnModuleInit {
     this.events.on('blog.post_changed', (e) => { void this.revalidateWeb(e.payload); });
     this.queues.process<{ postId: string }>('blog-publish', async ({ data }) => { await this.publishScheduled(data.postId); });
     const scheduled = await this.prisma.blogPost.findMany({ where: { status: 'SCHEDULED', publishAt: { not: null } }, select: { id: true, publishAt: true } });
-    for (const post of scheduled) await this.enqueue(post.id, post.publishAt!);
+    await Promise.all(scheduled.map((post) => this.enqueue(post.id, post.publishAt!)));
   }
 
   private async revalidateWeb(payload: { postId: string; slug: string; previousSlug?: string }) {
@@ -84,7 +90,7 @@ export class AdminBlogService implements OnModuleInit {
     if (!before) throw new NotFoundException('Blog post not found');
     if (input.status === 'SCHEDULED' && !input.publishAt) throw new ConflictException('Scheduled posts require a publish date');
     if (input.status !== 'SCHEDULED' && input.publishAt) throw new ConflictException('Only scheduled posts can have a publish date');
-    const post = await this.prisma.blogPost.update({ where: { id }, data: { title: input.title, slug: input.slug, excerpt: input.excerpt, content: sanitizeRichText(input.content), featuredImage: input.featuredImage, authorName: input.authorName, categoryId: input.categoryIds[0] ?? null, categories: { deleteMany: {}, create: input.categoryIds.map(categoryId => ({ categoryId })) }, tags: { set: input.tagIds.map(tagId => ({ id: tagId })) }, seoTitle: input.seoTitle, metaDescription: input.metaDescription, status: input.status, publishAt: input.publishAt ? new Date(input.publishAt) : null, publishedAt: input.status === 'PUBLISHED' ? (before.status === 'PUBLISHED' ? before.publishedAt : new Date()) : null }, include: { tags: true, categories: { include: { category: true } } } }).catch((e: unknown) => { throw postWriteError(e); });
+    const post = await this.prisma.blogPost.update({ where: { id }, data: { title: input.title, slug: input.slug, excerpt: input.excerpt, content: sanitizeRichText(input.content), featuredImage: input.featuredImage, authorName: input.authorName, categoryId: input.categoryIds[0] ?? null, categories: { deleteMany: {}, create: input.categoryIds.map(categoryId => ({ categoryId })) }, tags: { set: input.tagIds.map(tagId => ({ id: tagId })) }, seoTitle: input.seoTitle, metaDescription: input.metaDescription, status: input.status, publishAt: input.publishAt ? new Date(input.publishAt) : null, publishedAt: publishedAtAfterUpdate(input.status, before) }, include: { tags: true, categories: { include: { category: true } } } }).catch((e: unknown) => { throw postWriteError(e); });
     const { categories, ...result } = post; const response = { ...result, categories: categories.map(x => x.category) };
     await this.audit.log({ actorId: u.id, action: 'blog_post.updated', entityType: 'BlogPost', entityId: id, before, after: response });
     if (post.status === 'SCHEDULED') await this.enqueue(id, post.publishAt!);

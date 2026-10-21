@@ -1,4 +1,4 @@
-import { Controller, Get, NotFoundException, OnModuleInit, Param, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, OnModuleInit, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';

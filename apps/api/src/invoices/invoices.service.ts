@@ -89,9 +89,10 @@ export class InvoicesService implements OnModuleInit {
       select: { id: true },
     });
     let issued = 0;
+    // One at a time, oldest first: invoice numbers are a gap-free sequence in issue order.
     for (const { id } of due) {
       try {
-        if (await this.issue(id)) issued++;
+        if (await this.issue(id)) issued++; // NOSONAR
       } catch (e) {
         this.log.error(`Invoice for payment ${id} could not be issued: ${e instanceof Error ? e.message : e}`, e instanceof Error ? e.stack : undefined);
       }
@@ -140,11 +141,9 @@ export class InvoicesService implements OnModuleInit {
     // A later invoice of the same order (the balance) keeps the first one's split, even if Settings changed.
     const first = order.invoices[0];
     const placeOfSupply = first ? first.placeOfSupply : (stateName(order.buyerState) ?? seller.state);
-    const taxType: InvoiceTaxType = first
-      ? (first.taxType as InvoiceTaxType)
-      : seller.state && placeOfSupply && sameState(seller.state, placeOfSupply)
-        ? 'CGST_SGST'
-        : 'IGST';
+    const intraState = !!seller.state && !!placeOfSupply && sameState(seller.state, placeOfSupply);
+    let taxType: InvoiceTaxType = intraState ? 'CGST_SGST' : 'IGST';
+    if (first) taxType = first.taxType as InvoiceTaxType;
 
     const lines = order.items.map((i) => invoiceOrderLine(i, taxType));
     const charged = lines.reduce((a, l) => a + l.taxableValue + l.cgst + l.sgst + l.igst + l.governmentFee, 0);
@@ -189,7 +188,7 @@ export class InvoicesService implements OnModuleInit {
 const invoiceSelect = { id: true, number: true, orderId: true, customerId: true, total: true } satisfies Prisma.InvoiceSelect;
 
 /** Drops `undefined` (an address without line2) so the stored JSON is exactly what is printed. */
-const json = (v: unknown) => JSON.parse(JSON.stringify(v)) as Prisma.InputJsonValue;
+const json = (v: unknown) => JSON.parse(JSON.stringify(v)) as Prisma.InputJsonValue; // NOSONAR: structuredClone would keep the `undefined`
 
 type Address = NonNullable<InvoiceBuyer['address']>;
 

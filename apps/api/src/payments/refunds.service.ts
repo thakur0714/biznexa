@@ -157,7 +157,7 @@ export class RefundsService {
         this.log.error(`Refund ${refundId}: gateway did not answer (${e.message}); left INITIATED for the webhook`);
       } else {
         const failed = await this.prisma.$transaction((tx) => this.markFailed(tx, refundId, e.message, actorId));
-        for (const [name, payload] of failed) await this.events.emit(name, payload as never);
+        await this.events.emitInOrder(failed);
         throw new BadGatewayException(`The payment gateway refused the refund: ${e.message}`);
       }
     }

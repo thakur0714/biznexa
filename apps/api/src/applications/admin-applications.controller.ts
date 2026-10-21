@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, ParseUUIDPipe, Res, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, ParseUUIDPipe, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   adminApplicationListQuery,
