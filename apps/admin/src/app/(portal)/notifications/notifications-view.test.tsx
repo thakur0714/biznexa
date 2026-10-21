@@ -7,7 +7,7 @@ import { NotificationsView } from './notifications-view';
 
 const auth = vi.hoisted(() => ({
   permissions: [] as string[],
-  refresh: vi.fn(async () => 'renewed-token'), // NOSONAR: auth test double preserves rejected-call behavior
+  refresh: vi.fn(() => Promise.resolve().then(() => 'renewed-token')),
 }));
 
 vi.mock('@/lib/auth', () => ({

@@ -6,17 +6,17 @@ import { ConsultantAvailabilityEditor } from './availability-editor';
 const calls: Array<{ method: string; path: string; body?: unknown }> = [];
 let value: ConsultantAvailability = { sessionMinutes: 30, bufferMinutes: 0, minNoticeMinutes: 120, weekly: [], exceptions: [] };
 const fakeClient = {
-  GET: vi.fn(async () => ({ data: value, response: new Response(null, { status: 200 }) })), // NOSONAR: API test double preserves rejected-call behavior
-  PUT: vi.fn(async (_path: string, options: { body?: unknown }) => { // NOSONAR: API test double preserves rejected-call behavior
+  GET: vi.fn(() => Promise.resolve().then(() => ({ data: value, response: new Response(null, { status: 200 }) }))),
+  PUT: vi.fn((_path: string, options: { body?: unknown }) => Promise.resolve().then(() => {
     calls.push({ method: 'PUT', path: '/api/consultants/me/availability', body: options.body });
     value = { ...value, ...(options.body as object) } as ConsultantAvailability;
     return { data: value, response: new Response(null, { status: 200 }) };
-  }),
-  POST: vi.fn(async (_path: string, options: { body?: unknown }) => { // NOSONAR: API test double preserves rejected-call behavior
+  })),
+  POST: vi.fn((_path: string, options: { body?: unknown }) => Promise.resolve().then(() => {
     calls.push({ method: 'POST', path: '/api/consultants/me/availability/exceptions', body: options.body });
     return { data: value, response: new Response(null, { status: 201 }) };
-  }),
-  DELETE: vi.fn(async () => ({ data: value, response: new Response(null, { status: 200 }) })), // NOSONAR: API test double preserves rejected-call behavior
+  })),
+  DELETE: vi.fn(() => Promise.resolve().then(() => ({ data: value, response: new Response(null, { status: 200 }) }))),
 };
 const fakeApi = { call: async (send: (client: typeof fakeClient) => Promise<{ data: unknown }>) => (await send(fakeClient)).data };
 
