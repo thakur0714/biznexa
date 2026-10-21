@@ -48,7 +48,7 @@ export function createBrowserApi(session: ApiSession, baseUrl?: string): Api {
   let renewed: { from: string; to: string } | null = null;
   const currentToken = () => {
     const t = session.getToken();
-    return renewed && t === renewed.from ? renewed.to : t;
+    return renewed?.from === t && renewed ? renewed.to : t;
   };
   client.use({
     onRequest({ request }) {
@@ -94,8 +94,8 @@ const ApiContext = createContext<Api | null>(null);
  * Provides `useApi()` for the session given by `token` / `refresh`. The client is created once and reads
  * the latest token on each request, so pages do not reload their data when the token is renewed.
  */
-export function ApiProvider({ token, refresh, children }: { token: string | null; refresh: () => Promise<string | null>; children: ReactNode }) {
-  const [state] = useState(() => {
+export function ApiProvider({ token, refresh, children }: Readonly<{ token: string | null; refresh: () => Promise<string | null>; children: ReactNode }>) {
+  const [state] = useState(() => { // NOSONAR: fixed for this mount; no setter needed
     const session = { token, refresh };
     return { session, api: createBrowserApi({ getToken: () => session.token, refresh: () => session.refresh() }) };
   });
