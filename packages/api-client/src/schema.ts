@@ -4798,6 +4798,25 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        LeadListResponse: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                mobile: string;
+                email: string | null;
+                city: string | null;
+                serviceId: string | null;
+                serviceName: string | null;
+                message: string | null;
+                source: string;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            total: number;
+            page: number;
+            limit: number;
+        };
         MediaImage: {
             /** @description Path under the site origin, e.g. /api/media/ab/<id>.webp — public, cached for a year */
             url: string;
@@ -13653,7 +13672,12 @@ export interface operations {
     LeadsController_list: {
         parameters: {
             query?: {
+                q?: string;
+                source?: "service_page" | "contact" | "home" | "consultants";
+                from?: string;
+                to?: string;
                 page?: number;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -13665,7 +13689,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["LeadListResponse"];
+                };
             };
         };
     };

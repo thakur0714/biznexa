@@ -31,7 +31,7 @@ export const NAV: NavGroup[] = [
       { slug: 'documents', label: 'Document review', requires: { all: [PERMS.DOCUMENTS_REVIEW] }, built: true },
       { slug: 'customers', label: 'Customers', requires: { all: [PERMS.CUSTOMERS_VIEW] }, built: true },
       { slug: 'support', label: 'Support tickets', requires: { all: [PERMS.TICKETS_MANAGE] }, built: true },
-      { slug: 'leads', label: 'Enquiries', requires: { all: [PERMS.LEADS_VIEW] } },
+      { slug: 'leads', label: 'Enquiries', requires: { all: [PERMS.LEADS_VIEW] }, built: true },
     ],
   },
   {
