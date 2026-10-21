@@ -76,7 +76,7 @@ describe('consultant portal (M8.13)', () => {
     expect(earnings.body.items).toHaveLength(1);
     await http.post(`/api/admin/applications/${firstApp}/messages`).set(as(first.token)).send({ body: 'Consultant reply' }).expect(201);
     for (const path of ['bookings', 'applications', 'conversations', 'earnings']) {
-      const otherResponse = await /* NOSONAR: tests run steps in order */ http.get(`${base}/${path}`).set(as(second.token)).expect(200); // NOSONAR: tests run steps in order
+      const otherResponse = await http.get(`${base}/${path}`).set(as(second.token)).expect(200); // NOSONAR: tests run steps in order
       expect(JSON.stringify(otherResponse.body)).not.toContain(firstBooking);
       expect(JSON.stringify(otherResponse.body)).not.toContain(firstApp);
       if (path === 'bookings') {
@@ -90,6 +90,6 @@ describe('consultant portal (M8.13)', () => {
   });
 
   it('returns 403 to customers for every consultant portal collection', async () => {
-    for (const path of ['bookings', 'applications', 'conversations', 'earnings']) await /* NOSONAR: tests run steps in order */ http.get(`/api/consultants/me/portal/${path}`).set(as(customer.token)).expect(403); // NOSONAR: tests run steps in order
+    for (const path of ['bookings', 'applications', 'conversations', 'earnings']) await http.get(`/api/consultants/me/portal/${path}`).set(as(customer.token)).expect(403); // NOSONAR: tests run steps in order
   });
 });

@@ -37,7 +37,7 @@ describe('Admin consultant review (M8.2)', () => {
       name: `Review customer ${runId.slice(0, 8)}`,
       email: `${emailPrefix}-customer@example.com`,
       mobile,
-      password: 'Customer@12345', // NOSONAR: test credential // NOSONAR: test credential
+      password: 'Customer@12345', // NOSONAR: test credential
       consent: true,
     }).expect(201);
     customerToken = registeredSchema.parse(customer.body).accessToken;

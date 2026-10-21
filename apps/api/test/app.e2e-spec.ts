@@ -591,7 +591,7 @@ describe('OpenAPI document', () => {
 
   it('real responses match the published response schemas', async () => {
     for (const q of [`number=${verificationNumbers.active}`, `number=${verificationNumbers.suspended}`, 'number=DOES-NOT-EXIST']) {
-      const res = await /* NOSONAR: tests run steps in order */ http.get(`/api/public/certificates/verify?${q}`).expect(200);
+      const res = await http.get(`/api/public/certificates/verify?${q}`).expect(200); // NOSONAR: tests run steps in order
       expect(certificateVerifyResultSchema.strict().safeParse(res.body).error).toBeUndefined();
     }
     const orgs = await http.get(`/api/public/certificates/search?organization=${verifyPrefix}`).expect(200);

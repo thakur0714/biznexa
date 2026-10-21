@@ -363,7 +363,7 @@ describe('another customer’s ids inside the request body', () => {
 
   it('cannot attach their files to a message', async () => {
     for (const fileId of [b.looseFile, b.attachmentFile, b.docFile, b.deliverableFile]) {
-      await /* NOSONAR: tests run steps in order */ http.post(`/api/applications/${aliceDraft}/messages`).set(as(alice.token)).send({ body: 'Look', fileIds: [fileId] }).expect(400); // NOSONAR: tests run steps in order
+      await http.post(`/api/applications/${aliceDraft}/messages`).set(as(alice.token)).send({ body: 'Look', fileIds: [fileId] }).expect(400); // NOSONAR: tests run steps in order
     }
   });
 
@@ -393,7 +393,7 @@ describe('signed download links', () => {
       ['certificates', b.certificate],
       ['data-exports', b.dataExport],
     ] as const) {
-      await /* NOSONAR: tests run steps in order */ http.get(signedPath(aliceFile, e, 'attachment', 'files').replace(`/api/files/${aliceFile}`, `/api/${scope}/${target}`)).expect(403); // NOSONAR: tests run steps in order
+      await http.get(signedPath(aliceFile, e, 'attachment', 'files').replace(`/api/files/${aliceFile}`, `/api/${scope}/${target}`)).expect(403); // NOSONAR: tests run steps in order
     }
   });
 });

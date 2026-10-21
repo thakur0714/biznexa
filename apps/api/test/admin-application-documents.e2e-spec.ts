@@ -17,7 +17,6 @@ describe('Admin Application Documents (M4.8)', () => {
   let customerId: string;
   let adminId: string;
   let opsId: string;
-  let supportId: string;
 
   let adminToken: string;
   let opsToken: string;
@@ -228,11 +227,11 @@ describe('Admin Application Documents (M4.8)', () => {
     // Sent by the notification queue (M6.3), so it lands shortly after the request.
     let notif = null;
     for (let i = 0; i < 100 && !notif; i++) {
-      notif = await /* NOSONAR: tests run steps in order */ prisma.notification.findFirst({ // NOSONAR: tests run steps in order
+      notif = await prisma.notification.findFirst({ // NOSONAR: tests run steps in order
         where: { userId: customerId, channel: 'IN_APP', event: 'document.rejected' },
         orderBy: { createdAt: 'desc' },
       });
-      if (!notif) await /* NOSONAR: tests run steps in order */ new Promise((r) => setTimeout(r, 50)); // NOSONAR: tests run steps in order
+      if (!notif) await new Promise((r) => setTimeout(r, 50)); // NOSONAR: tests run steps in order
     }
     expect(notif).not.toBeNull();
     expect(notif?.title).toBe('Document Rejected');

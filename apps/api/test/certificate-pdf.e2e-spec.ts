@@ -172,11 +172,11 @@ beforeAll(async () => {
 
 afterAll(async () => {
   for (const k of writtenKeys) {
-    await /* NOSONAR: tests run steps in order */ storage.remove(k).catch(() => undefined); // NOSONAR: tests run steps in order
+    await storage.remove(k).catch(() => undefined); // NOSONAR: tests run steps in order
   }
   const certs = await prisma.certificate.findMany({ where: { certificationBodyId: bodyId }, select: { id: true, pdfKey: true } });
   for (const c of certs) {
-    if (c.pdfKey) await /* NOSONAR: tests run steps in order */ storage.remove(c.pdfKey).catch(() => undefined); // NOSONAR: tests run steps in order
+    if (c.pdfKey) await storage.remove(c.pdfKey).catch(() => undefined); // NOSONAR: tests run steps in order
   }
   await prisma.certificateLookup.deleteMany({ where: { certificateId: { in: certs.map((c) => c.id) } } });
   await prisma.certificate.deleteMany({ where: { certificationBodyId: bodyId } });

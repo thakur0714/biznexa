@@ -184,7 +184,6 @@ describe('GET /api/admin/customers/:id', () => {
 describe('PATCH /api/admin/customers/:id/status', () => {
   let patchCustomerId: string;
   let patchCustomerEmail: string;
-  let patchCustomerToken: string;
   let patchCustomerRefreshToken: string;
 
   beforeAll(async () => {
