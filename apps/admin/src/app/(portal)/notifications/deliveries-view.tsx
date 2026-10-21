@@ -12,6 +12,7 @@ import {
   istDay,
   type NotificationDelivery,
   type NotificationDeliveryPage,
+  type NotificationChannel,
   type NotificationDeliveryStatus,
 } from '@biznexa/types';
 import { NotAllowed } from '@/components/portal-shell';
@@ -43,8 +44,8 @@ function DeliveriesPage() {
 
   const filter = useMemo(
     () => ({
-      status: params.get('status') || undefined,
-      channel: params.get('channel') || undefined,
+      status: (params.get('status') || undefined) as NotificationDeliveryStatus | undefined,
+      channel: (params.get('channel') || undefined) as NotificationChannel | undefined,
       event: params.get('event') || undefined,
       user: params.get('user') || undefined,
       from: params.get('from') || undefined,
@@ -56,17 +57,15 @@ function DeliveriesPage() {
   );
 
   const [data, setData] = useState<NotificationDeliveryPage | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userInput, setUserInput] = useState(filter.user ?? '');
   const [retrying, setRetrying] = useState<string | null>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
     let cancelled = false;
     api
-      .call((c) => c.GET('/api/admin/notifications/deliveries', { params: { query: filter as unknown as Record<string, never> } }))
+      .call((c) => c.GET('/api/admin/notifications/deliveries', { params: { query: filter } }))
       .then((d) => {
         if (cancelled) return;
         setData(d);
@@ -84,6 +83,7 @@ function DeliveriesPage() {
   }, [api, filter]);
 
   const updateFilter = (key: string, value: string) => {
+    setLoading(true);
     const next = new URLSearchParams(params.toString());
     if (value) next.set(key, value);
     else next.delete(key);
@@ -103,6 +103,9 @@ function DeliveriesPage() {
       setRetrying(null);
     }
   };
+  const isInitialLoading = loading && !data;
+  const hasNoMatchingDeliveries = !isInitialLoading && !data?.items.length;
+  const hasMatchingDeliveries = !isInitialLoading && Boolean(data?.items.length);
 
   return (
     <div className="space-y-6">
@@ -186,20 +189,22 @@ function DeliveriesPage() {
             </tr>
           </thead>
           <tbody className="align-top">
-            {loading && !data ? (
+            {isInitialLoading && (
               <tr>
                 <td colSpan={9} className="py-4 text-center text-muted">
                   Loading...
                 </td>
               </tr>
-            ) : !data?.items.length ? (
+            )}
+            {hasNoMatchingDeliveries && (
               <tr>
                 <td colSpan={9} className="py-4 text-center text-muted">
                   No deliveries match these filters.
                 </td>
               </tr>
-            ) : (
-              data.items.map((d) => (
+            )}
+            {hasMatchingDeliveries && (
+              data?.items.map((d) => (
                 <tr key={d.id} className="border-b">
                   <td className="py-3 pr-4">
                     {formatDateTime(d.createdAt)}

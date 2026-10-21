@@ -6,7 +6,7 @@ import { ApiProvider } from '@biznexa/api-client/react';
 import { checkRefundForm, rupeesToPaise } from './refund-dialog';
 import { PaymentsView } from './payments-view';
 
-const auth = vi.hoisted(() => ({ permissions: [] as string[], refresh: vi.fn(async () => 'renewed-token') }));
+const auth = vi.hoisted(() => ({ permissions: [] as string[], refresh: vi.fn(async () => 'renewed-token') })); // NOSONAR: auth test double preserves rejected-call behavior
 vi.mock('@/lib/auth', () => ({
   useAuth: () => ({ user: { id: 'u1', name: 'Asha Admin', roles: ['ADMIN'], permissions: auth.permissions }, token: 'token', refresh: auth.refresh }),
 }));

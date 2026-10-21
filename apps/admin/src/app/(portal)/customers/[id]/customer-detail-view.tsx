@@ -42,7 +42,7 @@ const PAYMENT_STATUS_BADGES: Record<string, { label: string; tone: Tone }> = {
   FAILED: { label: 'Failed', tone: 'danger' },
 };
 
-export function CustomerDetailView({ id }: { id: string }) {
+export function CustomerDetailView({ id }: Readonly<{ id: string }>) {
   const api = useApi();
   const { user } = useAuth();
   const toast = useToast();
@@ -81,13 +81,13 @@ export function CustomerDetailView({ id }: { id: string }) {
         if (!cancel) setLoadError((err as Error).message || 'Failed to load customer');
       }
     }
-    load();
+    void load();
     return () => {
       cancel = true;
     };
   }, [api, canView, id, reload]);
 
-  const handleStatusChange = async (e: React.FormEvent) => {
+  const handleStatusChange = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!targetStatus || reason.trim().length < 3) return;
 

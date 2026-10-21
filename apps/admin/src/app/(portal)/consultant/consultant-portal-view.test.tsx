@@ -38,7 +38,7 @@ const mockEarningsData = consultantPortalEarningsSchema.parse({
 });
 
 const fakeClient = {
-  GET: vi.fn(async (path: string) => {
+  GET: vi.fn(async (path: string) => { // NOSONAR: API test double preserves rejected-call behavior
     if (path === '/api/consultants/me/portal/bookings') {
       return { data: mockBookingsData, response: new Response(null, { status: 200 }) };
     }
@@ -47,7 +47,7 @@ const fakeClient = {
     }
     return { data: null, response: new Response(null, { status: 404 }) };
   }),
-  POST: vi.fn(async (path: string, options: { body?: unknown }) => {
+  POST: vi.fn(async (path: string, options: { body?: unknown }) => { // NOSONAR: API test double preserves rejected-call behavior
     calls.push({ method: 'POST', path, body: options.body });
     return { data: {}, response: new Response(null, { status: 200 }) };
   }),

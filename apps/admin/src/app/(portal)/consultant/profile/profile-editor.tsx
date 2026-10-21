@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import type React from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { consultantCategories, consultantProfileInputSchema, consultationTypes, formatINR, type ConsultantOwnProfile, type ConsultantProfileInput, type ConsultationType } from '@biznexa/types';
 import { Button, Field, Notice, TextArea } from '@biznexa/ui';
@@ -43,7 +44,7 @@ export function ConsultantProfileEditor() {
   if (!user) return null;
   if (!user.roles.includes('CONSULTANT')) return <NotAllowed />;
 
-  async function save(event: FormEvent) {
+  async function save(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form || saving) return;
     const parsed = consultantProfileInputSchema.safeParse(form);

@@ -29,13 +29,18 @@ export function AnnouncementsView() {
       try {
         const list = await api.call((c) => c.GET('/api/admin/catalogue/categories'));
         setCategories(list);
-      } catch (err) { setCategoriesError('Could not load categories.'); }
+      } catch { // The category API error is intentionally represented by the existing generic message.
+        setCategoriesError('Could not load categories.');
+      }
       finally { setCategoriesLoading(false); }
     }
-    loadCategories();
+    void loadCategories();
   }, [api]);
 
-  const segment: AnnouncementSegment = segmentType === 'ALL_CUSTOMERS' ? { type: 'ALL_CUSTOMERS' } : segmentType === 'ACTIVE_APPLICATION_CATEGORY' ? { type: 'ACTIVE_APPLICATION_CATEGORY', categoryId } : { type: 'EXPIRING_CERTIFICATE', days: Number(days) };
+  let segment: AnnouncementSegment;
+  if (segmentType === 'ALL_CUSTOMERS') segment = { type: 'ALL_CUSTOMERS' };
+  else if (segmentType === 'ACTIVE_APPLICATION_CATEGORY') segment = { type: 'ACTIVE_APPLICATION_CATEGORY', categoryId };
+  else segment = { type: 'EXPIRING_CERTIFICATE', days: Number(days) };
   const toggle = (value: string) => setChannels((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
 
   async function countRecipients() {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type React from 'react';
 import Link from 'next/link';
 import { useApi } from '@biznexa/api-client/react';
 import { consultantVerificationStatuses, type AdminConsultantList, type ConsultantVerificationStatus } from '@biznexa/types';
@@ -38,6 +39,11 @@ export function ConsultantsView() {
   if (!user || !item) return null;
   if (!canSee(item, user.permissions)) return <NotAllowed />;
 
+  let applicationsContent: React.ReactNode;
+  if (loading) applicationsContent = <p role="status">Loading consultant applications…</p>;
+  else if (result?.items.length) applicationsContent = <ConsultantApplicationTable result={result} page={page} setLoading={setLoading} setPage={setPage} />;
+  else applicationsContent = <EmptyState title="No consultant applications" description="Applications matching this status will appear here." />;
+
   return (
     <main className="space-y-5 p-4 sm:p-6" aria-labelledby="consultants-heading">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -48,8 +54,13 @@ export function ConsultantsView() {
         </Select>
       </header>
       {error && <Notice tone="error">{error}</Notice>}
-      {loading ? <p role="status">Loading consultant applications…</p> : result?.items.length ? (
-        <>
+      {applicationsContent}
+    </main>
+  );
+}
+
+function ConsultantApplicationTable({ result, page, setLoading, setPage }: Readonly<{ result: AdminConsultantList; page: number; setLoading: React.Dispatch<React.SetStateAction<boolean>>; setPage: React.Dispatch<React.SetStateAction<number>> }>) {
+  return <>
           <div className="overflow-x-auto rounded-lg border border-rule bg-white">
             <table className="w-full min-w-[680px] text-left text-sm">
               <thead className="bg-paper text-xs uppercase text-muted"><tr><th className="p-3">Applicant</th><th className="p-3">Category</th><th className="p-3">Location</th><th className="p-3">Experience</th><th className="p-3">Status</th><th className="p-3">Review</th></tr></thead>
@@ -64,8 +75,5 @@ export function ConsultantsView() {
             </table>
           </div>
           <div className="flex items-center justify-between gap-3 text-sm"><span>{result.total} applications · page {result.page}</span><div className="flex gap-2"><Button variant="outline" disabled={page <= 1} onClick={() => { setLoading(true); setPage((current) => current - 1); }}>Previous</Button><Button variant="outline" disabled={page * result.limit >= result.total} onClick={() => { setLoading(true); setPage((current) => current + 1); }}>Next</Button></div></div>
-        </>
-      ) : <EmptyState title="No consultant applications" description="Applications matching this status will appear here." />}
-    </main>
-  );
+        </>;
 }
