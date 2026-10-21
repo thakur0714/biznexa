@@ -155,7 +155,6 @@ function isRealDate(v: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
 }
 
-/** Rules that look at one field on its own. */
 type TextFormField = Extract<FormField, { type: 'text' | 'textarea' | 'email' | 'tel' }>;
 type ChoiceFormField = Extract<FormField, { type: 'select' | 'multi-select' }>;
 
@@ -196,6 +195,7 @@ function checkChoiceField(f: ChoiceFormField): Issue[] {
   return issues;
 }
 
+/** Rules that look at one field on its own. */
 function checkField(f: FormField): Issue[] {
   switch (f.type) {
     case 'text':

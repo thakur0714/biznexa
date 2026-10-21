@@ -90,7 +90,6 @@ function anchored(f: { pattern?: string }): RegExp | null {
   return re;
 }
 
-/** Schema for one non-empty answer to a leaf field. */
 function textLeafValue(f: Extract<FormLeafField, { type: 'text' | 'textarea' | 'email' | 'tel' }>, strict: boolean): z.ZodTypeAny {
   let s: z.ZodTypeAny = trimmed(f.maxLength ?? DEFAULT_TEXT_MAX[f.type]);
   if (!strict) return s;
@@ -159,6 +158,7 @@ function addressLeafValue(strict: boolean): z.ZodTypeAny {
   });
 }
 
+/** Schema for one non-empty answer to a leaf field. */
 function leafValue(f: FormLeafField, o: Required<FormDataOptions>): z.ZodTypeAny {
   const strict = !o.partial;
   switch (f.type) {
