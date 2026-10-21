@@ -76,7 +76,7 @@ beforeAll(async () => {
     select: { id: true },
   });
   consultantId = consultant.id;
-  for (let n = 1; n <= 7; n++) customers.push(await /* NOSONAR: tests run steps in order */ register(n)); // NOSONAR: tests run steps in order
+  for (let n = 1; n <= 7; n++) customers.push(await register(n)); // NOSONAR: tests run steps in order
 });
 
 beforeEach(() => {
@@ -286,9 +286,9 @@ describe('booking confirmation and lifecycle (M8.9, M8.10)', () => {
   }
   async function notified(userId: string, event: string) {
     for (let i = 0; i < 50; i++) {
-      const rows = await /* NOSONAR: tests run steps in order */ prisma.notification.findMany({ where: { userId, event, channel: 'IN_APP' }, select: { body: true } }); // NOSONAR: tests run steps in order
+      const rows = await prisma.notification.findMany({ where: { userId, event, channel: 'IN_APP' }, select: { body: true } }); // NOSONAR: tests run steps in order
       if (rows.length) return rows;
-      await /* NOSONAR: tests run steps in order */ new Promise((r) => setTimeout(r, 100)); // NOSONAR: tests run steps in order
+      await new Promise((r) => setTimeout(r, 100)); // NOSONAR: tests run steps in order
     }
     return [];
   }

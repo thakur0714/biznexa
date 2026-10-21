@@ -15,6 +15,13 @@ import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ApplicationDocumentsService } from '../src/applications/application-documents.service';
 
+/** The order status that matches what has been paid so far. */
+function orderStatusFor(amountPaid: number, total: number) {
+  if (amountPaid >= total) return 'PAID' as const;
+  if (amountPaid > 0) return 'PARTIALLY_PAID' as const;
+  return 'CREATED' as const;
+}
+
 describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
   let app: NestExpressApplication;
   let prisma: PrismaService;
@@ -132,7 +139,7 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
           subtotal: opts.total,
           total: opts.total,
           amountPaid: opts.amountPaid,
-          status: (() => { if (opts.amountPaid >= opts.total) { return 'PAID'; } if (opts.amountPaid > 0) { return 'PARTIALLY_PAID'; } return 'CREATED'; })(),
+          status: orderStatusFor(opts.amountPaid, opts.total),
         },
       });
       createdOrderIds.push(order.id);
@@ -421,7 +428,7 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
 
       // Verify identical results one by one vs many
       for (const a of apps10) {
-        const one = await /* NOSONAR: tests run steps in order */ docsService.pendingMandatory(a); // NOSONAR: tests run steps in order
+        const one = await docsService.pendingMandatory(a); // NOSONAR: tests run steps in order
         expect(result10.get(a.id)).toBe(one);
       }
     });

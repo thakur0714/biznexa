@@ -171,7 +171,7 @@ describe('start an application (M3.8)', () => {
     // Race several customers together while keeping the database work bounded under the full API run.
     for (let offset = 2; offset < customers.length; offset += 2) {
       const batch = customers.slice(offset, offset + 2).flatMap((token) => packageIds.slice(0, 3).flatMap((packageId) => [start(token, { packageId }), start(token, { packageId })]));
-      results.push(...(await /* NOSONAR: tests run steps in order */ Promise.all(batch))); // NOSONAR: tests run steps in order
+      results.push(...(await Promise.all(batch))); // NOSONAR: tests run steps in order
     }
     for (const r of results) expect([200, 201]).toContain(r.status);
     const created = results.filter((r) => r.status === 201).map((r) => draftApplicationSchema.parse(r.body));
@@ -197,7 +197,7 @@ describe('start an application (M3.8)', () => {
     const ids = [];
     for (let offset = 0; offset < loadUsers.length; offset += 8) {
       ids.push(
-        ...(await /* NOSONAR: tests run steps in order */ Promise.all( // NOSONAR: tests run steps in order
+        ...(await Promise.all( // NOSONAR: tests run steps in order
           loadUsers.slice(offset, offset + 8).map((u, index) => svc.startDraft(u.id, { packageId: packageIds[(offset + index) % 3], businessEntityId: null })),
         )),
       );

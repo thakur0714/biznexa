@@ -102,7 +102,7 @@ describe('mobile version (M3.14)', () => {
 afterAll(async () => {
   const kept = new Map(original.map((r) => [r.key, r.value]));
   await prisma.setting.deleteMany({ where: { key: { in: [...KEYS.filter((k) => !kept.has(k)), REJECTION_PRESETS_KEY] } } });
-  for (const [key, value] of kept) await /* NOSONAR: tests run steps in order */ prisma.setting.upsert({ where: { key }, update: { value: value as object }, create: { key, value: value as object } }); // NOSONAR: tests run steps in order
+  for (const [key, value] of kept) await prisma.setting.upsert({ where: { key }, update: { value: value as object }, create: { key, value: value as object } }); // NOSONAR: tests run steps in order
   await prisma.setting.deleteMany({ where: { key: REJECTION_PRESETS_KEY } });
   if (originalMobileVersion) await prisma.setting.update({ where: { key: MOBILE_VERSION_KEY }, data: { value: originalMobileVersion.value as string } });
   else await prisma.setting.deleteMany({ where: { key: MOBILE_VERSION_KEY } });

@@ -32,7 +32,7 @@ beforeAll(async () => {
   opsToken = (await staffSession(http, prisma, 'OPERATIONS', email('ops'))).accessToken;
   adminId = await prisma.user.findUniqueOrThrow({ where: { email: email('admin') } }).then((u) => u.id);
   targetId = await createStaff(prisma, 'OPERATIONS', email('target'));
-  const login = await http.post('/api/auth/login').send({ email: email('target'), password: 'Staff@12345' }).expect(200); // NOSONAR: test credential // NOSONAR: test credential
+  const login = await http.post('/api/auth/login').send({ email: email('target'), password: 'Staff@12345' }).expect(200); // NOSONAR: test credential
   const setup = await http.post('/api/auth/2fa/setup').set(as(login.body.accessToken)).expect(200);
   targetTotpSecret = setup.body.secret;
   const enabled = await http.post('/api/auth/2fa/enable').set(as(login.body.accessToken)).send({ code: totpCode(targetTotpSecret, timeStep()) }).expect(200);
@@ -60,12 +60,12 @@ describe('staff users admin API', () => {
   });
 
   it('creates a staff account, changes its roles, then deactivation revokes refresh sessions', async () => {
-    const create = await http.post('/api/admin/staff-users').set(as(adminToken)).send({ name: 'Created Staff', email: email('created'), mobile: `96${run}10`, roles: ['SUPPORT'], temporaryPassword: 'Temporary@123' }).expect(201); // NOSONAR: test credential // NOSONAR: test credential
+    const create = await http.post('/api/admin/staff-users').set(as(adminToken)).send({ name: 'Created Staff', email: email('created'), mobile: `96${run}10`, roles: ['SUPPORT'], temporaryPassword: 'Temporary@123' }).expect(201); // NOSONAR: test credential
     const id = create.body.id as string;
     expect(create.body).not.toHaveProperty('temporaryPassword');
     expect(create.body.twoFactorEnabled).toBe(false);
     await http.patch(`/api/admin/staff-users/${id}/roles`).set(as(adminToken)).send({ roles: ['OPERATIONS'] }).expect(200);
-    const login = await http.post('/api/auth/login').send({ email: email('created'), password: 'Temporary@123' }).expect(200); // NOSONAR: test credential // NOSONAR: test credential
+    const login = await http.post('/api/auth/login').send({ email: email('created'), password: 'Temporary@123' }).expect(200); // NOSONAR: test credential
     await http.patch(`/api/admin/staff-users/${id}/status`).set(as(adminToken)).send({ active: false }).expect(200);
     await http.post('/api/auth/refresh').send({ refreshToken: login.body.refreshToken }).expect(401);
   });
@@ -87,7 +87,7 @@ describe('staff users admin API', () => {
   it('resets 2FA, logs the user out everywhere, requires setup again, and audits no secrets', async () => {
     await http.post(`/api/admin/staff-users/${targetId}/reset-2fa`).set(as(adminToken)).expect(201).expect({ success: true });
     await http.post('/api/auth/refresh').send({ refreshToken: targetRefresh }).expect(401);
-    const targetAccess = (await http.post('/api/auth/login').send({ email: email('target'), password: 'Staff@12345' }).expect(200)).body.accessToken; // NOSONAR: test credential // NOSONAR: test credential
+    const targetAccess = (await http.post('/api/auth/login').send({ email: email('target'), password: 'Staff@12345' }).expect(200)).body.accessToken; // NOSONAR: test credential
     const pendingSetup = await http.post('/api/auth/2fa/setup').set(as(targetAccess)).expect(200);
     expect(pendingSetup.body.secret).toBeTruthy();
     const entries = await prisma.auditLog.findMany({ where: { entityId: targetId }, select: { before: true, after: true } });
@@ -100,18 +100,18 @@ describe('staff users admin API', () => {
 
   it('rejects a duplicate mobile, signs the user out on a role change, and leaves blocked or erased accounts alone', async () => {
     const mobile = `97${run}20`;
-    const create = await http.post('/api/admin/staff-users').set(as(adminToken)).send({ name: 'Role Change', email: email('roles'), mobile, roles: ['SUPPORT'], temporaryPassword: 'Temporary@123' }).expect(201); // NOSONAR: test credential // NOSONAR: test credential
+    const create = await http.post('/api/admin/staff-users').set(as(adminToken)).send({ name: 'Role Change', email: email('roles'), mobile, roles: ['SUPPORT'], temporaryPassword: 'Temporary@123' }).expect(201); // NOSONAR: test credential
     const id = create.body.id as string;
-    await http.post('/api/admin/staff-users').set(as(adminToken)).send({ name: 'Same Mobile', email: email('dupe'), mobile, roles: ['SUPPORT'], temporaryPassword: 'Temporary@123' }).expect(409); // NOSONAR: test credential // NOSONAR: test credential
+    await http.post('/api/admin/staff-users').set(as(adminToken)).send({ name: 'Same Mobile', email: email('dupe'), mobile, roles: ['SUPPORT'], temporaryPassword: 'Temporary@123' }).expect(409); // NOSONAR: test credential
 
-    const login = await http.post('/api/auth/login').send({ email: email('roles'), password: 'Temporary@123' }).expect(200); // NOSONAR: test credential // NOSONAR: test credential
+    const login = await http.post('/api/auth/login').send({ email: email('roles'), password: 'Temporary@123' }).expect(200); // NOSONAR: test credential
     await http.patch(`/api/admin/staff-users/${id}/roles`).set(as(adminToken)).send({ roles: ['OPERATIONS'] }).expect(200);
     await http.post('/api/auth/refresh').send({ refreshToken: login.body.refreshToken }).expect(401);
 
     for (const status of ['BLOCKED', 'DELETED'] as const) {
-      await /* NOSONAR: tests run steps in order */ prisma.user.update({ where: { id }, data: { status } }); // NOSONAR: tests run steps in order
-      await /* NOSONAR: tests run steps in order */ http.patch(`/api/admin/staff-users/${id}/status`).set(as(adminToken)).send({ active: true }).expect(409); // NOSONAR: tests run steps in order
-      expect((await /* NOSONAR: tests run steps in order */ prisma.user.findUniqueOrThrow({ where: { id } })).status).toBe(status); // NOSONAR: tests run steps in order
+      await prisma.user.update({ where: { id }, data: { status } }); // NOSONAR: tests run steps in order
+      await http.patch(`/api/admin/staff-users/${id}/status`).set(as(adminToken)).send({ active: true }).expect(409); // NOSONAR: tests run steps in order
+      expect((await prisma.user.findUniqueOrThrow({ where: { id } })).status).toBe(status); // NOSONAR: tests run steps in order
     }
   });
 

@@ -7,6 +7,13 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 
+/** The order status that matches what has been paid so far. */
+function orderStatusFor(amountPaid: number, total: number) {
+  if (amountPaid >= total) return 'PAID' as const;
+  if (amountPaid > 0) return 'PARTIALLY_PAID' as const;
+  return 'CREATED' as const;
+}
+
 describe('Customer dashboard API (M5.2)', () => {
   let app: NestExpressApplication;
   let prisma: PrismaService;
@@ -70,7 +77,7 @@ describe('Customer dashboard API (M5.2)', () => {
     async function makeApp(customerId: string, offset: number, total: number, amountPaid: number) {
       const order = await prisma.order.create({ data: {
         code: formatOrderCode(baseSeq + offset), customerId, subtotal: total, total, amountPaid,
-        status: (() => { if (amountPaid >= total) { return 'PAID'; } if (amountPaid > 0) { return 'PARTIALLY_PAID'; } return 'CREATED'; })(),
+        status: orderStatusFor(amountPaid, total),
       } });
       orderIds.push(order.id);
       const application = await prisma.application.create({ data: {
