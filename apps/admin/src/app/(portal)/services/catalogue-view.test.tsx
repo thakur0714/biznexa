@@ -5,7 +5,7 @@ import { ToastProvider } from '@biznexa/ui';
 import { ApiProvider } from '@biznexa/api-client/react';
 import { CatalogueView } from './catalogue-view';
 
-const auth = vi.hoisted(() => ({ permissions: [] as string[], refresh: vi.fn(async () => 'renewed-token') }));
+const auth = vi.hoisted(() => ({ permissions: [] as string[], refresh: vi.fn(() => Promise.resolve('renewed-token')) }));
 vi.mock('@/lib/auth', () => ({
   useAuth: () => ({ user: { id: 'u1', name: 'Asha Admin', roles: ['ADMIN'], permissions: auth.permissions }, token: 'token', refresh: auth.refresh }),
 }));
@@ -137,7 +137,7 @@ describe('Catalogue services list', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog.textContent).toMatch(/hidden from the website/);
     expect(dialog.textContent).toMatch(/4 existing applications are not changed/);
-    await act(async () => fireEvent.click(within(dialog).getByRole('button', { name: 'Deactivate' })));
+    await act(() => fireEvent.click(within(dialog).getByRole('button', { name: 'Deactivate' })));
 
     const id = services[0].id;
     expect(patches).toEqual([{ url: `/api/admin/catalogue/services/${id}`, body: { isActive: false }, auth: 'Bearer token' }]);
@@ -145,7 +145,7 @@ describe('Catalogue services list', () => {
     expect(screen.getByText('FSSAI Registration is hidden from the website.')).toBeTruthy();
     expect(screen.queryByRole('dialog')).toBeNull();
 
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Reactivate FSSAI Registration' })));
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Reactivate FSSAI Registration' })));
     expect(patches[1]).toMatchObject({ body: { isActive: true } });
     await waitFor(() => expect(within(rowFor('FSSAI Registration')).getByText('Active')).toBeTruthy());
     expect(screen.getByText('FSSAI Registration is live on the website again.')).toBeTruthy();
@@ -155,7 +155,7 @@ describe('Catalogue services list', () => {
     renderView();
     await screen.findByText('Old Service');
     failNextPatch = true;
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Reactivate Old Service' })));
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Reactivate Old Service' })));
     expect(await screen.findByText('Slug already in use')).toBeTruthy();
     expect(within(rowFor('Old Service')).getByText('Inactive')).toBeTruthy();
   });
@@ -179,8 +179,8 @@ describe('Catalogue paging', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(screen.getByText('Showing 26–30 of 30')).toBeTruthy();
 
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Deactivate Service 27' })));
-    await act(async () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Deactivate' })));
+    await act(() => fireEvent.click(screen.getByRole('button', { name: 'Deactivate Service 27' })));
+    await act(() => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Deactivate' })));
     await waitFor(() => expect(within(rowFor('Service 27')).getByText('Inactive')).toBeTruthy());
     expect(screen.getByText('Showing 26–30 of 30')).toBeTruthy();
 
@@ -198,7 +198,7 @@ describe('Catalogue categories list', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Deactivate Tax category' }));
     expect(screen.getByRole('dialog').textContent).toMatch(/Its services stay live/);
-    await act(async () => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Deactivate' })));
+    await act(() => fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Deactivate' })));
     expect(patches).toEqual([{ url: `/api/admin/catalogue/categories/${CAT_TAX}`, body: { isActive: false }, auth: 'Bearer token' }]);
     await waitFor(() => expect(within(rowFor('Tax')).getByText('Inactive')).toBeTruthy());
 

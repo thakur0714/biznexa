@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { createColumnHelper, type ColumnFiltersState, type FilterFn } from '@tanstack/react-table';
 import { formatINR, type AdminCategoryRow, type AdminServiceRow } from '@biznexa/types';
 import Link from 'next/link';
@@ -26,7 +27,7 @@ export function CatalogueView() {
 }
 
 const statusOf = (active: boolean) => (active ? 'active' : 'inactive');
-const StatusBadge = ({ active }: { active: boolean }) => (active ? <Badge tone="success">Active</Badge> : <Badge>Inactive</Badge>);
+const StatusBadge = ({ active }: Readonly<{ active: boolean }>) => (active ? <Badge tone="success">Active</Badge> : <Badge>Inactive</Badge>);
 
 /** Name, slug, category and subcategory, case-insensitive. */
 const serviceSearch: FilterFn<AdminServiceRow> = (row, _col, value: string) => {
@@ -256,6 +257,51 @@ function Catalogue() {
       }
     />
   );
+  let results: ReactNode;
+  if (loadError) {
+    results = (
+      <div className="space-y-3">
+        <Notice tone="error">{loadError}</Notice>
+        <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
+          Try again
+        </Button>
+      </div>
+    );
+  } else if (!services || !categories) {
+    results = (
+      <p className="text-muted" role="status">
+        Loading the catalogue…
+      </p>
+    );
+  } else if (tab === 'services') {
+    results = (
+      <DataTable
+        caption="Services"
+        data={services}
+        columns={serviceColumns}
+        getRowId={(s) => s.id}
+        globalFilter={query}
+        globalFilterFn={serviceSearch}
+        columnFilters={serviceFilters}
+        minWidth={820}
+        empty={noMatch}
+      />
+    );
+  } else {
+    results = (
+      <DataTable
+        caption="Categories"
+        data={categories}
+        columns={categoryColumns}
+        getRowId={(c) => c.id}
+        globalFilter={query}
+        globalFilterFn={categorySearch}
+        columnFilters={categoryFilters}
+        minWidth={640}
+        empty={noMatch}
+      />
+    );
+  }
 
   return (
     <div className="max-w-[1200px]">
@@ -278,7 +324,7 @@ function Catalogue() {
             onClick={() => setTab(t)}
             className={`rounded px-4 py-1.5 text-sm font-medium transition-colors ${tab === t ? 'bg-ink text-white' : 'text-muted hover:text-night'}`}
           >
-            {t === 'services' ? `Services${services ? ` (${services.length})` : ''}` : `Categories${categories ? ` (${categories.length})` : ''}`}
+            {catalogueTabLabel(t, services, categories)}
           </button>
         ))}
       </div>
@@ -310,48 +356,13 @@ function Catalogue() {
       </div>
 
       <div className="mt-4">
-        {loadError ? (
-          <div className="space-y-3">
-            <Notice tone="error">{loadError}</Notice>
-            <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
-              Try again
-            </Button>
-          </div>
-        ) : !services || !categories ? (
-          <p className="text-muted" role="status">
-            Loading the catalogue…
-          </p>
-        ) : tab === 'services' ? (
-          <DataTable
-            caption="Services"
-            data={services}
-            columns={serviceColumns}
-            getRowId={(s) => s.id}
-            globalFilter={query}
-            globalFilterFn={serviceSearch}
-            columnFilters={serviceFilters}
-            minWidth={820}
-            empty={noMatch}
-          />
-        ) : (
-          <DataTable
-            caption="Categories"
-            data={categories}
-            columns={categoryColumns}
-            getRowId={(c) => c.id}
-            globalFilter={query}
-            globalFilterFn={categorySearch}
-            columnFilters={categoryFilters}
-            minWidth={640}
-            empty={noMatch}
-          />
-        )}
+        {results}
       </div>
 
       <Dialog
         open={!!pending}
         onClose={() => busyId === null && setPending(null)}
-        title={pending ? `Deactivate ${pending.row.name}${pending.kind === 'category' ? ' category' : ''}?` : ''}
+        title={deactivationTitle(pending)}
         description={
           pending?.kind === 'service'
             ? `It will be hidden from the website and can no longer be ordered. ${applicationsNote(pending.row.applications)} You can reactivate it at any time.`
@@ -374,6 +385,18 @@ function Catalogue() {
       />
     </div>
   );
+}
+
+function catalogueTabLabel(tab: Tab, services: AdminServiceRow[] | null, categories: AdminCategoryRow[] | null): string {
+  const count = tab === 'services' ? services?.length : categories?.length;
+  const label = tab === 'services' ? 'Services' : 'Categories';
+  return count === undefined ? label : `${label} (${count})`;
+}
+
+function deactivationTitle(pending: Pending | null): string {
+  if (!pending) return '';
+  const suffix = pending.kind === 'category' ? ' category' : '';
+  return `Deactivate ${pending.row.name}${suffix}?`;
 }
 
 function applicationsNote(n: number) {

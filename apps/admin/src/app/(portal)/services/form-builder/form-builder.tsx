@@ -44,7 +44,7 @@ import {
 import { FormPreview } from './form-preview';
 
 /** Application form builder (M3.4): `/services/{id}/form`. */
-export function FormBuilderView({ serviceId }: { serviceId: string }) {
+export function FormBuilderView({ serviceId }: Readonly<{ serviceId: string }>) {
   const { user } = useAuth();
   const item = findNavItem('services');
   if (!user || !item) return null;
@@ -59,7 +59,7 @@ interface Loaded {
   opened: FormSchemaVersion | null;
 }
 
-function BuilderLoader({ serviceId }: { serviceId: string }) {
+function BuilderLoader({ serviceId }: Readonly<{ serviceId: string }>) {
   const api = useApi();
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
@@ -170,7 +170,7 @@ function FormBuilder({ api, service, list: initialList, opened }: Loaded & { api
     if (!el) return;
     el.focus();
     el.setSelectionRange(offset, offset);
-    const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
+    const lineHeight = Number.parseFloat(getComputedStyle(el).lineHeight) || 20;
     el.scrollTop = Math.max(0, (text.slice(0, offset).split('\n').length - 3) * lineHeight);
   };
   const jumpToPath = (path: Path) => jumpTo(locateNearest(text, path));
@@ -192,7 +192,7 @@ function FormBuilder({ api, service, list: initialList, opened }: Loaded & { api
       toast(
         activate
           ? `Version ${saved.version} saved. New applications use it from now on.`
-          : `Version ${saved.version} saved as a draft. ${list.current ? `New applications still use version ${list.current}.` : 'No version is in use yet.'}`,
+          : draftSavedMessage(saved.version, list.current),
         'success',
       );
       await refreshList().catch(() => undefined);
@@ -239,6 +239,7 @@ function FormBuilder({ api, service, list: initialList, opened }: Loaded & { api
 
   const nextVersion = (list.latest ?? 0) + 1;
   const basedOnRow = list.versions.find((v) => v.version === basedOn);
+  const copyDescription = basedOnDescription(basedOn, basedOnRow?.isCurrent, nextVersion);
 
   return (
     <div className="max-w-[1400px] pb-28">
@@ -247,9 +248,7 @@ function FormBuilder({ api, service, list: initialList, opened }: Loaded & { api
       </Link>
       <h1 className="mt-2 text-2xl font-bold tracking-[-0.02em]">Application form</h1>
       <p className="mt-1 max-w-[80ch] text-muted">
-        {basedOn
-          ? `Editing a copy of version ${basedOn}${basedOnRow?.isCurrent ? ' (in use)' : ''}. Saving creates version ${nextVersion}; applications already started keep the version they began on.`
-          : 'This service has no application form yet. Customers fill it in after choosing a package.'}
+        {copyDescription}
       </p>
 
       {!started ? (
@@ -374,11 +373,7 @@ function FormBuilder({ api, service, list: initialList, opened }: Loaded & { api
             <span className="mr-auto text-sm text-muted" role="status">
               {parsed.kind === 'syntax'
                 ? 'The JSON has a syntax error'
-                : parsed.kind === 'invalid'
-                  ? `${parsed.issues.length} ${parsed.issues.length === 1 ? 'problem' : 'problems'} to fix`
-                  : dirty
-                    ? 'Unsaved changes'
-                    : 'No changes'}
+                : footerStatus(parsed, dirty)}
             </span>
             <Checkbox id="form-activate" label="Use for new applications straight away" checked={activate} onChange={(e) => setActivate(e.target.checked)} />
             <Button type="button" variant="outline" disabled={!dirty || saving} onClick={() => {
@@ -399,7 +394,7 @@ function FormBuilder({ api, service, list: initialList, opened }: Loaded & { api
 
 // ─────────────── Problems ───────────────
 
-function Problems({ parsed, issues, onJump }: { parsed: ReturnType<typeof parseFormText>; issues: FormIssue[]; onJump: (offset: number) => void }) {
+function Problems({ parsed, issues, onJump }: Readonly<{ parsed: ReturnType<typeof parseFormText>; issues: FormIssue[]; onJump: (offset: number) => void }>) {
   if (parsed.kind === 'syntax') {
     return (
       <div id="form-problems" role="alert" className="rounded-md border border-danger/20 bg-danger-050 px-4 py-3 text-sm text-danger">
@@ -417,29 +412,55 @@ function Problems({ parsed, issues, onJump }: { parsed: ReturnType<typeof parseF
       </p>
     );
   }
+  const issueKeyCounts = new Map<string, number>();
   return (
     <div id="form-problems" role="alert" className="rounded-md border border-danger/20 bg-danger-050 px-4 py-3 text-sm text-danger">
       <p className="font-semibold">
         {issues.length} {issues.length === 1 ? 'problem' : 'problems'} to fix before saving:
       </p>
       <ul className="mt-1.5 max-h-48 space-y-1 overflow-y-auto">
-        {issues.map((i, n) => (
-          <li key={n}>
-            <button type="button" className="text-left underline-offset-2 hover:underline" onClick={() => onJump(i.offset)}>
-              <span className="font-medium">Line {i.line}</span> · {i.where}: {i.message}
-            </button>
-          </li>
-        ))}
+        {issues.map((i) => {
+          const base = `${i.offset}:${i.path.join('.')}:${i.message}`;
+          const occurrence = issueKeyCounts.get(base) ?? 0;
+          issueKeyCounts.set(base, occurrence + 1);
+          return (
+            <li key={`${base}#${occurrence}`}>
+              <button type="button" className="text-left underline-offset-2 hover:underline" onClick={() => onJump(i.offset)}>
+                <span className="font-medium">Line {i.line}</span> · {i.where}: {i.message}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
+}
+
+function draftSavedMessage(version: number, current: number | null): string {
+  const currentNote = current ? `New applications still use version ${current}.` : 'No version is in use yet.';
+  return `Version ${version} saved as a draft. ${currentNote}`;
+}
+
+function footerStatus(parsed: ReturnType<typeof parseFormText>, dirty: boolean): string {
+  if (parsed.kind === 'invalid') {
+    const noun = parsed.issues.length === 1 ? 'problem' : 'problems';
+    return `${parsed.issues.length} ${noun} to fix`;
+  }
+  if (dirty) return 'Unsaved changes';
+  return 'No changes';
+}
+
+function basedOnDescription(basedOn: number | null, isCurrent: boolean | undefined, nextVersion: number): string {
+  if (basedOn === null) return 'This service has no application form yet. Customers fill it in after choosing a package.';
+  const currentNote = isCurrent ? ' (in use)' : '';
+  return `Editing a copy of version ${basedOn}${currentNote}. Saving creates version ${nextVersion}; applications already started keep the version they began on.`;
 }
 
 // ─────────────── Outline ───────────────
 
 const startsWith = (path: Path, prefix: Path) => prefix.every((p, i) => path[i] === p);
 
-function Outline({ steps, issues, onEdit, onJump }: { steps: OutlineStep[]; issues: FormIssue[]; onEdit: (fn: (raw: unknown) => unknown) => void; onJump: (path: Path) => void }) {
+function Outline({ steps, issues, onEdit, onJump }: Readonly<{ steps: OutlineStep[]; issues: FormIssue[]; onEdit: (fn: (raw: unknown) => unknown) => void; onJump: (path: Path) => void }>) {
   const problemsAt = (path: Path) => issues.filter((i) => startsWith(i.path, path)).length;
   return (
     <div className="space-y-4">
@@ -485,7 +506,7 @@ function FieldList({
   problemsAt,
   onEdit,
   onJump,
-}: {
+}: Readonly<{
   steps: OutlineStep[];
   step: number;
   parent?: number;
@@ -493,7 +514,7 @@ function FieldList({
   problemsAt: (path: Path) => number;
   onEdit: (fn: (raw: unknown) => unknown) => void;
   onJump: (path: Path) => void;
-}) {
+}>) {
   const [type, setType] = useState<FormFieldType>('text');
   const types = parent === undefined ? FORM_FIELD_TYPES : FORM_FIELD_TYPES.filter((t) => t !== 'repeater');
   const addId = `add-${step}-${parent ?? 'step'}`;
@@ -552,7 +573,7 @@ function FieldList({
   );
 }
 
-function Actions({ label, canUp, canDown, onUp, onDown, onEdit, onRemove }: { label: string; canUp: boolean; canDown: boolean; onUp: () => void; onDown: () => void; onEdit: () => void; onRemove?: () => void }) {
+function Actions({ label, canUp, canDown, onUp, onDown, onEdit, onRemove }: Readonly<{ label: string; canUp: boolean; canDown: boolean; onUp: () => void; onDown: () => void; onEdit: () => void; onRemove?: () => void }>) {
   return (
     <div className="flex shrink-0 items-center gap-0.5">
       <Button type="button" variant="ghost" size="sm" disabled={!canUp} onClick={onUp} aria-label={`Move ${label} up`}>
@@ -575,7 +596,7 @@ function Actions({ label, canUp, canDown, onUp, onDown, onEdit, onRemove }: { la
 
 // ─────────────── Versions ───────────────
 
-function Versions({ list, basedOn, onOpen, onMakeCurrent }: { list: FormSchemaVersionList; basedOn: number | null; onOpen: (v: number) => void; onMakeCurrent: (v: number) => void }) {
+function Versions({ list, basedOn, onOpen, onMakeCurrent }: Readonly<{ list: FormSchemaVersionList; basedOn: number | null; onOpen: (v: number) => void; onMakeCurrent: (v: number) => void }>) {
   if (!list.versions.length) return null;
   return (
     <section aria-labelledby="versions-title" className="mt-10">
