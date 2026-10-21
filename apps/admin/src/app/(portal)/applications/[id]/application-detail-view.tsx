@@ -15,10 +15,12 @@ function certificateIssueHref(data: import('@biznexa/types').AdminApplicationDet
   return `/certificates/new?applicationId=${encodeURIComponent(data.id)}&organizationName=${organizationName}${entityId}`;
 }
 
-function formAnswerText(value: unknown) {
+/** Same text as `String(value)` gave before: lists joined with commas; a plain object as JSON instead of "[object Object]". */
+function formAnswerText(value: unknown): string {
   if (value == null) return '—';
-  if (typeof value === 'string') return value;
-  return JSON.stringify(value) ?? '—';
+  if (Array.isArray(value)) return value.map((v) => (v == null ? '' : formAnswerText(v))).join(',');
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value as string | number | boolean | bigint);
 }
 
 export function ApplicationDetailView({ id }: Readonly<{ id: string }>) {
