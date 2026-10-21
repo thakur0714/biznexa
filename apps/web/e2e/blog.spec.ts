@@ -9,7 +9,7 @@ function totp(secret: string): string {
   for (const character of secret.toUpperCase()) { value = (value << 5) | alphabet.indexOf(character); bits += 5; if (bits >= 8) { bytes.push((value >>> (bits - 8)) & 255); bits -= 8; } }
   const counter = Buffer.alloc(8); counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000)));
   const mac = crypto.createHmac('sha1', Buffer.from(bytes)).update(counter).digest();
-  const offset = mac[mac.length - 1] & 15;
+  const offset = mac.at(-1)! & 15;
   return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
 }
 
@@ -19,7 +19,7 @@ test('published post appears in the listing and detail; draft stays hidden', asy
   const slug = `pw-public-blog-${run}`;
   const draftSlug = `${slug}-draft`;
   const email = `pw-blog-${run}@example.com`;
-  const password = 'Playwright@12345';
+  const password = 'Playwright@12345'; // NOSONAR: test credential
   execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], { cwd: path.resolve(__dirname, '../../..'), env: { ...process.env, ADMIN_NAME: 'Blog Playwright', ADMIN_EMAIL: email, ADMIN_MOBILE: `6${run.slice(-9).padStart(9, '0')}`, ADMIN_PASSWORD: password }, stdio: 'pipe' });
   const login = await request.post(`${apiUrl}/api/auth/login`, { data: { email, password } });
   expect(login.status()).toBe(200);

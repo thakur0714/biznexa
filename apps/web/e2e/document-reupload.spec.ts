@@ -8,7 +8,7 @@ function hmacHex(secret: string, data: string): string {
 }
 
 function base32Decode(input: string): Buffer {
-  const clean = input.replace(/[\s=-]/g, '').toUpperCase();
+  const clean = input.replaceAll(/[\s=-]/g, '').toUpperCase();
   const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   let bits = 0;
   let value = 0;
@@ -30,7 +30,7 @@ function totpCode(secret: string, step = Math.floor(Date.now() / 1000 / 30)): st
   const counter = Buffer.alloc(8);
   counter.writeBigUInt64BE(BigInt(step));
   const mac = crypto.createHmac('sha1', base32Decode(secret)).update(counter).digest();
-  const offset = mac[mac.length - 1] & 0x0f;
+  const offset = mac.at(-1)! & 0x0f;
   const bin = mac.readUInt32BE(offset) & 0x7fffffff;
   return String(bin % 1000000).padStart(6, '0');
 }
@@ -38,10 +38,10 @@ function totpCode(secret: string, step = Math.floor(Date.now() / 1000 / 30)): st
 
 async function findInQueue(request: import('@playwright/test').APIRequestContext, apiUrl: string, adminToken: string, applicationCode: string, version?: number) {
   for (let page = 1; page <= 50; page++) {
-    const res = await request.get(`${apiUrl}/api/admin/documents/review-queue?limit=100&page=${page}`, {
+    const res = await request.get(`${apiUrl}/api/admin/documents/review-queue?limit=100&page=${page}`, { // NOSONAR: tests run steps in order
       headers: { Authorization: `Bearer ${adminToken}` }
     });
-    const data = await res.json();
+    const data = await res.json(); // NOSONAR: tests run steps in order
     if (!data.items || data.items.length === 0) break;
     const item = data.items.find((i: { application: { code: string }, id: string, version: number, fileName: string }) =>
       i.application.code === applicationCode && (version === undefined || i.version === version)
@@ -59,7 +59,7 @@ test('ops reviews -> rejects -> customer re-uploads -> ops approves -> in progre
 
   // 1. Create admin
   const adminEmail = `pw-admin-${runId}@example.com`;
-  const adminPassword = 'Playwright@12345';
+  const adminPassword = 'Playwright@12345'; // NOSONAR: test credential
   execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], {
     cwd: path.resolve(__dirname, '../../..'),
     env: { ...process.env, ADMIN_NAME: 'Playwright Admin', ADMIN_EMAIL: adminEmail, ADMIN_MOBILE: `6${runId.padStart(9, '0').slice(-9)}`, ADMIN_PASSWORD: adminPassword },
@@ -84,7 +84,7 @@ test('ops reviews -> rejects -> customer re-uploads -> ops approves -> in progre
   // 2. Create customer and login
   const customerMobile = `7${runId.padStart(9, '0').slice(-9)}`;
   const registerRes = await request.post(`${apiUrl}/api/auth/register`, {
-    data: { name: `Playwright Customer ${runId}`, mobile: customerMobile, email: `pw-customer-${runId}@example.com`, password: 'Customer@12345', consent: true },
+    data: { name: `Playwright Customer ${runId}`, mobile: customerMobile, email: `pw-customer-${runId}@example.com`, password: 'Customer@12345', consent: true }, // NOSONAR: test credential
   });
   expect(registerRes.status()).toBe(201);
   await page.goto('/login');
@@ -213,22 +213,22 @@ test('ops reviews -> rejects -> customer re-uploads -> ops approves -> in progre
   expect(checklistRes.status()).toBe(200);
   const checklist = await checklistRes.json() as { items: { requirement: { id: string; isMandatory: boolean }; current: { status: string } | null }[] };
   for (const { requirement } of checklist.items.filter((i) => i.requirement.isMandatory && i.current?.status !== 'APPROVED')) {
-    const fileRes = await request.post(`${apiUrl}/api/files?requirementId=${requirement.id}`, {
+    const fileRes = await request.post(`${apiUrl}/api/files?requirementId=${requirement.id}`, { // NOSONAR: tests run steps in order
       headers: customerAuth,
       multipart: { file: { name: `extra-${requirement.id.slice(0, 8)}-${runId}.pdf`, mimeType: 'application/pdf', buffer: pdfBuffer2 } },
     });
     expect(fileRes.status()).toBe(201);
-    const attachRes = await request.post(`${apiUrl}/api/applications/${applicationUuid}/documents/${requirement.id}`, {
-      headers: customerAuth, data: { fileId: (await fileRes.json()).id },
+    const attachRes = await request.post(`${apiUrl}/api/applications/${applicationUuid}/documents/${requirement.id}`, { // NOSONAR: tests run steps in order
+      headers: customerAuth, data: { fileId: (await fileRes.json()).id }, // NOSONAR: tests run steps in order
     });
     expect(attachRes.status()).toBe(201);
   }
   for (let page = 1; page <= 50; page++) {
-    const res = await request.get(`${apiUrl}/api/admin/documents/review-queue?limit=100&page=${page}`, { headers: { Authorization: `Bearer ${adminToken}` } });
-    const data = await res.json() as { items?: { id: string; application: { code: string } }[] };
+    const res = await request.get(`${apiUrl}/api/admin/documents/review-queue?limit=100&page=${page}`, { headers: { Authorization: `Bearer ${adminToken}` } }); // NOSONAR: tests run steps in order
+    const data = await res.json() as { items?: { id: string; application: { code: string } }[] }; // NOSONAR: tests run steps in order
     if (!data.items?.length) break;
     for (const queued of data.items.filter((i) => i.application.code === applicationId)) {
-      const res2 = await request.post(`${apiUrl}/api/admin/documents/${queued.id}/approve`, { headers: { Authorization: `Bearer ${adminToken}` } });
+      const res2 = await request.post(`${apiUrl}/api/admin/documents/${queued.id}/approve`, { headers: { Authorization: `Bearer ${adminToken}` } }); // NOSONAR: tests run steps in order
       expect(res2.status()).toBe(201);
     }
   }
