@@ -62,10 +62,10 @@ test('a customer cannot see another customer’s application, business or ticket
     ['/dashboard/businesses', /business/i],
     ['/dashboard/support', /Support/],
   ] as const) {
-    await page.goto(path);
-    await expect(page.getByRole('heading', { name: heading }).first()).toBeVisible();
-    await expect(page.getByText(bobApp.code)).toHaveCount(0);
-    await expect(page.getByText(bobBusiness)).toHaveCount(0);
-    await expect(page.getByText(bobTicket)).toHaveCount(0);
+    await page.goto(path); // NOSONAR: tests run steps in order
+    await expect(page.getByRole('heading', { name: heading }).first()).toBeVisible(); // NOSONAR: tests run steps in order
+    await expect(page.getByText(bobApp.code)).toHaveCount(0); // NOSONAR: tests run steps in order
+    await expect(page.getByText(bobBusiness)).toHaveCount(0); // NOSONAR: tests run steps in order
+    await expect(page.getByText(bobTicket)).toHaveCount(0); // NOSONAR: tests run steps in order
   }
 });

@@ -23,7 +23,7 @@ function hmacHex(secret: string, data: string): string {
 }
 
 function base32Decode(input: string): Buffer {
-  const clean = input.replace(/[\s=-]/g, '').toUpperCase();
+  const clean = input.replaceAll(/[\s=-]/g, '').toUpperCase();
   const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   let bits = 0;
   let value = 0;
@@ -45,7 +45,7 @@ function totpCode(secret: string, step = Math.floor(Date.now() / 1000 / 30)): st
   const counter = Buffer.alloc(8);
   counter.writeBigUInt64BE(BigInt(step));
   const mac = crypto.createHmac('sha1', base32Decode(secret)).update(counter).digest();
-  const offset = mac[mac.length - 1]! & 0x0f;
+  const offset = mac.at(-1)! & 0x0f;
   const bin = mac.readUInt32BE(offset) & 0x7fffffff;
   return String(bin % 1000000).padStart(6, '0');
 }
@@ -63,8 +63,8 @@ async function createAdminSession(
   runId: string,
 ): Promise<AdminTestSession> {
   const email = `pw-admin-${runId}@example.com`;
-  const password = 'Playwright@12345';
-  const mobile = `6${runId.replace(/\D/g, '').padStart(9, '0').slice(-9)}`;
+  const password = 'Playwright@12345'; // NOSONAR: test credential
+  const mobile = `6${runId.replaceAll(/\D/g, '').padStart(9, '0').slice(-9)}`;
 
   execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], {
     cwd: repoRoot,
@@ -120,10 +120,10 @@ async function createCustomerSession(
   runId: string,
   index = 1,
 ): Promise<CustomerTestSession> {
-  const digits = `${index}${runId.replace(/\D/g, '').slice(-8)}`.padStart(9, '0').slice(0, 9);
+  const digits = `${index}${runId.replaceAll(/\D/g, '').slice(-8)}`.padStart(9, '0').slice(0, 9);
   const mobile = `7${digits}`;
   const email = `pw-cust-${index}-${runId}@example.com`;
-  const password = 'Customer@12345';
+  const password = 'Customer@12345'; // NOSONAR: test credential
   const name = `PW Customer ${index} ${runId}`;
 
   const res = await request.post(`${apiUrl}/api/auth/register`, {
@@ -496,8 +496,8 @@ test.describe('WCAG 2.1 AA accessibility audit & keyboard/dialog interactions', 
       await expect(page.getByTestId('application-code')).toHaveText(appBody.code);
       await checkA11y(page, 'Web Application Detail - Documents tab', failures);
       for (const tabName of ['Form', 'Payments', 'Deliverables', 'Messages'] as const) {
-        await page.getByRole('tab', { name: new RegExp(`^${tabName}`) }).click();
-        await checkA11y(page, `Web Application Detail - ${tabName} tab`, failures);
+        await page.getByRole('tab', { name: new RegExp(`^${tabName}`) }).click(); // NOSONAR: tests run steps in order
+        await checkA11y(page, `Web Application Detail - ${tabName} tab`, failures); // NOSONAR: tests run steps in order
       }
 
       await page.goto('/dashboard/documents');
@@ -521,8 +521,8 @@ test.describe('WCAG 2.1 AA accessibility audit & keyboard/dialog interactions', 
       const qrDialog = page.getByRole('dialog');
       await expect(qrDialog).toBeVisible();
       for (let i = 0; i < 4; i++) {
-        await page.keyboard.press('Tab');
-        const insideQrDialog = await page.evaluate(() =>
+        await page.keyboard.press('Tab'); // NOSONAR: tests run steps in order
+        const insideQrDialog = await page.evaluate(() => // NOSONAR: tests run steps in order
           Boolean(document.activeElement?.closest('dialog')),
         );
         expect(insideQrDialog).toBe(true);
@@ -541,8 +541,8 @@ test.describe('WCAG 2.1 AA accessibility audit & keyboard/dialog interactions', 
       const ticketDialog = page.getByRole('dialog', { name: 'Raise Support Ticket' });
       await expect(ticketDialog).toBeVisible();
       for (let i = 0; i < 6; i++) {
-        await page.keyboard.press('Tab');
-        const insideTicketDialog = await page.evaluate(() =>
+        await page.keyboard.press('Tab'); // NOSONAR: tests run steps in order
+        const insideTicketDialog = await page.evaluate(() => // NOSONAR: tests run steps in order
           Boolean(document.activeElement?.closest('dialog')),
         );
         expect(insideTicketDialog).toBe(true);

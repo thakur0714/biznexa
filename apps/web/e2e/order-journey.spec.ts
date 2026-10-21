@@ -11,7 +11,7 @@ import { expect, test } from '@playwright/test';
  */
 
 function base32Decode(input: string): Buffer {
-  const clean = input.replace(/[\s=-]/g, '').toUpperCase();
+  const clean = input.replaceAll(/[\s=-]/g, '').toUpperCase();
   const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   let bits = 0;
   let value = 0;
@@ -33,7 +33,7 @@ function totpCode(secret: string, step = Math.floor(Date.now() / 1000 / 30)): st
   const counter = Buffer.alloc(8);
   counter.writeBigUInt64BE(BigInt(step));
   const mac = crypto.createHmac('sha1', base32Decode(secret)).update(counter).digest();
-  const offset = mac[mac.length - 1] & 0x0f;
+  const offset = mac.at(-1)! & 0x0f;
   const bin = mac.readUInt32BE(offset) & 0x7fffffff;
   return String(bin % 1000000).padStart(6, '0');
 }
@@ -47,7 +47,7 @@ test('full order journey covers payment success and a customer-visible refund', 
   // 1. Create a coupon via the admin API. Staff routes need 2FA and the seeded admin must not be
   //    changed, so each run creates its own admin with the existing create-admin script.
   const adminEmail = `pw-admin-${runId}@example.com`;
-  const adminPassword = 'Playwright@12345';
+  const adminPassword = 'Playwright@12345'; // NOSONAR: test credential
   execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], {
     cwd: path.resolve(__dirname, '../../..'),
     env: { ...process.env, ADMIN_NAME: 'Playwright Admin', ADMIN_EMAIL: adminEmail, ADMIN_MOBILE: `6${runId.padStart(9, '0').slice(-9)}`, ADMIN_PASSWORD: adminPassword },
@@ -77,7 +77,7 @@ test('full order journey covers payment success and a customer-visible refund', 
   // 2. A new customer for this run (the OTP resend wait would clash on a shared account), then mobile OTP login
   const customerMobile = `7${runId.padStart(9, '0').slice(-9)}`;
   const registerRes = await request.post(`${apiUrl}/api/auth/register`, {
-    data: { name: `Playwright Customer ${runId}`, mobile: customerMobile, email: `pw-customer-${runId}@example.com`, password: 'Customer@12345', consent: true },
+    data: { name: `Playwright Customer ${runId}`, mobile: customerMobile, email: `pw-customer-${runId}@example.com`, password: 'Customer@12345', consent: true }, // NOSONAR: test credential
   });
   expect(registerRes.status()).toBe(201);
   await page.goto('/login');
