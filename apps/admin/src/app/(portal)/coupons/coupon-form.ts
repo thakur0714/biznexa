@@ -53,27 +53,39 @@ const istDay = (iso: string, minus = 0) => new Date(Date.parse(iso) - minus + IS
 const isDay = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d));
 
 /** Blank → null; anything that is not a whole number → NaN, which the API schema reports in its own words. */
-const numberOrNull = (v: string) => (v.trim() === '' ? null : /^\d+$/.test(v.trim()) ? Number(v.trim()) : NaN);
+const numberOrNull = (v: string) => {
+  if (v.trim() === '') return null;
+  if (/^\d+$/.test(v.trim())) return Number(v.trim());
+  return Number.NaN;
+};
 /** "1,499.50" rupees → 149950 paise; blank → null. */
 const rupeesToPaise = (v: string) => {
-  const clean = v.replace(/[₹,\s]/g, '');
+  const clean = v.replaceAll(/[₹,\s]/g, '');
   if (clean === '') return null;
-  return /^\d+(\.\d{1,2})?$/.test(clean) ? Math.round(Number(clean) * 100) : NaN;
+  return /^\d+(\.\d{1,2})?$/.test(clean) ? Math.round(Number(clean) * 100) : Number.NaN;
 };
-const paiseToRupees = (p: number | null) => (p == null ? '' : p % 100 === 0 ? String(p / 100) : (p / 100).toFixed(2));
+const paiseToRupees = (p: number | null) => {
+  if (p == null) return '';
+  if (p % 100 === 0) return String(p / 100);
+  return (p / 100).toFixed(2);
+};
 
 export function toCouponRequest(v: CouponFormValues): CreateCouponRequest {
   const percent = v.type === 'PERCENTAGE';
+  let startsAt: string | null = null;
+  if (v.startsOn) startsAt = isDay(v.startsOn) ? `${v.startsOn}T00:00:00${IST}` : v.startsOn;
+  let expiresAt: string | null = null;
+  if (v.lastDay) expiresAt = isDay(v.lastDay) ? `${dayAfter(v.lastDay)}T00:00:00${IST}` : v.lastDay;
   return {
     code: v.code,
     type: v.type,
-    value: (percent ? numberOrNull(v.value) : rupeesToPaise(v.value)) ?? NaN,
+    value: (percent ? numberOrNull(v.value) : rupeesToPaise(v.value)) ?? Number.NaN,
     maxDiscount: percent ? rupeesToPaise(v.maxDiscount) : null,
     minOrderValue: rupeesToPaise(v.minOrderValue),
     serviceIds: v.limitServices ? v.serviceIds : [],
     // A day that is not a date reaches the API schema as an invalid instant, which it reports.
-    startsAt: v.startsOn ? (isDay(v.startsOn) ? `${v.startsOn}T00:00:00${IST}` : v.startsOn) : null,
-    expiresAt: v.lastDay ? (isDay(v.lastDay) ? `${dayAfter(v.lastDay)}T00:00:00${IST}` : v.lastDay) : null,
+    startsAt,
+    expiresAt,
     usageLimit: numberOrNull(v.usageLimit),
     perUserLimit: numberOrNull(v.perUserLimit),
     isActive: v.isActive,

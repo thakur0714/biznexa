@@ -28,8 +28,11 @@ const STATUS: Record<CouponStatus, { label: string; tone: Tone }> = {
   INACTIVE: { label: 'Inactive', tone: 'neutral' },
 };
 
-export const discountLabel = (c: Pick<AdminCouponRow, 'type' | 'value' | 'maxDiscount'>) =>
-  c.type === 'PERCENTAGE' ? `${c.value}% off${c.maxDiscount ? ` (up to ${formatINR(c.maxDiscount)})` : ''}` : `${formatINR(c.value)} off`;
+export const discountLabel = (c: Pick<AdminCouponRow, 'type' | 'value' | 'maxDiscount'>) => {
+  if (c.type !== 'PERCENTAGE') return `${formatINR(c.value)} off`;
+  const cap = c.maxDiscount ? ` (up to ${formatINR(c.maxDiscount)})` : '';
+  return `${c.value}% off${cap}`;
+};
 
 /** The last day the coupon works (IST): `expiresAt` is exclusive. */
 const lastDay = (expiresAt: string) => formatDate(new Date(Date.parse(expiresAt) - 1));
@@ -221,7 +224,29 @@ function Coupons() {
     setQuery('');
     setStatus('');
   };
-
+  let listContent: React.ReactNode;
+  if (loadError) {
+    listContent = <div className="space-y-3"><Notice tone="error">{loadError}</Notice><Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>Try again</Button></div>;
+  } else if (!coupons) {
+    listContent = <p className="text-muted" role="status">Loading coupons…</p>;
+  } else if (coupons.length === 0) {
+    listContent = <EmptyState title="No coupons yet" description="Create a code customers can enter at checkout for a discount on the professional fee." action={<Button variant="ink" size="sm" onClick={() => setEditing(null)}>New coupon</Button>} />;
+  } else {
+    listContent = <DataTable caption="Coupons" data={coupons} columns={columns} getRowId={(c) => c.id} globalFilter={query} globalFilterFn={couponSearch} columnFilters={filters} minWidth={1080} empty={<EmptyState title="Nothing matches these filters" description="Try a different search, or clear the filters." action={filtered && <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>} />} />;
+  }
+  let pendingTitle = '';
+  if (pending) {
+    const action = pending.kind === 'delete' ? 'Delete' : 'Deactivate';
+    pendingTitle = `${action} ${pending.row.code}?`;
+  }
+  let pendingButtonLabel = 'Deactivate';
+  if (pending?.kind === 'delete') pendingButtonLabel = busyId ? 'Deleting…' : 'Delete';
+  else if (busyId) pendingButtonLabel = 'Deactivating…';
+  const confirmPending = () => {
+    if (!pending) return;
+    if (pending.kind === 'delete') void remove(pending.row);
+    else void setActive(pending.row, false);
+  };
   return (
     <div className="max-w-[1200px]">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -262,52 +287,7 @@ function Coupons() {
       </div>
 
       <div className="mt-4">
-        {loadError ? (
-          <div className="space-y-3">
-            <Notice tone="error">{loadError}</Notice>
-            <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
-              Try again
-            </Button>
-          </div>
-        ) : !coupons ? (
-          <p className="text-muted" role="status">
-            Loading coupons…
-          </p>
-        ) : coupons.length === 0 ? (
-          <EmptyState
-            title="No coupons yet"
-            description="Create a code customers can enter at checkout for a discount on the professional fee."
-            action={
-              <Button variant="ink" size="sm" onClick={() => setEditing(null)}>
-                New coupon
-              </Button>
-            }
-          />
-        ) : (
-          <DataTable
-            caption="Coupons"
-            data={coupons}
-            columns={columns}
-            getRowId={(c) => c.id}
-            globalFilter={query}
-            globalFilterFn={couponSearch}
-            columnFilters={filters}
-            minWidth={1080}
-            empty={
-              <EmptyState
-                title="Nothing matches these filters"
-                description="Try a different search, or clear the filters."
-                action={
-                  filtered && (
-                    <Button variant="outline" size="sm" onClick={clearFilters}>
-                      Clear filters
-                    </Button>
-                  )
-                }
-              />
-            }
-          />
-        )}
+        {listContent}
       </div>
 
       {editing !== undefined && (
@@ -326,7 +306,7 @@ function Coupons() {
       <Dialog
         open={!!pending}
         onClose={() => busyId === null && setPending(null)}
-        title={pending ? (pending.kind === 'delete' ? `Delete ${pending.row.code}?` : `Deactivate ${pending.row.code}?`) : ''}
+        title={pendingTitle}
         description={
           pending?.kind === 'delete'
             ? 'No order has used it, so it will be removed for good.'
@@ -337,8 +317,8 @@ function Coupons() {
             <Button variant="outline" onClick={() => setPending(null)} disabled={busyId !== null}>
               Cancel
             </Button>
-            <Button variant="ink" disabled={busyId !== null} onClick={() => pending && (pending.kind === 'delete' ? remove(pending.row) : setActive(pending.row, false))}>
-              {pending?.kind === 'delete' ? (busyId ? 'Deleting…' : 'Delete') : busyId ? 'Deactivating…' : 'Deactivate'}
+            <Button variant="ink" disabled={busyId !== null} onClick={confirmPending}>
+              {pendingButtonLabel}
             </Button>
           </>
         }

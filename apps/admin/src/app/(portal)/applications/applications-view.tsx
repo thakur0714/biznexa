@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Field, Notice, Select } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
@@ -77,7 +77,8 @@ function ApplicationsPage() {
   const [data, setData] = useState<import('@biznexa/types').AdminApplicationPage | null>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // This synchronous update preserves the existing loading state while a new filter request runs.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the loading state is visible during the request
     setLoading(true);
     let cancelled = false;
     api.call((c) => c.GET('/api/admin/applications', { params: { query: filter as unknown as Record<string, never> } }))
@@ -111,13 +112,44 @@ function ApplicationsPage() {
       const url = URL.createObjectURL(blob as Blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `applications-${new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).split('/').reverse().join('-')}.csv`;
+      a.download = `applications-${new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).split('/').toReversed().join('-')}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: unknown) {
       alert((e as Error).message);
     }
   };
+
+  let applicationRows: React.ReactNode;
+  if (loading) {
+    applicationRows = <tr><td colSpan={canAssign ? 8 : 7} className="py-4 text-center text-muted">Loading...</td></tr>;
+  } else if (!data?.items.length) {
+    applicationRows = <tr><td colSpan={canAssign ? 8 : 7} className="py-4 text-center text-muted">No applications found.</td></tr>;
+  } else {
+    applicationRows = data.items.map((app: import('@biznexa/types').AdminApplicationRow) => (
+      <tr key={app.id} className="border-b">
+        {canAssign && (
+          <td className="py-3 pr-4">
+            <input
+              type="checkbox"
+              aria-label={`Select application ${app.code}`}
+              checked={selected.includes(app.id)}
+              onChange={(e) => setSelected((prev) => e.target.checked ? [...prev, app.id] : prev.filter((id) => id !== app.id))}
+            />
+          </td>
+        )}
+        <td className="py-3 pr-4 font-medium text-night">
+          <a href={`/applications/${app.id}`} className="hover:underline">{app.code}</a>
+        </td>
+        <td className="py-3 pr-4">{APPLICATION_STATUS_LABEL[app.status as keyof typeof APPLICATION_STATUS_LABEL] || app.status}</td>
+        <td className="py-3 pr-4">{app.priority}</td>
+        <td className="py-3 pr-4">{app.service.name}</td>
+        <td className="py-3 pr-4">{app.customer?.name}</td>
+        <td className="py-3 pr-4">{app.assignedTo?.name || '-'}</td>
+        <td className="py-3">{formatDate(app.createdAt)}</td>
+      </tr>
+    ));
+  }
 
   return (
     <div className="space-y-6">
@@ -193,35 +225,7 @@ function ApplicationsPage() {
             </tr>
           </thead>
           <tbody className="align-top">
-            {loading ? (
-              <tr><td colSpan={canAssign ? 8 : 7} className="py-4 text-center text-muted">Loading...</td></tr>
-            ) : !data?.items.length ? (
-              <tr><td colSpan={canAssign ? 8 : 7} className="py-4 text-center text-muted">No applications found.</td></tr>
-            ) : (
-              data.items.map((app: import('@biznexa/types').AdminApplicationRow) => (
-                <tr key={app.id} className="border-b">
-                  {canAssign && (
-                    <td className="py-3 pr-4">
-                      <input
-                        type="checkbox"
-                        aria-label={`Select application ${app.code}`}
-                        checked={selected.includes(app.id)}
-                        onChange={e => setSelected(prev => e.target.checked ? [...prev, app.id] : prev.filter(id => id !== app.id))}
-                      />
-                    </td>
-                  )}
-                  <td className="py-3 pr-4 font-medium text-night">
-                    <a href={`/applications/${app.id}`} className="hover:underline">{app.code}</a>
-                  </td>
-                  <td className="py-3 pr-4">{APPLICATION_STATUS_LABEL[app.status as keyof typeof APPLICATION_STATUS_LABEL] || app.status}</td>
-                  <td className="py-3 pr-4">{app.priority}</td>
-                  <td className="py-3 pr-4">{app.service.name}</td>
-                  <td className="py-3 pr-4">{app.customer?.name}</td>
-                  <td className="py-3 pr-4">{app.assignedTo?.name || '-'}</td>
-                  <td className="py-3">{formatDate(app.createdAt)}</td>
-                </tr>
-              ))
-            )}
+            {applicationRows}
           </tbody>
         </table>
       </div>

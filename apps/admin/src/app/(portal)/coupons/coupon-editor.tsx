@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import type { AdminCouponRow, CouponServiceOption } from '@biznexa/types';
 import { Button, Checkbox, Dialog, Field, Notice, Select } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
@@ -18,13 +18,13 @@ export function CouponEditor({
   services,
   onClose,
   onSaved,
-}: {
+}: Readonly<{
   /** null = new coupon. */
   coupon: AdminCouponRow | null;
   services: CouponServiceOption[];
   onClose: () => void;
   onSaved: (row: AdminCouponRow, created: boolean) => void;
-}) {
+}>) {
   const api = useApi();
   const [values, setValues] = useState<CouponFormValues>(() => (coupon ? toCouponForm(coupon) : emptyCouponForm()));
   const [errors, setErrors] = useState<Errors>({});
@@ -36,10 +36,17 @@ export function CouponEditor({
     setErrors((e) => ({ ...e, [key]: undefined }));
   };
   const percent = values.type === 'PERCENTAGE';
+  const redemptionSuffix = coupon?.usage.redemptions === 1 ? '' : 's';
+  const usageHint = coupon
+    ? `Used ${coupon.usage.redemptions} time${redemptionSuffix} so far. Blank = no limit.`
+    : 'Blank = no limit.';
   // A service the coupon already has may have been removed from the catalogue since; keep showing it.
   const removed = (coupon?.services ?? []).filter((s) => s.removed || !services.some((o) => o.id === s.id));
+  let submitLabel = 'Create coupon';
+  if (coupon) submitLabel = 'Save changes';
+  if (saving) submitLabel = 'Saving…';
 
-  async function submit(e: FormEvent) {
+  async function submit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const found = couponFormErrors(values);
     setErrors(found);
@@ -72,7 +79,7 @@ export function CouponEditor({
             Cancel
           </Button>
           <Button variant="ink" type="submit" form="coupon-form" disabled={saving}>
-            {saving ? 'Saving…' : coupon ? 'Save changes' : 'Create coupon'}
+            {submitLabel}
           </Button>
         </>
       }
@@ -172,7 +179,7 @@ export function CouponEditor({
           value={values.usageLimit}
           onChange={(e) => set('usageLimit', e.target.value)}
           error={errors.usageLimit}
-          hint={coupon ? `Used ${coupon.usage.redemptions} time${coupon.usage.redemptions === 1 ? '' : 's'} so far. Blank = no limit.` : 'Blank = no limit.'}
+          hint={usageHint}
         />
         <Field
           id="coupon-per-user"
