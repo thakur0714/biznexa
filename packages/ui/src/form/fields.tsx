@@ -61,7 +61,7 @@ export const capitalsOnly = (pattern?: string) => !!pattern && /A-Z/.test(patter
 const text = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
 
 /** Renders the input for any field type. */
-export function FormFieldInput(props: FormFieldInputProps) {
+export function FormFieldInput(props: Readonly<FormFieldInputProps>) {
   const { field: f } = props;
   switch (f.type) {
     case 'text':
@@ -87,11 +87,13 @@ export function FormFieldInput(props: FormFieldInputProps) {
   }
 }
 
-type Of<T extends FormField['type']> = FormFieldInputProps<Extract<FormField, { type: T }>>;
+type Optional = 'scope' | 'uploadFiles' | 'today';
+/** Props one input uses: the shared ones plus the optional ones (`K`) it reads. */
+type Of<T extends FormField['type'], K extends Optional = never> = Omit<FormFieldInputProps<Extract<FormField, { type: T }>>, Exclude<Optional, K>>;
 
 const AUTOCOMPLETE: Partial<Record<string, string>> = { email: 'email', tel: 'tel' };
 
-export function TextInput({ field: f, path, value, errors, onChange, idPrefix }: Of<'text' | 'email' | 'tel'>) {
+export function TextInput({ field: f, path, value, errors, onChange, idPrefix }: Readonly<Of<'text' | 'email' | 'tel'>>) {
   const caps = capitalsOnly(f.pattern);
   return (
     <Field
@@ -112,7 +114,7 @@ export function TextInput({ field: f, path, value, errors, onChange, idPrefix }:
   );
 }
 
-export function TextAreaInput({ field: f, path, value, errors, onChange, idPrefix }: Of<'textarea'>) {
+export function TextAreaInput({ field: f, path, value, errors, onChange, idPrefix }: Readonly<Of<'textarea'>>) {
   return (
     <TextArea
       id={fieldId(idPrefix, path)}
@@ -129,7 +131,7 @@ export function TextAreaInput({ field: f, path, value, errors, onChange, idPrefi
 }
 
 /** A text box with a numeric keyboard: `type="number"` changes values on scroll and accepts "e". The validator converts the text. */
-export function NumberInput({ field: f, path, value, errors, onChange, idPrefix }: Of<'number'>) {
+export function NumberInput({ field: f, path, value, errors, onChange, idPrefix }: Readonly<Of<'number'>>) {
   return (
     <Field
       id={fieldId(idPrefix, path)}
@@ -145,7 +147,7 @@ export function NumberInput({ field: f, path, value, errors, onChange, idPrefix 
   );
 }
 
-export function DateInput({ field: f, path, value, errors, onChange, idPrefix, today = todayInIndia() }: Of<'date'>) {
+export function DateInput({ field: f, path, value, errors, onChange, idPrefix, today = todayInIndia() }: Readonly<Of<'date', 'today'>>) {
   const bound = (b?: string) => (b === 'today' ? today : b);
   return (
     <Field
@@ -162,7 +164,7 @@ export function DateInput({ field: f, path, value, errors, onChange, idPrefix, t
   );
 }
 
-export function SelectInput({ field: f, path, value, errors, onChange, idPrefix }: Of<'select'>) {
+export function SelectInput({ field: f, path, value, errors, onChange, idPrefix }: Readonly<Of<'select'>>) {
   return (
     <Select id={fieldId(idPrefix, path)} label={fieldLabel(f)} error={errorAt(errors, path)} hint={f.helpText} value={text(value)} onChange={(e) => onChange(e.target.value)}>
       <option value="">Choose…</option>
@@ -175,7 +177,7 @@ export function SelectInput({ field: f, path, value, errors, onChange, idPrefix 
   );
 }
 
-export function MultiSelectInput({ field: f, path, value, errors, onChange, idPrefix }: Of<'multi-select'>) {
+export function MultiSelectInput({ field: f, path, value, errors, onChange, idPrefix }: Readonly<Of<'multi-select'>>) {
   const id = fieldId(idPrefix, path);
   const chosen = Array.isArray(value) ? (value as string[]) : [];
   const options = fieldOptions(f);
@@ -200,7 +202,10 @@ export function MultiSelectInput({ field: f, path, value, errors, onChange, idPr
 /** Checks type, size and count before anything is uploaded; returns a message or null. */
 function checkFiles(f: Extract<FormLeafField, { type: 'file' }>, files: File[], already: number): string | null {
   const types = describeFileTypes(f.accept);
-  if (already + files.length > f.maxFiles) return f.maxFiles === 1 ? 'Upload one file' : `Upload at most ${f.maxFiles} files`;
+  if (already + files.length > f.maxFiles) {
+    if (f.maxFiles === 1) return 'Upload one file';
+    return `Upload at most ${f.maxFiles} files`;
+  }
   for (const file of files) {
     const type = isKnownFileType(file.type) ? file.type : fileTypeFromName(file.name);
     if (!type || !f.accept.includes(type)) return `${file.name} is not a ${types} file`;
@@ -213,14 +218,16 @@ function checkFiles(f: Extract<FormLeafField, { type: 'file' }>, files: File[], 
  * Uploads through `uploadFiles` as soon as files are chosen; the value is the list of file ids.
  * Names are only known for files chosen on this visit — earlier ones are shown as a count.
  */
-export function FileInput({ field: f, path, value, errors, onChange, idPrefix, uploadFiles }: Of<'file'>) {
+export function FileInput({ field: f, path, value, errors, onChange, idPrefix, uploadFiles }: Readonly<Of<'file', 'uploadFiles'>>) {
   const id = fieldId(idPrefix, path);
   const ids = Array.isArray(value) ? (value as string[]) : [];
+  const helpPrefix = f.helpText ? `${f.helpText} ` : '';
   const [names, setNames] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const error = problem ?? errorAt(errors, path);
-  const limits = `${describeFileTypes(f.accept)}, up to ${f.maxSizeMb} MB${f.maxFiles > 1 ? `, at most ${f.maxFiles} files` : ''}.`;
+  const countLimit = f.maxFiles > 1 ? `, at most ${f.maxFiles} files` : '';
+  const limits = `${describeFileTypes(f.accept)}, up to ${f.maxSizeMb} MB${countLimit}.`;
   const full = ids.length >= f.maxFiles;
 
   const choose = async (files: File[]) => {
@@ -270,7 +277,7 @@ export function FileInput({ field: f, path, value, errors, onChange, idPrefix, u
               {ids.map((fid, i) => (
                 <li key={fid} className="flex items-center gap-2 text-sm text-night">
                   <span className="min-w-0 truncate">{names[fid] ?? `File ${i + 1} attached`}</span>
-                  <Button type="button" variant="ghost" size="sm" aria-label={`Remove ${names[fid] ?? `file ${i + 1}`}`} onClick={() => onChange(ids.filter((x) => x !== fid))}>
+                  <Button type="button" variant="ghost" size="sm" aria-label={`Remove ${names[fid] ?? 'file ' + (i + 1)}`} onClick={() => onChange(ids.filter((x) => x !== fid))}>
                     Remove
                   </Button>
                 </li>
@@ -280,21 +287,24 @@ export function FileInput({ field: f, path, value, errors, onChange, idPrefix, u
         )}
       </div>
       <p id={`${id}-hint`} className={`mt-1.5 text-sm ${error ? 'text-danger' : 'text-muted'}`}>
-        {error ?? `${f.helpText ? `${f.helpText} ` : ''}${limits}`}
+        {error ?? helpPrefix + limits}
       </p>
     </div>
   );
 }
 
-export function AddressInput({ field: f, path, value, errors, onChange, idPrefix }: Of<'address'>) {
+export function AddressInput({ field: f, path, value, errors, onChange, idPrefix }: Readonly<Of<'address'>>) {
   const id = fieldId(idPrefix, path);
   const a = (value && typeof value === 'object' ? value : {}) as Record<string, string>;
-  const part = (k: string) => ({
-    id: `${id}-${k}`,
-    value: a[k] ?? '',
-    error: errors[[...path, k].join('.')],
-    onChange: (e: { target: { value: string } }) => onChange({ ...a, [k]: e.target.value }),
-  });
+  const part = (k: string) => {
+    const errorPath = [...path, k].join('.');
+    return {
+      id: `${id}-${k}`,
+      value: a[k] ?? '',
+      error: errors[errorPath],
+      onChange: (e: { target: { value: string } }) => onChange({ ...a, [k]: e.target.value }),
+    };
+  };
   return (
     <Group id={id} legend={fieldLabel(f)} error={errors[path.join('.')]} hint={f.helpText}>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -313,7 +323,7 @@ export function AddressInput({ field: f, path, value, errors, onChange, idPrefix
   );
 }
 
-export function RepeaterInput(props: Of<'repeater'>) {
+export function RepeaterInput(props: Readonly<Of<'repeater', Optional>>) {
   const { field: f, path, value, scope, errors, onChange, idPrefix } = props;
   const rows = Array.isArray(value) ? (value as FormValues[]) : [];
   const item = f.itemLabel;
@@ -331,10 +341,11 @@ export function RepeaterInput(props: Of<'repeater'>) {
       <ol className="space-y-3">
         {rows.map((row, i) => {
           const rowScope = { ...scope, ...row };
+          const key = `${id}--${i}`;
           return (
-            <li key={i} className="rounded-md border border-rule p-4">
+            <li key={key} className="rounded-md border border-rule p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <h4 id={`${id}--${i}`} tabIndex={-1} className="font-semibold outline-none">
+                <h4 id={key} tabIndex={-1} className="font-semibold outline-none">
                   {item} {i + 1}
                 </h4>
                 <Button type="button" variant="ghost" size="sm" onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label={`Remove ${item.toLowerCase()} ${i + 1}`}>
@@ -368,22 +379,22 @@ export function RepeaterInput(props: Of<'repeater'>) {
 }
 
 /** A fieldset for fields with several controls (multi-select, address, repeater). */
-function Group({ id, legend, error, hint, children }: { id: string; legend: string; error?: string; hint?: string; children: ReactNode }) {
+function Group({ id, legend, error, hint, children }: Readonly<{ id: string; legend: string; error?: string; hint?: string; children: ReactNode }>) {
+  let describedBy: string | undefined;
+  let helper: ReactNode = null;
+  if (error) {
+    describedBy = `${id}-err`;
+    helper = <p id={describedBy} className="mt-1.5 text-sm text-danger">{error}</p>;
+  } else if (hint) {
+    describedBy = `${id}-hint`;
+    helper = <p id={describedBy} className="mt-1.5 text-sm text-muted">{hint}</p>;
+  }
+
   return (
-    <fieldset id={id} aria-describedby={error ? `${id}-err` : hint ? `${id}-hint` : undefined} aria-invalid={error ? true : undefined}>
+    <fieldset id={id} aria-describedby={describedBy} aria-invalid={error ? true : undefined}>
       <legend className="mb-1.5 text-sm font-medium text-night">{legend}</legend>
       {children}
-      {error ? (
-        <p id={`${id}-err`} className="mt-1.5 text-sm text-danger">
-          {error}
-        </p>
-      ) : (
-        hint && (
-          <p id={`${id}-hint`} className="mt-1.5 text-sm text-muted">
-            {hint}
-          </p>
-        )
-      )}
+      {helper}
     </fieldset>
   );
 }

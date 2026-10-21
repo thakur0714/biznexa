@@ -11,26 +11,29 @@ interface FieldProps {
 
 /** Label + control + error/hint, wired with aria-invalid and aria-describedby. */
 function FieldShell({ label, id, error, hint, className, children }: FieldProps & { className: string; children: ReactNode }) {
+  let helper: ReactNode = null;
+  if (error) {
+    helper = <p id={`${id}-err`} className="mt-1.5 text-sm text-danger">{error}</p>;
+  } else if (hint) {
+    helper = <p id={`${id}-hint`} className="mt-1.5 text-sm text-muted">{hint}</p>;
+  }
+
   return (
     <div className={className}>
       <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-night">
         {label}
       </label>
       {children}
-      {error ? (
-        <p id={`${id}-err`} className="mt-1.5 text-sm text-danger">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${id}-hint`} className="mt-1.5 text-sm text-muted">
-          {hint}
-        </p>
-      ) : null}
+      {helper}
     </div>
   );
 }
 
-const describedBy = (id: string, error?: string, hint?: string) => (error ? `${id}-err` : hint ? `${id}-hint` : undefined);
+const describedBy = (id: string, error?: string, hint?: string) => {
+  if (error) return `${id}-err`;
+  if (hint) return `${id}-hint`;
+  return undefined;
+};
 
 /** Text input with label. */
 export function Field({ label, error, hint, id, className = '', ...rest }: ComponentProps<'input'> & FieldProps) {
