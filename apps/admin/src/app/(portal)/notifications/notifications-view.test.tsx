@@ -7,7 +7,7 @@ import { NotificationsView } from './notifications-view';
 
 const auth = vi.hoisted(() => ({
   permissions: [] as string[],
-  refresh: vi.fn(async () => 'renewed-token'),
+  refresh: vi.fn(async () => 'renewed-token'), // NOSONAR: auth test double preserves rejected-call behavior
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -62,7 +62,7 @@ const json = (body: unknown, status = 200) =>
 
 beforeEach(() => {
   auth.permissions = [PERMS.ADMIN_ACCESS, PERMS.SETTINGS_MANAGE];
-  templates = JSON.parse(JSON.stringify(mockTemplates));
+  templates = structuredClone(mockTemplates);
   puts = [];
 
   vi.stubGlobal(

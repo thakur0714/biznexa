@@ -12,7 +12,7 @@ describe('Admin Payments UI (M4.15)', () => {
     function escapeCsvCell(val: string): string {
       let s = val;
       if (/^[=+\-@]/.test(s)) s = `'${s}`;
-      return `"${s.replace(/"/g, '""')}"`;
+      return `"${s.replaceAll('"', '""')}"`;
     }
 
     expect(escapeCsvCell('=CMD("calc")')).toBe('"\'=CMD(""calc"")"');

@@ -9,12 +9,15 @@ const calls: Array<{ url: string; options?: { params?: { path?: { id?: string; r
 const featuredCalls: Array<{ url: string; body?: unknown }> = [];
 let detail: AdminConsultantDetail;
 const fakeClient = {
-  GET: vi.fn(async () => ({ data: detail, response: new Response(null, { status: 200 }) })),
-  POST: vi.fn(async (url: string, options?: { params?: { path?: { id?: string; requestId?: string } }; body?: unknown }) => {
+  GET: vi.fn(async () => ({ data: detail, response: new Response(null, { status: 200 }) })), // NOSONAR: API test double preserves rejected-call behavior
+  POST: vi.fn(async (url: string, options?: { params?: { path?: { id?: string; requestId?: string } }; body?: unknown }) => { // NOSONAR: API test double preserves rejected-call behavior
     calls.push({ url, options });
     return { data: { id: ID, verificationStatus: 'APPROVED' }, response: new Response(null, { status: 201 }) };
   }),
-  PATCH: vi.fn(async (url: string, options?: { body?: unknown }) => { featuredCalls.push({ url, body: options?.body }); return { data: detail, response: new Response(null, { status: 200 }) }; }),
+  PATCH: vi.fn(async (url: string, options?: { body?: unknown }) => { // NOSONAR: API test double preserves rejected-call behavior
+    featuredCalls.push({ url, body: options?.body });
+    return { data: detail, response: new Response(null, { status: 200 }) };
+  }),
 };
 const fakeApi = { call: async (send: (client: typeof fakeClient) => Promise<{ data: unknown }>) => (await send(fakeClient)).data };
 
