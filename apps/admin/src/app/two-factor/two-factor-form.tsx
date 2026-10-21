@@ -29,10 +29,12 @@ export function TwoFactorForm() {
   const codeRef = useRef<HTMLInputElement>(null);
 
   const settingUp = !!user && !user.twoFactor.enabled;
+  const showForm = ready && !!user && needsTwoFactor(user.twoFactor);
 
+  // The form renders only once the session check is done, so focus the code then.
   useEffect(() => {
-    if (!settingUp) codeRef.current?.focus();
-  }, [settingUp]);
+    if (showForm && !settingUp) codeRef.current?.focus();
+  }, [showForm, settingUp]);
 
   useEffect(() => {
     if (!ready) return;

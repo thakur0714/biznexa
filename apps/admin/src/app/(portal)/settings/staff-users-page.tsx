@@ -7,14 +7,10 @@ import { useApi } from '@biznexa/api-client/react';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useAuth } from '@/lib/auth';
 import { NotAllowed } from '@/components/portal-shell';
+import { formText } from '@/lib/form';
 
 type RoleOption = { key: string; name: string };
 type Dialog = { kind: 'add' } | { kind: 'roles'; user: AdminStaffRow } | { kind: 'confirm'; action: 'deactivate' | 'reactivate' | 'reset'; user: AdminStaffRow } | null;
-
-function formText(data: FormData, name: string): string {
-  const value = data.get(name);
-  return typeof value === 'string' ? value : '';
-}
 
 export function StaffUsersPage() {
   const api = useApi();
@@ -102,7 +98,8 @@ function DialogShell({ title, onClose, children }: Readonly<{ title: string; onC
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const focusable = () => [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])];
-    focusable()[0]?.focus();
+    // A field marked data-autofocus (the first form field) gets focus; otherwise the first control does.
+    (dialogRef.current?.querySelector<HTMLElement>('[data-autofocus]') ?? focusable()[0])?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); return; }
       if (event.key !== 'Tab') return;
@@ -127,7 +124,7 @@ function AddDialog({ roles, busy, onClose, onSubmit }: Readonly<{ roles: RoleOpt
   const [selected, setSelected] = useState<string[]>([]);
   const [formError, setFormError] = useState('');
   async function submit(event: SubmitEvent<HTMLFormElement>) { event.preventDefault(); const data = new FormData(event.currentTarget); if (!selected.length) { setFormError('Select at least one staff role.'); return; } setFormError(''); await onSubmit({ name: formText(data, 'name'), email: formText(data, 'email'), mobile: formText(data, 'mobile'), temporaryPassword: formText(data, 'password'), roles: selected }); }
-  return <DialogShell title="Add staff" onClose={onClose}><form className="mt-4 space-y-3" onSubmit={submit}><Field id="new-staff-name" label="Name" name="name" required autoComplete="name" /><Field id="new-staff-email" label="Email" name="email" type="email" required autoComplete="email" /><Field id="new-staff-mobile" label="Mobile" name="mobile" type="tel" required autoComplete="tel" /><Field id="new-staff-password" label="Temporary password" name="password" type="password" required minLength={8} autoComplete="new-password" hint="Staff will be required to set up 2FA at first login." /><RoleChecks roles={roles} selected={selected} setSelected={setSelected} />{formError && <p role="alert" className="text-sm text-danger">{formError}</p>}<div className="mt-5 flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button variant="ink" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create staff user'}</Button></div></form></DialogShell>;
+  return <DialogShell title="Add staff" onClose={onClose}><form className="mt-4 space-y-3" onSubmit={submit}><Field id="new-staff-name" label="Name" name="name" required autoComplete="name" data-autofocus /><Field id="new-staff-email" label="Email" name="email" type="email" required autoComplete="email" /><Field id="new-staff-mobile" label="Mobile" name="mobile" type="tel" required autoComplete="tel" /><Field id="new-staff-password" label="Temporary password" name="password" type="password" required minLength={8} autoComplete="new-password" hint="Staff will be required to set up 2FA at first login." /><RoleChecks roles={roles} selected={selected} setSelected={setSelected} />{formError && <p role="alert" className="text-sm text-danger">{formError}</p>}<div className="mt-5 flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button variant="ink" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create staff user'}</Button></div></form></DialogShell>;
 }
 
 function RolesDialog({ user, roles, busy, onClose, onSubmit }: Readonly<{ user: AdminStaffRow; roles: RoleOption[]; busy: boolean; onClose: () => void; onSubmit: (keys: string[]) => Promise<void> }>) {
