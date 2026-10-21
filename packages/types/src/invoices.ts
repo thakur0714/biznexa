@@ -74,7 +74,8 @@ export function amountInWords(paise: number): string {
   const rupees = Math.floor(paise / 100);
   const p = paise % 100;
   if (!rupees && p) return `${twoDigits(p)} Paise Only`;
-  return `Rupees ${numberInWords(rupees)}${p ? ` and ${twoDigits(p)} Paise` : ''} Only`;
+  const paiseText = p ? ` and ${twoDigits(p)} Paise` : '';
+  return `Rupees ${numberInWords(rupees)}${paiseText} Only`;
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -147,6 +148,7 @@ export interface InvoiceGovernmentFeeLine {
 }
 
 export type InvoiceLine = InvoiceServiceLine | InvoiceGovernmentFeeLine;
+type ServiceAmountKey = 'professionalFee' | 'discount' | 'taxableValue' | 'cgst' | 'sgst' | 'igst';
 
 export interface InvoiceAmounts {
   lines: InvoiceLine[];
@@ -179,7 +181,7 @@ export function invoiceLines(order: InvoiceOrderLine[], previous: InvoiceLine[],
   const left = order.map((l) => {
     const before = previous.filter((p) => p.orderItemId === l.orderItemId);
     const service = before.filter((p): p is InvoiceServiceLine => p.kind === 'SERVICE');
-    const sum = (k: 'professionalFee' | 'discount' | 'taxableValue' | 'cgst' | 'sgst' | 'igst') => service.reduce((a, p) => a + p[k], 0);
+    const sum = (k: ServiceAmountKey) => service.reduce((a, p) => a + p[k], 0);
     const govt = before.filter((p) => p.kind === 'GOVERNMENT_FEE').reduce((a, p) => a + p.total, 0);
     const rest = {
       professionalFee: l.professionalFee - sum('professionalFee'),
@@ -293,7 +295,12 @@ export function creditNoteLines(invoice: InvoiceLine[], previous: InvoiceLine[],
   const key = (l: InvoiceLine) => `${l.kind}:${l.orderItemId}`;
   const left: Credit[] = invoice.map((l) => {
     const before = previous.filter((p) => key(p) === key(l));
-    const sum = (k: keyof Credit) => before.reduce((a, p) => a + (p.kind === 'SERVICE' ? p[k] : k === 'total' ? p.total : 0), 0);
+    const sum = (k: keyof Credit) => before.reduce((a, p) => {
+      let value = 0;
+      if (p.kind === 'SERVICE') value = p[k];
+      else if (k === 'total') value = p.total;
+      return a + value;
+    }, 0);
     const rest: Credit =
       l.kind === 'SERVICE'
         ? {
@@ -331,7 +338,8 @@ export function creditNoteLines(invoice: InvoiceLine[], previous: InvoiceLine[],
       const discount = r.taxableValue > 0 ? Math.min(r.discount, Math.round((r.discount * taxableValue) / r.taxableValue)) : 0;
       // Halves that keep what is left of CGST and SGST within a paisa of each other, so later credit notes
       // (and the last one, which takes the rest) split evenly too: an odd paisa goes to the half that has more left.
-      const odd = tax % 2 === 0 ? 0 : r.cgst > r.sgst ? 1 : -1;
+      let odd = 0;
+      if (tax % 2 !== 0) odd = r.cgst > r.sgst ? 1 : -1;
       const cgst = taxType === 'CGST_SGST' ? Math.min(r.cgst, Math.max((tax + odd) / 2, tax - r.sgst)) : 0;
       const sgst = taxType === 'CGST_SGST' ? tax - cgst : 0;
       return { professionalFee: taxableValue + discount, discount, taxableValue, cgst, sgst, igst: taxType === 'IGST' ? tax : 0, total: g };

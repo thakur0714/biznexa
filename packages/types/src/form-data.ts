@@ -91,6 +91,74 @@ function anchored(f: { pattern?: string }): RegExp | null {
 }
 
 /** Schema for one non-empty answer to a leaf field. */
+function textLeafValue(f: Extract<FormLeafField, { type: 'text' | 'textarea' | 'email' | 'tel' }>, strict: boolean): z.ZodTypeAny {
+  let s: z.ZodTypeAny = trimmed(f.maxLength ?? DEFAULT_TEXT_MAX[f.type]);
+  if (!strict) return s;
+  if (f.minLength) s = (s as z.ZodString).min(f.minLength, `Use at least ${plural(f.minLength, 'character')}`);
+  if (f.type === 'email') s = (s as z.ZodString).email('Enter a valid email');
+  if (f.type === 'tel' && !f.pattern) s = (s as z.ZodString).regex(PHONE, 'Enter a valid phone number');
+  const re = anchored(f);
+  if (re) s = (s as z.ZodString).regex(re, f.patternMessage ?? 'This is not in the expected format');
+  return s;
+}
+
+function numberLeafValue(f: Extract<FormLeafField, { type: 'number' }>, strict: boolean): z.ZodTypeAny {
+  let n = z.number({ invalid_type_error: 'Enter a number' }).finite('Enter a number');
+  if (strict) {
+    if (f.integer) n = n.int('Enter a whole number');
+    if (f.min != null) n = n.min(f.min, `Enter ${f.min} or more`);
+    if (f.max != null) n = n.max(f.max, `Enter ${f.max} or less`);
+  }
+  return z.preprocess((v) => (typeof v === 'string' && DECIMAL.test(v.trim()) ? Number(v) : v), n);
+}
+
+function dateLeafValue(f: Extract<FormLeafField, { type: 'date' }>, o: Required<FormDataOptions>, strict: boolean): z.ZodTypeAny {
+  const d = z.string({ invalid_type_error: 'Enter a date' }).regex(ISO_DATE, 'Enter a date').refine(isRealDate, 'Enter a real date');
+  if (!strict) return d;
+  const min = f.min === 'today' ? o.today : f.min;
+  const max = f.max === 'today' ? o.today : f.max;
+  return d
+    .refine((v) => !min || v >= min, f.min === 'today' ? 'Choose today or a later date' : `Choose ${formatDate(min ?? '')} or later`)
+    .refine((v) => !max || v <= max, f.max === 'today' ? 'Date cannot be in the future' : `Choose ${formatDate(max ?? '')} or earlier`);
+}
+
+function selectLeafValue(f: Extract<FormLeafField, { type: 'select' }>, strict: boolean): z.ZodTypeAny {
+  const s = z.string({ invalid_type_error: 'Choose an option' }).max(200);
+  if (!strict) return s;
+  const values = new Set(fieldOptions(f).map((x) => x.value));
+  return s.refine((v) => values.has(v), 'Choose one of the listed options');
+}
+
+function multiSelectLeafValue(f: Extract<FormLeafField, { type: 'multi-select' }>, strict: boolean): z.ZodTypeAny {
+  const item = z.string().max(200);
+  let list = z.array(item, { invalid_type_error: 'Choose options' }).max(500);
+  if (!strict) return list;
+  const values = new Set(fieldOptions(f).map((x) => x.value));
+  if (f.minItems) list = list.min(f.minItems, `Choose at least ${f.minItems}`);
+  if (f.maxItems) list = list.max(f.maxItems, `Choose at most ${f.maxItems}`);
+  return list
+    .refine((v) => v.every((x) => values.has(x)), 'Choose only the listed options')
+    .refine((v) => new Set(v).size === v.length, 'An option is chosen twice');
+}
+
+function fileLeafValue(f: Extract<FormLeafField, { type: 'file' }>): z.ZodTypeAny {
+  const ids = z.array(z.string().uuid('Upload the file again'), { invalid_type_error: 'Upload a file' }).max(f.maxFiles, f.maxFiles === 1 ? 'Upload one file' : `Upload at most ${f.maxFiles} files`);
+  return ids.refine((v) => new Set(v).size === v.length, 'A file is attached twice');
+}
+
+function addressLeafValue(strict: boolean): z.ZodTypeAny {
+  const part = (max: number) => trimmed(max).optional();
+  if (!strict) return z.object({ line1: part(200), line2: part(200), city: part(100), state: part(100), pincode: part(10) });
+  // A missing part is treated as blank so it gets its own message rather than zod's "Required".
+  return z.object({
+    line1: trimmed(200).min(1, 'Enter the address').default(''),
+    line2: part(200).transform((v) => v || undefined),
+    city: trimmed(100).min(1, 'Enter the city').default(''),
+    state: z.string({ invalid_type_error: 'Choose the state' }).refine((v) => STATES.has(v), 'Choose the state').default(''),
+    pincode: trimmed(10).min(1, 'Enter the PIN code').regex(PINCODE, 'Enter a valid 6-digit PIN code').default(''),
+  });
+}
+
 function leafValue(f: FormLeafField, o: Required<FormDataOptions>): z.ZodTypeAny {
   const strict = !o.partial;
   switch (f.type) {
@@ -98,66 +166,14 @@ function leafValue(f: FormLeafField, o: Required<FormDataOptions>): z.ZodTypeAny
     case 'textarea':
     case 'email':
     case 'tel': {
-      let s: z.ZodTypeAny = trimmed(f.maxLength ?? DEFAULT_TEXT_MAX[f.type]);
-      if (!strict) return s;
-      if (f.minLength) s = (s as z.ZodString).min(f.minLength, `Use at least ${plural(f.minLength, 'character')}`);
-      if (f.type === 'email') s = (s as z.ZodString).email('Enter a valid email');
-      if (f.type === 'tel' && !f.pattern) s = (s as z.ZodString).regex(PHONE, 'Enter a valid phone number');
-      const re = anchored(f);
-      if (re) s = (s as z.ZodString).regex(re, f.patternMessage ?? 'This is not in the expected format');
-      return s;
+      return textLeafValue(f, strict);
     }
-    case 'number': {
-      let n = z.number({ invalid_type_error: 'Enter a number' }).finite('Enter a number');
-      if (strict) {
-        if (f.integer) n = n.int('Enter a whole number');
-        if (f.min != null) n = n.min(f.min, `Enter ${f.min} or more`);
-        if (f.max != null) n = n.max(f.max, `Enter ${f.max} or less`);
-      }
-      return z.preprocess((v) => (typeof v === 'string' && DECIMAL.test(v.trim()) ? Number(v) : v), n);
-    }
-    case 'date': {
-      const d = z.string({ invalid_type_error: 'Enter a date' }).regex(ISO_DATE, 'Enter a date').refine(isRealDate, 'Enter a real date');
-      if (!strict) return d;
-      const min = f.min === 'today' ? o.today : f.min;
-      const max = f.max === 'today' ? o.today : f.max;
-      return d
-        .refine((v) => !min || v >= min, f.min === 'today' ? 'Choose today or a later date' : `Choose ${formatDate(min ?? '')} or later`)
-        .refine((v) => !max || v <= max, f.max === 'today' ? 'Date cannot be in the future' : `Choose ${formatDate(max ?? '')} or earlier`);
-    }
-    case 'select': {
-      const s = z.string({ invalid_type_error: 'Choose an option' }).max(200);
-      if (!strict) return s;
-      const values = new Set(fieldOptions(f).map((x) => x.value));
-      return s.refine((v) => values.has(v), 'Choose one of the listed options');
-    }
-    case 'multi-select': {
-      const item = z.string().max(200);
-      let list = z.array(item, { invalid_type_error: 'Choose options' }).max(500);
-      if (!strict) return list;
-      const values = new Set(fieldOptions(f).map((x) => x.value));
-      if (f.minItems) list = list.min(f.minItems, `Choose at least ${f.minItems}`);
-      if (f.maxItems) list = list.max(f.maxItems, `Choose at most ${f.maxItems}`);
-      return list
-        .refine((v) => v.every((x) => values.has(x)), 'Choose only the listed options')
-        .refine((v) => new Set(v).size === v.length, 'An option is chosen twice');
-    }
-    case 'file': {
-      const ids = z.array(z.string().uuid('Upload the file again'), { invalid_type_error: 'Upload a file' }).max(f.maxFiles, f.maxFiles === 1 ? 'Upload one file' : `Upload at most ${f.maxFiles} files`);
-      return ids.refine((v) => new Set(v).size === v.length, 'A file is attached twice');
-    }
-    case 'address': {
-      const part = (max: number) => trimmed(max).optional();
-      if (!strict) return z.object({ line1: part(200), line2: part(200), city: part(100), state: part(100), pincode: part(10) });
-      // A missing part is treated as blank so it gets its own message rather than zod's "Required".
-      return z.object({
-        line1: trimmed(200).min(1, 'Enter the address').default(''),
-        line2: part(200).transform((v) => v || undefined),
-        city: trimmed(100).min(1, 'Enter the city').default(''),
-        state: z.string({ invalid_type_error: 'Choose the state' }).refine((v) => STATES.has(v), 'Choose the state').default(''),
-        pincode: trimmed(10).min(1, 'Enter the PIN code').regex(PINCODE, 'Enter a valid 6-digit PIN code').default(''),
-      });
-    }
+    case 'number': return numberLeafValue(f, strict);
+    case 'date': return dateLeafValue(f, o, strict);
+    case 'select': return selectLeafValue(f, strict);
+    case 'multi-select': return multiSelectLeafValue(f, strict);
+    case 'file': return fileLeafValue(f);
+    case 'address': return addressLeafValue(strict);
   }
 }
 

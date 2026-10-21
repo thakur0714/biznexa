@@ -25,13 +25,13 @@ type Leaf = Exclude<Field, { type: 'repeater' }>;
 
 export const FORM_PATTERNS = {
   pan: { pattern: '[A-Z]{5}[0-9]{4}[A-Z]', patternMessage: 'Enter a PAN like ABCDE1234F (capital letters)' },
-  gstin: { pattern: '\\d{2}[A-Z]{5}\\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]', patternMessage: 'Enter a 15-character GSTIN like 03ABCDE1234F1Z5' },
-  cin: { pattern: '[LU]\\d{5}[A-Z]{2}\\d{4}[A-Z]{3}\\d{6}', patternMessage: 'Enter a 21-character CIN like U74999PB2020PTC012345' },
-  din: { pattern: '\\d{8}', patternMessage: 'A DIN has 8 digits' },
-  mobile: { pattern: '[6-9]\\d{9}', patternMessage: 'Enter a 10-digit Indian mobile number' },
+  gstin: { pattern: String.raw`\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]`, patternMessage: 'Enter a 15-character GSTIN like 03ABCDE1234F1Z5' },
+  cin: { pattern: String.raw`[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}`, patternMessage: 'Enter a 21-character CIN like U74999PB2020PTC012345' },
+  din: { pattern: String.raw`\d{8}`, patternMessage: 'A DIN has 8 digits' },
+  mobile: { pattern: String.raw`[6-9]\d{9}`, patternMessage: 'Enter a 10-digit Indian mobile number' },
   ifsc: { pattern: '[A-Z]{4}0[A-Z0-9]{6}', patternMessage: 'Enter an IFSC like HDFC0001234' },
-  bankAccount: { pattern: '\\d{9,18}', patternMessage: 'An account number has 9 to 18 digits' },
-  fssaiNumber: { pattern: '\\d{14}', patternMessage: 'An FSSAI number has 14 digits' },
+  bankAccount: { pattern: String.raw`\d{9,18}`, patternMessage: 'An account number has 9 to 18 digits' },
+  fssaiNumber: { pattern: String.raw`\d{14}`, patternMessage: 'An FSSAI number has 14 digits' },
 } as const;
 
 /** Same values as `BusinessEntity.entityType`, so answers prefill from a saved business. */
@@ -120,8 +120,8 @@ const privateLimited: FormSchemaInput = {
       title: 'Capital',
       fields: [
         { type: 'number', name: 'authorisedCapital', label: 'Authorised capital (₹)', required: true, min: 10_000, max: 100_000_000, integer: true, helpText: 'The most share capital the company can issue. ₹1,00,000 is common; stamp duty depends on it.' },
-        { type: 'number', name: 'paidUpCapital', label: 'Paid-up capital (₹)', required: true, min: 1_000, max: 100_000_000, integer: true, helpText: 'What shareholders put in at the start. Must not be more than the authorised capital.' },
-        { type: 'number', name: 'faceValue', label: 'Face value per share (₹)', required: true, min: 1, max: 1_000, integer: true, helpText: '₹10 is most common.' },
+        { type: 'number', name: 'paidUpCapital', label: 'Paid-up capital (₹)', required: true, min: 1000, max: 100_000_000, integer: true, helpText: 'What shareholders put in at the start. Must not be more than the authorised capital.' },
+        { type: 'number', name: 'faceValue', label: 'Face value per share (₹)', required: true, min: 1, max: 1000, integer: true, helpText: '₹10 is most common.' },
       ],
     },
     {
@@ -166,7 +166,7 @@ const onePersonCompany: FormSchemaInput = {
       title: 'Capital',
       fields: [
         { type: 'number', name: 'authorisedCapital', label: 'Authorised capital (₹)', required: true, min: 10_000, max: 100_000_000, integer: true, helpText: '₹1,00,000 is common; stamp duty depends on it.' },
-        { type: 'number', name: 'paidUpCapital', label: 'Paid-up capital (₹)', required: true, min: 1_000, max: 100_000_000, integer: true },
+        { type: 'number', name: 'paidUpCapital', label: 'Paid-up capital (₹)', required: true, min: 1000, max: 100_000_000, integer: true },
       ],
     },
     {
@@ -197,7 +197,7 @@ const llp: FormSchemaInput = {
       title: 'Partners',
       description: 'An LLP needs at least two designated partners, and at least one must have lived in India for 182 days in the last year.',
       fields: [
-        { type: 'number', name: 'totalContribution', label: 'Total capital contribution (₹)', required: true, min: 1_000, max: 100_000_000, integer: true, helpText: 'Money the partners put into the LLP. Fees and stamp duty depend on it.' },
+        { type: 'number', name: 'totalContribution', label: 'Total capital contribution (₹)', required: true, min: 1000, max: 100_000_000, integer: true, helpText: 'Money the partners put into the LLP. Fees and stamp duty depend on it.' },
         {
           type: 'repeater',
           name: 'partners',
@@ -359,7 +359,7 @@ const itrFiling: FormSchemaInput = {
         mobile('contactMobile'),
         choose('residentialStatus', 'Residential status', ['Resident', 'Non-resident (NRI)', 'Not sure — advise me']),
         choose('yearType', 'Return for', ['The financial year that just ended', 'An earlier year (belated or updated return)']),
-        text('earlierYear', 'Which financial year?', { placeholder: '2023-24', maxLength: 7, pattern: '20\\d{2}-\\d{2}', patternMessage: 'Write the year like 2023-24', showIf: { field: 'yearType', equals: 'An earlier year (belated or updated return)' } }),
+        text('earlierYear', 'Which financial year?', { placeholder: '2023-24', maxLength: 7, pattern: String.raw`20\d{2}-\d{2}`, patternMessage: 'Write the year like 2023-24', showIf: { field: 'yearType', equals: 'An earlier year (belated or updated return)' } }),
       ],
     },
     {
@@ -454,7 +454,9 @@ const trademarkRegistration: FormSchemaInput = {
 
 // ─────────────── ISO certification ───────────────
 
-const isoForm = (standard?: string): FormSchemaInput => ({
+const isoForm = (standard?: string): FormSchemaInput => {
+  const standardSuffix = standard ? ` under ${standard}` : '';
+  return ({
   steps: [
     {
       title: 'Organisation',
@@ -477,7 +479,7 @@ const isoForm = (standard?: string): FormSchemaInput => ({
               text('otherStandard', 'Which standard?', { maxLength: 100, showIf: { field: 'standard', equals: 'Other' } }),
             ]),
         longText('scope', 'What should the certificate cover?', {
-          helpText: `The products, services and activities to be certified${standard ? ` under ${standard}` : ''}, e.g. “Design, manufacture and supply of LED lighting”.`,
+          helpText: `The products, services and activities to be certified${standardSuffix}, e.g. “Design, manufacture and supply of LED lighting”.`,
         }),
         longText('outsourcedProcesses', 'Processes done by outside parties', { required: false, maxLength: 1000, helpText: 'For example job work, transport or IT support.' }),
         choose('hasOtherSites', 'Should other sites be covered too?', YES_NO),
@@ -506,7 +508,8 @@ const isoForm = (standard?: string): FormSchemaInput => ({
     },
     contactStep(),
   ],
-});
+  });
+};
 
 const ISO_STANDARDS: Record<string, string> = {
   'iso-9001-certification': 'ISO 9001:2015',

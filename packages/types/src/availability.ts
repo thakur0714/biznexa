@@ -141,28 +141,34 @@ export function generateSlots(
   const slots: GeneratedSlot[] = [];
 
   for (let date = range.from; daysBetween(date, range.to) >= 0; date = addDays(date, 1)) {
-    const weekday = weekdayOf(date);
-    const toRange = (w: { startTime: string; endTime: string }): Range => [timeToMinutes(w.startTime), timeToMinutes(w.endTime)];
-    const sameDay = rules.exceptions.filter((e) => e.date === date);
-    const windows = merge([
-      ...rules.weekly.filter((w) => w.weekday === weekday).map(toRange),
-      ...sameDay.filter((e) => !e.isBlocked).map(toRange),
-    ]);
-    const blocked = sameDay.filter((e) => e.isBlocked).map(toRange);
-
-    for (const [winStart, winEnd] of windows) {
-      for (let start = winStart; start + sessionMinutes <= winEnd; start += step) {
-        const end = start + sessionMinutes;
-        if (blocked.some(([bs, be]) => overlaps(start, end, bs, be))) continue;
-        const startAt = istInstant(date, start);
-        const endAt = istInstant(date, end);
-        if (startAt.getTime() < earliest) continue;
-        if (busy.some(([bs, be]) => overlaps(startAt.getTime(), endAt.getTime(), bs, be))) continue;
-        slots.push({ startAt, endAt, date, time: minutesToTime(start) });
-      }
-    }
+    for (const slot of slotsForDate(date, rules, sessionMinutes, earliest, busy, step)) slots.push(slot);
   }
   return slots.sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+}
+
+function slotsForDate(date: string, rules: AvailabilityRules, sessionMinutes: number, earliest: number, busy: Range[], step: number): GeneratedSlot[] {
+  const weekday = weekdayOf(date);
+  const toRange = (w: { startTime: string; endTime: string }): Range => [timeToMinutes(w.startTime), timeToMinutes(w.endTime)];
+  const sameDay = rules.exceptions.filter((e) => e.date === date);
+  const windows = merge([
+    ...rules.weekly.filter((w) => w.weekday === weekday).map(toRange),
+    ...sameDay.filter((e) => !e.isBlocked).map(toRange),
+  ]);
+  const blocked = sameDay.filter((e) => e.isBlocked).map(toRange);
+  const slots: GeneratedSlot[] = [];
+
+  for (const [winStart, winEnd] of windows) {
+    for (let start = winStart; start + sessionMinutes <= winEnd; start += step) {
+      const end = start + sessionMinutes;
+      if (blocked.some(([bs, be]) => overlaps(start, end, bs, be))) continue;
+      const startAt = istInstant(date, start);
+      const endAt = istInstant(date, end);
+      if (startAt.getTime() < earliest) continue;
+      if (busy.some(([bs, be]) => overlaps(startAt.getTime(), endAt.getTime(), bs, be))) continue;
+      slots.push({ startAt, endAt, date, time: minutesToTime(start) });
+    }
+  }
+  return slots;
 }
 
 // ── API schemas ──

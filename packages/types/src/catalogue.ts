@@ -16,15 +16,18 @@ export const slugSchema = z
 
 /** "Pollution NOC (Delhi)" → "pollution-noc-delhi" */
 export function slugify(text: string): string {
-  return text
+  let slug = text
     .toLowerCase()
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80)
-    .replace(/-+$/, '');
+    .replaceAll(/[̀-ͯ]/g, '')
+    .replaceAll('&', ' and ')
+    .replaceAll(/[^a-z0-9]/g, '-')
+    .replaceAll(/-+/g, '-');
+  while (slug.startsWith('-')) slug = slug.slice(1);
+  while (slug.endsWith('-')) slug = slug.slice(0, -1);
+  slug = slug.slice(0, 80);
+  while (slug.endsWith('-')) slug = slug.slice(0, -1);
+  return slug;
 }
 
 /** An optional field where a blank value clears it (stored as null). */
