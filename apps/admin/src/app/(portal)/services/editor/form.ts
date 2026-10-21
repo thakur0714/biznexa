@@ -85,12 +85,16 @@ const lines = (v: string) =>
     .map((s) => s.trim())
     .filter(Boolean);
 /** Blank → null; anything that is not a number → NaN, which the API schema reports in its own words. */
-const numberOrNull = (v: string) => (v.trim() === '' ? null : /^\d+$/.test(v.trim()) ? Number(v.trim()) : NaN);
+const numberOrNull = (v: string) => {
+  if (v.trim() === '') return null;
+  if (/^\d+$/.test(v.trim())) return Number(v.trim());
+  return Number.NaN;
+};
 /** "1,499.50" rupees → 149950 paise; blank → `blank`. */
 const rupeesToPaise = (v: string, blank: number) => {
-  const clean = v.replace(/[₹,\s]/g, '');
+  const clean = v.replaceAll(/[₹,\s]/g, '');
   if (clean === '') return blank;
-  return /^\d+(\.\d{1,2})?$/.test(clean) ? Math.round(Number(clean) * 100) : NaN;
+  return /^\d+(\.\d{1,2})?$/.test(clean) ? Math.round(Number(clean) * 100) : Number.NaN;
 };
 const paiseToRupees = (p: number) => (p % 100 === 0 ? String(p / 100) : (p / 100).toFixed(2));
 
@@ -115,13 +119,13 @@ export function toRequest(v: ServiceFormValues): CreateServiceRequest {
     isPopular: v.isPopular,
     isActive: v.isActive,
     recurrence: v.recurrence,
-    reminderOffsets: v.recurrence ? v.reminderOffsets.split(',').map((s) => s.trim()).filter(Boolean).map((s) => numberOrNull(s) ?? NaN) : undefined,
+    reminderOffsets: v.recurrence ? v.reminderOffsets.split(',').map((s) => s.trim()).filter(Boolean).map((s) => numberOrNull(s) ?? Number.NaN) : undefined,
     seoTitle: v.seoTitle,
     metaDescription: v.metaDescription,
     packages: v.packages.map((p) => ({
       id: p.id,
       name: p.name,
-      professionalFee: rupeesToPaise(p.professionalFee, NaN),
+      professionalFee: rupeesToPaise(p.professionalFee, Number.NaN),
       governmentFee: rupeesToPaise(p.governmentFee, 0),
       gstRate: Number(p.gstRate),
       inclusions: lines(p.inclusions),
@@ -137,7 +141,7 @@ export function toRequest(v: ServiceFormValues): CreateServiceRequest {
       description: d.description,
       isMandatory: d.isMandatory,
       acceptedTypes: d.acceptedTypes as FileMimeType[],
-      maxSizeMb: numberOrNull(d.maxSizeMb) ?? NaN,
+      maxSizeMb: numberOrNull(d.maxSizeMb) ?? Number.NaN,
       // A package removed in this edit no longer limits the document.
       packageIds: d.packageIds.filter((id) => packageIds.has(id)),
     })),
@@ -288,7 +292,9 @@ export function tabOf(field: string): TabId {
  * ("packages" for `PUT …/packages`, whose body is an array). Errors inside one-per-line lists point at the list.
  */
 export function toFormPath(field: string, prefix = ''): string {
-  const path = prefix ? (field ? `${prefix}.${field}` : prefix) : field;
+  let path = field;
+  if (prefix && field) path = `${prefix}.${field}`;
+  else if (prefix) path = prefix;
   return path
     .replace(/^(benefits|reminderOffsets|relatedServiceIds)\.\d+$/, '$1')
     .replace(/^(packages\.\d+\.inclusions)\.\d+$/, '$1')
