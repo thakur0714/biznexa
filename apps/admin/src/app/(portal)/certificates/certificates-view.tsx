@@ -34,6 +34,11 @@ function CertificatesList() {
   const [status, setStatus] = useState<CertificateStatus | ''>('');
   const [page, setPage] = useState(1);
   const [reload, setReload] = useState(0);
+  const clearFilters = () => {
+    setQuery('');
+    setStatus('');
+    setPage(1);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +125,52 @@ function CertificatesList() {
     ];
   }, []);
 
+  let certificatesContent: React.ReactNode;
+  if (loadError) {
+    certificatesContent = (
+      <div className="space-y-3">
+        <Notice tone="error">{loadError}</Notice>
+        <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>Try again</Button>
+      </div>
+    );
+  } else if (!data) {
+    certificatesContent = <p className="text-muted" role="status">Loading certificates…</p>;
+  } else if (data.items.length === 0) {
+    const description = query || status ? 'Try adjusting your search or filters.' : 'Issue your first certificate to get started.';
+    const action = query || status
+      ? <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>
+      : <Link href="/certificates/new" className="inline-flex items-center rounded-md bg-ink px-3 py-2 text-sm font-medium text-white hover:bg-ink/90">Issue certificate</Link>;
+    certificatesContent = <EmptyState title="No certificates found" description={description} action={action} />;
+  } else {
+    certificatesContent = (
+      <div>
+        <DataTable
+          caption="Certificates"
+          data={data.items}
+          columns={columns}
+          getRowId={(c) => c.id}
+          minWidth={900}
+          empty={
+            <EmptyState
+              title="Nothing matches this search"
+              description="Try a different query or clear search."
+              action={<Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>}
+            />
+          }
+        />
+        {data.total > 25 && (
+          <div className="mt-4 flex items-center justify-between border-t border-rule pt-4 text-sm">
+            <p className="text-muted">Showing {(page - 1) * 25 + 1}–{Math.min(page * 25, data.total)} of {data.total} certificates</p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
+              <Button variant="outline" size="sm" disabled={page * 25 >= data.total} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1200px]">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -180,99 +231,7 @@ function CertificatesList() {
       </div>
 
       <div className="mt-4">
-        {loadError ? (
-          <div className="space-y-3">
-            <Notice tone="error">{loadError}</Notice>
-            <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
-              Try again
-            </Button>
-          </div>
-        ) : !data ? (
-          <p className="text-muted" role="status">
-            Loading certificates…
-          </p>
-        ) : data.items.length === 0 ? (
-          <EmptyState
-            title="No certificates found"
-            description={query || status ? 'Try adjusting your search or filters.' : 'Issue your first certificate to get started.'}
-            action={
-              query || status ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setQuery('');
-                    setStatus('');
-                    setPage(1);
-                  }}
-                >
-                  Clear filters
-                </Button>
-              ) : (
-                <Link
-                  href="/certificates/new"
-                  className="inline-flex items-center rounded-md bg-ink px-3 py-2 text-sm font-medium text-white hover:bg-ink/90"
-                >
-                  Issue certificate
-                </Link>
-              )
-            }
-          />
-        ) : (
-          <div>
-            <DataTable
-              caption="Certificates"
-              data={data.items}
-              columns={columns}
-              getRowId={(c) => c.id}
-              minWidth={900}
-              empty={
-                <EmptyState
-                  title="Nothing matches this search"
-                  description="Try a different query or clear search."
-                  action={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setQuery('');
-                        setStatus('');
-                        setPage(1);
-                      }}
-                    >
-                      Clear filters
-                    </Button>
-                  }
-                />
-              }
-            />
-            {data.total > 25 && (
-              <div className="mt-4 flex items-center justify-between border-t border-rule pt-4 text-sm">
-                <p className="text-muted">
-                  Showing {(page - 1) * 25 + 1}–{Math.min(page * 25, data.total)} of {data.total} certificates
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={page * 25 >= data.total}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {certificatesContent}
       </div>
     </div>
   );

@@ -153,7 +153,7 @@ function CertificateForm() {
     };
   }, [api, applicationIdParam]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitError('');
     const formErrs = validateCertificateCreate(draft);
@@ -324,9 +324,10 @@ function CertificateForm() {
         </div>
 
         <div className="rounded-md border border-dashed border-rule p-4">
-          <label className="block text-sm font-medium text-night mb-1">Upload custom PDF certificate (optional)</label>
+          <label htmlFor="custom-certificate-upload" className="block text-sm font-medium text-night mb-1">Upload custom PDF certificate (optional)</label>
           <p className="text-xs text-muted mb-2">If left blank, BizNexa will automatically generate an official PDF certificate with embedded QR code.</p>
           <input
+            id="custom-certificate-upload"
             type="file"
             accept="application/pdf"
             disabled={uploadingPdf}
@@ -346,7 +347,7 @@ function CertificateForm() {
               onChange={(e) => setDraft((d) => ({ ...d, showPdfPublicly: e.target.checked }))}
               className="h-4 w-4 rounded border-rule text-ink focus:ring-ink"
             />
-            Allow public PDF download on verification page
+            {' '}Allow public PDF download on verification page
           </label>
         </div>
 

@@ -9,7 +9,19 @@ import { useApi } from '@biznexa/api-client/react';
 import { Notice, Button, Dialog, Field } from '@biznexa/ui';
 import { APPLICATION_STATUS_LABEL, formatDate, formatINR, PERMS } from '@biznexa/types';
 
-export function ApplicationDetailView({ id }: { id: string }) {
+function certificateIssueHref(data: import('@biznexa/types').AdminApplicationDetail) {
+  const organizationName = encodeURIComponent(data.businessEntity?.legalName || data.customer?.name || '');
+  const entityId = data.businessEntity?.id ? `&entityId=${encodeURIComponent(data.businessEntity.id)}` : '';
+  return `/certificates/new?applicationId=${encodeURIComponent(data.id)}&organizationName=${organizationName}${entityId}`;
+}
+
+function formAnswerText(value: unknown) {
+  if (value == null) return '—';
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value) ?? '—';
+}
+
+export function ApplicationDetailView({ id }: Readonly<{ id: string }>) {
   const api = useApi();
   const { user } = useAuth();
   const [data, setData] = useState<import('@biznexa/types').AdminApplicationDetail | null>(null);
@@ -26,7 +38,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
   const [isRequestingDoc, setIsRequestingDoc] = useState(false);
   const [docRequestError, setDocRequestError] = useState<string | null>(null);
 
-  const handleRequestDocument = async (e: React.FormEvent) => {
+  const handleRequestDocument = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!docName.trim()) return;
     setIsRequestingDoc(true);
@@ -94,7 +106,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
         <div className="flex items-center gap-3">
           {canIssueCertificate && (
             <Link
-              href={`/certificates/new?applicationId=${encodeURIComponent(data.id)}&organizationName=${encodeURIComponent(data.businessEntity?.legalName || data.customer?.name || '')}${data.businessEntity?.id ? `&entityId=${encodeURIComponent(data.businessEntity.id)}` : ''}`}
+              href={certificateIssueHref(data)}
             >
               <Button variant="outline" size="sm">
                 Issue certificate
@@ -197,12 +209,12 @@ export function ApplicationDetailView({ id }: { id: string }) {
       <section className="p-4 bg-white border border-rule rounded-md">
         <h2 className="font-semibold text-lg mb-4">Form Answers</h2>
         <div className="space-y-4 text-sm">
-          {data.formSchema?.steps?.map((step: import('@biznexa/types').FormSchema['steps'][0], idx: number) => (
-            <div key={idx} className="border border-rule rounded-md p-3">
+          {data.formSchema?.steps?.map((step: import('@biznexa/types').FormSchema['steps'][0]) => (
+            <div key={step.title} className="border border-rule rounded-md p-3">
               <h3 className="font-medium border-b pb-2 mb-2">{step.title}</h3>
               {step.fields?.map((f: import('@biznexa/types').FormField) => (
                 <p key={f.name}>
-                  <span className="text-muted">{f.label}:</span> {String((data.formData as Record<string, unknown>)?.[f.name] ?? '—')}
+                  <span className="text-muted">{f.label}:</span> {formAnswerText(data.formData?.[f.name])}
                 </p>
               ))}
             </div>
@@ -224,10 +236,10 @@ export function ApplicationDetailView({ id }: { id: string }) {
           ))}
           {notes.length === 0 && <p className="text-muted">No internal notes yet.</p>}
         </div>
-        {user?.permissions.includes('applications.update') && <form onSubmit={async (e) => {
+        {user?.permissions?.includes('applications.update') && <form onSubmit={async (e) => {
           e.preventDefault();
           const el = (e.target as HTMLFormElement).elements.namedItem('noteContent') as HTMLInputElement | null;
-          if (!el || !el.value.trim()) return;
+          if (!el?.value.trim()) return;
           try {
             const newNote = await api.call(c => c.POST('/api/admin/applications/{applicationId}/notes', {
               params: { path: { applicationId: id } },

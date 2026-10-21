@@ -32,6 +32,16 @@ function CertificateImportForm() {
   const [errorNotice, setErrorNotice] = useState<string | null>(null);
   const [previewResult, setPreviewResult] = useState<CertificateImportPreviewResponse | null>(null);
   const [successCount, setSuccessCount] = useState<number | null>(null);
+  const certificateCountSuffix = previewResult?.validRows === 1 ? '' : 's';
+  const importButtonLabel = importing ? 'Importing in Transaction…' : `Import ${previewResult?.validRows ?? 0} Certificate${certificateCountSuffix}`;
+  const errorKeyCounts = new Map<string, number>();
+
+  function errorKey(error: CertificateImportPreviewResponse['errors'][number]) {
+    const raw = `${error.rowNumber}:${error.field ?? ''}:${error.message}`;
+    const count = (errorKeyCounts.get(raw) ?? 0) + 1;
+    errorKeyCounts.set(raw, count);
+    return count === 1 ? raw : `${raw}#${count}`;
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -301,9 +311,7 @@ function CertificateImportForm() {
                   onClick={handleImport}
                   disabled={importing || previewResult.errors.length > 0 || previewResult.validRows === 0}
                 >
-                  {importing
-                    ? 'Importing in Transaction…'
-                    : `Import ${previewResult.validRows} Certificate${previewResult.validRows === 1 ? '' : 's'}`}
+                  {importButtonLabel}
                 </Button>
               </div>
             </div>
@@ -317,8 +325,8 @@ function CertificateImportForm() {
 
                 <div className="mt-3 max-h-60 overflow-y-auto rounded-md border border-red-200 bg-red-50/50 p-3">
                   <ul className="divide-y divide-red-200/60 text-xs">
-                    {previewResult.errors.map((err, i) => (
-                      <li key={i} className="py-1.5 flex items-start gap-2 text-red-800">
+                    {previewResult.errors.map((err) => (
+                      <li key={errorKey(err)} className="py-1.5 flex items-start gap-2 text-red-800">
                         <span className="font-mono font-semibold text-red-900 whitespace-nowrap">
                           Row {err.rowNumber}
                           {err.field ? ` (${err.field})` : ''}:

@@ -9,7 +9,7 @@ vi.mock('@biznexa/ui', async (importOriginal) => {
   return { ...actual, useToast: () => vi.fn() };
 });
 
-const auth = vi.hoisted(() => ({ permissions: [] as string[], refresh: vi.fn(async () => 'renewed-token') }));
+const auth = vi.hoisted(() => ({ permissions: [] as string[], refresh: vi.fn(() => Promise.resolve('renewed-token')) }));
 vi.mock('@/lib/auth', () => ({
   useAuth: () => ({ user: { id: 'u1', name: 'Asha Admin', roles: ['ADMIN'], permissions: auth.permissions }, token: 'token', refresh: auth.refresh }),
 }));
@@ -140,7 +140,10 @@ describe('Coupons list', () => {
 
     fireEvent.change(dialog.getByLabelText('Code'), { target: { value: 'new year' } });
     fireEvent.change(dialog.getByLabelText('Discount (%)'), { target: { value: '120' } });
-    await act(async () => fireEvent.click(dialog.getByRole('button', { name: 'Create coupon' })));
+    await act(async () => {
+      fireEvent.click(dialog.getByRole('button', { name: 'Create coupon' }));
+      await Promise.resolve();
+    });
     expect(dialog.getByText('Coupon codes use only letters, numbers, - and _')).toBeTruthy();
     expect(dialog.getByText('A percentage is at most 100')).toBeTruthy();
     expect(requests).toEqual([]);
@@ -149,7 +152,10 @@ describe('Coupons list', () => {
     fireEvent.change(dialog.getByLabelText('Discount (%)'), { target: { value: '15' } });
     fireEvent.change(dialog.getByLabelText('Maximum discount (₹)'), { target: { value: '750' } });
     fireEvent.change(dialog.getByLabelText('Last day'), { target: { value: '2027-01-31' } });
-    await act(async () => fireEvent.click(dialog.getByRole('button', { name: 'Create coupon' })));
+    await act(async () => {
+      fireEvent.click(dialog.getByRole('button', { name: 'Create coupon' }));
+      await Promise.resolve();
+    });
 
     expect(requests).toEqual([
       {
@@ -170,7 +176,10 @@ describe('Coupons list', () => {
     fireEvent.change(dialog.getByLabelText('Code'), { target: { value: 'DIWALI10' } });
     fireEvent.change(dialog.getByLabelText('Discount (%)'), { target: { value: '10' } });
     nextError = { status: 409, body: { message: 'Another coupon already uses this code', errors: [{ field: 'code', message: 'Another coupon already uses this code' }] } };
-    await act(async () => fireEvent.click(dialog.getByRole('button', { name: 'Create coupon' })));
+    await act(async () => {
+      fireEvent.click(dialog.getByRole('button', { name: 'Create coupon' }));
+      await Promise.resolve();
+    });
     expect(await dialog.findByText('Another coupon already uses this code')).toBeTruthy();
     expect(dialog.getByLabelText('Code').getAttribute('aria-invalid')).toBe('true');
   });
@@ -184,7 +193,10 @@ describe('Coupons list', () => {
     expect((dialog.getByLabelText('Last day') as HTMLInputElement).value).toBe('2026-11-30');
     expect((dialog.getByLabelText('GST Registration') as HTMLInputElement).checked).toBe(true);
     fireEvent.change(dialog.getByLabelText('Discount (%)'), { target: { value: '12' } });
-    await act(async () => fireEvent.click(dialog.getByRole('button', { name: 'Save changes' })));
+    await act(async () => {
+      fireEvent.click(dialog.getByRole('button', { name: 'Save changes' }));
+      await Promise.resolve();
+    });
     expect(requests[0]).toMatchObject({
       method: 'PATCH',
       url: `/api/admin/coupons/${coupons[0].id}`,
@@ -197,12 +209,18 @@ describe('Coupons list', () => {
     renderView();
     await screen.findByText('DIWALI10');
     fireEvent.click(screen.getByRole('button', { name: 'Deactivate DIWALI10' }));
-    await act(async () => fireEvent.click(within(screen.getByRole('dialog', { name: 'Deactivate DIWALI10?' })).getByRole('button', { name: 'Deactivate' })));
+    await act(async () => {
+      fireEvent.click(within(screen.getByRole('dialog', { name: 'Deactivate DIWALI10?' })).getByRole('button', { name: 'Deactivate' }));
+      await Promise.resolve();
+    });
     expect(requests[0]).toEqual({ method: 'PATCH', url: `/api/admin/coupons/${coupons[0].id}`, body: { isActive: false } });
     await waitFor(() => expect(within(rowFor('DIWALI10')).getByText('Inactive')).toBeTruthy());
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete FLAT500' }));
-    await act(async () => fireEvent.click(within(screen.getByRole('dialog', { name: 'Delete FLAT500?' })).getByRole('button', { name: 'Delete' })));
+    await act(async () => {
+      fireEvent.click(within(screen.getByRole('dialog', { name: 'Delete FLAT500?' })).getByRole('button', { name: 'Delete' }));
+      await Promise.resolve();
+    });
     expect(requests[1]).toMatchObject({ method: 'DELETE', url: `/api/admin/coupons/${coupons[1].id}` });
     await waitFor(() => expect(screen.queryByText('FLAT500')).toBeNull());
   });

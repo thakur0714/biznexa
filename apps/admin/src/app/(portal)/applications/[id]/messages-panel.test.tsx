@@ -33,14 +33,14 @@ let initialPage: MessageThreadPage;
 let createdMessage: Message;
 
 const fakeClient = {
-  GET: vi.fn(async (url: string, options?: unknown) => {
+  GET: vi.fn((url: string, options?: unknown) => {
     calls.push({ method: 'GET', url, options });
-    return {
+    return Promise.resolve({
       data: initialPage,
       response: new Response(null, { status: 200 }),
-    };
+    });
   }),
-  POST: vi.fn(async (url: string, options?: MessageRequestOptions) => {
+  POST: vi.fn((url: string, options?: MessageRequestOptions) => Promise.resolve().then(() => {
     calls.push({ method: 'POST', url, options });
     if (url.endsWith('/read')) {
       const readRes: MarkMessagesReadResponse = markMessagesReadResponseSchema.parse({ count: 1 });
@@ -65,7 +65,7 @@ const fakeClient = {
       data: nextMsg,
       response: new Response(null, { status: 201 }),
     };
-  }),
+  })),
 };
 
 vi.mock('@biznexa/api-client/react', () => {
