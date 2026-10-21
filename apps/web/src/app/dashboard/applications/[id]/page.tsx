@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 
 export default async function ApplicationDetailPage({
   params,
-}: {
+}: Readonly<{
   params: Promise<{ id: string }>;
-}) {
+}>) {
   const { id } = await params;
   return (
     <Suspense

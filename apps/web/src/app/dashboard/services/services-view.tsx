@@ -114,6 +114,16 @@ export function MyServicesView() {
   const total = data?.total ?? 0;
   const limit = data?.limit ?? 25;
   const totalPages = Math.max(1, Math.ceil(total / limit));
+  const emptyTitle: Record<CustomerApplicationTab, string> = {
+    active: 'No active services',
+    completed: 'No completed services yet',
+    cancelled: 'No cancelled services',
+  };
+  const emptyDescription: Record<CustomerApplicationTab, string> = {
+    active: 'When you start and submit a service application, it will appear here with live progress.',
+    completed: 'Completed applications and their final deliverables will appear here.',
+    cancelled: 'You do not have any cancelled applications.',
+  };
 
   return (
     <div className="min-w-0 space-y-6">
@@ -165,28 +175,17 @@ export function MyServicesView() {
 
       {error && <Notice tone="error">{error}</Notice>}
 
-      {loading ? (
+      {loading && (
         <div className="rounded-lg border border-rule bg-white p-10 text-center text-sm text-muted" role="status">
           Loading your services…
         </div>
-      ) : items.length === 0 ? (
+      )}
+      {!loading && items.length === 0 && (
         <EmptyState
           className="rounded-lg border border-rule bg-white p-10"
           icon={<Icon name="file" size={36} className="text-ink/40" />}
-          title={
-            tab === 'active'
-              ? 'No active services'
-              : tab === 'completed'
-                ? 'No completed services yet'
-                : 'No cancelled services'
-          }
-          description={
-            tab === 'active'
-              ? 'When you start and submit a service application, it will appear here with live progress.'
-              : tab === 'completed'
-                ? 'Completed applications and their final deliverables will appear here.'
-                : 'You do not have any cancelled applications.'
-          }
+          title={emptyTitle[tab]}
+          description={emptyDescription[tab]}
           action={
             tab === 'active' ? (
               <LinkButton href="/services" variant="primary">
@@ -195,7 +194,8 @@ export function MyServicesView() {
             ) : undefined
           }
         />
-      ) : (
+      )}
+      {!loading && items.length > 0 && (
         <div className="space-y-4">
           {items.map((row) => {
             const action = actionConfig(row);

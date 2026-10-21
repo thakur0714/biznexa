@@ -46,7 +46,7 @@ function isSectionActive(href: string, pathname: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function DashboardShell({ children }: { children: React.ReactNode }) {
+function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const { user } = useAuth();
   const api = useApi();
@@ -91,7 +91,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       );
       if (elements.length === 0) return;
       const first = elements[0]!;
-      const last = elements[elements.length - 1]!;
+      const last = elements.at(-1)!;
       const active = document.activeElement;
       if (e.shiftKey) {
         if (!active || !sidebar.contains(active) || active === first) {
@@ -242,7 +242,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <Suspense>
       <RequireAuth>
