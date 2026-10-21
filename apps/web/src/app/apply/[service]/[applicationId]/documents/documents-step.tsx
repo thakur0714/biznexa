@@ -15,7 +15,7 @@ import type { ServiceDetail } from '@/lib/api';
  * adds a new version (earlier ones are kept). Mandatory documents can be skipped and uploaded later.
  * Continue (or skip) goes on to the order summary (M3.13).
  */
-export function DocumentsStep({ service, applicationId }: { service: ServiceDetail; applicationId: string }) {
+export function DocumentsStep({ service, applicationId }: Readonly<{ service: ServiceDetail; applicationId: string }>) {
   const api = useApi();
   const router = useRouter();
   const [app, setApp] = useState<ApplicationDetail | null>(null);
@@ -24,7 +24,7 @@ export function DocumentsStep({ service, applicationId }: { service: ServiceDeta
 
   useEffect(() => {
     let live = true;
-    (async () => {
+    void (async () => {
       try {
         const path = { params: { path: { id: applicationId } } };
         const [detail, checklist] = await Promise.all([
@@ -74,9 +74,9 @@ export function DocumentsStep({ service, applicationId }: { service: ServiceDeta
       )}
 
       {!list && !loadError && (
-        <p className="mt-6 text-sm text-muted" role="status">
+        <output className="mt-6 block text-sm text-muted">
           Loading your document checklist…
-        </p>
+        </output>
       )}
 
       {list && (

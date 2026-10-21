@@ -7,7 +7,7 @@ import { ApplyForm } from './apply-form';
 
 export const metadata: Metadata = { title: 'Your details', robots: { index: false } };
 
-export default async function ApplyFormPage({ params }: { params: Promise<{ service: string; applicationId: string }> }) {
+export default async function ApplyFormPage({ params }: Readonly<{ params: Promise<{ service: string; applicationId: string }> }>) {
   const { service, applicationId } = await params;
   const s = await apiOrNull<ServiceDetail>(`/catalogue/services/${encodeURIComponent(service)}`);
   if (!s) notFound();
