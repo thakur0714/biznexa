@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import type React from 'react';
 import Link from 'next/link';
 import { useApi } from '@biznexa/api-client/react';
 import { consultantCategories, consultationTypes, formatINR, type AdminConsultantDetail, type AdminConsultantProfileInput, type ConsultationType, type FileLinkResult } from '@biznexa/types';
@@ -11,7 +12,7 @@ import { findNavItem, canSee } from '@/lib/nav';
 
 const controlClass = 'min-h-10 w-full rounded border border-rule bg-white px-3 py-2 text-sm';
 
-export function ConsultantDetailView({ id }: { id: string }) {
+export function ConsultantDetailView({ id }: Readonly<{ id: string }>) {
   const api = useApi();
   const { user } = useAuth();
   const item = findNavItem('consultants');
@@ -47,7 +48,7 @@ export function ConsultantDetailView({ id }: { id: string }) {
   if (!user || !item) return null;
   if (!canSee(item, user.permissions)) return <NotAllowed />;
 
-  async function saveProfile(event: FormEvent) {
+  async function saveProfile(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form || saving) return;
     setSaving(true); setError(''); setSuccess('');
@@ -67,7 +68,10 @@ export function ConsultantDetailView({ id }: { id: string }) {
       if (actionName === 'reject') await api.call((client) => client.POST('/api/admin/consultants/{id}/reject', { params: { path: { id } }, body: { reason: reason.trim() } }));
       else if (actionName === 'approve') await api.call((client) => client.POST('/api/admin/consultants/{id}/approve', { params: { path: { id } } }));
       else await api.call((client) => client.POST('/api/admin/consultants/{id}/suspend', { params: { path: { id } } }));
-      setSuccess(`Consultant ${actionName === 'approve' ? 'approved' : actionName === 'reject' ? 'rejected' : 'suspended'}.`);
+      let outcome = 'suspended';
+      if (actionName === 'approve') outcome = 'approved';
+      else if (actionName === 'reject') outcome = 'rejected';
+      setSuccess(`Consultant ${outcome}.`);
       setLoading(true);
       setRefreshCount((count) => count + 1);
     } catch (cause: unknown) { setError(cause instanceof Error ? cause.message : `Could not ${actionName} this consultant.`); }

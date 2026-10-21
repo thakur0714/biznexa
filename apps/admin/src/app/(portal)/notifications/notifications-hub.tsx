@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type React from 'react';
 import { useAuth } from '@/lib/auth';
 import { PERMS } from '@biznexa/types';
 import { Button } from '@biznexa/ui';
@@ -24,6 +25,11 @@ export function NotificationsHub() {
     return <DeliveriesView />;
   }
 
+  let tabContent: React.ReactNode;
+  if (tab === 'templates') tabContent = <NotificationsView />;
+  else if (tab === 'announcements') tabContent = <AnnouncementsView />;
+  else tabContent = <DeliveriesView />;
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2 border-b border-border pb-3">
@@ -45,7 +51,7 @@ export function NotificationsHub() {
           Announcements
         </Button>
       </div>
-      {tab === 'templates' ? <NotificationsView /> : tab === 'announcements' ? <AnnouncementsView /> : <DeliveriesView />}
+      {tabContent}
     </div>
   );
 }

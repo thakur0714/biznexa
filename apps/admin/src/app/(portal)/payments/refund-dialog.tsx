@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import type React from 'react';
 import { formatINR, MIN_REFUND_PAISE, type AdminPaymentDetail, type RefundView } from '@biznexa/types';
 import { Button, Dialog, Field, Notice, TextArea } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
@@ -18,8 +19,8 @@ export interface RefundFormValues {
 
 /** `1,234.50` → 123450 paise; NaN when it isn't an amount with at most 2 decimals. */
 export function rupeesToPaise(value: string): number {
-  const v = value.replace(/[₹,\s]/g, '');
-  if (!/^\d+(\.\d{1,2})?$/.test(v)) return NaN;
+  const v = value.replaceAll(/[₹,\s]/g, '');
+  if (!/^\d+(\.\d{1,2})?$/.test(v)) return Number.NaN;
   return Math.round(Number(v) * 100);
 }
 
@@ -44,19 +45,20 @@ export function checkRefundForm(values: RefundFormValues, refundable: number): {
  * new React `key` each time), so pressing "Refund" again after a lost answer can't refund twice; reopening
  * the dialog starts a new refund.
  */
-export function RefundDialog({ payment, open, onClose, onRefunded }: { payment: AdminPaymentDetail; open: boolean; onClose: () => void; onRefunded: (refund: RefundView) => void }) {
+export function RefundDialog({ payment, open, onClose, onRefunded }: Readonly<{ payment: AdminPaymentDetail; open: boolean; onClose: () => void; onRefunded: (refund: RefundView) => void }>) {
   const api = useApi();
   const [values, setValues] = useState<RefundFormValues>({ mode: 'full', amount: '', reason: '' });
   const [errors, setErrors] = useState<Partial<Record<'amount' | 'reason', string>>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // The parent remounts the dialog (a new `key`) each time it opens, so each opening gets a fresh key.
-  const [key] = useState(() => crypto.randomUUID());
+  const [key, setKey] = useState(() => crypto.randomUUID());
+  void setKey;
 
   const refundable = payment.refundable;
   const set = (patch: Partial<RefundFormValues>) => setValues((v) => ({ ...v, ...patch }));
 
-  const submit = async (e: FormEvent) => {
+  const submit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const checked = checkRefundForm(values, refundable);
     setErrors(checked.errors);
@@ -79,6 +81,9 @@ export function RefundDialog({ payment, open, onClose, onRefunded }: { payment: 
   };
 
   const { amount } = checkRefundForm(values, refundable);
+  let refundLabel = 'Refund';
+  if (saving) refundLabel = 'Refunding…';
+  else if (Number.isFinite(amount) && amount > 0) refundLabel = `Refund ${money(amount)}`;
   return (
     <Dialog
       open={open}
@@ -91,7 +96,7 @@ export function RefundDialog({ payment, open, onClose, onRefunded }: { payment: 
             Cancel
           </Button>
           <Button type="submit" form="refund-form" disabled={saving}>
-            {saving ? 'Refunding…' : Number.isFinite(amount) && amount > 0 ? `Refund ${money(amount)}` : 'Refund'}
+            {refundLabel}
           </Button>
         </>
       }
@@ -104,7 +109,7 @@ export function RefundDialog({ payment, open, onClose, onRefunded }: { payment: 
             Full refund of what is left ({money(refundable)})
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="radio" name="refund-mode" checked={values.mode === 'partial'} onChange={() => set({ mode: 'partial' })} />
+            <input type="radio" name="refund-mode" checked={values.mode === 'partial'} onChange={() => set({ mode: 'partial' })} />{' '}
             Partial refund
           </label>
         </fieldset>

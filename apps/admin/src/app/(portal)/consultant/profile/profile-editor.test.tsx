@@ -6,8 +6,8 @@ import { ConsultantProfileEditor } from './profile-editor';
 const calls: Array<{ path: string; body?: unknown }> = [];
 let profile: ConsultantOwnProfile;
 const fakeClient = {
-  GET: vi.fn(async () => ({ data: profile, response: new Response(null, { status: 200 }) })),
-  PUT: vi.fn(async (_path: string, options: { body?: unknown }) => {
+  GET: vi.fn(async () => ({ data: profile, response: new Response(null, { status: 200 }) })), // NOSONAR: API test double preserves rejected-call behavior
+  PUT: vi.fn(async (_path: string, options: { body?: unknown }) => { // NOSONAR: API test double preserves rejected-call behavior
     calls.push({ path: '/api/consultants/me/profile', body: options.body });
     const body = options.body as { city?: string; feePerSession?: number };
     const hasFeeChange = body.feePerSession !== undefined && body.feePerSession !== profile.feePerSession;
