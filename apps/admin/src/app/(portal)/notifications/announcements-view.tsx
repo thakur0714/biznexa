@@ -58,7 +58,7 @@ export function AnnouncementsView() {
   }
 
   return <section className="max-w-3xl space-y-5" aria-label="Manual announcement">
-    <h2 className="text-xl font-semibold">Manual announcement</h2>
+    <h1 className="text-2xl font-bold tracking-[-0.02em] text-night">Manual announcement</h1>
     <p className="text-sm text-muted-foreground">Announcements are marketing messages. Customers who opted out are excluded.</p>
     <Field id="announcement-title" label="Title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
     <TextArea id="announcement-body" label="Message" value={body} onChange={(e) => setBody(e.target.value)} rows={5} maxLength={5000} />

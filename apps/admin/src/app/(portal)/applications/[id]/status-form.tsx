@@ -54,7 +54,7 @@ export function StatusForm({ id, current, stages }: { id: string, current: Appli
 
   return (
     <form onSubmit={submit} className="space-y-4 p-4 border border-rule rounded-md bg-paper">
-      <h3 className="font-semibold mb-2">Update Status</h3>
+      <h2 className="font-semibold mb-2">Update Status</h2>
       {error && <Notice tone="error">{error}</Notice>}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

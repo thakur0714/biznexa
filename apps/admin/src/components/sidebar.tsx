@@ -13,7 +13,7 @@ export function SidebarNav({ permissions, roles = [], onNavigate }: { permission
     <nav aria-label="Admin sections" className="space-y-6">
       {groups.map((g) => (
         <div key={g.label}>
-          <p className="px-3 text-xs font-semibold uppercase tracking-wider text-white/50">{g.label}</p>
+          <p className="px-3 text-xs font-semibold uppercase tracking-wider text-white/70">{g.label}</p>
           <ul className="mt-2 space-y-0.5">
             {g.items.map((item) => {
               const href = `/${item.slug}`;

@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { needsTwoFactor } from '@biznexa/types';
 import { useAuth } from '@/lib/auth';
 import { Logo } from '@biznexa/ui';
@@ -18,6 +18,8 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const sp = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
 
   const pendingTwoFactor = needsTwoFactor(user?.twoFactor);
   const consultantOnly = user?.roles.includes('CONSULTANT') ?? false;
@@ -35,6 +37,52 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     router.replace(here === '/' ? to : `${to}?next=${encodeURIComponent(here)}`);
   }, [ready, user, pendingTwoFactor, outsideConsultantPortal, router, pathname, sp]);
 
+  const close = useCallback(() => {
+    setMenuOpen(false);
+    triggerRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+
+    const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusables = Array.from(sidebar.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+      (node) => node.offsetParent !== null || node.getClientRects().length > 0,
+    );
+    if (focusables[0]) {
+      focusables[0].focus();
+    }
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const elements = Array.from(sidebar.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (node) => node.offsetParent !== null || node.getClientRects().length > 0,
+      );
+      if (elements.length === 0) return;
+      const first = elements[0]!;
+      const last = elements[elements.length - 1]!;
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (!active || !sidebar.contains(active) || active === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else if (!active || !sidebar.contains(active) || active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen, close]);
+
   if (!ready || !user || pendingTwoFactor || outsideConsultantPortal) {
     return (
       <div className="px-6 py-24 text-center text-muted" role="status">
@@ -48,14 +96,12 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
     router.replace('/login');
   }
 
-  const close = () => setMenuOpen(false);
-
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-rule bg-white px-4 lg:hidden">
-        <Logo tag={consultantOnly ? 'Consultant' : 'Admin'} label={consultantOnly ? 'BizNexa consultant home' : 'BizNexa admin home'} />
-        <Button variant="outline" size="sm" aria-expanded={menuOpen} aria-controls="admin-sidebar" onClick={() => setMenuOpen((o) => !o)}>
+        <Logo tag={consultantOnly ? 'Consultant' : 'Admin'} />
+        <Button ref={triggerRef} variant="outline" size="sm" aria-expanded={menuOpen} aria-controls="admin-sidebar" onClick={() => setMenuOpen((o) => !o)}>
           {menuOpen ? 'Close' : 'Menu'}
         </Button>
       </header>
@@ -63,12 +109,15 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       {menuOpen && <div className="fixed inset-0 z-30 bg-night/40 lg:hidden" aria-hidden="true" onClick={close} />}
 
       <aside
+        ref={sidebarRef}
         id="admin-sidebar"
-        onKeyDown={(e) => e.key === 'Escape' && close()}
+        role={menuOpen ? 'dialog' : undefined}
+        aria-modal={menuOpen ? 'true' : undefined}
+        aria-label={consultantOnly ? 'Consultant navigation' : 'Admin navigation'}
         className={`fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-ink text-white transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${menuOpen ? 'translate-x-0' : 'invisible -translate-x-full lg:visible'}`}
       >
         <div className="hidden h-16 items-center px-5 lg:flex">
-          <Logo inverted tag={consultantOnly ? 'Consultant' : 'Admin'} label={consultantOnly ? 'BizNexa consultant home' : 'BizNexa admin home'} />
+          <Logo inverted tag={consultantOnly ? 'Consultant' : 'Admin'} />
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-4 lg:py-2">
           <SidebarNav permissions={user.permissions} roles={user.roles} onNavigate={close} />

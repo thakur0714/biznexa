@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 /** Wordmark: a seal-like mark (filed, stamped, done) + name, with an optional tag such as "Admin". Placeholder until brand assets arrive. */
-export function Logo({ inverted = false, tag, label = 'BizNexa home' }: Readonly<{ inverted?: boolean; tag?: string; label?: string }>) {
+export function Logo({ inverted = false, tag, label }: Readonly<{ inverted?: boolean; tag?: string; label?: string }>) {
   const mark = tag ? 28 : 30;
   return (
     <Link href="/" className="flex items-center gap-2" aria-label={label}>
