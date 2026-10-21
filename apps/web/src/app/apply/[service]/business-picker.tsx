@@ -25,7 +25,7 @@ interface Props {
 }
 
 /** Radio list of saved businesses + "Add a new business" (short form; the rest is in Profile & Businesses) + "Myself". */
-export function BusinessPicker({ businesses, loadError, choice, onChoice, draft, onDraft, errors, disabled }: Props) {
+export function BusinessPicker({ businesses, loadError, choice, onChoice, draft, onDraft, errors, disabled }: Readonly<Props>) {
   const isSaved = (id: string) => choice.kind === 'saved' && choice.id === id;
   const option = 'flex cursor-pointer items-start gap-3 rounded-md border px-4 py-3 text-sm has-[:checked]:border-ink has-[:checked]:bg-ink-050';
   const radio = 'mt-0.5 h-4 w-4 shrink-0 accent-ink';
@@ -36,9 +36,9 @@ export function BusinessPicker({ businesses, loadError, choice, onChoice, draft,
       <p className="mt-1 text-sm text-muted">We use the business to fill in your form and to put its GSTIN on your invoice.</p>
 
       {businesses === null && !loadError && (
-        <p className="mt-3 text-sm text-muted" role="status">
+        <output className="mt-3 block text-sm text-muted">
           Loading your businesses…
-        </p>
+        </output>
       )}
       {loadError && (
         <p className="mt-3 text-sm text-danger" role="alert">
@@ -48,8 +48,8 @@ export function BusinessPicker({ businesses, loadError, choice, onChoice, draft,
 
       <div className="mt-3 space-y-2">
         {businesses?.map((b) => (
-          <label key={b.id} className={`${option} border-rule`}>
-            <input type="radio" name="business" className={radio} checked={isSaved(b.id)} onChange={() => onChoice({ kind: 'saved', id: b.id })} />
+          <label key={b.id} htmlFor={`business-${b.id}`} aria-label={b.legalName} className={`${option} border-rule`}>
+            <input id={`business-${b.id}`} type="radio" name="business" className={radio} checked={isSaved(b.id)} onChange={() => onChoice({ kind: 'saved', id: b.id })} />
             <span className="min-w-0">
               <span className="block font-medium text-night">{b.legalName}</span>
               <span className="block break-words text-muted">
@@ -60,8 +60,8 @@ export function BusinessPicker({ businesses, loadError, choice, onChoice, draft,
           </label>
         ))}
 
-        <label className={`${option} border-rule`}>
-          <input type="radio" name="business" className={radio} checked={choice.kind === 'new'} onChange={() => onChoice({ kind: 'new' })} />
+        <label htmlFor="business-new" className={`${option} border-rule`}>
+          <input id="business-new" type="radio" name="business" className={radio} checked={choice.kind === 'new'} onChange={() => onChoice({ kind: 'new' })} />
           <span className="font-medium text-night">Add a new business</span>
         </label>
         {choice.kind === 'new' && (
@@ -102,8 +102,8 @@ export function BusinessPicker({ businesses, loadError, choice, onChoice, draft,
           </div>
         )}
 
-        <label className={`${option} border-rule`}>
-          <input type="radio" name="business" className={radio} checked={choice.kind === 'none'} onChange={() => onChoice({ kind: 'none' })} />
+        <label htmlFor="business-none" aria-label="Myself" className={`${option} border-rule`}>
+          <input id="business-none" type="radio" name="business" className={radio} checked={choice.kind === 'none'} onChange={() => onChoice({ kind: 'none' })} />
           <span>
             <span className="block font-medium text-night">Myself</span>
             <span className="block text-muted">Not for a business, or the business is not set up yet</span>

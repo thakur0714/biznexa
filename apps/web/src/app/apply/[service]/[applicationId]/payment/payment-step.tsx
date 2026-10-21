@@ -18,8 +18,8 @@ const money = (paise: number) => formatINR(paise, true);
 const TRACK_HREF = '/dashboard';
 
 /** Poll every 2 s for the first 20 s (a webhook usually lands within seconds), then every 5 s, for 2 minutes. */
-const FAST_MS = 2_000;
-const SLOW_MS = 5_000;
+const FAST_MS = 2000;
+const SLOW_MS = 5000;
 const FAST_FOR_MS = 20_000;
 const GIVE_UP_MS = 120_000;
 
@@ -34,7 +34,7 @@ type View = 'success' | 'confirming' | 'slow' | 'failed' | 'awaiting' | 'unpaid'
  * Checkout reported success, so a failed earlier attempt or a payment not yet seen is shown as "confirming"
  * until the webhook arrives or the wait runs out.
  */
-export function PaymentStep({ service, applicationId }: { service: ServiceDetail; applicationId: string }) {
+export function PaymentStep({ service, applicationId }: Readonly<{ service: ServiceDetail; applicationId: string }>) {
   const api = useApi();
   const router = useRouter();
   const pathname = usePathname();
@@ -47,41 +47,7 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
   /** The application is checked against this service's URL once, on the first load. */
   const checked = useRef(false);
 
-  useEffect(() => {
-    let live = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const keepPolling = (s: PaymentStatusView) => s.outcome === 'CONFIRMING' || s.outcome === 'AWAITING' || (s.outcome === 'FAILED' && confirming);
-
-    async function tick() {
-      try {
-        const path = { params: { path: { id: applicationId } } };
-        const s = await api.call<PaymentStatusView>((c) => c.GET('/api/applications/{id}/payment', path));
-        if (!live) return;
-        if (!checked.current) {
-          const detail = await api.call<ApplicationDetail>((c) => c.GET('/api/applications/{id}', path));
-          if (detail.serviceId !== service.id) throw new ClientApiError(404, 'Application not found');
-          checked.current = true;
-        }
-        if (!live) return;
-        setStatus(s);
-        setLoadError('');
-        if (!keepPolling(s)) return;
-      } catch (e) {
-        if (!live) return;
-        // A missing application won't appear; a network blip is retried on the next tick.
-        if (e instanceof ClientApiError && e.status < 500 && e.status !== 429) return setLoadError(e.message);
-      }
-      const elapsed = Date.now() - pollFrom;
-      if (elapsed >= GIVE_UP_MS) return setTimedOut(true);
-      timer = setTimeout(() => void tick(), elapsed < FAST_FOR_MS ? FAST_MS : SLOW_MS);
-    }
-
-    void tick();
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [api, applicationId, service.id, confirming, pollFrom]);
+  usePaymentPolling({ api, applicationId, serviceId: service.id, confirming, pollFrom, checked, setStatus, setLoadError, setTimedOut });
 
   const pollAgain = useCallback(() => {
     setTimedOut(false);
@@ -103,7 +69,7 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
   const view = status && viewFor(status.outcome, confirming, timedOut);
   const busy = payState === 'starting' || payState === 'open' || payState === 'confirming';
   /** The advance is paid and the balance isn't (M3.19): the application is already submitted. */
-  const partlyPaid = status?.orderStatus === 'PARTIALLY_PAID';
+  const partlyPaid = Boolean(status?.orderStatus === 'PARTIALLY_PAID');
   const testMode = payState === 'mock' && checkout && (
     <Notice tone="info">
       Test mode: the mock payment gateway is in use, so no payment window opens. Order <span className="num">{checkout.orderCode}</span> is waiting for
@@ -125,22 +91,107 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
         <div className="mt-6 space-y-4">
           <h1 className="text-3xl font-bold tracking-[-0.025em]">Payment</h1>
           <Notice tone="error">{loadError}</Notice>
-          <LinkButton href="/dashboard" variant="outline">
-            Go to dashboard
-          </LinkButton>
+          <LinkButton href="/dashboard" variant="outline">Go to dashboard</LinkButton>
         </div>
       )}
 
       {!status && !loadError && (
         <>
           <h1 className="mt-4 text-3xl font-bold tracking-[-0.025em]">Payment</h1>
-          <p className="mt-6 text-sm text-muted" role="status">
-            Checking your payment…
-          </p>
+          <output className="mt-6 block text-sm text-muted">Checking your payment…</output>
         </>
       )}
+      <PaymentOutcomeView status={status} view={view} partlyPaid={partlyPaid} testMode={testMode} payError={payError} busy={busy} pay={pay} payState={payState} pollAgain={pollAgain} serviceHref={serviceHref} serviceName={service.name} stepHref={stepHref} summaryHref={summaryHref} applicationId={applicationId} />
+    </div>
+  );
+}
 
-      {status && view === 'success' && (
+type PaymentPollArgs = {
+  api: ReturnType<typeof useApi>;
+  applicationId: string;
+  serviceId: string;
+  confirming: boolean;
+  pollFrom: number;
+  checked: { current: boolean };
+  setStatus: React.Dispatch<React.SetStateAction<PaymentStatusView | null>>;
+  setLoadError: React.Dispatch<React.SetStateAction<string>>;
+  setTimedOut: React.Dispatch<React.SetStateAction<boolean>>;
+};
+
+function usePaymentPolling({ api, applicationId, serviceId, confirming, pollFrom, checked, setStatus, setLoadError, setTimedOut }: PaymentPollArgs) {
+  useEffect(() => {
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const keepPolling = (s: PaymentStatusView) => s.outcome === 'CONFIRMING' || s.outcome === 'AWAITING' || (s.outcome === 'FAILED' && confirming);
+
+    async function tick() {
+      try {
+        const path = { params: { path: { id: applicationId } } };
+        const s = await api.call<PaymentStatusView>((c) => c.GET('/api/applications/{id}/payment', path));
+        if (!live) return;
+        if (!checked.current) {
+          const detail = await api.call<ApplicationDetail>((c) => c.GET('/api/applications/{id}', path));
+          if (detail.serviceId !== serviceId) throw new ClientApiError(404, 'Application not found');
+          checked.current = true;
+        }
+        if (!live) return;
+        setStatus(s);
+        setLoadError('');
+        if (!keepPolling(s)) return;
+      } catch (e) {
+        if (!live) return;
+        // A missing application won't appear; a network blip is retried on the next tick.
+        if (e instanceof ClientApiError && e.status < 500 && e.status !== 429) return setLoadError(e.message);
+      }
+      const elapsed = Date.now() - pollFrom;
+      if (elapsed >= GIVE_UP_MS) return setTimedOut(true);
+      timer = setTimeout(() => void tick(), elapsed < FAST_FOR_MS ? FAST_MS : SLOW_MS);
+    }
+
+    void tick();
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [api, applicationId, serviceId, confirming, pollFrom, checked, setStatus, setLoadError, setTimedOut]);
+}
+
+type PaymentOutcomeProps = {
+  status: PaymentStatusView | null;
+  view: View | null | undefined;
+  partlyPaid: boolean;
+  testMode: React.ReactNode;
+  payError: string;
+  busy: boolean;
+  pay: (plan?: 'FULL' | 'ADVANCE' | 'BALANCE') => Promise<void>;
+  payState: string;
+  pollAgain: () => void;
+  serviceHref: string;
+  serviceName: string;
+  stepHref: string;
+  summaryHref: string;
+  applicationId: string;
+};
+
+function PaymentOutcomeView({ status, view, partlyPaid, testMode, payError, busy, pay, payState, pollAgain, serviceHref, serviceName, stepHref, summaryHref, applicationId }: Readonly<PaymentOutcomeProps>) {
+  if (!status) return null;
+  if (view === 'success') return <PaymentSuccess status={status} partlyPaid={partlyPaid} testMode={testMode} payError={payError} busy={busy} pay={pay} payState={payState} serviceHref={serviceHref} serviceName={serviceName} stepHref={stepHref} applicationId={applicationId} />;
+  if (view === 'confirming') return <PaymentConfirming status={status} partlyPaid={partlyPaid} />;
+  if (view === 'slow') return <PaymentSlow status={status} partlyPaid={partlyPaid} pollAgain={pollAgain} />;
+  if (view === 'failed' || view === 'awaiting') return <PaymentFailed status={status} view={view} partlyPaid={partlyPaid} testMode={testMode} payError={payError} busy={busy} pay={pay} payState={payState} summaryHref={summaryHref} />;
+  if (view === 'unpaid' || view === 'closed') return <PaymentUnavailable view={view} summaryHref={summaryHref} />;
+  return null;
+}
+
+type PaymentStatusProps = {
+  status: PaymentStatusView;
+  partlyPaid: boolean;
+};
+
+type PaymentSuccessProps = Pick<PaymentOutcomeProps, 'partlyPaid' | 'testMode' | 'payError' | 'busy' | 'pay' | 'payState' | 'serviceHref' | 'serviceName' | 'stepHref' | 'applicationId'> & { status: PaymentStatusView };
+
+function PaymentSuccess({ status, partlyPaid, testMode, payError, busy, pay, payState, serviceHref, serviceName, stepHref, applicationId }: Readonly<PaymentSuccessProps>) {
+  return (
         <section aria-labelledby="pay-title" className="mt-4">
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-seal-050 text-seal">
@@ -207,18 +258,20 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
               Track Application
             </LinkButton>
             <LinkButton href={serviceHref} variant="ghost">
-              Back to {service.name}
+              Back to {serviceName}
             </LinkButton>
           </div>
         </section>
-      )}
+  );
+}
 
-      {status && view === 'confirming' && (
+function PaymentConfirming({ status, partlyPaid }: Readonly<PaymentStatusProps>) {
+  return (
         <section aria-labelledby="pay-title" className="mt-4">
           <h1 id="pay-title" className="text-3xl font-bold tracking-[-0.025em]">
             Confirming your payment…
           </h1>
-          <div className="mt-6 flex items-start gap-3 rounded-lg border border-rule bg-white p-5 sm:p-6" role="status" aria-live="polite">
+          <div className="mt-6 flex items-start gap-3 rounded-lg border border-rule bg-white p-5 sm:p-6" aria-live="polite">
             <span className="mt-0.5 h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-rule border-t-ink motion-reduce:animate-none" aria-hidden="true" />
             <div className="text-sm">
               <p className="font-semibold">We’re waiting for the bank’s confirmation. This usually takes a few seconds.</p>
@@ -235,9 +288,11 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
             </div>
           </div>
         </section>
-      )}
+  );
+}
 
-      {status && view === 'slow' && (
+function PaymentSlow({ status, partlyPaid, pollAgain }: Readonly<PaymentStatusProps & { pollAgain: () => void }>) {
+  return (
         <section aria-labelledby="pay-title" className="mt-4">
           <h1 id="pay-title" className="text-3xl font-bold tracking-[-0.025em]">
             Still confirming your payment
@@ -265,9 +320,13 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
             </div>
           </div>
         </section>
-      )}
+  );
+}
 
-      {status && (view === 'failed' || view === 'awaiting') && (
+type PaymentFailedProps = Pick<PaymentOutcomeProps, 'partlyPaid' | 'testMode' | 'payError' | 'busy' | 'pay' | 'payState' | 'summaryHref'> & { status: PaymentStatusView; view: 'failed' | 'awaiting' };
+
+function PaymentFailed({ status, view, partlyPaid, testMode, payError, busy, pay, payState, summaryHref }: Readonly<PaymentFailedProps>) {
+  return (
         <section aria-labelledby="pay-title" className="mt-4">
           <div className="flex items-center gap-3">
             {view === 'failed' && (
@@ -276,7 +335,7 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
               </span>
             )}
             <h1 id="pay-title" className="text-3xl font-bold tracking-[-0.025em]">
-              {view === 'failed' ? (partlyPaid ? 'Balance payment didn’t go through' : 'Payment didn’t go through') : 'Payment not completed'}
+              {failureHeading(view, partlyPaid)}
             </h1>
           </div>
           <div className="mt-6 space-y-4">
@@ -320,9 +379,11 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
             </div>
           </div>
         </section>
-      )}
+  );
+}
 
-      {status && (view === 'unpaid' || view === 'closed') && (
+function PaymentUnavailable({ view, summaryHref }: Readonly<{ view: View; summaryHref: string }>) {
+  return (
         <section aria-labelledby="pay-title" className="mt-4">
           <h1 id="pay-title" className="text-3xl font-bold tracking-[-0.025em]">
             Payment
@@ -338,8 +399,6 @@ export function PaymentStep({ service, applicationId }: { service: ServiceDetail
             </LinkButton>
           </div>
         </section>
-      )}
-    </div>
   );
 }
 
@@ -368,10 +427,17 @@ function retryLabel(view: View, status: PaymentStatusView): string {
   const amount = money(status.payment?.amount ?? status.balance);
   if (view === 'failed') return `Try again · ${amount}`;
   const plan = status.payment?.plan;
-  return plan === 'BALANCE' ? `Pay balance ${amount}` : plan === 'ADVANCE' ? `Pay advance ${amount}` : `Pay ${amount}`;
+  if (plan === 'BALANCE') return `Pay balance ${amount}`;
+  if (plan === 'ADVANCE') return `Pay advance ${amount}`;
+  return `Pay ${amount}`;
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function failureHeading(view: View, partlyPaid: boolean): string {
+  if (view !== 'failed') return 'Payment not completed';
+  return partlyPaid ? 'Balance payment didn’t go through' : 'Payment didn’t go through';
+}
+
+function Row({ label, value }: Readonly<{ label: string; value: string }>) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="text-muted">{label}</dt>

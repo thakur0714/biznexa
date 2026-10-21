@@ -8,7 +8,7 @@ import { Button } from '@biznexa/ui';
 import { Icon } from '@/components/icons';
 
 /** The invoice and its PDF follow the webhook by a few seconds (M3.23): check every 3 s for up to 90 s. */
-const POLL_MS = 3_000;
+const POLL_MS = 3000;
 const GIVE_UP_MS = 90_000;
 
 /**
@@ -16,7 +16,7 @@ const GIVE_UP_MS = 90_000;
  * "Download invoice" button that fetches a 5-minute signed link and opens it. `paidKey` changes when another
  * payment lands, so its invoice is looked for too.
  */
-export function InvoiceDownloads({ applicationId, paidKey }: { applicationId: string; paidKey: number }) {
+export function InvoiceDownloads({ applicationId, paidKey }: Readonly<{ applicationId: string; paidKey: number }>) {
   const api = useApi();
   const [invoices, setInvoices] = useState<InvoiceSummary[] | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
@@ -62,9 +62,9 @@ export function InvoiceDownloads({ applicationId, paidKey }: { applicationId: st
     <div className="mt-6 rounded-lg border border-rule bg-white p-5 sm:p-6">
       <h2 className="text-sm font-semibold">{invoices.length > 1 ? 'Invoices' : 'Invoice'}</h2>
       {!invoices.length ? (
-        <p className="mt-2 text-sm text-muted" role="status">
+        <output className="mt-2 block text-sm text-muted">
           Your invoice is being prepared. It will also be in your dashboard.
-        </p>
+        </output>
       ) : (
         <ul className="mt-3 divide-y divide-rule">
           {invoices.map((inv) => (
@@ -81,9 +81,9 @@ export function InvoiceDownloads({ applicationId, paidKey }: { applicationId: st
                   {opening === inv.id ? 'Opening…' : 'Download invoice'}
                 </Button>
               ) : (
-                <p className="text-sm text-muted" role="status">
+                <output className="block text-sm text-muted">
                   Preparing PDF…
-                </p>
+                </output>
               )}
             </li>
           ))}
