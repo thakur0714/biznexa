@@ -18,7 +18,7 @@ const timeLabel = (iso: string) => new Intl.DateTimeFormat('en-IN', { hour: 'num
 const message = (e: unknown) => (e instanceof ClientApiError || e instanceof Error ? e.message : 'Something went wrong. Please try again.');
 
 /** Poll every 2 s for up to 2 minutes while the webhook confirms the payment. */
-const POLL_MS = 2_000;
+const POLL_MS = 2000;
 const GIVE_UP_MS = 120_000;
 
 type Phase = 'pick' | 'held' | 'confirming' | 'confirmed';
@@ -28,7 +28,7 @@ type Phase = 'pick' | 'held' | 'confirming' | 'confirmed';
  * `GET /api/bookings/{id}` says CONFIRMED, i.e. after the gateway's webhook; Checkout's success is a hint.
  * With the mock gateway (development) no payment window opens: "Complete test payment" plays the gateway.
  */
-export function BookingFlow({ slug, initial }: { slug: string; initial: PublicConsultantSlots }) {
+export function BookingFlow({ slug, initial }: Readonly<{ slug: string; initial: PublicConsultantSlots }>) {
   const api = useApi();
   const { user, ready } = useAuth();
   const router = useRouter();
@@ -38,7 +38,9 @@ export function BookingFlow({ slug, initial }: { slug: string; initial: PublicCo
   const [data, setData] = useState(initial);
   const [type, setType] = useState<ConsultationType | null>(() => {
     const t = params.get('type') as ConsultationType | null;
-    return t && initial.consultant.consultationTypes.includes(t) ? t : initial.consultant.consultationTypes.length === 1 ? initial.consultant.consultationTypes[0] : null;
+    if (t && initial.consultant.consultationTypes.includes(t)) return t;
+    if (initial.consultant.consultationTypes.length === 1) return initial.consultant.consultationTypes[0];
+    return null;
   });
   const [startAt, setStartAt] = useState<string | null>(params.get('slot'));
   const [date, setDate] = useState<string | null>(() => (params.get('slot') ? istDate(new Date(params.get('slot')!)) : null));
@@ -81,7 +83,7 @@ export function BookingFlow({ slug, initial }: { slug: string; initial: PublicCo
     if (phase !== 'held') return;
     const tick = () => setNow(Date.now());
     const first = setTimeout(tick, 0);
-    const t = setInterval(tick, 1_000);
+    const t = setInterval(tick, 1000);
     return () => {
       clearTimeout(first);
       clearInterval(t);
@@ -134,7 +136,8 @@ export function BookingFlow({ slug, initial }: { slug: string; initial: PublicCo
   async function hold() {
     if (!type || !picked) return;
     if (!user) {
-      router.push(`/login?next=${encodeURIComponent(`${pathname}?${new URLSearchParams({ type, slot: picked.startAt })}`)}`);
+      const next = `${pathname}?${new URLSearchParams({ type, slot: picked.startAt })}`;
+      router.push(`/login?next=${encodeURIComponent(next)}`);
       return;
     }
     setBusy(true);

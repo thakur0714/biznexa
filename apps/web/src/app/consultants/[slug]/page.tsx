@@ -10,7 +10,7 @@ async function getProfile(slug: string) {
   return apiOrNull<PublicConsultantProfile>(`/public/consultants/${encodeURIComponent(slug)}`);
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<Props>): Promise<Metadata> {
   const profile = await getProfile((await params).slug);
   if (!profile) return { title: 'Consultant not found', robots: { index: false } };
   return {
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ConsultantProfilePage({ params }: Props) {
+export default async function ConsultantProfilePage({ params }: Readonly<Props>) {
   const { slug } = await params;
   const profile = await getProfile(slug);
   if (!profile) notFound();
