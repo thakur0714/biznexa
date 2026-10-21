@@ -129,7 +129,7 @@ export function PaymentsScreen({ navigation }: Readonly<PaymentsScreenProps>) {
   return (
     <View style={styles.container}>
       {isLoading && <LoadingState message="Loading payments & invoices…" style={{ flex: 1 }} />}
-      {!isLoading && error && <ErrorState message={error} onRetry={() => void fetchPayments()} style={{ flex: 1 }} />}
+      {!isLoading && error ? <ErrorState message={error} onRetry={() => void fetchPayments()} style={{ flex: 1 }} /> : null}
       {!isLoading && !error && (
         <FlatList
           data={data?.items ?? []}

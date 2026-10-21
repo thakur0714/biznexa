@@ -29,7 +29,7 @@ Done and merged: API (most of S1), S3 and S11. The 4 findings left in S11 are pa
 |---|---|---|---|---|
 | **S1** | `apps/api/src` (what's left: `tickets/`, `reminders/reminder-job.service.ts`, `invoices/invoice-template.ts`, `certificates/certificate-csv.ts`, `*.spec.ts` in `src`, `notifications/channels/whatsapp.channel.ts`, `notifications/providers/sms.provider.ts`, `main.ts`, `settings/`, `queue/`, `prisma/`, `consultants/availability.service.ts`, `config/env.ts`) | 52 left | Claude | `sonar-s1-api` |
 | **S2a** ✅ | `apps/web/e2e`, `scripts/` | 37 | Jules (trial task) | `sonar-s2a-e2e` |
-| **S2b** | `apps/api/test`: files whose names start with `a`–`d` (`admin-*`, `app.*`, `application*`, `bookings*`, `certificate*`, `cms*`, `consultant*`, `customer*`, `data-isolation*`) | ~75 | Jules | `sonar-s2b-api-tests` |
+| **S2b** ✅ | `apps/api/test`: files whose names start with `a`–`d` (`admin-*`, `app.*`, `application*`, `bookings*`, `certificate*`, `cms*`, `consultant*`, `customer*`, `data-isolation*`) | ~75 | Jules | `sonar-s2b-api-tests` |
 | **S2c** | `apps/api/test`: every other file (names from `e` to `z`, plus helpers such as `staff.ts`, `setup-env.js`) | ~120 | Jules | `sonar-s2c-api-tests` |
 | **S3** ✅ | `apps/web/src/components`, `apps/web/src/lib`, and in `apps/web/src/app`: the root files (`page.tsx`, `layout.tsx`, `error.tsx`, `globals.css`, …), `login/`, `register/`, `forgot-password/`, `verify/`, `services/`, `blog/` | ~110 | Gemini Flash (finished by Claude) | `sonar-s3-web-public` |
 | **S4** | `apps/web/src/app/dashboard` | ~80 | Antigravity | `sonar-s4-web-dashboard` |
@@ -40,7 +40,7 @@ Done and merged: API (most of S1), S3 and S11. The 4 findings left in S11 are pa
 | **S8** | `apps/admin/src/app/(portal)/consultant`, `…/consultants`, `…/payments`, `…/customers`, `…/notifications` | ~80 | Antigravity | `sonar-s8-admin-people` |
 | **S9** | `apps/admin/src`: every other `(portal)` folder (settings, cms, documents, support, reports, privacy, reviews, audit, `[section]`, `layout.tsx`, `page.tsx`), plus `components/`, `lib/`, `app/two-factor`, `app/login`, `app/layout.tsx` | ~90 | Antigravity | `sonar-s9-admin-rest` |
 | **S10a** ✅ | `apps/mobile`: everything except `src/screens` (`App.tsx`, `src/api`, `src/auth`, `src/navigation`, `src/components`, …) | ~45 | Codex | `sonar-s10a-mobile-core` |
-| **S10b** | `apps/mobile/src/screens`: every file except `BuyFlowScreen.tsx` and `ApplicationDetailScreen.tsx` | 41 | Codex | `sonar-s10b-mobile-screens` |
+| **S10b** ✅ | `apps/mobile/src/screens`: every file except `BuyFlowScreen.tsx` and `ApplicationDetailScreen.tsx` | 41 | Codex | `sonar-s10b-mobile-screens` |
 | **S10c** | `apps/mobile/src/screens/BuyFlowScreen.tsx`, `apps/mobile/src/screens/ApplicationDetailScreen.tsx` | 30 | Codex or Claude | `sonar-s10c-mobile-flows` |
 | **S11** ✅ | `packages/ui`, `packages/config`, `packages/rich-text` | ~75 | Devin (finished by Claude) | `sonar-s11-ui` |
 | **S12a** | `packages/types` | 71 | Jules | `sonar-s12a-types` |
