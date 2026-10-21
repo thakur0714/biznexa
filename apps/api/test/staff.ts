@@ -6,6 +6,7 @@ import * as bcrypt from 'bcryptjs';
 import type request from 'supertest';
 import type { PrismaService } from '../src/prisma/prisma.service';
 import { timeStep, totpCode } from '../src/auth/totp';
+import { seedAccess } from '../prisma/seed-access';
 
 type Http = ReturnType<typeof request>;
 export const STAFF_PASSWORD = 'Staff@12345';
@@ -30,6 +31,8 @@ export async function createStaff(prisma: PrismaService, role: string | string[]
 
 /** Logs in with the password, sets up 2FA and returns the verified access token and the TOTP secret. */
 export async function staffSession(http: Http, prisma: PrismaService, role: string | string[], email: string) {
+  // Keep the disposable e2e database aligned with newly added additive permissions.
+  await seedAccess(prisma);
   await createStaff(prisma, role, email);
   const login = await http.post('/api/auth/login').send({ email, password: STAFF_PASSWORD }).expect(200);
   const auth = `Bearer ${login.body.accessToken}`;

@@ -27,6 +27,7 @@ export const PERMISSIONS: Record<string, string> = {
   'tickets.manage': 'Handle support tickets',
   'reports.view': 'View reports',
   'settings.manage': 'Change platform settings, roles and staff',
+  'users.manage': 'Manage staff accounts, roles, status and two-factor setup',
   'audit.view': 'View the audit log',
   'leads.view': 'View enquiries from the website',
   'notifications.view': 'View the notification delivery log and retry failed deliveries',
