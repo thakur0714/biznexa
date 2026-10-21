@@ -3,13 +3,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 const mockStore = new Map<string, string>();
 
 vi.mock('expo-secure-store', () => ({
-  isAvailableAsync: vi.fn(async () => true),
-  getItemAsync: vi.fn(async (key: string) => mockStore.get(key) ?? null),
-  setItemAsync: vi.fn(async (key: string, value: string) => {
+  isAvailableAsync: vi.fn(() => Promise.resolve(true)),
+  getItemAsync: vi.fn((key: string) => Promise.resolve(mockStore.get(key) ?? null)),
+  setItemAsync: vi.fn((key: string, value: string) => {
     mockStore.set(key, value);
+    return Promise.resolve();
   }),
-  deleteItemAsync: vi.fn(async (key: string) => {
+  deleteItemAsync: vi.fn((key: string) => {
     mockStore.delete(key);
+    return Promise.resolve();
   }),
   AFTER_FIRST_UNLOCK: 'AFTER_FIRST_UNLOCK',
 }));
