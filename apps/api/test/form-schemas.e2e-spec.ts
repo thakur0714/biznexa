@@ -135,7 +135,7 @@ describe('form schema versions (M3.3)', () => {
   it('gives consecutive version numbers to concurrent saves and keeps one current version', async () => {
     const results = await Promise.all([1, 2, 3, 4].map((n) => save({ schema: form(`Concurrent ${n}`) })));
     expect(results.map((r) => r.status)).toEqual([201, 201, 201, 201]);
-    expect(results.map((r) => r.body.version).sort()).toEqual([5, 6, 7, 8]);
+    expect(results.map((r) => r.body.version).sort((a, b) => a - b)).toEqual([5, 6, 7, 8]);
     const current = await prisma.serviceFormSchema.findMany({ where: { serviceId, isCurrent: true }, select: { version: true } });
     expect(current).toEqual([{ version: 8 }]);
   });

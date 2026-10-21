@@ -7,7 +7,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { staffSession } from './staff';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 
 describe('Leads API (e2e)', () => {
   let app: NestExpressApplication;

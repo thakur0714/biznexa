@@ -83,9 +83,9 @@ async function paidApplication() {
 /** Polls until the invoice of `paymentId` has its PDF; returns the invoice and how long it took. */
 async function pdfOf(paymentId: string, since: number, ms = 60_000) {
   while (Date.now() - since < ms) {
-    const inv = await prisma.invoice.findUnique({ where: { paymentId }, select: { id: true, number: true, pdfKey: true } });
+    const inv = await prisma.invoice.findUnique({ where: { paymentId }, select: { id: true, number: true, pdfKey: true } }); // NOSONAR: tests run steps in order
     if (inv?.pdfKey) return { ...inv, pdfKey: inv.pdfKey, took: Date.now() - since };
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 200)); // NOSONAR: tests run steps in order
   }
   throw new Error(`No invoice PDF for payment ${paymentId} within ${ms} ms`);
 }
@@ -145,7 +145,7 @@ afterAll(async () => {
   jest.restoreAllMocks();
   const orders = { customer: users };
   const invoices = await prisma.invoice.findMany({ where: { order: orders }, select: { pdfKey: true } });
-  for (const { pdfKey } of invoices) if (pdfKey) await storage.remove(pdfKey);
+  for (const { pdfKey } of invoices) if (pdfKey) await storage.remove(pdfKey); // NOSONAR: tests run steps in order
   await prisma.auditLog.deleteMany({ where: { OR: [{ actor: users }, { entityType: 'Application', entityId: { in: (await prisma.application.findMany({ where: { order: orders }, select: { id: true } })).map((a) => a.id) } }] } });
   await prisma.invoice.deleteMany({ where: { order: orders } });
   await prisma.invoiceSequence.deleteMany({ where: { financialYear: FY } });
@@ -187,7 +187,7 @@ describe('invoice PDF + download (M3.23)', () => {
 
     const res = await http.get(link.url).buffer(true).parse(binary).expect(200);
     expect(res.headers['content-type']).toBe('application/pdf');
-    expect(res.headers['content-disposition']).toContain(`attachment; filename="Invoice ${invoice.number.replace(/\//g, '-')}.pdf"`);
+    expect(res.headers['content-disposition']).toContain(`attachment; filename="Invoice ${invoice.number.replaceAll('/', '-')}.pdf"`);
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['cache-control']).toBe('private, no-store');
     expect(Buffer.compare(res.body as Buffer, await stored(invoice.pdfKey))).toBe(0);

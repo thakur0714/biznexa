@@ -12,7 +12,7 @@ describe('M4.17 fulfilment integration flow', () => {
   let http: ReturnType<typeof request>;
   let prisma: PrismaService;
   const run = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-  const prefix = `BNM417${run.replace(/\D/g, '')}`;
+  const prefix = `BNM417${run.replaceAll(/\D/g, '')}`;
   let customerId = '';
   let opsId = '';
   let customerToken = '';
@@ -36,7 +36,7 @@ describe('M4.17 fulfilment integration flow', () => {
     const customer = await http.post('/api/auth/register').send({
       name: `M4.17 Customer ${run}`,
       email: `m417-customer-${run}@example.com`,
-      mobile: `8${run.replace(/\D/g, '').slice(-9).padStart(9, '0')}`,
+      mobile: `8${run.replaceAll(/\D/g, '').slice(-9).padStart(9, '0')}`,
       password: 'Password@123',
       consent: true,
     }).expect(201);
@@ -100,7 +100,7 @@ describe('M4.17 fulfilment integration flow', () => {
     const file = await prisma.storedFile.create({
       data: {
         fileKey: `m417/${run}/${originalName}`, originalName, mimeType: 'application/pdf',
-        sizeBytes: 1024, sha256: `${run.replace(/\D/g, '').padStart(64, '0').slice(-64)}`,
+        sizeBytes: 1024, sha256: `${run.replaceAll(/\D/g, '').padStart(64, '0').slice(-64)}`,
         ownerId, scanStatus: 'CLEAN', ...(ownerId === customerId && requirementId ? { requirementId } : {}),
       },
     });
@@ -110,9 +110,9 @@ describe('M4.17 fulfilment integration flow', () => {
 
   async function waitForNotifications(events: string[]) {
     for (let attempt = 0; attempt < 100; attempt += 1) {
-      const rows = await prisma.notification.findMany({ where: { userId: customerId, channel: 'IN_APP', event: { in: events } } });
+      const rows = await prisma.notification.findMany({ where: { userId: customerId, channel: 'IN_APP', event: { in: events } } }); // NOSONAR: tests run steps in order
       if (events.every((event) => rows.some((row) => row.event === event))) return rows;
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50)); // NOSONAR: tests run steps in order
     }
     return prisma.notification.findMany({ where: { userId: customerId, channel: 'IN_APP', event: { in: events } } });
   }

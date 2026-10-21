@@ -132,7 +132,7 @@ describe('M4 Fulfilment Authorization & Scoping (M4.17)', () => {
         assignedToId: null, // unassigned
       },
     });
-    app2Id = app2.id;
+    const _app2Id = app2.id;
 
     // 4. Stored files & document on app1
     const storedFile1 = await prisma.storedFile.create({
@@ -192,7 +192,7 @@ describe('M4 Fulfilment Authorization & Scoping (M4.17)', () => {
         uploadedById: assignedOpsId,
       },
     });
-    deliv1Id = deliv1.id;
+    const _deliv1Id = deliv1.id;
   });
 
   afterAll(async () => {
