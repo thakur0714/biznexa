@@ -27,7 +27,8 @@ describe('Featured consultants (Public & Admin API)', () => {
     await http().post('/api/auth/register').send({
       name: `${label} consultant`, email,
       mobile: `7${randomInt(100_000_000, 1_000_000_000)}`,
-      password: 'Customer@12345', consent: true,
+      password: 'Customer@12345', // NOSONAR: test credential
+      consent: true,
     }).expect(201).then((response) => registerSchema.parse(response.body));
     const user = await prisma.user.findUniqueOrThrow({ where: { email }, select: { id: true } });
     userIds.push(user.id);

@@ -211,7 +211,7 @@ describe('order summary (M3.13)', () => {
       const before = await storedOrder(orderId);
       const code = await coupon();
       for (const extra of [{ total: 1 }, { discount: 99999999 }, { amount: 100 }, { professionalFee: 0, gstRate: 0 }, { couponId: randomUUID() }]) {
-        await apply(alice, id, { code, ...extra }).expect(400);
+        await apply(alice, id, { code, ...extra }).expect(400); // NOSONAR: tests run steps in order
       }
       await apply(alice, id, { code: { discount: 50000 } }).expect(400);
       expect(await storedOrder(orderId)).toEqual(before);

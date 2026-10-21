@@ -49,4 +49,4 @@ async function main() {
   throw new Error('Action must be create or delete');
 }
 
-main().finally(() => prisma.$disconnect());
+void main().finally(() => prisma.$disconnect());
