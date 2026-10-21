@@ -7,7 +7,7 @@ import { DocumentsStep } from './documents-step';
 
 export const metadata: Metadata = { title: 'Documents', robots: { index: false } };
 
-export default async function ApplyDocumentsPage({ params }: { params: Promise<{ service: string; applicationId: string }> }) {
+export default async function ApplyDocumentsPage({ params }: Readonly<{ params: Promise<{ service: string; applicationId: string }> }>) {
   const { service, applicationId } = await params;
   const s = await apiOrNull<ServiceDetail>(`/catalogue/services/${encodeURIComponent(service)}`);
   if (!s) notFound();

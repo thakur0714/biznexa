@@ -7,7 +7,7 @@ import { SummaryStep } from './summary-step';
 
 export const metadata: Metadata = { title: 'Order summary', robots: { index: false } };
 
-export default async function ApplySummaryPage({ params }: { params: Promise<{ service: string; applicationId: string }> }) {
+export default async function ApplySummaryPage({ params }: Readonly<{ params: Promise<{ service: string; applicationId: string }> }>) {
   const { service, applicationId } = await params;
   const s = await apiOrNull<ServiceDetail>(`/catalogue/services/${encodeURIComponent(service)}`);
   if (!s) notFound();
