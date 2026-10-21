@@ -33,10 +33,18 @@ export function SiteHeader({ categories }: { readonly categories: readonly Categ
   }
 
   useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    if (!menuOpen && !mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+        setMobileOpen(false);
+      }
+    };
     const onClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setMenuOpen(false);
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+        setMobileOpen(false);
+      }
     };
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onClick);
@@ -44,7 +52,7 @@ export function SiteHeader({ categories }: { readonly categories: readonly Categ
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onClick);
     };
-  }, [menuOpen]);
+  }, [menuOpen, mobileOpen]);
 
   let account: React.ReactNode = <span className="h-9 w-40" />;
   if (ready) {
@@ -89,6 +97,35 @@ export function SiteHeader({ categories }: { readonly categories: readonly Categ
           >
             Services <Icon name="chevronDown" size={16} className={`transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
           </button>
+          {menuOpen && (
+            <div id="services-menu" className="absolute inset-x-4 top-[calc(100%+1px)] z-50 rounded-b-lg border border-t-0 border-rule bg-white p-6 shadow-[0_24px_40px_-20px_rgba(18,26,69,0.35)] sm:inset-x-6">
+              <div className="grid grid-cols-4 gap-x-8 gap-y-6">
+                {categories.map((c) => (
+                  <div key={c.slug}>
+                    <Link href={`/services/${c.slug}`} className="flex items-center gap-2 font-semibold text-night hover:text-ink">
+                      <Icon name={c.icon ?? 'file'} size={18} className="text-ink" />
+                      {c.name}
+                    </Link>
+                    <ul className="mt-2 space-y-1.5 border-l border-rule pl-[26px] text-sm text-muted">
+                      {c.topServices.slice(0, 5).map((s) => (
+                        <li key={s.slug}>
+                          <Link href={`/services/${c.slug}/${s.slug}`} className="hover:text-ink hover:underline">
+                            {s.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                <div className="flex flex-col justify-end rounded-md bg-ink-050 p-4">
+                  <p className="text-sm text-muted">Browse every service with prices and timelines.</p>
+                  <Link href="/services" className="mt-2 font-semibold text-ink hover:underline">
+                    All services
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
           {NAV.map((n) => (
             <Link
               key={n.href}
@@ -109,36 +146,6 @@ export function SiteHeader({ categories }: { readonly categories: readonly Categ
             <Icon name={mobileOpen ? 'x' : 'menu'} size={24} />
           </button>
         </div>
-
-        {menuOpen && (
-          <div id="services-menu" className="absolute inset-x-4 top-[calc(100%+1px)] z-50 rounded-b-lg border border-t-0 border-rule bg-white p-6 shadow-[0_24px_40px_-20px_rgba(18,26,69,0.35)] sm:inset-x-6">
-            <div className="grid grid-cols-4 gap-x-8 gap-y-6">
-              {categories.map((c) => (
-                <div key={c.slug}>
-                  <Link href={`/services/${c.slug}`} className="flex items-center gap-2 font-semibold text-night hover:text-ink">
-                    <Icon name={c.icon ?? 'file'} size={18} className="text-ink" />
-                    {c.name}
-                  </Link>
-                  <ul className="mt-2 space-y-1.5 border-l border-rule pl-[26px] text-sm text-muted">
-                    {c.topServices.slice(0, 5).map((s) => (
-                      <li key={s.slug}>
-                        <Link href={`/services/${c.slug}/${s.slug}`} className="hover:text-ink hover:underline">
-                          {s.name}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-              <div className="flex flex-col justify-end rounded-md bg-ink-050 p-4">
-                <p className="text-sm text-muted">Browse every service with prices and timelines.</p>
-                <Link href="/services" className="mt-2 font-semibold text-ink hover:underline">
-                  All services
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {mobileOpen && (

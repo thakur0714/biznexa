@@ -15,6 +15,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en-IN">
       {/* Browser extensions add attributes to <body> before hydration. */}
       <body className="min-h-screen antialiased" suppressHydrationWarning>
+        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-night focus:shadow-md focus:outline-2 focus:outline-offset-2 focus:outline-ink">
+          Skip to content
+        </a>
         <AuthProvider>
           <ToastProvider>{children}</ToastProvider>
         </AuthProvider>

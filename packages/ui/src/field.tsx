@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react';
 
-const control = 'h-11 w-full rounded-md border bg-white text-[15px] outline-none transition-colors focus:border-ink';
+const control = 'h-11 w-full rounded-md border bg-white text-[15px] outline-none transition-colors focus:border-ink focus-visible:ring-2 focus-visible:ring-ink/20';
 
 interface FieldProps {
   label: string;
@@ -20,9 +20,11 @@ function FieldShell({ label, id, error, hint, className, children }: FieldProps 
 
   return (
     <div className={className}>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-night">
-        {label}
-      </label>
+      {label && (
+        <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-night">
+          {label}
+        </label>
+      )}
       {children}
       {helper}
     </div>
@@ -43,7 +45,7 @@ export function Field({ label, error, hint, id, className = '', ...rest }: Compo
         id={id}
         aria-invalid={!!error}
         aria-describedby={describedBy(id, error, hint)}
-        className={`${control} px-3.5 placeholder:text-muted/70 ${error ? 'border-danger' : 'border-rule'}`}
+        className={`${control} px-3.5 placeholder:text-muted ${error ? 'border-danger' : 'border-rule'}`}
         {...rest}
       />
     </FieldShell>
@@ -70,7 +72,7 @@ export function TextArea({ label, error, hint, id, className = '', rows = 3, ...
         rows={rows}
         aria-invalid={!!error}
         aria-describedby={describedBy(id, error, hint)}
-        className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-[15px] leading-relaxed outline-none transition-colors placeholder:text-muted/70 focus:border-ink ${error ? 'border-danger' : 'border-rule'}`}
+        className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-[15px] leading-relaxed outline-none transition-colors placeholder:text-muted focus:border-ink focus-visible:ring-2 focus-visible:ring-ink/20 ${error ? 'border-danger' : 'border-rule'}`}
         {...rest}
       />
     </FieldShell>

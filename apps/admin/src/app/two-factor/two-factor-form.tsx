@@ -88,9 +88,9 @@ export function TwoFactorForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+    <main id="main" className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[440px]">
-        <Logo tag="Admin" label="BizNexa admin home" />
+        <Logo tag="Admin" />
         <h1 className="mt-8 text-2xl font-bold tracking-[-0.02em]">{settingUp ? 'Set up two-factor authentication' : 'Enter your security code'}</h1>
         <p className="mt-1 text-muted">
           {settingUp
@@ -157,6 +157,6 @@ export function TwoFactorForm() {
         </button>
         {!settingUp && <p className="mt-2 text-sm text-muted">Lost your phone? Ask an admin to reset two-factor authentication for your account.</p>}
       </div>
-    </div>
+    </main>
   );
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { formatDate, type CustomerCertificateRow } from '@biznexa/types';
-import { Badge, Button, EmptyState, LinkButton, Notice, type Tone } from '@biznexa/ui';
+import { Badge, Button, Dialog, EmptyState, LinkButton, Notice, type Tone } from '@biznexa/ui';
 import { Icon } from '@/components/icons';
 import { useApi } from '@biznexa/api-client/react';
 
@@ -287,51 +287,14 @@ export function CustomerCertificatesView() {
       {content}
 
       {/* QR Code Modal */}
-      {activeQrModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button
-            type="button"
-            className="fixed inset-0 bg-black/50 cursor-default border-none"
-            onClick={() => setActiveQrModal(null)}
-            aria-label="Close modal backdrop"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="qr-modal-title"
-            className="relative z-10 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 id="qr-modal-title" className="text-base font-bold text-night">Official QR Code</h3>
-                <p className="text-xs text-muted">{activeQrModal.certificateNumber}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveQrModal(null)}
-                className="text-muted hover:text-night p-1"
-                aria-label="Close modal"
-              >
-                <Icon name="x" size={20} />
-              </button>
-            </div>
-
-            <div className="my-6 flex flex-col items-center justify-center rounded-lg border border-rule bg-paper/50 p-4">
-              {activeQrModal.qrDataUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={activeQrModal.qrDataUrl}
-                  alt={`QR Code for ${activeQrModal.certificateNumber}`}
-                  className="h-48 w-48 rounded"
-                />
-              )}
-              <p className="mt-3 text-center text-xs text-muted">
-                Scan to instantly verify credentials at{' '}
-                <span className="font-mono text-night">{activeQrModal.verificationId}</span>
-              </p>
-            </div>
-
-            <div className="flex gap-2">
+      <Dialog
+        open={Boolean(activeQrModal)}
+        onClose={() => setActiveQrModal(null)}
+        title="Official QR Code"
+        description={activeQrModal?.certificateNumber}
+        footer={
+          activeQrModal && (
+            <div className="flex w-full gap-2">
               <Button
                 variant="outline"
                 className="flex-1"
@@ -357,9 +320,26 @@ export function CustomerCertificatesView() {
                 Download QR
               </Button>
             </div>
+          )
+        }
+      >
+        {activeQrModal && (
+          <div className="my-2 flex flex-col items-center justify-center rounded-lg border border-rule bg-paper/50 p-4">
+            {activeQrModal.qrDataUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={activeQrModal.qrDataUrl}
+                alt={`QR Code for ${activeQrModal.certificateNumber}`}
+                className="h-48 w-48 rounded"
+              />
+            )}
+            <p className="mt-3 text-center text-xs text-muted">
+              Scan to instantly verify credentials at{' '}
+              <span className="font-mono text-night">{activeQrModal.verificationId}</span>
+            </p>
           </div>
-        </div>
-      )}
+        )}
+      </Dialog>
     </div>
   );
 }
@@ -524,7 +504,7 @@ function CertificateCard({
           {needsRenewal && (
             <Link
               href={`/services?renew=certificate&type=${encodeURIComponent(cert.type)}&org=${encodeURIComponent(cert.organizationName)}`}
-              className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-md bg-amber-800 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-900 transition"
             >
               <Icon name="refresh" size={15} />
               Renew Certificate

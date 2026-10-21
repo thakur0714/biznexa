@@ -6,6 +6,9 @@ import { useEffect, useId, useRef, type ReactNode } from 'react';
  * Modal dialog on the native `<dialog>` element: the browser traps focus, closes on Escape
  * and returns focus to the trigger. Clicking the backdrop also closes it.
  */
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function Dialog({
   open,
   onClose,
@@ -32,6 +35,33 @@ export function Dialog({
     else if (!open && el.open) el.close();
   }, [open]);
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDialogElement>) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    const el = ref.current;
+    if (!el) return;
+    const focusables = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+      (node) => node.offsetParent !== null || node.getClientRects().length > 0,
+    );
+    if (focusables.length === 0) return;
+    const first = focusables[0]!;
+    const last = focusables[focusables.length - 1]!;
+    const active = document.activeElement as HTMLElement | null;
+    if (e.shiftKey) {
+      if (!active || !el.contains(active) || active === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (!active || !el.contains(active) || active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
     <dialog
       ref={ref}
@@ -39,6 +69,7 @@ export function Dialog({
       aria-describedby={description ? descId : undefined}
       // Fires for Escape and for el.close(); only report it while the parent still thinks we are open.
       onClose={() => open && onClose()}
+      onKeyDown={handleKeyDown}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       className="m-auto w-[calc(100%-2rem)] max-w-lg rounded-lg border border-rule bg-white p-0 text-night shadow-xl backdrop:bg-night/50"
     >

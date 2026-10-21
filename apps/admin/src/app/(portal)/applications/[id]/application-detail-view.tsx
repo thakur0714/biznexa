@@ -130,6 +130,7 @@ export function ApplicationDetailView({ id }: { id: string }) {
           <p className="flex items-center gap-2">
             <span className="text-muted">Assignee:</span> {data.assignedTo?.name || 'Unassigned'} {canAssign && staff.length > 0 && (
               <select 
+                aria-label="Assign to staff member"
                 className="ml-2 border rounded p-1 text-sm"
                 value={data.assignedTo?.id || ''}
                 onChange={e => updateAssignee(e.target.value)}
