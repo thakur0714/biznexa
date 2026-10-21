@@ -27,8 +27,8 @@ export interface AuthContextValue {
   isBiometricsEnabled: boolean;
   api: ApiClient;
   loginWithPassword: (email: string, password: string) => Promise<void>;
-  requestOtp: (mobile: string, purpose?: 'LOGIN' | 'VERIFY_MOBILE' | 'RESET_PASSWORD') => Promise<{ message: string; resendAfterSec?: number }>;
-  verifyOtp: (mobile: string, code: string, purpose?: 'LOGIN' | 'VERIFY_MOBILE' | 'RESET_PASSWORD') => Promise<void>;
+  requestOtp: (mobile: string, purpose?: OtpPurpose) => Promise<OtpRequestResult>;
+  verifyOtp: (mobile: string, code: string, purpose?: OtpPurpose) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   register: (name: string, mobile: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -37,14 +37,17 @@ export interface AuthContextValue {
   unlockWithBiometrics: () => Promise<boolean>;
 }
 
+type OtpPurpose = 'LOGIN' | 'VERIFY_MOBILE' | 'RESET_PASSWORD';
+type OtpRequestResult = { message: string; resendAfterSec?: number };
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children, baseUrl }: { children: React.ReactNode; baseUrl?: string }) {
+export function AuthProvider({ children, baseUrl }: Readonly<{ children: React.ReactNode; baseUrl?: string }>) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthMeResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
-  const [isBiometricsEnabled, setIsBiometricsEnabledState] = useState(false);
+  const [isBiometricsEnabled, setIsBiometricsEnabled] = useState(false);
   const registeredDeviceToken = useRef<string | null>(null);
 
   // Maintain reference to current in-memory token for client
@@ -61,7 +64,7 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
 
     try {
       const unauthClient = createMobileApiClient({ baseUrl });
-      const { data, error, response } = await unauthClient.POST('/api/auth/refresh', {
+      const { data, response } = await unauthClient.POST('/api/auth/refresh', {
         headers: { 'x-client': 'mobile' },
         body: { refreshToken: storedRefresh },
       });
@@ -102,7 +105,9 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
   );
 
   const registerDeviceToken = useCallback(async (accessToken: string, deviceToken: string) => {
-    const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+    let platform: 'ios' | 'android' | 'web' = 'web';
+    if (Platform.OS === 'ios') platform = 'ios';
+    else if (Platform.OS === 'android') platform = 'android';
     const { response } = await api.POST('/api/notifications/devices/register', {
       headers: { authorization: `Bearer ${accessToken}`, 'x-client': 'mobile' },
       body: { token: deviceToken, platform },
@@ -312,7 +317,7 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
       }
     }
     await setStoredBiometricsEnabled(enabled);
-    setIsBiometricsEnabledState(enabled);
+    setIsBiometricsEnabled(enabled);
     return true;
   }, []);
 
@@ -328,7 +333,7 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
   // Initialize session on mount
   useEffect(() => {
     let isMounted = true;
-    (async () => {
+    void (async () => {
       try {
         const [bioEnabled, storedRefresh] = await Promise.all([
           getStoredBiometricsEnabled(),
@@ -336,7 +341,7 @@ export function AuthProvider({ children, baseUrl }: { children: React.ReactNode;
         ]);
 
         if (!isMounted) return;
-        setIsBiometricsEnabledState(bioEnabled);
+        setIsBiometricsEnabled(bioEnabled);
 
         if (storedRefresh) {
           if (bioEnabled) {

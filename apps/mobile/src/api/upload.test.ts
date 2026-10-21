@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { uploadMobileFile } from './upload';
-import { resolveApiUrl, DEFAULT_BASE_URL } from './client';
+import { resolveApiUrl } from './client';
 
 describe('resolveApiUrl', () => {
   it('resolves relative URLs against default or custom base URL', () => {
@@ -38,7 +38,7 @@ describe('uploadMobileFile', () => {
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => mockFileResult,
+      json: () => Promise.resolve(mockFileResult),
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -67,7 +67,7 @@ describe('uploadMobileFile', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
       status: 400,
-      json: async () => ({ message: 'File rejected: not a valid PDF' }),
+      json: () => Promise.resolve({ message: 'File rejected: not a valid PDF' }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
