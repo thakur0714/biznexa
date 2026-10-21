@@ -19,7 +19,7 @@ export interface CardProps {
   onPress?: () => void;
 }
 
-export function Card({ children, style, onPress }: CardProps) {
+export function Card({ children, style, onPress }: Readonly<CardProps>) {
   if (onPress) {
     return (
       <TouchableOpacity
@@ -52,7 +52,7 @@ export function Button({
   disabled = false,
   loading = false,
   style,
-}: ButtonProps) {
+}: Readonly<ButtonProps>) {
   const buttonVariantStyle = {
     primary: styles.btnPrimary,
     secondary: styles.btnSecondary,
@@ -106,7 +106,7 @@ export interface InputProps extends TextInputProps {
   containerStyle?: ViewStyle;
 }
 
-export function Input({ label, error, containerStyle, style, ...props }: InputProps) {
+export function Input({ label, error, containerStyle, style, ...props }: Readonly<InputProps>) {
   return (
     <View style={[styles.inputContainer, containerStyle]}>
       {label && <Text style={styles.inputLabel}>{label}</Text>}
@@ -127,7 +127,7 @@ export interface BadgeProps {
   textStyle?: TextStyle;
 }
 
-export function Badge({ label, variant = 'seal', style, textStyle }: BadgeProps) {
+export function Badge({ label, variant = 'seal', style, textStyle }: Readonly<BadgeProps>) {
   const badgeStyle = {
     seal: styles.badgeSeal,
     marigold: styles.badgeMarigold,
@@ -167,7 +167,7 @@ export function EmptyState({
   actionTitle,
   onAction,
   style,
-}: EmptyStateProps) {
+}: Readonly<EmptyStateProps>) {
   return (
     <View style={[styles.emptyStateContainer, style]}>
       <View style={styles.emptyIconCircle}>
@@ -193,11 +193,11 @@ export interface LoadingStateProps {
   style?: ViewStyle;
 }
 
-export function LoadingState({ message = 'Loading…', style }: LoadingStateProps) {
+export function LoadingState({ message = 'Loading…', style }: Readonly<LoadingStateProps>) {
   return (
     <View style={[styles.loadingContainer, style]}>
       <ActivityIndicator size="large" color={colors.ink} />
-      {message && <Text style={styles.loadingText}>{message}</Text>}
+      {Boolean(message) && <Text style={styles.loadingText}>{message}</Text>}
     </View>
   );
 }
@@ -214,7 +214,7 @@ export function ErrorState({
   message,
   onRetry,
   style,
-}: ErrorStateProps) {
+}: Readonly<ErrorStateProps>) {
   return (
     <View style={[styles.errorContainer, style]}>
       <View style={styles.errorIconCircle}>

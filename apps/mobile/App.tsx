@@ -21,9 +21,9 @@ Sentry.init({
   tracesSampleRate: 0,
   beforeSend(event) {
     const clean = (value: string) => value
-      .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email]')
-      .replace(/(?<![\w-])(?:\+?91[ -]?)?[6-9]\d{9}(?![\w-])/g, '[mobile]')
-      .replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[token]');
+      .replaceAll(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email]')
+      .replaceAll(/(?<![\w-])(?:\+?91[ -]?)?[6-9]\d{9}(?![\w-])/g, '[mobile]')
+      .replaceAll(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[token]');
     event.user = undefined;
     event.extra = undefined;
     event.tags = undefined;
@@ -48,7 +48,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 };
 let pendingDestination: ReturnType<typeof notificationDestination> | null = null;
 
-function VersionGate({ children }: { children: React.ReactNode }) {
+function VersionGate({ children }: Readonly<{ children: React.ReactNode }>): React.ReactNode {
   const { api } = useAuth();
   const [minimum, setMinimum] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
@@ -67,13 +67,13 @@ function VersionGate({ children }: { children: React.ReactNode }) {
     <Text style={gateStyles.title}>Update required</Text>
     <Text style={gateStyles.message}>BizNexa {minimum} or later is required. Install the latest version from your tester distribution, then reopen the app.</Text>
   </View>;
-  return children;
+  return <>{children}</>;
 }
 
 const gateStyles = StyleSheet.create({ center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, backgroundColor: '#fff' }, title: { fontSize: 24, fontWeight: '700', color: '#17213f', textAlign: 'center' }, message: { marginTop: 12, fontSize: 15, color: '#586174', textAlign: 'center' } });
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: false, shouldSetBadge: false }),
+  handleNotification: () => Promise.resolve({ shouldShowAlert: true, shouldPlaySound: false, shouldSetBadge: false }),
 });
 
 function navigateToNotification(data: Record<string, unknown>) {
