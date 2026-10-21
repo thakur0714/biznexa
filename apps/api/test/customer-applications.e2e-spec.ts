@@ -20,7 +20,7 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
   let prisma: PrismaService;
 
   const runId = randomBytes(4).toString('hex');
-  const numSuffix = (parseInt(runId.slice(0, 7), 16) % 9000000) + 1000000;
+  const numSuffix = (Number.parseInt(runId.slice(0, 7), 16) % 9000000) + 1000000;
 
   let aliceToken: string;
   let aliceId: string;
@@ -92,7 +92,7 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
           ],
         },
         formSchemas: {
-          create: [{ version: 1, schema: JSON.parse(JSON.stringify(GENERIC_SERVICE_FORM)), isCurrent: true }],
+          create: [{ version: 1, schema: structuredClone(GENERIC_SERVICE_FORM), isCurrent: true }],
         },
       },
       select: {
@@ -107,7 +107,7 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
     requirementId = svc.documents[0].id;
     stageIds = svc.stages.map((s) => s.id);
 
-    const baseSeq = (parseInt(runId, 16) % 800000) + 100000;
+    const baseSeq = (Number.parseInt(runId, 16) % 800000) + 100000;
 
     async function seedApp(opts: {
       customerId: string;
@@ -132,7 +132,7 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
           subtotal: opts.total,
           total: opts.total,
           amountPaid: opts.amountPaid,
-          status: opts.amountPaid >= opts.total ? 'PAID' : opts.amountPaid > 0 ? 'PARTIALLY_PAID' : 'CREATED',
+          status: (() => { if (opts.amountPaid >= opts.total) { return 'PAID'; } if (opts.amountPaid > 0) { return 'PARTIALLY_PAID'; } return 'CREATED'; })(),
         },
       });
       createdOrderIds.push(order.id);
@@ -346,7 +346,7 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
     expect(statuses).not.toContain('COMPLETED');
     expect(statuses).not.toContain('CANCELLED');
 
-    const actions = parsed.items.map((i) => i.nextAction).sort();
+    const actions = parsed.items.map((i) => i.nextAction).sort((a, b) => a.localeCompare(b));
     expect(actions).toEqual(['pay_balance', 'upload_documents', 'view']);
   });
 
@@ -407,7 +407,7 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
       spyReq.mockClear();
       spyDoc.mockClear();
 
-      const result2 = await docsService.pendingMandatoryMany(apps);
+      await docsService.pendingMandatoryMany(apps);
       const queryCount2 = spyReq.mock.calls.length + spyDoc.mock.calls.length;
       expect(queryCount2).toBeGreaterThan(0);
 
@@ -421,7 +421,7 @@ describe('Customer Applications API (M5.3 My Services & M5.4 Timeline)', () => {
 
       // Verify identical results one by one vs many
       for (const a of apps10) {
-        const one = await docsService.pendingMandatory(a);
+        const one = await /* NOSONAR: tests run steps in order */ docsService.pendingMandatory(a); // NOSONAR: tests run steps in order
         expect(result10.get(a.id)).toBe(one);
       }
     });

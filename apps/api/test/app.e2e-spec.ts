@@ -241,7 +241,7 @@ describe('access control', () => {
     const admin = await http.post('/api/auth/login').send({ email: 'admin@biznexa.local', password: 'Admin@12345' }).expect(200);
     expect(admin.body.user.permissions).toEqual(expect.arrayContaining(['admin.access', 'services.manage']));
 
-    const support = await http.post('/api/auth/login').send({ email: 'support@biznexa.local', password: 'Support@12345' }).expect(200);
+    const support = await http.post('/api/auth/login').send({ email: 'support@biznexa.local', password: 'Support@12345' }).expect(200); // NOSONAR: test credential
     expect(support.body.user.permissions).toContain('admin.access');
     expect(support.body.user.permissions).not.toContain('services.manage');
 
@@ -578,7 +578,7 @@ describe('OpenAPI document', () => {
     const stack = app.getHttpAdapter().getInstance().router.stack as { route?: { path: string; methods: Record<string, boolean> } }[];
     const served = stack
       .filter((layer) => layer.route)
-      .flatMap(({ route }) => Object.keys(route!.methods).map((m) => `${m.toUpperCase()} ${route!.path.replace(/:(\w+)/g, '{$1}')}`));
+      .flatMap(({ route }) => Object.keys(route!.methods).map((m) => `${m.toUpperCase()} ${route!.path.replaceAll(/:(\w+)/g, '{$1}')}`));
     expect(served.length).toBeGreaterThan(30);
     expect(served.filter((r) => !documented.has(r))).toEqual([]);
   });
@@ -586,12 +586,12 @@ describe('OpenAPI document', () => {
   it('matches the committed packages/api-client/openapi.json', () => {
     const committed = JSON.parse(readFileSync(resolve(__dirname, '../../../packages/api-client/openapi.json'), 'utf8'));
     // If this fails: pnpm --filter @biznexa/api-client generate
-    expect(JSON.parse(JSON.stringify(buildOpenApiDocument(app)))).toEqual(committed);
+    expect(structuredClone(buildOpenApiDocument(app))).toEqual(committed);
   });
 
   it('real responses match the published response schemas', async () => {
     for (const q of [`number=${verificationNumbers.active}`, `number=${verificationNumbers.suspended}`, 'number=DOES-NOT-EXIST']) {
-      const res = await http.get(`/api/public/certificates/verify?${q}`).expect(200);
+      const res = await /* NOSONAR: tests run steps in order */ http.get(`/api/public/certificates/verify?${q}`).expect(200);
       expect(certificateVerifyResultSchema.strict().safeParse(res.body).error).toBeUndefined();
     }
     const orgs = await http.get(`/api/public/certificates/search?organization=${verifyPrefix}`).expect(200);
