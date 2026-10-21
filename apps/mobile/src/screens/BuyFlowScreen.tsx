@@ -29,7 +29,6 @@ import {
   type FormAddress,
   type FormData,
   type FormField,
-  type FormSchema,
   type PaymentPlan,
 } from '@biznexa/types';
 import type { ServiceDetail } from '@biznexa/api-client';
@@ -49,7 +48,18 @@ type Asset = { uri: string; name: string; mimeType: string; size?: number };
 const emptyBusiness: BusinessEntityInput = { legalName: '', entityType: 'PRIVATE_LIMITED', pan: '', gstin: '', cin: '', address: null, state: null };
 const stepKey = (id: string) => `bn_apply_step:${id}`;
 
-function Field({ field, value, error, scope, onChange }: { field: FormField; value: unknown; error?: string; scope: Record<string, unknown>; onChange: (v: unknown) => void }) {
+function keyedRows(rows: Record<string, unknown>[], fieldName: string) {
+  const seen = new Map<string, number>();
+  return rows.map((row) => {
+    const content = JSON.stringify(row);
+    const count = seen.get(content) ?? 0;
+    seen.set(content, count + 1);
+    return { row, key: `${fieldName}-${content}#${count}` };
+  });
+}
+
+type FieldProps = { field: FormField; value: unknown; error?: string; scope: Record<string, unknown>; onChange: (v: unknown) => void };
+function Field({ field, value, error, scope, onChange }: Readonly<FieldProps>) {
   if (field.showIf && !conditionMet(field.showIf, scope)) return null;
   if (asksForAadhaar(field)) return <Text style={styles.help}>Aadhaar numbers are not collected. An expert takes Aadhaar OTP consent when filing.</Text>;
   const label = <Text style={styles.label}>{field.label}{field.required ? ' *' : ''}</Text>;
@@ -73,16 +83,21 @@ function Field({ field, value, error, scope, onChange }: { field: FormField; val
   }
   if (field.type === 'repeater') {
     const rows = Array.isArray(value) ? value.filter((row): row is Record<string, unknown> => !!row && typeof row === 'object' && !Array.isArray(row)) : [];
-    return <View style={styles.field}>{label}{help}{rows.map((row, index) => <Card key={`${field.name}-${index}`} style={styles.rowCard}><Text style={styles.help}>{field.itemLabel} {index + 1}</Text>{field.fields.map((sub) => <Field key={sub.name} field={sub} value={row[sub.name]} scope={{ ...scope, ...row }} onChange={(v) => onChange(rows.map((item, i) => i === index ? { ...item, [sub.name]: v } : item))} />)}<Button title="Remove" variant="ghost" onPress={() => onChange(rows.filter((_, i) => i !== index))} /></Card>)}<Button title={`Add ${field.itemLabel.toLowerCase()}`} variant="secondary" onPress={() => onChange([...rows, {}])} disabled={field.maxItems !== undefined && rows.length >= field.maxItems} />{errorText}</View>;
+    return <View style={styles.field}>{label}{help}{keyedRows(rows, field.name).map(({ row, key }, index) => <Card key={key} style={styles.rowCard}><Text style={styles.help}>{field.itemLabel} {index + 1}</Text>{field.fields.map((sub) => <Field key={sub.name} field={sub} value={row[sub.name]} scope={{ ...scope, ...row }} onChange={(v) => onChange(rows.map((item, i) => i === index ? { ...item, [sub.name]: v } : item))} />)}<Button title="Remove" variant="ghost" onPress={() => onChange(rows.filter((_, i) => i !== index))} /></Card>)}<Button title={`Add ${field.itemLabel.toLowerCase()}`} variant="secondary" onPress={() => onChange([...rows, {}])} disabled={field.maxItems !== undefined && rows.length >= field.maxItems} />{errorText}</View>;
   }
   if (field.type === 'file') {
     const fileIds = Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
     return <View style={styles.field}>{label}{help}<Text style={styles.help}>{fileIds.length} file(s) uploaded (max {field.maxSizeMb} MB each)</Text><Button title="Choose a file" variant="secondary" onPress={() => onPickFormFile(field, fileIds, onChange)} disabled={fileIds.length >= field.maxFiles} />{errorText}</View>;
   }
   const isLong = field.type === 'textarea';
-  const keyboardType = field.type === 'number' ? 'decimal-pad' : field.type === 'email' ? 'email-address' : field.type === 'tel' ? 'phone-pad' : 'default';
+  let keyboardType: React.ComponentProps<typeof TextInput>['keyboardType'] = 'default';
+  if (field.type === 'number') keyboardType = 'decimal-pad';
+  else if (field.type === 'email') keyboardType = 'email-address';
+  else if (field.type === 'tel') keyboardType = 'phone-pad';
   const placeholder = 'placeholder' in field ? field.placeholder : undefined;
-  return <View style={styles.field}>{label}{help}<TextInput style={[styles.input, isLong && styles.textarea]} value={typeof value === 'string' || typeof value === 'number' ? String(value) : ''} placeholder={placeholder} multiline={isLong} keyboardType={keyboardType} autoCapitalize={field.type === 'email' ? 'none' : 'sentences'} onChangeText={(text) => onChange(field.type === 'number' && text.trim() !== '' ? Number(text) : text)} />{errorText}</View>;
+  const inputValue = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  const autoCapitalize = field.type === 'email' ? 'none' : 'sentences';
+  return <View style={styles.field}>{label}{help}<TextInput style={[styles.input, isLong && styles.textarea]} value={inputValue} placeholder={placeholder} multiline={isLong} keyboardType={keyboardType} autoCapitalize={autoCapitalize} onChangeText={(text) => onChange(field.type === 'number' && text.trim() !== '' ? Number(text) : text)} />{errorText}</View>;
 }
 
 let pickFormFile: ((field: Extract<FormField, { type: 'file' }>, ids: string[], update: (v: unknown) => void) => Promise<void>) | null = null;
@@ -90,7 +105,7 @@ function onPickFormFile(field: Extract<FormField, { type: 'file' }>, ids: string
   return pickFormFile?.(field, ids, update);
 }
 
-export function BuyFlowScreen({ route, navigation }: Props) {
+export function BuyFlowScreen({ route, navigation }: Readonly<Props>) {
   const { api, token, user } = useAuth();
   const { slug, packageId, applicationId: incomingId, initialStep } = route.params;
   const [service, setService] = useState<ServiceDetail | null>(null);
@@ -188,7 +203,7 @@ export function BuyFlowScreen({ route, navigation }: Props) {
           setSaveLabel(cause instanceof Error ? `Not saved: ${cause.message}` : 'Not saved. Check your connection and retry.');
         }
       });
-    }, 1_000);
+    }, 1000);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
   }, [api, application, formDirty, formValues]);
 
@@ -299,10 +314,10 @@ export function BuyFlowScreen({ route, navigation }: Props) {
       let confirmed = false;
       for (let attempt = 0; attempt < 24; attempt += 1) {
         try {
-          const status = await api.GET('/api/applications/{id}/payment', { params: { path: { id: application.id } } });
+          const status = await api.GET('/api/applications/{id}/payment', { params: { path: { id: application.id } } }); // NOSONAR: payment confirmation polling must remain sequential
           if (isPaymentConfirmed(paymentStatusSchema.parse(status.data))) { confirmed = true; break; }
         } catch { /* a transient connection issue does not mean a payment failed */ }
-        if (attempt < 23) await new Promise<void>((resolve) => setTimeout(resolve, 5_000));
+        if (attempt < 23) await new Promise<void>((resolve) => setTimeout(resolve, 5_000)); // NOSONAR: wait between sequential payment status checks
       }
       if (!confirmed) {
         setError('Payment is being confirmed by the bank. Please check Payments again before retrying.');
@@ -317,11 +332,18 @@ export function BuyFlowScreen({ route, navigation }: Props) {
 
   const formStep = application?.formSchema.steps[formIndex];
   const visibleFields = useMemo(() => formStep?.fields ?? [], [formStep]);
+  let displayedPaymentAmount: number | undefined;
+  if (paymentAmount !== null) displayedPaymentAmount = paymentAmount;
+  else if (selectedPackage) displayedPaymentAmount = selectedPackage.price.total;
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.ink} /><Text style={styles.body}>Loading your application…</Text></View>;
   if (error && !service) return <ErrorState message={error} onRetry={() => void load()} style={{ flex: 1 }} />;
   if (!service) return <ErrorState message="Service not found." onRetry={() => void load()} style={{ flex: 1 }} />;
 
+  let flowTitle = 'Application submitted';
+  if (flowStep === 'form') flowTitle = 'Your details';
+  else if (flowStep === 'documents') flowTitle = 'Upload documents';
+  else if (flowStep === 'payment') flowTitle = 'Secure payment';
   if (!incomingId) return <ScrollView contentContainerStyle={styles.content}>
     <Text style={styles.title}>Start your application</Text>
     <Text style={styles.body}>{service.name} · {selectedPackage?.name ?? 'Choose a package'}</Text>
@@ -336,7 +358,7 @@ export function BuyFlowScreen({ route, navigation }: Props) {
   </ScrollView>;
 
   return <ScrollView contentContainerStyle={styles.content}>
-    <Text style={styles.title}>{flowStep === 'form' ? 'Your details' : flowStep === 'documents' ? 'Upload documents' : flowStep === 'payment' ? 'Secure payment' : 'Application submitted'}</Text>
+    <Text style={styles.title}>{flowTitle}</Text>
     <Text style={styles.body}>{service.name} · Application {application?.code ?? incomingId}</Text>
     {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
     {flowStep === 'form' && application && formStep && <>
@@ -354,7 +376,7 @@ export function BuyFlowScreen({ route, navigation }: Props) {
       <Button title="Back to details" variant="ghost" onPress={() => setFlowStep('form')} />
     </>}
     {flowStep === 'payment' && application && <>
-      <Card style={styles.section}><Text style={styles.label}>Order summary</Text><Text style={styles.body}>Application {application.code}</Text>{paymentAmount !== null ? <Text style={styles.sectionTitle}>{`₹${Math.round(paymentAmount / 100).toLocaleString('en-IN')}`}</Text> : selectedPackage ? <Text style={styles.sectionTitle}>{`₹${Math.round(selectedPackage.price.total / 100).toLocaleString('en-IN')}`}</Text> : null}<Text style={styles.help}>The server calculates the final amount due. Payment success appears only after server confirmation.</Text></Card>
+      <Card style={styles.section}><Text style={styles.label}>Order summary</Text><Text style={styles.body}>Application {application.code}</Text>{displayedPaymentAmount !== undefined ? <Text style={styles.sectionTitle}>{`₹${Math.round(displayedPaymentAmount / 100).toLocaleString('en-IN')}`}</Text> : null}<Text style={styles.help}>The server calculates the final amount due. Payment success appears only after server confirmation.</Text></Card>
       <Button title={busy ? 'Opening checkout…' : 'Pay securely'} onPress={() => void checkout()} loading={busy} />
       {selectedPackage?.allowPartial && selectedPackage.advancePercent ? <Button title={`Pay ${selectedPackage.advancePercent}% advance`} variant="secondary" onPress={() => void checkout('ADVANCE')} disabled={busy} /> : null}
       <Button title="Back to documents" variant="ghost" onPress={() => setFlowStep('documents')} />
@@ -364,7 +386,7 @@ export function BuyFlowScreen({ route, navigation }: Props) {
   </ScrollView>;
 }
 
-function Choice({ selected, title, subtitle, onPress }: { selected: boolean; title: string; subtitle?: string; onPress: () => void }) {
+function Choice({ selected, title, subtitle, onPress }: Readonly<{ selected: boolean; title: string; subtitle?: string; onPress: () => void }>) {
   return <TouchableOpacity onPress={onPress} style={[styles.choice, selected && styles.choiceSelected]}><Text style={styles.body}>{selected ? '◉' : '○'}  {title}</Text>{subtitle ? <Text style={styles.help}>{subtitle}</Text> : null}</TouchableOpacity>;
 }
 
