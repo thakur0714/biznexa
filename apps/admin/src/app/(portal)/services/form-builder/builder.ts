@@ -52,11 +52,22 @@ function syntaxError(text: string, err: unknown): ParsedForm {
   offset = Math.min(offset, text.length);
   const line = lineOf(text, offset);
   const column = offset - text.lastIndexOf('\n', offset - 1);
-  const message = raw
-    .replace(/^JSON\.parse: /, '')
-    .replace(/\s*(in JSON )?at (position \d+|line \d+ column \d+).*$/s, '')
-    .replace(/^Unexpected end of JSON input$/, 'The JSON ends too early — a bracket or quote is probably missing');
+  const message = cleanSyntaxMessage(raw);
   return { kind: 'syntax', message: message || 'This is not valid JSON', offset, line, column };
+}
+
+function cleanSyntaxMessage(raw: string): string {
+  let message = raw.replace(/^JSON\.parse: /, '');
+  const position = message.indexOf('at position ');
+  const line = message.indexOf('at line ');
+  const location = [position, line].filter((index) => index >= 0).sort((a, b) => a - b)[0];
+  if (location !== undefined) {
+    let prefix = message.slice(0, location).trimEnd();
+    if (prefix.endsWith('in JSON')) prefix = prefix.slice(0, -'in JSON'.length).trimEnd();
+    message = prefix;
+  }
+  if (message === 'Unexpected end of JSON input') return 'The JSON ends too early — a bracket or quote is probably missing';
+  return message;
 }
 
 export function parseFormText(text: string): ParsedForm {
@@ -128,38 +139,40 @@ export function locate(text: string, path: Path): number | null {
       if (text[i++] !== ',') return;
     }
   };
+  const descendObject = (depth: number, key: string | number): number | null => {
+    i++;
+    for (;;) {
+      ws();
+      if (text[i] !== '"') return null;
+      const keyAt = i;
+      skipString();
+      const name = JSON.parse(text.slice(keyAt, i)) as string;
+      ws();
+      i++;
+      if (name === String(key)) return depth + 1 === path.length ? keyAt : descend(depth + 1);
+      skipValue();
+      ws();
+      if (text[i++] !== ',') return null;
+    }
+  };
+  const descendArray = (depth: number, key: number): number | null => {
+    i++;
+    for (let index = 0; ; index++) {
+      ws();
+      if (text[i] === ']') return null;
+      if (index === key) return descend(depth + 1);
+      skipValue();
+      ws();
+      if (text[i++] !== ',') return null;
+    }
+  };
   const descend = (depth: number): number | null => {
     ws();
     if (depth === path.length) return i;
     const key = path[depth];
     const open = text[i];
-    if (open === '{') {
-      i++;
-      for (;;) {
-        ws();
-        if (text[i] !== '"') return null;
-        const keyAt = i;
-        skipString();
-        const name = JSON.parse(text.slice(keyAt, i)) as string;
-        ws();
-        i++; // ':'
-        if (name === String(key)) return depth + 1 === path.length ? keyAt : descend(depth + 1);
-        skipValue();
-        ws();
-        if (text[i++] !== ',') return null;
-      }
-    }
-    if (open === '[' && typeof key === 'number') {
-      i++;
-      for (let index = 0; ; index++) {
-        ws();
-        if (text[i] === ']') return null;
-        if (index === key) return descend(depth + 1);
-        skipValue();
-        ws();
-        if (text[i++] !== ',') return null;
-      }
-    }
+    if (open === '{') return descendObject(depth, key);
+    if (open === '[' && typeof key === 'number') return descendArray(depth, key);
     return null;
   };
   try {
@@ -192,7 +205,9 @@ export function describePath(raw: unknown, path: Path): string {
     if (seg === 'steps' || seg === 'fields') {
       // Named by the item that follows.
     } else if (typeof seg === 'number' && parent === 'steps') {
-      parts.push(`Step ${seg + 1}${isRecord(next) && quoted(next.title) ? ` ${quoted(next.title)}` : ''}`);
+      const title = isRecord(next) ? quoted(next.title) : '';
+      const titleSuffix = title ? ` ${title}` : '';
+      parts.push(`Step ${seg + 1}${titleSuffix}`);
     } else if (typeof seg === 'number' && parent === 'fields') {
       parts.push(isRecord(next) ? quoted(next.label) || quoted(next.name) || `Field ${seg + 1}` : `Field ${seg + 1}`);
     } else if (typeof seg === 'number') {
@@ -202,8 +217,8 @@ export function describePath(raw: unknown, path: Path): string {
     }
     node = next;
   });
-  if (path[path.length - 1] === 'steps') parts.push('steps');
-  if (path[path.length - 1] === 'fields') parts.push('fields');
+  if (path.at(-1) === 'steps') parts.push('steps');
+  if (path.at(-1) === 'fields') parts.push('fields');
   return parts.join(' › ') || 'Form';
 }
 
@@ -423,7 +438,7 @@ export const EXAMPLE_FORM: FormSchemaInput = {
             { type: 'email', name: 'email', label: 'Email', required: true },
             { type: 'tel', name: 'mobile', label: 'Mobile number', required: true },
             { type: 'select', name: 'hasDin', label: 'Already has a DIN?', required: true, options: ['Yes', 'No'] },
-            { type: 'text', name: 'din', label: 'DIN', required: true, pattern: '\\d{8}', patternMessage: 'A DIN has 8 digits', showIf: { field: 'hasDin', equals: 'Yes' } },
+            { type: 'text', name: 'din', label: 'DIN', required: true, pattern: String.raw`\d{8}`, patternMessage: 'A DIN has 8 digits', showIf: { field: 'hasDin', equals: 'Yes' } },
             { type: 'file', name: 'photo', label: 'Passport-size photo', required: true, accept: ['image/jpeg', 'image/png'], maxSizeMb: 2 },
           ],
         },
@@ -449,18 +464,22 @@ export const BLANK_FORM: FormSchemaInput = {
 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((v, i) => v === b[i]);
 
+function compactOptions(f: Extract<FormField, { type: 'select' | 'multi-select' }>, out: Record<string, unknown>) {
+  if (f.options) out.options = f.options.map((o) => (o.value === o.label ? o.value : o));
+}
+
+function compactUpload(f: Extract<FormField, { type: 'file' }>, out: Record<string, unknown>) {
+  if (sameList(f.accept, DEFAULT_ACCEPTED_TYPES)) delete out.accept;
+  if (f.maxSizeMb === DEFAULT_MAX_UPLOAD_MB) delete out.maxSizeMb;
+  if (f.maxFiles === 1) delete out.maxFiles;
+}
+
 function compactField(f: FormField): Record<string, unknown> {
   const out: Record<string, unknown> = { ...f };
   if (out.required === false) delete out.required;
   if (f.type === 'number' && !f.integer) delete out.integer;
-  if (f.type === 'select' || f.type === 'multi-select') {
-    if (f.options) out.options = f.options.map((o) => (o.value === o.label ? o.value : o));
-  }
-  if (f.type === 'file') {
-    if (sameList(f.accept, DEFAULT_ACCEPTED_TYPES)) delete out.accept;
-    if (f.maxSizeMb === DEFAULT_MAX_UPLOAD_MB) delete out.maxSizeMb;
-    if (f.maxFiles === 1) delete out.maxFiles;
-  }
+  if (f.type === 'select' || f.type === 'multi-select') compactOptions(f, out);
+  if (f.type === 'file') compactUpload(f, out);
   if (f.type === 'repeater') {
     if (f.itemLabel === 'Item') delete out.itemLabel;
     out.fields = f.fields.map(compactField);

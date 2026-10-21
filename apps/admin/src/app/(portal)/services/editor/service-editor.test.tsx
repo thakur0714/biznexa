@@ -7,7 +7,7 @@ import { ServiceEditorView } from './service-editor';
 
 const auth = vi.hoisted(() => ({ permissions: [] as string[] }));
 vi.mock('@/lib/auth', () => ({
-  useAuth: () => ({ user: { id: 'u1', name: 'Asha Admin', roles: ['ADMIN'], permissions: auth.permissions }, token: 'token', refresh: async () => 'token' }),
+  useAuth: () => ({ user: { id: 'u1', name: 'Asha Admin', roles: ['ADMIN'], permissions: auth.permissions }, token: 'token', refresh: () => Promise.resolve('token') }),
 }));
 const router = vi.hoisted(() => ({ replace: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
@@ -99,7 +99,7 @@ beforeEach(() => {
 
 const renderEditor = (id?: string) =>
   render(
-    <ApiProvider token="token" refresh={async () => 'token'}>
+    <ApiProvider token="token" refresh={() => Promise.resolve('token')}>
       <ToastProvider>
         <ServiceEditorView id={id} />
       </ToastProvider>

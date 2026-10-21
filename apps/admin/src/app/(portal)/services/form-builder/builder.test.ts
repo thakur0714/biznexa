@@ -84,7 +84,7 @@ describe('parseFormText', () => {
 });
 
 describe('locate', () => {
-  const text = toJson({ steps: [{ title: 'a "quoted" \\ title', fields: [{ name: 'x' }, { name: 'y', list: [1, [2, 3], { z: null }] }] }] });
+  const text = toJson({ steps: [{ title: String.raw`a "quoted" \ title`, fields: [{ name: 'x' }, { name: 'y', list: [1, [2, 3], { z: null }] }] }] });
 
   it('finds object keys and array items', () => {
     expect(text.slice(locate(text, ['steps', 0, 'fields', 1, 'name'])!)).toMatch(/^"name": "y"/);
