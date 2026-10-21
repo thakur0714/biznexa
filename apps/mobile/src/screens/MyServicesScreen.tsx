@@ -21,8 +21,8 @@ import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../co
 import { fetchCachedList } from '../api/offline-cache';
 
 interface MyServicesScreenProps {
-  navigation: {
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  readonly navigation: {
+    readonly navigate: (screen: string, params?: Record<string, unknown>) => void;
   };
 }
 
@@ -82,7 +82,13 @@ function nextActionVariant(action: CustomerApplicationNextAction): 'primary' | '
   }
 }
 
-export function MyServicesScreen({ navigation }: MyServicesScreenProps) {
+function emptyApplicationsTitle(tab: CustomerApplicationTab): string {
+  if (tab === 'active') return 'No active applications';
+  if (tab === 'completed') return 'No completed applications yet';
+  return 'No cancelled applications';
+}
+
+export function MyServicesScreen({ navigation }: Readonly<MyServicesScreenProps>) {
   const { api, user } = useAuth();
   const [activeTab, setActiveTab] = useState<CustomerApplicationTab>('active');
   const [data, setData] = useState<CustomerApplicationList | null>(null);
@@ -140,10 +146,56 @@ export function MyServicesScreen({ navigation }: MyServicesScreenProps) {
 
   const handleAction = (item: CustomerApplicationRow) => {
     let initialTab = 'timeline';
-    if (item.nextAction === 'upload_documents') initialTab = 'documents';
-    if (item.nextAction === 'pay_balance') initialTab = 'payments';
-    if (item.nextAction === 'download') initialTab = 'documents';
+    switch (item.nextAction) {
+      case 'upload_documents':
+      case 'download':
+        initialTab = 'documents';
+        break;
+      case 'pay_balance':
+        initialTab = 'payments';
+        break;
+    }
     handleOpenDetail(item.id, initialTab);
+  };
+
+  const renderApplicationsContent = () => {
+    return (
+      <>
+      {isLoading && <LoadingState message="Loading your services…" style={{ flex: 1 }} />}
+      {!isLoading && error && <ErrorState message={error} onRetry={() => void fetchApplications(activeTab)} style={{ flex: 1 }} />}
+      {!isLoading && !error && (
+      <FlatList
+        data={data?.items ?? []}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={offline ? <Text style={{ backgroundColor: '#fff1c2', color: colors.night, padding: spacing.sm, textAlign: 'center', fontWeight: '600' }}>Offline · showing your last loaded applications</Text> : null}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void fetchApplications(activeTab, true)} tintColor={colors.ink} />}
+        ListEmptyComponent={<EmptyState icon="briefcase-outline" title={emptyApplicationsTitle(activeTab)} description={activeTab === 'active' ? 'You do not have any ongoing service requests. Browse our legal and compliance catalogue to get started.' : undefined} actionTitle={activeTab === 'active' ? 'Browse Catalogue' : undefined} onAction={activeTab === 'active' ? () => navigation.navigate('ServicesBrowse') : undefined} />}
+        renderItem={({ item }) => (
+          <Card style={styles.applicationCard} onPress={() => handleOpenDetail(item.id)}>
+            <View style={styles.cardHeader}>
+              <View style={styles.codeRow}><Ionicons name="document-text-outline" size={16} color={colors.ink} /><Text style={styles.codeText}>{item.code}</Text></View>
+              <Badge label={item.statusLabel || item.status} variant={statusVariant(item.status)} />
+            </View>
+            <Text style={styles.serviceName}>{item.serviceName}</Text>
+            <Text style={styles.packageName}>{item.packageName} Package</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="calendar-outline" size={14} color={colors.muted} />
+              <Text style={styles.metaText}>Started on {formatDate(item.createdAt)}</Text>
+            </View>
+            <View style={styles.cardFooter}>
+              <Button title={nextActionLabel(item.nextAction)} variant={nextActionVariant(item.nextAction)} size="sm" onPress={() => handleAction(item)} />
+              <TouchableOpacity onPress={() => handleOpenDetail(item.id)} style={styles.detailsLink}>
+                <Text style={styles.detailsLinkText}>View Details</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.ink} />
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+      />
+      )}
+      </>
+    );
   };
 
   if (!user) {
@@ -183,98 +235,7 @@ export function MyServicesScreen({ navigation }: MyServicesScreenProps) {
       </View>
 
       {/* Content Area */}
-      {isLoading ? (
-        <LoadingState message="Loading your services…" style={{ flex: 1 }} />
-      ) : error ? (
-        <ErrorState
-          message={error}
-          onRetry={() => void fetchApplications(activeTab)}
-          style={{ flex: 1 }}
-        />
-      ) : (
-        <FlatList
-          data={data?.items ?? []}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ListHeaderComponent={offline ? <Text style={{ backgroundColor: '#fff1c2', color: colors.night, padding: spacing.sm, textAlign: 'center', fontWeight: '600' }}>Offline · showing your last loaded applications</Text> : null}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => void fetchApplications(activeTab, true)}
-              tintColor={colors.ink}
-            />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              icon="briefcase-outline"
-              title={
-                activeTab === 'active'
-                  ? 'No active applications'
-                  : activeTab === 'completed'
-                  ? 'No completed applications yet'
-                  : 'No cancelled applications'
-              }
-              description={
-                activeTab === 'active'
-                  ? 'You do not have any ongoing service requests. Browse our legal and compliance catalogue to get started.'
-                  : undefined
-              }
-              actionTitle={activeTab === 'active' ? 'Browse Catalogue' : undefined}
-              onAction={
-                activeTab === 'active'
-                  ? () => navigation.navigate('ServicesBrowse')
-                  : undefined
-              }
-            />
-          }
-          renderItem={({ item }) => (
-            <Card
-              style={styles.applicationCard}
-              onPress={() => handleOpenDetail(item.id)}
-            >
-              {/* Card Header: Code & Status */}
-              <View style={styles.cardHeader}>
-                <View style={styles.codeRow}>
-                  <Ionicons name="document-text-outline" size={16} color={colors.ink} />
-                  <Text style={styles.codeText}>{item.code}</Text>
-                </View>
-                <Badge
-                  label={item.statusLabel || item.status}
-                  variant={statusVariant(item.status)}
-                />
-              </View>
-
-              {/* Service & Package Name */}
-              <Text style={styles.serviceName}>{item.serviceName}</Text>
-              <Text style={styles.packageName}>{item.packageName} Package</Text>
-
-              {/* Meta: Created Date */}
-              <View style={styles.metaRow}>
-                <Ionicons name="calendar-outline" size={14} color={colors.muted} />
-                <Text style={styles.metaText}>Started on {formatDate(item.createdAt)}</Text>
-              </View>
-
-              {/* Action Button */}
-              <View style={styles.cardFooter}>
-                <Button
-                  title={nextActionLabel(item.nextAction)}
-                  variant={nextActionVariant(item.nextAction)}
-                  size="sm"
-                  onPress={() => handleAction(item)}
-                  style={{ alignSelf: 'flex-start' }}
-                />
-                <TouchableOpacity
-                  onPress={() => handleOpenDetail(item.id)}
-                  style={styles.detailsLink}
-                >
-                  <Text style={styles.detailsLinkText}>View Details</Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.ink} />
-                </TouchableOpacity>
-              </View>
-            </Card>
-          )}
-        />
-      )}
+      {renderApplicationsContent()}
     </View>
   );
 }

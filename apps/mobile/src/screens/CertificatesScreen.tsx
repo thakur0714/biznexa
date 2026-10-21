@@ -25,14 +25,14 @@ import { resolveApiUrl } from '../api/client';
 import { fetchCachedList } from '../api/offline-cache';
 
 interface CertificatesScreenProps {
-  route?: {
-    params?: {
+  readonly route?: {
+    readonly params?: {
       initialTab?: 'my' | 'verify';
       scannedNumber?: string;
     };
   };
-  navigation: {
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  readonly navigation: {
+    readonly navigate: (screen: string, params?: Record<string, unknown>) => void;
   };
 }
 
@@ -52,7 +52,7 @@ function certificateStatusVariant(status: string): 'seal' | 'marigold' | 'danger
   }
 }
 
-export function CertificatesScreen({ route, navigation }: CertificatesScreenProps) {
+export function CertificatesScreen({ route, navigation }: Readonly<CertificatesScreenProps>) {
   const { api, user } = useAuth();
   const initialTab = route?.params?.initialTab || (user ? 'my' : 'verify');
   const [activeTab, setActiveTab] = useState<CertTab>(initialTab);
@@ -193,7 +193,7 @@ export function CertificatesScreen({ route, navigation }: CertificatesScreenProp
       {/* Tab 1: My Certificates */}
       {activeTab === 'my' && (
         <View style={{ flex: 1 }}>
-          {!user ? (
+          {!user && (
             <EmptyState
               icon="lock-closed-outline"
               title="Sign in to view your certificates"
@@ -202,15 +202,16 @@ export function CertificatesScreen({ route, navigation }: CertificatesScreenProp
               onAction={() => navigation.navigate('AuthModal')}
               style={{ flex: 1 }}
             />
-          ) : isLoadingMyCerts ? (
-            <LoadingState message="Loading your certificates…" style={{ flex: 1 }} />
-          ) : myCertsError ? (
+          )}
+          {Boolean(user) && isLoadingMyCerts && <LoadingState message="Loading your certificates…" style={{ flex: 1 }} />}
+          {Boolean(user) && !isLoadingMyCerts && Boolean(myCertsError) && (
             <ErrorState
-              message={myCertsError}
+              message={myCertsError ?? ''}
               onRetry={() => void fetchMyCertificates()}
               style={{ flex: 1 }}
             />
-          ) : (
+          )}
+          {Boolean(user) && !isLoadingMyCerts && !myCertsError && (
             <FlatList
               data={myCerts}
               keyExtractor={(item) => item.id}

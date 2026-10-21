@@ -6,18 +6,18 @@ import { colors, radius, spacing } from '../theme';
 import { Button } from '../components/common';
 
 interface QrScannerScreenProps {
-  navigation: {
-    goBack: () => void;
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  readonly navigation: {
+    readonly goBack: () => void;
+    readonly navigate: (screen: string, params?: Record<string, unknown>) => void;
   };
-  route?: {
-    params?: {
+  readonly route?: {
+    readonly params?: {
       onScan?: (certNumber: string) => void;
     };
   };
 }
 
-export function QrScannerScreen({ navigation, route }: QrScannerScreenProps) {
+export function QrScannerScreen({ navigation, route }: Readonly<QrScannerScreenProps>) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
 
@@ -29,8 +29,8 @@ export function QrScannerScreen({ navigation, route }: QrScannerScreenProps) {
     // Parse URL if QR contains a verification link e.g. https://biznexa.in/verify?number=BN-ISO-001 or ?id=...
     try {
       if (data.includes('number=')) {
-        const match = data.match(/number=([^&]+)/);
-        if (match && match[1]) {
+        const match = /number=([^&]+)/.exec(data);
+        if (match?.[1]) {
           certNumber = decodeURIComponent(match[1]);
         }
       } else if (data.includes('/verify/')) {

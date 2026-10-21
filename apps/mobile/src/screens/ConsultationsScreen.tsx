@@ -3,11 +3,11 @@ import { Alert, FlatList, Linking, ScrollView, StyleSheet, Text, TextInput, Touc
 import type { BookingList, BookingView, PublicConsultantDirectory, PublicConsultantSlots, PublicConsultantCard } from '@biznexa/types';
 import { formatDateTime, formatINR } from '@biznexa/types';
 import { useAuth } from '../auth/auth-context';
-import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';
+import { Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';
 import { colors, spacing } from '../theme';
 import { canChangeBooking, getJoinLink } from './consultation-logic';
 
-export function ConsultationsScreen({ route }: { route?: { params?: { bookingId?: string } } }) {
+export function ConsultationsScreen({ route }: Readonly<{ readonly route?: { readonly params?: { readonly bookingId?: string } } }>) {
   const { api } = useAuth();
   const [tab, setTab] = useState<'consultants' | 'bookings'>(route?.params?.bookingId ? 'bookings' : 'consultants');
   const [consultants, setConsultants] = useState<PublicConsultantCard[]>([]);

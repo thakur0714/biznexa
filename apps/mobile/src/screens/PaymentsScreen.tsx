@@ -12,7 +12,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import type {
   CustomerPaymentListResponse,
-  CustomerPaymentRow,
 } from '@biznexa/types';
 import { formatDate, formatINR } from '@biznexa/types';
 import { useAuth } from '../auth/auth-context';
@@ -21,9 +20,9 @@ import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../co
 import { resolveApiUrl } from '../api/client';
 
 interface PaymentsScreenProps {
-  navigation: {
-    goBack: () => void;
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  readonly navigation: {
+    readonly goBack: () => void;
+    readonly navigate: (screen: string, params?: Record<string, unknown>) => void;
   };
 }
 
@@ -44,7 +43,7 @@ function paymentStatusVariant(status: string): 'seal' | 'marigold' | 'ink' | 'da
   }
 }
 
-export function PaymentsScreen({ navigation }: PaymentsScreenProps) {
+export function PaymentsScreen({ navigation }: Readonly<PaymentsScreenProps>) {
   const { api, user } = useAuth();
   const [data, setData] = useState<CustomerPaymentListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,11 +128,9 @@ export function PaymentsScreen({ navigation }: PaymentsScreenProps) {
 
   return (
     <View style={styles.container}>
-      {isLoading ? (
-        <LoadingState message="Loading payments & invoices…" style={{ flex: 1 }} />
-      ) : error ? (
-        <ErrorState message={error} onRetry={() => void fetchPayments()} style={{ flex: 1 }} />
-      ) : (
+      {isLoading && <LoadingState message="Loading payments & invoices…" style={{ flex: 1 }} />}
+      {!isLoading && error && <ErrorState message={error} onRetry={() => void fetchPayments()} style={{ flex: 1 }} />}
+      {!isLoading && !error && (
         <FlatList
           data={data?.items ?? []}
           keyExtractor={(item) => item.id}
@@ -177,7 +174,7 @@ export function PaymentsScreen({ navigation }: PaymentsScreenProps) {
               description="Your order payments and tax invoices will appear here once transactions are recorded."
             />
           }
-          renderItem={({ item }: { item: CustomerPaymentRow }) => {
+          renderItem={({ item }) => {
             const hasBalance = item.order.balance > 0;
 
             return (

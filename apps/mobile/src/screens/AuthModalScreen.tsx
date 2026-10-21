@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -20,14 +19,14 @@ import {
 } from '@biznexa/types';
 
 interface AuthModalScreenProps {
-  navigation: {
-    goBack: () => void;
+  readonly navigation: {
+    readonly goBack: () => void;
   };
 }
 
 type AuthMode = 'otp' | 'password' | 'register';
 
-export function AuthModalScreen({ navigation }: AuthModalScreenProps) {
+export function AuthModalScreen({ navigation }: Readonly<AuthModalScreenProps>) {
   const { loginWithPassword, requestOtp, verifyOtp, loginWithGoogle, register } = useAuth();
   const [mode, setMode] = useState<AuthMode>('otp');
 
@@ -35,7 +34,6 @@ export function AuthModalScreen({ navigation }: AuthModalScreenProps) {
   const [mobile, setMobile] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [resendCountdown, setResendCountdown] = useState(0);
 
   // Password State
   const [email, setEmail] = useState('');
@@ -65,7 +63,6 @@ export function AuthModalScreen({ navigation }: AuthModalScreenProps) {
       const res = await requestOtp(mobile, 'LOGIN');
       setOtpSent(true);
       setSuccessMsg(res.message || 'OTP sent successfully');
-      setResendCountdown(res.resendAfterSec ?? 30);
     } catch (err: unknown) {
       setError((err as Error).message || 'Failed to send OTP');
     } finally {
