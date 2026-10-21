@@ -48,16 +48,6 @@ type Asset = { uri: string; name: string; mimeType: string; size?: number };
 const emptyBusiness: BusinessEntityInput = { legalName: '', entityType: 'PRIVATE_LIMITED', pan: '', gstin: '', cin: '', address: null, state: null };
 const stepKey = (id: string) => `bn_apply_step:${id}`;
 
-function keyedRows(rows: Record<string, unknown>[], fieldName: string) {
-  const seen = new Map<string, number>();
-  return rows.map((row) => {
-    const content = JSON.stringify(row);
-    const count = seen.get(content) ?? 0;
-    seen.set(content, count + 1);
-    return { row, key: `${fieldName}-${content}#${count}` };
-  });
-}
-
 type FieldProps = { field: FormField; value: unknown; error?: string; scope: Record<string, unknown>; onChange: (v: unknown) => void };
 function Field({ field, value, error, scope, onChange }: Readonly<FieldProps>) {
   if (field.showIf && !conditionMet(field.showIf, scope)) return null;
@@ -83,7 +73,7 @@ function Field({ field, value, error, scope, onChange }: Readonly<FieldProps>) {
   }
   if (field.type === 'repeater') {
     const rows = Array.isArray(value) ? value.filter((row): row is Record<string, unknown> => !!row && typeof row === 'object' && !Array.isArray(row)) : [];
-    return <View style={styles.field}>{label}{help}{keyedRows(rows, field.name).map(({ row, key }, index) => <Card key={key} style={styles.rowCard}><Text style={styles.help}>{field.itemLabel} {index + 1}</Text>{field.fields.map((sub) => <Field key={sub.name} field={sub} value={row[sub.name]} scope={{ ...scope, ...row }} onChange={(v) => onChange(rows.map((item, i) => i === index ? { ...item, [sub.name]: v } : item))} />)}<Button title="Remove" variant="ghost" onPress={() => onChange(rows.filter((_, i) => i !== index))} /></Card>)}<Button title={`Add ${field.itemLabel.toLowerCase()}`} variant="secondary" onPress={() => onChange([...rows, {}])} disabled={field.maxItems !== undefined && rows.length >= field.maxItems} />{errorText}</View>;
+    return <View style={styles.field}>{label}{help}{rows.map((row, index) => <Card key={`${field.name}-${index}`} style={styles.rowCard}><Text style={styles.help}>{field.itemLabel} {index + 1}</Text>{field.fields.map((sub) => <Field key={sub.name} field={sub} value={row[sub.name]} scope={{ ...scope, ...row }} onChange={(v) => onChange(rows.map((item, i) => i === index ? { ...item, [sub.name]: v } : item))} />)}<Button title="Remove" variant="ghost" onPress={() => onChange(rows.filter((_, i) => i !== index))} /></Card>)}<Button title={`Add ${field.itemLabel.toLowerCase()}`} variant="secondary" onPress={() => onChange([...rows, {}])} disabled={field.maxItems !== undefined && rows.length >= field.maxItems} />{errorText}</View>; // NOSONAR: repeater rows have no id and are edited in place; a content key would remount a row on every keystroke
   }
   if (field.type === 'file') {
     const fileIds = Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];

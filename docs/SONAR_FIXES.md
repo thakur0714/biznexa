@@ -35,13 +35,13 @@ Done and merged: API (most of S1), S3 and S11. The 4 findings left in S11 are pa
 | **S4** ✅ | `apps/web/src/app/dashboard` | 82 | Codex | `sonar-s4-web-dashboard` |
 | **S5a** ✅ | `apps/web/src/app/consultants`, plus every other `apps/web/src/app/*` folder that S3, S4 and S5b don't list (today only `dev/`) | 31 | Codex | `sonar-s5a-web-consultants` |
 | **S5b** ✅ | `apps/web/src/app/apply` | 42 | Codex | `sonar-s5b-web-apply` |
-| **S6** | `apps/admin/src/app/(portal)/services` | 73 | Codex | `sonar-s6-admin-services` |
+| **S6** ✅ | `apps/admin/src/app/(portal)/services` | 73 | Codex | `sonar-s6-admin-services` |
 | **S7** | `apps/admin/src/app/(portal)/coupons`, `…/applications`, `…/certificates` | 91 | Codex | `sonar-s7-admin-apps` |
 | **S8** | `apps/admin/src/app/(portal)/consultant`, `…/consultants`, `…/payments`, `…/customers`, `…/notifications` | 79 | Codex | `sonar-s8-admin-people` |
 | **S9** | `apps/admin/src`: every other `(portal)` folder (settings, cms, documents, support, reports, privacy, reviews, audit, `[section]`, `layout.tsx`, `page.tsx`), plus `components/`, `lib/`, `app/two-factor`, `app/login`, `app/layout.tsx` | ~127 | Codex | `sonar-s9-admin-rest` |
 | **S10a** ✅ | `apps/mobile`: everything except `src/screens` (`App.tsx`, `src/api`, `src/auth`, `src/navigation`, `src/components`, …) | ~45 | Codex | `sonar-s10a-mobile-core` |
 | **S10b** ✅ | `apps/mobile/src/screens`: every file except `BuyFlowScreen.tsx` and `ApplicationDetailScreen.tsx` | 41 | Codex | `sonar-s10b-mobile-screens` |
-| **S10c** | `apps/mobile/src/screens/BuyFlowScreen.tsx`, `apps/mobile/src/screens/ApplicationDetailScreen.tsx` | 30 | Codex | `sonar-s10c-mobile-flows` |
+| **S10c** ✅ | `apps/mobile/src/screens/BuyFlowScreen.tsx`, `apps/mobile/src/screens/ApplicationDetailScreen.tsx` | 30 | Codex | `sonar-s10c-mobile-flows` |
 | **S11** ✅ | `packages/ui`, `packages/config`, `packages/rich-text` | ~75 | Devin (finished by Claude) | `sonar-s11-ui` |
 | **S12a** | `packages/types` | 71 | Jules | `sonar-s12a-types` |
 | **S12b** | `packages/api-client` | 41 | Jules | `sonar-s12b-api-client` |
@@ -186,6 +186,7 @@ The rule id is SonarQube's (what VS Code shows). The checker's ESLint name is in
 
 Only in these cases, always with a reason:
 - `await` in a loop where order matters, and no shared helper fits (see above).
+- An array index as `key` for rows that have no id **and are edited in place** (form repeater rows). A key built from the row's content would change on every keystroke and remount the row, which loses input focus: `// NOSONAR: rows have no id and are edited in place`.
 - `Math.random()` used for retry jitter or other non-security purposes: `// NOSONAR: retry jitter, not security`.
 - `JSON.parse(JSON.stringify(x))` used **to drop `undefined`** before saving JSON. `structuredClone` would keep it: `// NOSONAR: a JSON round trip drops undefined`.
 - An `async` method with no `await` in a mock/test double that must reject like the real implementation.
