@@ -13,8 +13,18 @@ type Props = { params: Promise<{ category: string; service: string }> };
 
 export const revalidate = 120;
 
-async function getService(slug: string) {
+function getService(slug: string) {
   return apiOrNull<ServiceDetail>(`/catalogue/services/${encodeURIComponent(slug)}`);
+}
+
+/** Paragraph text as the key, with `#n` added when the same text repeats. */
+function keyedParagraphs(paragraphs: string[]) {
+  const seen = new Map<string, number>();
+  return paragraphs.map((text) => {
+    const count = (seen.get(text) ?? 0) + 1;
+    seen.set(text, count);
+    return { text, key: count === 1 ? text : `${text}#${count}` };
+  });
 }
 
 export async function generateMetadata({ params }: Readonly<Props>): Promise<Metadata> {
@@ -122,8 +132,8 @@ export default async function ServicePage({ params }: Readonly<Props>) {
               Overview
             </h2>
             <div className="prose-plain mt-3 max-w-[68ch] text-[17px] leading-relaxed text-night/90">
-              {paragraphs.map((p) => (
-                <p key={p}>{p}</p>
+              {keyedParagraphs(paragraphs).map(({ text, key }) => (
+                <p key={key}>{text}</p>
               ))}
             </div>
             {s.benefits.length > 0 && (
