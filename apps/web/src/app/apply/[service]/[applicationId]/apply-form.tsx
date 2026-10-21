@@ -177,13 +177,17 @@ export function ApplyForm({ service, applicationId }: Readonly<{ service: Servic
 
   /** File fields upload each file through the shared upload endpoint (M2.5.6) and keep the returned ids. */
   const uploadFiles: UploadFiles = async (files) => {
-    return Promise.all(files.map(async (file) => {
+    const ids: string[] = [];
+    for (const file of files) {
       const body = new FormData();
       body.append('file', file);
-      const uploadBody = Object.assign(body, { file: '' });
-      const stored = await api.call<{ id: string }>((c) => c.POST('/api/files', { body: uploadBody }));
-      return stored.id;
-    }));
+      const stored = await api.call<{ id: string }>((c) => c.POST('/api/files', { // NOSONAR: files upload one at a time, in the order chosen.
+        body: { file: file.name },
+        bodySerializer: () => body,
+      }));
+      ids.push(stored.id);
+    }
+    return ids;
   };
 
   let status = 'Answers save as you type';
