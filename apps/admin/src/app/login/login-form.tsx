@@ -7,6 +7,7 @@ import { Button, Field, Notice } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { afterSignIn, safeNext, useAuth, type SessionResponse } from '@/lib/auth';
+import { formText } from '@/lib/form';
 
 /** Staff sign-in with email + password against the shared auth API; the 2FA step follows (/two-factor). */
 export function LoginForm() {
@@ -21,13 +22,13 @@ export function LoginForm() {
     if (ready && user) router.replace(afterSignIn(user, next));
   }, [ready, user, next, router]);
 
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     setBusy(true);
     setError(null);
     try {
-      const session = await api.call<SessionResponse>((c) => c.POST('/api/auth/login', { body: { email: String(f.get('email') ?? ''), password: String(f.get('password') ?? '') } }));
+      const session = await api.call<SessionResponse>((c) => c.POST('/api/auth/login', { body: { email: formText(f, 'email'), password: formText(f, 'password') } }));
       if (await signIn(session)) {
         router.replace(afterSignIn(session.user, next));
         return;
@@ -51,7 +52,7 @@ export function LoginForm() {
           {denied && !error && (
             <Notice tone="error">This account is not allowed to use the admin portal. Customers can log in on the BizNexa website.</Notice>
           )}
-          {error && error.errors.length === 0 && <Notice tone="error">{error.message}</Notice>}
+          {error?.errors.length === 0 && <Notice tone="error">{error.message}</Notice>}
           <Button type="submit" variant="ink" className="w-full" disabled={busy}>
             {busy ? 'Logging in…' : 'Log in'}
           </Button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
 import { OPTION_SOURCES, PERMS, formatDate, type RejectionPresets, type MobileVersion } from '@biznexa/types';
 import { Button, LinkButton, Field, Notice, Select, useToast } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
@@ -73,7 +73,7 @@ function SellerSettingsPage() {
     setErrors((e) => ({ ...e, [key]: undefined }));
   };
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!values) return;
     const found = sellerFormErrors(values);
@@ -104,18 +104,20 @@ function SellerSettingsPage() {
       <p className="mt-1 text-muted">Seller details for GST and invoices.</p>
 
       <div className="mt-6">
-        {loadError ? (
+        {loadError && (
           <div className="space-y-3">
             <Notice tone="error">{loadError}</Notice>
             <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
               Try again
             </Button>
           </div>
-        ) : !values ? (
+        )}
+        {!loadError && !values && (
           <p className="text-muted" role="status">
             Loading settings…
           </p>
-        ) : (
+        )}
+        {!loadError && values && (
           <form onSubmit={submit} noValidate className="space-y-6">
             {formError && <Notice tone="error">{formError}</Notice>}
             {!saved?.address && (
@@ -210,7 +212,7 @@ function RejectionPresetsPage() {
     };
   }, [api, reload]);
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const clean = presets.map((p) => p.trim()).filter(Boolean);
     if (new Set(clean).size !== clean.length) {
@@ -239,25 +241,27 @@ function RejectionPresetsPage() {
       <p className="mt-1 text-muted">Reasons for rejecting a document.</p>
 
       <div className="mt-6">
-        {loadError ? (
+        {loadError && (
           <div className="space-y-3">
             <Notice tone="error">{loadError}</Notice>
             <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
               Try again
             </Button>
           </div>
-        ) : !saved ? (
+        )}
+        {!loadError && !saved && (
           <p className="text-muted" role="status">
             Loading presets…
           </p>
-        ) : (
+        )}
+        {!loadError && saved && (
           <form onSubmit={submit} noValidate className="space-y-6">
             {formError && <Notice tone="error">{formError}</Notice>}
 
             <fieldset className="grid gap-4 rounded-md border border-rule bg-white p-4">
               <legend className="px-1 text-sm font-semibold text-night">Presets</legend>
               {presets.map((preset, i) => (
-                <div key={i} className="flex gap-2">
+                <div key={/* NOSONAR: rows have no id and are edited in place */ i} className="flex gap-2">
                   <Field
                     id={`preset-${i}`}
                     label={`Preset ${i + 1}`}
@@ -323,7 +327,7 @@ function MobileVersionPage() {
     };
   }, [api, reload]);
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
     setSaving(true);
@@ -347,18 +351,20 @@ function MobileVersionPage() {
       <p className="mt-1 text-muted">Older app versions will be asked to update.</p>
 
       <div className="mt-6">
-        {loadError ? (
+        {loadError && (
           <div className="space-y-3">
             <Notice tone="error">{loadError}</Notice>
             <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
               Try again
             </Button>
           </div>
-        ) : !saved ? (
+        )}
+        {!loadError && !saved && (
           <p className="text-muted" role="status">
             Loading settings…
           </p>
-        ) : (
+        )}
+        {!loadError && saved && (
           <form onSubmit={submit} noValidate className="space-y-6">
             {formError && <Notice tone="error">{formError}</Notice>}
             <div className="flex gap-4 items-end">

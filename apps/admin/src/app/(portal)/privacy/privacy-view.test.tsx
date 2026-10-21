@@ -15,13 +15,13 @@ const calls: Array<{
 }> = [];
 
 const fakeClient = {
-  GET: vi.fn(async (url: string, options?: { params?: { query?: Record<string, unknown> } }) => {
+  GET: vi.fn((url: string, options?: { params?: { query?: Record<string, unknown> } }) => {
     calls.push({ method: 'GET', url, options });
-    return { data: adminDataRequestListSchema.parse(list), response: new Response(null, { status: 200 }) };
+    return Promise.resolve({ data: adminDataRequestListSchema.parse(list), response: new Response(null, { status: 200 }) });
   }),
-  POST: vi.fn(async (url: string, options?: { params?: { path?: Record<string, unknown> }; body?: unknown }) => {
+  POST: vi.fn((url: string, options?: { params?: { path?: Record<string, unknown> }; body?: unknown }) => {
     calls.push({ method: 'POST', url, options });
-    return { data: {}, response: new Response(null, { status: 200 }) };
+    return Promise.resolve({ data: {}, response: new Response(null, { status: 200 }) });
   }),
 };
 

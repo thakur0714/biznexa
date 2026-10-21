@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type SubmitEvent } from 'react';
 import { EditorContent, Extension, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -26,7 +26,7 @@ export function RichTextEditor({
   hint,
   error,
   disabled = false,
-}: {
+}: Readonly<{
   id: string;
   label: string;
   /** HTML; '' for empty. */
@@ -35,9 +35,11 @@ export function RichTextEditor({
   hint?: string;
   error?: string;
   disabled?: boolean;
-}) {
+}>) {
   const labelId = `${id}-label`;
-  const messageId = error ? `${id}-err` : hint ? `${id}-hint` : undefined;
+  let messageId: string | undefined;
+  if (error) messageId = `${id}-err`;
+  else if (hint) messageId = `${id}-hint`;
   const toolbarRef = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
   useEffect(() => {
@@ -91,6 +93,13 @@ export function RichTextEditor({
     editor?.setEditable(!disabled);
   }, [editor, disabled]);
 
+  let message: ReactNode = null;
+  if (error) {
+    message = <p id={`${id}-err`} className="mt-1.5 text-sm text-danger">{error}</p>;
+  } else if (hint) {
+    message = <p id={`${id}-hint`} className="mt-1.5 text-sm text-muted">{hint}</p>;
+  }
+
   useEffect(() => {
     if (editor && !editor.isDestroyed) editor.setOptions({ editorProps: { attributes: textboxAttributes(id, labelId, messageId, error) } });
   }, [editor, id, labelId, messageId, error]);
@@ -104,15 +113,7 @@ export function RichTextEditor({
         {editor && <Toolbar editor={editor} editorId={id} toolbarRef={toolbarRef} label={label} disabled={disabled} onLink={() => setDialog('link')} onImage={() => setDialog('image')} />}
         <EditorContent editor={editor} />
       </div>
-      {error ? (
-        <p id={`${id}-err`} className="mt-1.5 text-sm text-danger">
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${id}-hint`} className="mt-1.5 text-sm text-muted">
-          {hint}
-        </p>
-      ) : null}
+      {message}
       {editor && dialog === 'link' && <LinkDialog editor={editor} onClose={() => setDialog(null)} />}
       {editor && dialog === 'image' && <ImageDialog editor={editor} onClose={() => setDialog(null)} />}
     </div>
@@ -159,7 +160,7 @@ function Toolbar({
   disabled,
   onLink,
   onImage,
-}: {
+}: Readonly<{
   editor: Editor;
   editorId: string;
   toolbarRef: React.RefObject<HTMLDivElement | null>;
@@ -167,7 +168,7 @@ function Toolbar({
   disabled: boolean;
   onLink: () => void;
   onImage: () => void;
-}) {
+}>) {
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) => ({
@@ -258,7 +259,7 @@ function Toolbar({
   );
 }
 
-function Icon({ d }: { d: string }) {
+function Icon({ d }: Readonly<{ d: string }>) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d={d} />
@@ -266,14 +267,17 @@ function Icon({ d }: { d: string }) {
   );
 }
 
-function LinkDialog({ editor, onClose }: { editor: Editor; onClose: () => void }) {
+function LinkDialog({ editor, onClose }: Readonly<{ editor: Editor; onClose: () => void }>) {
   const fieldId = useId();
+  useEffect(() => {
+    document.getElementById(fieldId)?.focus();
+  }, [fieldId]);
   const existing = editor.getAttributes('link') as { href?: string; target?: string };
   const [href, setHref] = useState(existing.href ?? '');
   const [newTab, setNewTab] = useState(existing.target === '_blank');
   const [error, setError] = useState<string | undefined>();
 
-  function submit(e: FormEvent) {
+  function submit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const safe = safeLinkHref(href);
     if (!safe) return setError('Enter a web address (https://…), an email (mailto:…), a phone (tel:…) or a page path like /about.');
@@ -293,7 +297,7 @@ function LinkDialog({ editor, onClose }: { editor: Editor; onClose: () => void }
   return (
     <Dialog open onClose={onClose} title={existing.href ? 'Edit link' : 'Add link'}>
       <form onSubmit={submit} noValidate className="space-y-4">
-        <Field id={fieldId} label="Link address" value={href} onChange={(e) => setHref(e.target.value)} error={error} placeholder="https://example.com or /services" autoFocus />
+        <Field id={fieldId} label="Link address" value={href} onChange={(e) => setHref(e.target.value)} error={error} placeholder="https://example.com or /services" />
         <Checkbox id={`${fieldId}-tab`} label="Open in a new tab" checked={newTab} onChange={(e) => setNewTab(e.target.checked)} />
         <div className="flex flex-wrap justify-end gap-2">
           {existing.href && (
@@ -313,7 +317,7 @@ function LinkDialog({ editor, onClose }: { editor: Editor; onClose: () => void }
   );
 }
 
-function ImageDialog({ editor, onClose }: { editor: Editor; onClose: () => void }) {
+function ImageDialog({ editor, onClose }: Readonly<{ editor: Editor; onClose: () => void }>) {
   const api = useApi();
   const fileId = useId();
   const altId = useId();
@@ -322,7 +326,7 @@ function ImageDialog({ editor, onClose }: { editor: Editor; onClose: () => void 
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  async function submit(e: FormEvent) {
+  async function submit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!file) return setError('Choose an image.');
     if (!mediaTypeFromName(file.name)) return setError('Only JPG, PNG, WebP or GIF images can be used.');

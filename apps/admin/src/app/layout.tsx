@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { themeColor: '#1f2b7a' };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en-IN">
       {/* Browser extensions add attributes to <body> before hydration. */}

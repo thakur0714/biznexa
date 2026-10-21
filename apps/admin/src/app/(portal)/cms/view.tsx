@@ -18,11 +18,14 @@ type Page = Omit<CmsPageResponse, 'id' | 'updatedAt'> & Partial<Pick<CmsPageResp
 const titles: Record<PageSlug, string> = { about: 'About', terms: 'Terms', privacy: 'Privacy', 'refund-policy': 'Refund', contact: 'Contact' };
 const escapeHtml = (value: string) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 function htmlFromLegacy(blocks: Block[] = []) {
-  return blocks.map((block) => block.type === 'heading'
-    ? `<h2>${escapeHtml(block.text ?? '')}</h2>`
-    : block.type === 'list'
-      ? `<ul>${(block.items ?? []).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
-      : `<p>${escapeHtml(block.text ?? '')}</p>`).join('');
+  return blocks.map((block) => {
+    if (block.type === 'heading') return `<h2>${escapeHtml(block.text ?? '')}</h2>`;
+    if (block.type === 'list') {
+      const items = (block.items ?? []).map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+      return `<ul>${items}</ul>`;
+    }
+    return `<p>${escapeHtml(block.text ?? '')}</p>`;
+  }).join('');
 }
 function contentHtml(content: CmsPageResponse['content'] | CmsPageResponse['draftContent']): string {
   if (!content) return '';

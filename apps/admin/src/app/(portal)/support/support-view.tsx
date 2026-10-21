@@ -12,7 +12,7 @@ import {
   type TicketPriority,
   type TicketStatus,
 } from '@biznexa/types';
-import { Badge, Button, EmptyState, Field, Notice, Select, TextArea, type Tone } from '@biznexa/ui';
+import { Badge, Button, EmptyState, Field, Notice, TextArea, type Tone } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
 import { NotAllowed } from '@/components/portal-shell';
 import { useAuth } from '@/lib/auth';
@@ -66,7 +66,9 @@ export function getSlaInfo(
   const elapsed = formatDuration(createdAt, new Date());
   const ms = Math.max(0, Date.now() - new Date(createdAt).getTime());
   const hours = ms / (1000 * 60 * 60);
-  const tone: Tone = hours >= 24 ? 'danger' : hours >= 4 ? 'warning' : 'info';
+  let tone: Tone = 'info';
+  if (hours >= 24) tone = 'danger';
+  else if (hours >= 4) tone = 'warning';
   return {
     label: `Awaiting response: ${elapsed}`,
     tone,
@@ -296,7 +298,7 @@ function SupportQueue() {
     }
   };
 
-  const handleSendReply = async (e: React.FormEvent) => {
+  const handleSendReply = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!ticketDetail || !replyBody.trim()) return;
 
@@ -712,24 +714,27 @@ function SupportQueue() {
       </div>
 
       {/* Tickets Table / List */}
-      {loading ? (
+      {loading && (
         <div className="rounded-xl border border-rule bg-white p-12 text-center text-sm text-muted">
           Loading support queue...
         </div>
-      ) : !tickets || tickets.length === 0 ? (
+      )}
+      {!loading && (!tickets || tickets.length === 0) && (
         <EmptyState
           title="No support tickets found"
           description="No tickets match your active filter criteria."
         />
-      ) : (
+      )}
+      {!loading && tickets && tickets.length > 0 && (
         <div className="space-y-2">
           {tickets.map((ticket) => {
             const sla = getSlaInfo(ticket.createdAt, ticket.firstResponseAt, ticket.status);
             return (
-              <div
+              <button
+                type="button"
                 key={ticket.id}
                 onClick={() => openTicketDetail(ticket.id)}
-                className="group cursor-pointer rounded-xl border border-rule bg-white p-4 shadow-xs transition-all hover:border-ink/50 hover:shadow-sm"
+                className="group w-full cursor-pointer rounded-xl border border-rule bg-white p-4 text-left shadow-xs transition-all hover:border-ink/50 hover:shadow-sm"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-2">
@@ -771,7 +776,7 @@ function SupportQueue() {
                     </div>
                   )}
                 </div>
-              </div>
+              </button>
             );
           })}
 

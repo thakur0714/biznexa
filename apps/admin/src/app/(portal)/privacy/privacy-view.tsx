@@ -83,9 +83,10 @@ export function PrivacyRequestsView() {
       </header>
       {error && <Notice tone="error">{error}</Notice>}
       {notice && <Notice tone="success">{notice}</Notice>}
-      {loading ? (
+      {loading && (
         <p role="status">Loading privacy requests…</p>
-      ) : result?.items.length ? (
+      )}
+      {!loading && result?.items && result.items.length > 0 && (
         <>
           <div className="overflow-x-auto rounded-lg border border-rule bg-white">
             <table className="w-full min-w-[760px] text-left text-sm">
@@ -149,7 +150,8 @@ export function PrivacyRequestsView() {
             </div>
           </div>
         </>
-      ) : (
+      )}
+      {!loading && !result?.items?.length && (
         <EmptyState title="No privacy requests" description="Requests matching these filters will appear here." />
       )}
 
@@ -167,7 +169,7 @@ export function PrivacyRequestsView() {
   );
 }
 
-function DecisionDialog({ action, onClose, onDone }: { action: Action | null; onClose: () => void; onDone: (notice: string) => Promise<void> }) {
+function DecisionDialog({ action, onClose, onDone }: Readonly<{ action: Action | null; onClose: () => void; onDone: (notice: string) => Promise<void> }>) {
   const api = useApi();
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
@@ -201,6 +203,9 @@ function DecisionDialog({ action, onClose, onDone }: { action: Action | null; on
   };
 
   const approving = action?.kind === 'approve';
+  let submitLabel = 'Reject request';
+  if (approving) submitLabel = 'Delete account';
+  if (busy) submitLabel = 'Saving…';
   return (
     <Dialog
       open={!!action}
@@ -211,7 +216,7 @@ function DecisionDialog({ action, onClose, onDone }: { action: Action | null; on
         <>
           <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button onClick={submit} disabled={busy} className={approving ? 'bg-danger text-white hover:bg-danger/90' : undefined}>
-            {busy ? 'Saving…' : approving ? 'Delete account' : 'Reject request'}
+            {submitLabel}
           </Button>
         </>
       }

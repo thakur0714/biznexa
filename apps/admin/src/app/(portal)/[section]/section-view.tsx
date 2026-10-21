@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { canSee, findNavItem } from '@/lib/nav';
 
 /** Placeholder for portal sections whose screens are built in later milestones. */
-export function SectionView({ slug }: { slug: string }) {
+export function SectionView({ slug }: Readonly<{ slug: string }>) {
   const { user } = useAuth();
   const item = findNavItem(slug);
   if (!item || !user) return null;

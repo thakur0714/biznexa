@@ -100,15 +100,17 @@ function AuditLogPage() {
             </tr>
           </thead>
           <tbody className="align-top">
-            {loading ? (
+            {loading && (
               <tr>
                 <td colSpan={6} className="py-4 text-center text-muted">Loading...</td>
               </tr>
-            ) : !data?.items.length ? (
+            )}
+            {!loading && !data?.items.length && (
               <tr>
                 <td colSpan={6} className="py-4 text-center text-muted">No records found.</td>
               </tr>
-            ) : (
+            )}
+            {!loading && data?.items && data.items.length > 0 && (
               data.items.map((log) => (
                 <tr key={log.id} className="border-b">
                   <td className="py-3 pr-4">{formatDateTime(log.createdAt)}</td>

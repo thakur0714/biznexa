@@ -33,7 +33,7 @@ export function DataTable<T>({
   minWidth,
   empty,
   getRowId,
-}: {
+}: Readonly<{
   data: T[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TanStack's own ColumnDef[] typing for mixed value types
   columns: ColumnDef<T, any>[];
@@ -46,7 +46,7 @@ export function DataTable<T>({
   minWidth?: number;
   empty: ReactNode;
   getRowId: (row: T) => string;
-}) {
+}>) {
   // useReactTable returns a mutable instance whose methods change without a new identity;
   // React Compiler memoization would show stale rows, so this component opts out.
   'use no memo';
@@ -92,13 +92,19 @@ export function DataTable<T>({
               {hg.headers.map((h) => {
                 const sorted = h.column.getIsSorted();
                 const label = flexRender(h.column.columnDef.header, h.getContext());
+                let sortIcon = '';
+                if (sorted === 'asc') sortIcon = '↑';
+                else if (sorted === 'desc') sortIcon = '↓';
+                let sort: 'ascending' | 'descending' | undefined;
+                if (sorted === 'asc') sort = 'ascending';
+                else if (sorted === 'desc') sort = 'descending';
                 return (
-                  <Th key={h.id} aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined} className={h.column.columnDef.meta?.className}>
+                  <Th key={h.id} aria-sort={sort} className={h.column.columnDef.meta?.className}>
                     {h.column.getCanSort() ? (
                       <button type="button" onClick={h.column.getToggleSortingHandler()} className="inline-flex items-center gap-1 font-medium hover:text-night">
                         {label}
                         <span aria-hidden className="w-3 text-xs">
-                          {sorted === 'asc' ? '↑' : sorted === 'desc' ? '↓' : ''}
+                          {sortIcon}
                         </span>
                       </button>
                     ) : (

@@ -10,7 +10,7 @@ export function generateStaticParams() {
     .map((i) => ({ section: i.slug }));
 }
 
-export default async function SectionPage({ params }: { params: Promise<{ section: string }> }) {
+export default async function SectionPage({ params }: Readonly<{ params: Promise<{ section: string }> }>) {
   const { section } = await params;
   return <SectionView slug={section} />;
 }

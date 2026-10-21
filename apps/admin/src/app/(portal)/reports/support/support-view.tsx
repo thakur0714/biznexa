@@ -174,11 +174,12 @@ export function SupportReportView() {
         </div>
       )}
 
-      {loading && !data ? (
+      {loading && !data && (
         <div className="rounded-xl border border-rule bg-paper/50 p-12 text-center text-sm text-muted">
           Loading support analytics...
         </div>
-      ) : data ? (
+      )}
+      {data && (
         <div className="space-y-6">
           {/* Summary KPIs */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -301,7 +302,7 @@ export function SupportReportView() {
             )}
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

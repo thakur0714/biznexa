@@ -50,7 +50,7 @@ function setFlag(on: boolean) {
  * no usable session is left behind. The API still enforces every permission on its own routes.
  * A staff session that has not passed 2FA is kept, but the portal sends it to /two-factor first.
  */
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const [user, setUser] = useState<StaffUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       hasSession = localStorage.getItem(FLAG) === '1';
     } catch {}
-    (hasSession ? refresh() : Promise.resolve(null)).finally(() => setReady(true));
+    void (hasSession ? refresh() : Promise.resolve(null)).finally(() => setReady(true));
   }, [refresh]);
 
   // Access tokens last 15 minutes; renew a little before that while the tab is open.

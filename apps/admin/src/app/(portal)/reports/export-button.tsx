@@ -14,7 +14,7 @@ interface ExportButtonProps {
   categoryId?: string;
 }
 
-export function ExportButton({ type, preset, from, to, serviceId, categoryId }: ExportButtonProps) {
+export function ExportButton({ type, preset, from, to, serviceId, categoryId }: Readonly<ExportButtonProps>) {
   const { call } = useApi();
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export function ExportButton({ type, preset, from, to, serviceId, categoryId }: 
       let linkUrl: string | null = null;
       while (Date.now() - start < 30_000) {
         try {
-          const res = await call<{ url: string }>((api) =>
+          const res = await /* NOSONAR: polling must remain sequential until export readiness */ call<{ url: string }>((api) =>
             api.POST('/api/admin/reports/export/{id}/link', {
               params: { path: { id: job.id } },
             }),
@@ -52,7 +52,7 @@ export function ExportButton({ type, preset, from, to, serviceId, categoryId }: 
           }
         } catch {
           // 409 means still being prepared, wait 1s before retry
-          await new Promise((r) => setTimeout(r, 1000));
+          await new Promise((r) => setTimeout(r, 1000)); // NOSONAR: retry delay must finish before the next poll starts
         }
       }
 

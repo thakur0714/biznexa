@@ -8,8 +8,8 @@ import { TwoFactorForm } from './two-factor-form';
 const auth = vi.hoisted(() => ({
   user: null as StaffUser | null,
   ready: true,
-  signIn: vi.fn<(s: SessionResponse) => Promise<boolean>>(async () => true),
-  signOut: vi.fn(async () => undefined),
+  signIn: vi.fn<(s: SessionResponse) => Promise<boolean>>(() => Promise.resolve(true)),
+  signOut: vi.fn(() => Promise.resolve()),
 }));
 vi.mock('@/lib/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/auth')>()),
@@ -40,7 +40,7 @@ let reply: (path: string, body: unknown) => Response;
 
 function renderForm() {
   return render(
-    <ApiProvider token="pending" refresh={async () => null}>
+    <ApiProvider token="pending" refresh={() => Promise.resolve(null)}>
       <TwoFactorForm />
     </ApiProvider>,
   );
