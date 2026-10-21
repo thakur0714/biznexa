@@ -26,7 +26,7 @@ const ENTITY_TYPE_VALUES = ENTITY_TYPES.map((t) => t.value) as [EntityType, ...E
 /** A customer may save at most this many businesses. */
 export const MAX_BUSINESS_ENTITIES = 50;
 
-const COMPANY_TYPES: readonly EntityType[] = ['PRIVATE_LIMITED', 'OPC', 'PUBLIC_LIMITED', 'SECTION_8'];
+const COMPANY_TYPES = new Set<EntityType>(['PRIVATE_LIMITED', 'OPC', 'PUBLIC_LIMITED', 'SECTION_8']);
 
 /**
  * 4th letter of a PAN (holder status) each type of business may have. P = person (a proprietorship
@@ -64,6 +64,46 @@ const CIN = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/;
 const LLPIN = /^[A-Z]{3}-\d{4}$/;
 const PINCODE = /^[1-9]\d{5}$/;
 const GST_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+type BusinessEntityValues = {
+  entityType: EntityType;
+  pan: string | null;
+  gstin: string | null;
+  cin: string | null;
+  address?: { state: string } | null;
+  state?: string | null;
+};
+type AddEntityIssue = (path: string, message: string) => void;
+
+function validatePanForEntity(v: BusinessEntityValues, issue: AddEntityIssue): void {
+  const holder = PAN_HOLDER[v.entityType];
+  if (v.pan && PAN.test(v.pan) && holder && !holder.letters.includes(v.pan[3])) {
+    issue('pan', `The 4th letter of the PAN of ${holder.name} is ${holder.letters.split('').join(' or ')}`);
+  }
+}
+
+function validateGstinForEntity(v: BusinessEntityValues, issue: AddEntityIssue): void {
+  if (!v.gstin || !isValidGstin(v.gstin)) return;
+  if (v.pan && v.gstin.slice(2, 12) !== v.pan) issue('gstin', 'This GSTIN belongs to a different PAN');
+  const registered = gstinState(v.gstin);
+  const given = v.address?.state ?? v.state;
+  if (registered && given && registered !== given) issue('gstin', `This GSTIN is registered in ${registered}, not ${given}`);
+}
+
+function validateEntityState(v: BusinessEntityValues, issue: AddEntityIssue): void {
+  if (v.address && v.state && v.address.state !== v.state) issue('state', 'The state does not match the address');
+}
+
+function validateCinForEntity(v: BusinessEntityValues, issue: AddEntityIssue): void {
+  if (!v.cin) return;
+  if (v.entityType === 'LLP') {
+    if (!LLPIN.test(v.cin)) issue('cin', 'Enter an LLPIN like AAB-1234');
+  } else if (COMPANY_TYPES.has(v.entityType)) {
+    if (!CIN.test(v.cin)) issue('cin', 'Enter a 21-character CIN like U74999PB2020PTC012345');
+  } else {
+    issue('cin', 'Only companies have a CIN and LLPs an LLPIN — leave this blank');
+  }
+}
 
 /** The 15th character of a GSTIN, computed from the first 14 (GSTN's mod-36 checksum). */
 export function gstinCheckChar(first14: string): string {
@@ -124,26 +164,10 @@ export const businessEntityInput = z
   .strict()
   .superRefine((v, ctx) => {
     const issue = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
-    const holder = PAN_HOLDER[v.entityType];
-    if (v.pan && PAN.test(v.pan) && holder && !holder.letters.includes(v.pan[3])) {
-      issue('pan', `The 4th letter of the PAN of ${holder.name} is ${holder.letters.split('').join(' or ')}`);
-    }
-    if (v.gstin && isValidGstin(v.gstin)) {
-      if (v.pan && v.gstin.slice(2, 12) !== v.pan) issue('gstin', 'This GSTIN belongs to a different PAN');
-      const registered = gstinState(v.gstin);
-      const given = v.address?.state ?? v.state;
-      if (registered && given && registered !== given) issue('gstin', `This GSTIN is registered in ${registered}, not ${given}`);
-    }
-    if (v.address && v.state && v.address.state !== v.state) issue('state', 'The state does not match the address');
-    if (v.cin) {
-      if (v.entityType === 'LLP') {
-        if (!LLPIN.test(v.cin)) issue('cin', 'Enter an LLPIN like AAB-1234');
-      } else if (COMPANY_TYPES.includes(v.entityType)) {
-        if (!CIN.test(v.cin)) issue('cin', 'Enter a 21-character CIN like U74999PB2020PTC012345');
-      } else {
-        issue('cin', 'Only companies have a CIN and LLPs an LLPIN — leave this blank');
-      }
-    }
+    validatePanForEntity(v, issue);
+    validateGstinForEntity(v, issue);
+    validateEntityState(v, issue);
+    validateCinForEntity(v, issue);
   })
   .transform((v) => ({ ...v, state: v.address?.state ?? v.state ?? (v.gstin ? gstinState(v.gstin) : null) }));
 export type BusinessEntityInput = z.input<typeof businessEntityInput>;

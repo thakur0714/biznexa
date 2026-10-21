@@ -24,7 +24,7 @@ export const isMediaPath = (src: string) => MEDIA_PATH.test(src);
 
 /** The media type a file name claims by its extension, or null when it is not an accepted image. */
 export function mediaTypeFromName(name: string): MediaImageType | null {
-  const ext = name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  const ext = /\.([a-z0-9]+)$/.exec(name.toLowerCase())?.[1];
   if (!ext) return null;
   const hit = Object.entries(MEDIA_IMAGE_TYPES).find(([, t]) => (t.extensions as readonly string[]).includes(ext));
   return (hit?.[0] as MediaImageType | undefined) ?? null;
@@ -51,8 +51,8 @@ export type MediaImage = z.infer<typeof mediaImageSchema>;
 export function safeLinkHref(input: string): string | null {
   const href = input.trim();
   // eslint-disable-next-line no-control-regex
-  if (!href || /[\s\u0000-\u001f\u007f\\]/.test(href)) return null;
-  if (/^(?:https?:\/\/[^/]|mailto:.|tel:\+?[0-9])/i.test(href)) return href;
+  if (!href || /[\s\u0000-\u0008\u000e-\u001f\u007f\\]/.test(href)) return null;
+  if (/^(?:https?:\/\/[^/]|mailto:.|tel:\+?\d)/i.test(href)) return href;
   if (/^\/(?!\/)/.test(href) || href.startsWith('#')) return href;
   if (/^[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:[/?#:].*)?$/i.test(href)) return `https://${href}`;
   return null;

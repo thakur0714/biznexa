@@ -156,52 +156,67 @@ function isRealDate(v: string): boolean {
 }
 
 /** Rules that look at one field on its own. */
-function checkField(f: FormField): Issue[] {
+type TextFormField = Extract<FormField, { type: 'text' | 'textarea' | 'email' | 'tel' }>;
+type ChoiceFormField = Extract<FormField, { type: 'select' | 'multi-select' }>;
+
+function checkTextField(f: TextFormField): Issue[] {
   const issues: Issue[] = [];
   const add = (path: string, message: string) => issues.push({ path: [path], message });
+  if (outOfOrder(f.minLength, f.maxLength)) add('minLength', 'Minimum length is more than the maximum');
+  if (f.pattern != null) {
+    try {
+      new RegExp(f.pattern);
+    } catch {
+      add('pattern', 'Not a valid regular expression');
+    }
+  }
+  if (f.patternMessage && f.pattern == null) add('patternMessage', 'Pattern message without a pattern');
+  return issues;
+}
+
+function checkDateField(f: Extract<FormField, { type: 'date' }>): Issue[] {
+  const issues: Issue[] = [];
+  const add = (path: string, message: string) => issues.push({ path: [path], message });
+  for (const k of ['min', 'max'] as const) {
+    const v = f[k];
+    if (v && v !== 'today' && !isRealDate(v)) add(k, 'Not a real date');
+  }
+  if (f.min !== 'today' && f.max !== 'today' && outOfOrder(f.min, f.max)) add('min', 'Earliest date is after the latest date');
+  return issues;
+}
+
+function checkChoiceField(f: ChoiceFormField): Issue[] {
+  const issues: Issue[] = [];
+  const add = (path: string, message: string) => issues.push({ path: [path], message });
+  if (!!f.options === !!f.optionsSource) add('options', 'Give either options or optionsSource');
+  const values = (f.options ?? []).map((o) => o.value);
+  const dup = values.find((v, i) => values.indexOf(v) !== i);
+  if (dup) add('options', `Option "${dup}" is listed twice`);
+  if (f.type === 'multi-select' && outOfOrder(f.minItems, f.maxItems)) add('minItems', 'Minimum is more than the maximum');
+  return issues;
+}
+
+function checkField(f: FormField): Issue[] {
   switch (f.type) {
     case 'text':
     case 'textarea':
     case 'email':
     case 'tel':
-      if (outOfOrder(f.minLength, f.maxLength)) add('minLength', 'Minimum length is more than the maximum');
-      if (f.pattern != null) {
-        try {
-          new RegExp(f.pattern);
-        } catch {
-          add('pattern', 'Not a valid regular expression');
-        }
-      }
-      if (f.patternMessage && f.pattern == null) add('patternMessage', 'Pattern message without a pattern');
-      break;
+      return checkTextField(f);
     case 'number':
-      if (outOfOrder(f.min, f.max)) add('min', 'Minimum is more than the maximum');
-      break;
+      return outOfOrder(f.min, f.max) ? [{ path: ['min'], message: 'Minimum is more than the maximum' }] : [];
     case 'date':
-      for (const k of ['min', 'max'] as const) {
-        const v = f[k];
-        if (v && v !== 'today' && !isRealDate(v)) add(k, 'Not a real date');
-      }
-      if (f.min !== 'today' && f.max !== 'today' && outOfOrder(f.min, f.max)) add('min', 'Earliest date is after the latest date');
-      break;
+      return checkDateField(f);
     case 'select':
     case 'multi-select': {
-      if (!!f.options === !!f.optionsSource) add('options', 'Give either options or optionsSource');
-      const values = (f.options ?? []).map((o) => o.value);
-      const dup = values.find((v, i) => values.indexOf(v) !== i);
-      if (dup) add('options', `Option "${dup}" is listed twice`);
-      if (f.type === 'multi-select' && outOfOrder(f.minItems, f.maxItems)) add('minItems', 'Minimum is more than the maximum');
-      break;
+      return checkChoiceField(f);
     }
-    case 'file': {
-      if (new Set(f.accept).size !== f.accept.length) add('accept', 'A file type is listed twice');
-      break;
-    }
+    case 'file':
+      return new Set(f.accept).size !== f.accept.length ? [{ path: ['accept'], message: 'A file type is listed twice' }] : [];
     case 'repeater':
-      if (outOfOrder(f.minItems, f.maxItems)) add('minItems', 'Minimum is more than the maximum');
-      break;
+      return outOfOrder(f.minItems, f.maxItems) ? [{ path: ['minItems'], message: 'Minimum is more than the maximum' }] : [];
   }
-  return issues;
+  return [];
 }
 
 /** Rules for a `showIf` pointing at `target` (an earlier field), or the reason it cannot. */

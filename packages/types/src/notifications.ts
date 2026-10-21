@@ -382,7 +382,7 @@ export const NOTIFICATION_EVENT_VARIABLES: Record<NotificationEvent, TemplateVar
 };
 
 export function extractTemplateVariables(templateStr: string): string[] {
-  const variableRegex = /{{\s*([a-zA-Z0-9_]+)\s*}}/g;
+  const variableRegex = /{{\s*(\w+)\s*}}/g;
   const used = new Set<string>();
   let match: RegExpExecArray | null;
   while ((match = variableRegex.exec(templateStr)) !== null) {

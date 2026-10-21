@@ -5,7 +5,7 @@ import { canUseAdmin } from './permissions';
 export const totpCodeSchema = z.object({
   code: z
     .string()
-    .transform((v) => v.replace(/\s/g, ''))
+    .transform((v) => v.replaceAll(/\s/g, ''))
     .pipe(z.string().regex(/^\d{6}$/, 'Enter the 6-digit code from your authenticator app')),
 });
 export type TotpCodeInput = z.infer<typeof totpCodeSchema>;

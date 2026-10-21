@@ -4,7 +4,7 @@
  * resolve to another host in browsers.
  */
 export function safeRedirectPath(next: string | null | undefined, fallback: string): string {
-  if (!next || !next.startsWith('/')) return fallback;
+  if (!next?.startsWith('/')) return fallback;
   const base = 'http://same.invalid';
   let url: URL;
   try {

@@ -32,7 +32,7 @@ export const consultantProfileInputSchema = z.object({
   city: cleanString('City', 100),
   state: cleanString('State', 100),
   area: z.string().trim().max(120).nullable().optional(),
-  bio: z.string().trim().max(2_000).nullable().optional(),
+  bio: z.string().trim().max(2000).nullable().optional(),
   feePerSession: z.number().int().min(1).max(100_000_000).describe('Consultation fee in paise'),
   consultationTypes: z.array(z.enum(consultationTypes)).min(1),
 }).strict();

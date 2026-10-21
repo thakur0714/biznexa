@@ -22,7 +22,7 @@ export const isKnownFileType = (mime: string): mime is FileMimeType => Object.pr
 
 /** The type a file name claims by its extension, or null when the extension is unknown. */
 export function fileTypeFromName(name: string): FileMimeType | null {
-  const ext = name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  const ext = /\.([a-z0-9]+)$/.exec(name.toLowerCase())?.[1];
   if (!ext) return null;
   const hit = Object.entries(FILE_TYPES).find(([, t]) => (t.extensions as readonly string[]).includes(ext));
   return (hit?.[0] as FileMimeType | undefined) ?? null;
