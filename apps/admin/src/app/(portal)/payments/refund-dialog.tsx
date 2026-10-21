@@ -52,8 +52,7 @@ export function RefundDialog({ payment, open, onClose, onRefunded }: Readonly<{ 
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // The parent remounts the dialog (a new `key`) each time it opens, so each opening gets a fresh key.
-  const [key, setKey] = useState(() => crypto.randomUUID());
-  void setKey;
+  const [key] = useState(() => crypto.randomUUID()); // NOSONAR: a fixed idempotency key for this dialog; it never changes, so there is no setter
 
   const refundable = payment.refundable;
   const set = (patch: Partial<RefundFormValues>) => setValues((v) => ({ ...v, ...patch }));

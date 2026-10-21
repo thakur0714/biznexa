@@ -4,9 +4,9 @@ import { ApiProvider } from '@biznexa/api-client/react';
 import { ToastProvider } from '@biznexa/ui';
 import { AnnouncementsView } from './announcements-view';
 
-const refresh = vi.fn(async () => 'token'); // NOSONAR: auth test double preserves rejected-call behavior
+const refresh = vi.fn(() => Promise.resolve().then(() => 'token'));
 const json = (data: unknown) => new Response(JSON.stringify(data), { status: 201, headers: { 'content-type': 'application/json' } });
-beforeEach(() => vi.stubGlobal('fetch', vi.fn(async (request: Request) => { // NOSONAR: fetch test double preserves rejected-call behavior
+beforeEach(() => vi.stubGlobal('fetch', vi.fn((request: Request) => Promise.resolve().then(() => {
   const url = new URL(request.url);
   if (url.pathname.endsWith('/count')) return json({ recipients: 7 });
   if (url.pathname.endsWith('/announcements')) return json({ sourceKey: '11111111-1111-4111-8111-111111111111', recipients: 7, queued: 7 });
@@ -19,7 +19,7 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn(async (request: Request) => { // N
     }
   ]);
   return json({ message: 'not found' });
-})));
+}))));
 
 describe('AnnouncementsView', () => {
   it('shows a recipient count before allowing a queue send', async () => {

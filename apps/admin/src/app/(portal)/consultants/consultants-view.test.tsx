@@ -7,10 +7,10 @@ const CONSULTANT_ID = '11111111-1111-4111-8111-111111111111';
 let list: AdminConsultantList;
 const calls: Array<{ url: string; options: { params?: { query?: Record<string, unknown> } } | undefined }> = [];
 const fakeClient = {
-  GET: vi.fn(async (url: string, options?: { params?: { query?: Record<string, unknown> } }) => { // NOSONAR: API test double preserves rejected-call behavior
+  GET: vi.fn((url: string, options?: { params?: { query?: Record<string, unknown> } }) => Promise.resolve().then(() => {
     calls.push({ url, options });
     return { data: adminConsultantListSchema.parse(list), response: new Response(null, { status: 200 }) };
-  }),
+  })),
 };
 const fakeApi = { call: async (send: (client: typeof fakeClient) => Promise<{ data: unknown }>) => (await send(fakeClient)).data };
 

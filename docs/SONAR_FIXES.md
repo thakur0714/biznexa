@@ -37,7 +37,7 @@ Done and merged: API (most of S1), S3 and S11. The 4 findings left in S11 are pa
 | **S5b** ✅ | `apps/web/src/app/apply` | 42 | Codex | `sonar-s5b-web-apply` |
 | **S6** ✅ | `apps/admin/src/app/(portal)/services` | 73 | Codex | `sonar-s6-admin-services` |
 | **S7** ✅ | `apps/admin/src/app/(portal)/coupons`, `…/applications`, `…/certificates` | 91 | Codex | `sonar-s7-admin-apps` |
-| **S8** | `apps/admin/src/app/(portal)/consultant`, `…/consultants`, `…/payments`, `…/customers`, `…/notifications` | 79 | Codex | `sonar-s8-admin-people` |
+| **S8** ✅ | `apps/admin/src/app/(portal)/consultant`, `…/consultants`, `…/payments`, `…/customers`, `…/notifications` | 79 | Codex | `sonar-s8-admin-people` |
 | **S9** | `apps/admin/src`: every other `(portal)` folder (settings, cms, documents, support, reports, privacy, reviews, audit, `[section]`, `layout.tsx`, `page.tsx`), plus `components/`, `lib/`, `app/two-factor`, `app/login`, `app/layout.tsx` | ~127 | Codex | `sonar-s9-admin-rest` |
 | **S10a** ✅ | `apps/mobile`: everything except `src/screens` (`App.tsx`, `src/api`, `src/auth`, `src/navigation`, `src/components`, …) | ~45 | Codex | `sonar-s10a-mobile-core` |
 | **S10b** ✅ | `apps/mobile/src/screens`: every file except `BuyFlowScreen.tsx` and `ApplicationDetailScreen.tsx` | 41 | Codex | `sonar-s10b-mobile-screens` |
@@ -187,6 +187,7 @@ The rule id is SonarQube's (what VS Code shows). The checker's ESLint name is in
 Only in these cases, always with a reason:
 - `await` in a loop where order matters, and no shared helper fits (see above).
 - An array index as `key` for rows that have no id **and are edited in place** (form repeater rows). A key built from the row's content would change on every keystroke and remount the row, which loses input focus: `// NOSONAR: rows have no id and are edited in place`.
+- `const [value] = useState(() => …)` for a value fixed when the component mounts (e.g. an idempotency key), so it never needs a setter: `// NOSONAR: fixed for this mount; no setter needed`. Don't destructure an unused setter and `void` it.
 - `Math.random()` used for retry jitter or other non-security purposes: `// NOSONAR: retry jitter, not security`.
 - `JSON.parse(JSON.stringify(x))` used **to drop `undefined`** before saving JSON. `structuredClone` would keep it: `// NOSONAR: a JSON round trip drops undefined`.
 - An `async` method with no `await` in a mock/test double that must reject like the real implementation.
