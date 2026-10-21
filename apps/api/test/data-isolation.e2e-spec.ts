@@ -123,7 +123,7 @@ beforeAll(async () => {
       shortDescription: 'Service for the data isolation tests.',
       packages: { create: [{ name: 'Standard', professionalFee: 100_000 }] },
       documents: { create: [{ name: 'PAN Card', isMandatory: true, sortOrder: 1 }] },
-      formSchemas: { create: [{ version: 1, schema: JSON.parse(JSON.stringify(GENERIC_SERVICE_FORM)), isCurrent: true }] },
+      formSchemas: { create: [{ version: 1, schema: structuredClone(GENERIC_SERVICE_FORM), isCurrent: true }] },
     },
     select: { id: true, packages: { select: { id: true } }, documents: { select: { id: true } } },
   });
@@ -191,11 +191,11 @@ beforeAll(async () => {
   });
   b.invoice = invoice.id;
   b.invoiceNumber = invoice.number;
-  const refund = await prisma.refund.create({ data: { paymentId: b.payment, amount: 1_000, reason: 'Goodwill', initiatedById: staffId, status: 'PROCESSED', processedAt: new Date() } });
+  const refund = await prisma.refund.create({ data: { paymentId: b.payment, amount: 1000, reason: 'Goodwill', initiatedById: staffId, status: 'PROCESSED', processedAt: new Date() } });
   const note = await prisma.creditNote.create({
     data: {
       number: `ISO/CN/${run}/1`, financialYear: '2026-27', sequence: Number(run), issuedAt: new Date(), refundId: refund.id, invoiceId: invoice.id, customerId: bob.id,
-      seller: party, buyer: party, lines: [], taxType: 'IGST', taxableValue: 847, total: 1_000, amountInWords: 'One thousand', reason: 'Goodwill', pdfKey: delivered.fileKey,
+      seller: party, buyer: party, lines: [], taxType: 'IGST', taxableValue: 847, total: 1000, amountInWords: 'One thousand', reason: 'Goodwill', pdfKey: delivered.fileKey,
     },
   });
   b.creditNote = note.id;
@@ -363,7 +363,7 @@ describe('another customer’s ids inside the request body', () => {
 
   it('cannot attach their files to a message', async () => {
     for (const fileId of [b.looseFile, b.attachmentFile, b.docFile, b.deliverableFile]) {
-      await http.post(`/api/applications/${aliceDraft}/messages`).set(as(alice.token)).send({ body: 'Look', fileIds: [fileId] }).expect(400);
+      await /* NOSONAR: tests run steps in order */ http.post(`/api/applications/${aliceDraft}/messages`).set(as(alice.token)).send({ body: 'Look', fileIds: [fileId] }).expect(400); // NOSONAR: tests run steps in order
     }
   });
 
@@ -393,7 +393,7 @@ describe('signed download links', () => {
       ['certificates', b.certificate],
       ['data-exports', b.dataExport],
     ] as const) {
-      await http.get(signedPath(aliceFile, e, 'attachment', 'files').replace(`/api/files/${aliceFile}`, `/api/${scope}/${target}`)).expect(403);
+      await /* NOSONAR: tests run steps in order */ http.get(signedPath(aliceFile, e, 'attachment', 'files').replace(`/api/files/${aliceFile}`, `/api/${scope}/${target}`)).expect(403); // NOSONAR: tests run steps in order
     }
   });
 });

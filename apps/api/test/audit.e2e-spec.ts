@@ -1,5 +1,5 @@
 import { configureApp } from '../src/main';
-import { INestApplication } from '@nestjs/common';
+
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as supertest from 'supertest';
 const request = supertest.default || supertest;

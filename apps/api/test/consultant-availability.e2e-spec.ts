@@ -131,7 +131,7 @@ describe('consultant availability (M8.6)', () => {
     await http.delete(`${base}/exceptions/${id}`).set(as(other.token)).expect(404);
     const after = (await http.delete(`${base}/exceptions/${id}`).set(as(consultant.token)).expect(200)).body;
     expect(after.exceptions).toEqual([]);
-    const actions = (await prisma.auditLog.findMany({ where: { entityId: id }, select: { action: true } })).map((a) => a.action).sort();
+    const actions = (await prisma.auditLog.findMany({ where: { entityId: id }, select: { action: true } })).map((a) => a.action).sort((a, b) => a.localeCompare(b));
     expect(actions).toEqual(['consultant.availability_exception.create', 'consultant.availability_exception.delete']);
   });
 });
@@ -160,7 +160,7 @@ describe('consultant portal profile and fee approval (M8.7)', () => {
       feePerSession: current.feePerSession, consultationTypes: current.consultationTypes,
     };
     for (const changedField of rejectedFields) {
-      const response = await http.put(profileUrl).set(as(consultant.token)).send({ ...consultantInput, ...changedField }).expect(409);
+      const response = await /* NOSONAR: tests run steps in order */ http.put(profileUrl).set(as(consultant.token)).send({ ...consultantInput, ...changedField }).expect(409); // NOSONAR: tests run steps in order
       expect(response.body.message).toBe('Contact support to change your category, qualification or membership number.');
     }
     const unchanged = (await http.get(profileUrl).set(as(consultant.token)).expect(200)).body;

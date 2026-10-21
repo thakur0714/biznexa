@@ -79,7 +79,7 @@ beforeAll(async () => {
   });
   orderAId = orderA.id;
 
-  const appA = await prisma.application.create({
+  await prisma.application.create({
     data: {
       code: `APP-${run}-A`,
       orderId: orderA.id,

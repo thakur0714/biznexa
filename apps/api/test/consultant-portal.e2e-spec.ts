@@ -33,7 +33,7 @@ beforeAll(async () => {
   const two = await staffSession(http, prisma, 'CONSULTANT', `${emailPrefix}-two@example.com`);
   first = { token: one.accessToken, id: (await prisma.user.findUniqueOrThrow({ where: { email: `${emailPrefix}-one@example.com` }, select: { id: true } })).id };
   second = { token: two.accessToken, id: (await prisma.user.findUniqueOrThrow({ where: { email: `${emailPrefix}-two@example.com` }, select: { id: true } })).id };
-  const reg = await http.post('/api/auth/register').send({ name: `Customer ${run}`, mobile: `8${run.replace(/\D/g, '1').padEnd(7, '1').slice(0, 7)}01`, email: `${emailPrefix}-customer@example.com`, password: 'Customer@12345', consent: true }).expect(201);
+  const reg = await http.post('/api/auth/register').send({ name: `Customer ${run}`, mobile: `8${run.replaceAll(/\D/g, '1').padEnd(7, '1').slice(0, 7)}01`, email: `${emailPrefix}-customer@example.com`, password: 'Customer@12345', consent: true }).expect(201); // NOSONAR: test credential
   customer = { id: reg.body.user.id, token: reg.body.accessToken };
   const consultantOne = await prisma.consultant.create({ data: { userId: first.id, slug: `${emailPrefix}-one`, category: 'CA', qualification: 'CA', experienceYears: 5, expertise: ['Tax'], languages: ['English'], city: 'Pune', state: 'Maharashtra', feePerSession: 10_000, commissionPercent: 15, consultationTypes: ['VIDEO'], verificationStatus: 'APPROVED' }, select: { id: true } });
   const consultantTwo = await prisma.consultant.create({ data: { userId: second.id, slug: `${emailPrefix}-two`, category: 'CA', qualification: 'CA', experienceYears: 5, expertise: ['Tax'], languages: ['English'], city: 'Pune', state: 'Maharashtra', feePerSession: 20_000, commissionPercent: 25, consultationTypes: ['VIDEO'], verificationStatus: 'APPROVED' }, select: { id: true } });
@@ -72,11 +72,11 @@ describe('consultant portal (M8.13)', () => {
     const conversations = await http.get(`${base}/conversations`).set(as(first.token)).expect(200);
     expect(conversations.body.items).toEqual([expect.objectContaining({ applicationId: firstApp, unreadCount: 1 })]);
     const earnings = await http.get(`${base}/earnings`).set(as(first.token)).expect(200);
-    expect(earnings.body).toMatchObject({ commissionPercent: 15, items: [expect.objectContaining({ bookingId: firstBooking, fee: 10_001, commission: 1_500, net: 8_501 })] });
+    expect(earnings.body).toMatchObject({ commissionPercent: 15, items: [expect.objectContaining({ bookingId: firstBooking, fee: 10001, commission: 1500, net: 8501 })] });
     expect(earnings.body.items).toHaveLength(1);
     await http.post(`/api/admin/applications/${firstApp}/messages`).set(as(first.token)).send({ body: 'Consultant reply' }).expect(201);
     for (const path of ['bookings', 'applications', 'conversations', 'earnings']) {
-      const otherResponse = await http.get(`${base}/${path}`).set(as(second.token)).expect(200);
+      const otherResponse = await /* NOSONAR: tests run steps in order */ http.get(`${base}/${path}`).set(as(second.token)).expect(200); // NOSONAR: tests run steps in order
       expect(JSON.stringify(otherResponse.body)).not.toContain(firstBooking);
       expect(JSON.stringify(otherResponse.body)).not.toContain(firstApp);
       if (path === 'bookings') {
@@ -90,6 +90,6 @@ describe('consultant portal (M8.13)', () => {
   });
 
   it('returns 403 to customers for every consultant portal collection', async () => {
-    for (const path of ['bookings', 'applications', 'conversations', 'earnings']) await http.get(`/api/consultants/me/portal/${path}`).set(as(customer.token)).expect(403);
+    for (const path of ['bookings', 'applications', 'conversations', 'earnings']) await /* NOSONAR: tests run steps in order */ http.get(`/api/consultants/me/portal/${path}`).set(as(customer.token)).expect(403); // NOSONAR: tests run steps in order
   });
 });
