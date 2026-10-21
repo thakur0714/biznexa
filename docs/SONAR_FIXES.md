@@ -32,7 +32,7 @@ Done and merged: API (most of S1), S3 and S11. The 4 findings left in S11 are pa
 | **S2b** ✅ | `apps/api/test`: files whose names start with `a`–`d` (`admin-*`, `app.*`, `application*`, `bookings*`, `certificate*`, `cms*`, `consultant*`, `customer*`, `data-isolation*`) | ~75 | Jules | `sonar-s2b-api-tests` |
 | **S2c** | `apps/api/test`: every other file (names from `e` to `z`, plus helpers such as `staff.ts`, `setup-env.js`) | ~120 | Jules | `sonar-s2c-api-tests` |
 | **S3** ✅ | `apps/web/src/components`, `apps/web/src/lib`, and in `apps/web/src/app`: the root files (`page.tsx`, `layout.tsx`, `error.tsx`, `globals.css`, …), `login/`, `register/`, `forgot-password/`, `verify/`, `services/`, `blog/` | ~110 | Gemini Flash (finished by Claude) | `sonar-s3-web-public` |
-| **S4** | `apps/web/src/app/dashboard` | 82 | Codex | `sonar-s4-web-dashboard` |
+| **S4** ✅ | `apps/web/src/app/dashboard` | 82 | Codex | `sonar-s4-web-dashboard` |
 | **S5a** ✅ | `apps/web/src/app/consultants`, plus every other `apps/web/src/app/*` folder that S3, S4 and S5b don't list (today only `dev/`) | 31 | Codex | `sonar-s5a-web-consultants` |
 | **S5b** ✅ | `apps/web/src/app/apply` | 42 | Codex | `sonar-s5b-web-apply` |
 | **S6** | `apps/admin/src/app/(portal)/services` | 73 | Codex | `sonar-s6-admin-services` |
