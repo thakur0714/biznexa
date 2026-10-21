@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo, type FormEvent } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import type React from 'react';
 import {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_EVENT_VARIABLES,
@@ -104,8 +105,6 @@ function TemplateEditor() {
 
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
     api
       .call((c) => c.GET('/api/admin/notifications/templates', {}))
       .then(
@@ -161,7 +160,7 @@ function TemplateEditor() {
   // Parse variables in current text
   const { variablesUsed, unknownVariables } = useMemo(() => {
     const combined = `${subject} ${body}`;
-    const regex = /{{\s*([a-zA-Z0-9_]+)\s*}}/g;
+    const regex = /{{\s*(\w+)\s*}}/g;
     const used = new Set<string>();
     let m: RegExpExecArray | null;
     while ((m = regex.exec(combined)) !== null) {
@@ -176,7 +175,7 @@ function TemplateEditor() {
   const preview = useMemo(() => {
     const samples = getSampleVariablesForEvent(selectedEvent);
     const render = (text: string, isEmailHtml: boolean) => {
-      return text.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_match, name: string) => {
+      return text.replaceAll(/{{\s*(\w+)\s*}}/g, (_match, name: string) => {
         const val = samples[name];
         if (val === undefined || val === null) {
           return `{{${name}}}`;
@@ -210,7 +209,7 @@ function TemplateEditor() {
     );
   }, [currentTemplate, subject, body, dltTemplateId, isActive]);
 
-  async function handleSave(e: FormEvent) {
+  async function handleSave(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!currentTemplate) return;
 
@@ -268,7 +267,7 @@ function TemplateEditor() {
       <div className="max-w-[1100px] py-4 space-y-4">
         <h1 className="text-2xl font-bold tracking-[-0.02em] text-night">Notification Templates</h1>
         <Notice tone="error">{loadError}</Notice>
-        <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
+        <Button variant="outline" size="sm" onClick={() => { setLoading(true); setReload((n) => n + 1); }}>
           Try again
         </Button>
       </div>
@@ -550,7 +549,7 @@ function TemplateEditor() {
                   <div className="flex items-center gap-1.5 font-semibold text-night">
                     <span className="size-4 rounded-sm bg-ink text-[10px] text-white flex items-center justify-center font-bold">
                       B
-                    </span>
+                    </span>{' '}
                     BizNexa
                   </div>
                   <span>now</span>

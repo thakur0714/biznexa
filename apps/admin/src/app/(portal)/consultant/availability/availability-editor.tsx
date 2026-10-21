@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
+import type React from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { addDays, availabilityExceptionInputSchema, availabilityUpdateInputSchema, istDate, type ConsultantAvailability, type AvailabilityUpdateInput } from '@biznexa/types';
 import { Button, Notice } from '@biznexa/ui';
@@ -46,7 +47,7 @@ export function ConsultantAvailabilityEditor() {
   if (!user) return null;
   if (!user.roles.includes('CONSULTANT')) return <NotAllowed />;
 
-  async function saveSchedule(event: FormEvent) {
+  async function saveSchedule(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
     const parsed = availabilityUpdateInputSchema.safeParse({ ...settings, weekly });
@@ -61,7 +62,7 @@ export function ConsultantAvailabilityEditor() {
     finally { setSaving(false); }
   }
 
-  async function addException(event: FormEvent) {
+  async function addException(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
     const blocked = exceptionKind !== 'EXTRA_HOURS';
@@ -101,13 +102,7 @@ export function ConsultantAvailabilityEditor() {
           <label className="text-sm font-medium">Buffer between sessions (minutes)<input className={`${inputClass} mt-1`} type="number" min="0" max="120" value={settings.bufferMinutes} onChange={(event) => setSettings((v) => ({ ...v, bufferMinutes: Number(event.target.value) }))} /></label>
           <label className="text-sm font-medium sm:col-span-2">Minimum notice (minutes)<input className={`${inputClass} mt-1 max-w-xs`} type="number" min="0" max="20160" value={settings.minNoticeMinutes} onChange={(event) => setSettings((v) => ({ ...v, minNoticeMinutes: Number(event.target.value) }))} /></label>
         </div>
-        <div className="space-y-4">{DAYS.map((day, weekday) => {
-          const windows = weekly.map((window, index) => ({ window, index })).filter(({ window }) => window.weekday === weekday);
-          return <section key={day} className="rounded-md border border-rule p-3" aria-label={`${day} hours`}>
-            <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-medium">{day}</h3><Button size="sm" variant="outline" type="button" onClick={() => setWeekly((current) => [...current, { weekday, startTime: '09:00', endTime: '12:00' }])}>Add hours</Button></div>
-            {windows.length ? <div className="mt-3 space-y-2">{windows.map(({ window, index }) => <div key={`${weekday}-${index}`} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2"><label className="text-xs text-muted">From<input className={`${inputClass} mt-1`} type="time" value={window.startTime} onChange={(event) => updateWindow(index, 'startTime', event.target.value)} /></label><label className="text-xs text-muted">To<input className={`${inputClass} mt-1`} type="time" value={window.endTime === '24:00' ? '23:59' : window.endTime} onChange={(event) => updateWindow(index, 'endTime', event.target.value)} /></label><Button size="sm" variant="outline" type="button" aria-label={`Remove ${day} hours ${index + 1}`} onClick={() => setWeekly((current) => current.filter((_, i) => i !== index))}>Remove</Button></div>)}</div> : <p className="mt-2 text-sm text-muted">Not available</p>}
-          </section>;
-        })}</div>
+        <div className="space-y-4">{DAYS.map((day, weekday) => <AvailabilityDay key={day} day={day} weekday={weekday} weekly={weekly} setWeekly={setWeekly} updateWindow={updateWindow} />)}</div>
         <Button variant="ink" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save weekly hours'}</Button>
       </form>
 
@@ -123,4 +118,13 @@ export function ConsultantAvailabilityEditor() {
       </section>
     </>}
   </main>;
+}
+
+function AvailabilityDay({ day, weekday, weekly, setWeekly, updateWindow }: Readonly<{ day: string; weekday: number; weekly: AvailabilityUpdateInput['weekly']; setWeekly: React.Dispatch<React.SetStateAction<AvailabilityUpdateInput['weekly']>>; updateWindow: (index: number, field: 'startTime' | 'endTime', value: string) => void }>) {
+  const windows = weekly.map((window, index) => ({ window, index })).filter(({ window }) => window.weekday === weekday);
+  return <section className="rounded-md border border-rule p-3" aria-label={`${day} hours`}>
+    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-medium">{day}</h3><Button size="sm" variant="outline" type="button" onClick={() => setWeekly((current) => [...current, { weekday, startTime: '09:00', endTime: '12:00' }])}>Add hours</Button></div>
+    {windows.length ? <div className="mt-3 space-y-2">{windows.map(({ window, index }) => <div key={`${weekday}-${index}` // NOSONAR: rows have no id and are edited in place
+      } className="grid grid-cols-[1fr_1fr_auto] items-end gap-2"><label className="text-xs text-muted">From<input className={`${inputClass} mt-1`} type="time" value={window.startTime} onChange={(event) => updateWindow(index, 'startTime', event.target.value)} /></label><label className="text-xs text-muted">To<input className={`${inputClass} mt-1`} type="time" value={window.endTime === '24:00' ? '23:59' : window.endTime} onChange={(event) => updateWindow(index, 'endTime', event.target.value)} /></label><Button size="sm" variant="outline" type="button" aria-label={`Remove ${day} hours ${index + 1}`} onClick={() => setWeekly((current) => current.filter((_, i) => i !== index))}>Remove</Button></div>)}</div> : <p className="mt-2 text-sm text-muted">Not available</p>}
+  </section>;
 }

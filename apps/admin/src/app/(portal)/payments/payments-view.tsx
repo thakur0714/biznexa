@@ -223,6 +223,13 @@ function PaymentsList() {
     { key: 'failed', label: 'Failed' },
     { key: 'pending', label: 'Pending' },
   ];
+  const hasLoadError = Boolean(loadError);
+  const isLoading = !hasLoadError && !data;
+  const hasNoPayments = !hasLoadError && !!data && data.items.length === 0;
+  const hasPayments = !hasLoadError && !!data && data.items.length > 0;
+  const showDetailLoading = loadingDetail;
+  const showDetailError = !showDetailLoading && Boolean(detailError);
+  const showPaymentDetail = !showDetailLoading && !detailError && Boolean(detail);
 
   return (
     <div className="max-w-[1200px]">
@@ -291,23 +298,25 @@ function PaymentsList() {
       </div>
 
       <div className="mt-4">
-        {loadError ? (
+        {hasLoadError && (
           <div className="space-y-3">
             <Notice tone="error">{loadError}</Notice>
             <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
               Try again
             </Button>
           </div>
-        ) : !data ? (
+        )}
+        {isLoading && (
           <p className="text-muted" role="status">
             Loading payments…
           </p>
-        ) : data.items.length === 0 ? (
+        )}
+        {hasNoPayments && (
           <EmptyState
             title="No payments found"
             description="No transactions match the selected filters or date range."
             action={
-              (query || fromDate || toDate || statusGroup !== 'all') && (
+              Boolean(query || fromDate || toDate || statusGroup !== 'all') && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -324,7 +333,8 @@ function PaymentsList() {
               )
             }
           />
-        ) : (
+        )}
+        {hasPayments && (
           <div>
             <DataTable
               caption="Payments"
@@ -374,13 +384,15 @@ function PaymentsList() {
       </div>
 
       <Dialog open={selectedId !== null} onClose={() => setSelectedId(null)} title="Payment Detail" description="Transaction info, order details and invoices.">
-        {loadingDetail ? (
+        {showDetailLoading && (
           <p className="py-4 text-muted" role="status">
             Loading detail…
           </p>
-        ) : detailError ? (
+        )}
+        {showDetailError && (
           <Notice tone="error">{detailError}</Notice>
-        ) : detail ? (
+        )}
+        {showPaymentDetail && detail && (
           <div className="space-y-5 py-2">
             <div className="flex items-center justify-between border-b border-rule pb-3">
               <div>
@@ -503,7 +515,7 @@ function PaymentsList() {
               </div>
             )}
           </div>
-        ) : null}
+        )}
       </Dialog>
 
       {detail && canRefund && (
