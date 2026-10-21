@@ -9,7 +9,7 @@ import type { CatalogueSearchResponse } from '@biznexa/types';
 type Results = CatalogueSearchResponse;
 
 /** Service search with live suggestions (combobox pattern, keyboard friendly). */
-export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }: { size?: 'lg' | 'md'; autoFocus?: boolean; defaultValue?: string }) {
+export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }: Readonly<{ size?: 'lg' | 'md'; autoFocus?: boolean; defaultValue?: string }>) {
   const router = useRouter();
   const listId = useId();
   const [q, setQ] = useState(defaultValue);
@@ -17,6 +17,13 @@ export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }:
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const boxRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) {
+      inputRef.current?.focus();
+    }
+  }, [autoFocus]);
 
   const options = results
     ? [
@@ -54,7 +61,7 @@ export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }:
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
-  function submit(e: React.FormEvent) {
+  function submit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (active >= 0 && options[active]) return router.push(options[active].href);
     const term = q.trim();
@@ -83,6 +90,7 @@ export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }:
           What service are you looking for?
         </label>
         <input
+          ref={inputRef}
           id={`${listId}-input`}
           role="combobox"
           aria-expanded={open && options.length > 0}
@@ -90,7 +98,6 @@ export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }:
           aria-autocomplete="list"
           aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
           autoComplete="off"
-          autoFocus={autoFocus}
           value={q}
           onChange={(e) => {
             setQ(e.target.value);

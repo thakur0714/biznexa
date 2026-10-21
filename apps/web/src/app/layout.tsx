@@ -25,7 +25,7 @@ async function loadCategories() {
   }
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const categories = await loadCategories();
   return (
     <html lang="en-IN">

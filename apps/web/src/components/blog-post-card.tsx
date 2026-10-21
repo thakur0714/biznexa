@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { formatDate, type PublicBlogPost } from '@biznexa/types';
 
-export function BlogPostCard({ post }: { post: PublicBlogPost }) {
+export function BlogPostCard({ post }: Readonly<{ post: PublicBlogPost }>) {
   return <article className="overflow-hidden rounded-xl border border-rule bg-white">
     <Link href={`/blog/${post.slug}`} className="group block rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
       {post.featuredImage && <img src={post.featuredImage} alt="" loading="lazy" className="aspect-[16/9] w-full object-cover" />}

@@ -4,7 +4,7 @@ import { Icon } from './icons';
 import type { ServiceCard as Card } from '@/lib/api';
 
 /** A service as a fee-schedule entry: what it is, how long, what it costs. */
-export function ServiceCard({ service, showCategory = false }: { service: Card; showCategory?: boolean }) {
+export function ServiceCard({ service, showCategory = false }: Readonly<{ service: Card; showCategory?: boolean }>) {
   const href = `/services/${service.category.slug}/${service.slug}`;
   return (
     <article className="group relative flex flex-col rounded-lg border border-rule bg-white p-5 transition-colors hover:border-ink">

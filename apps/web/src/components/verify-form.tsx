@@ -18,20 +18,20 @@ export function VerifyForm({
   initialValue = '',
   captchaRequired = false,
   turnstileSiteKey,
-}: {
+}: Readonly<{
   initialMode?: Mode;
   initialValue?: string;
   /** The API asked for a captcha (M12.3): show the challenge; solving it repeats the lookup with the token. */
   captchaRequired?: boolean;
   turnstileSiteKey?: string;
-}) {
+}>) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [value, setValue] = useState(initialValue);
   const [error, setError] = useState('');
   const m = MODES.find((x) => x.key === mode)!;
 
-  function submit(e: React.FormEvent) {
+  function submit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const v = value.trim();
     if (!v) return setError(`Enter the ${m.label.toLowerCase()}.`);
@@ -44,6 +44,20 @@ export function VerifyForm({
     const v = value.trim();
     if (!v) return;
     router.push(`/verify?${new URLSearchParams({ [mode]: v, captchaToken: token })}`);
+  }
+
+  let captchaContent: React.ReactNode = (
+    <p className="text-sm text-muted">Verification is busy right now. Please wait a few minutes and try again.</p>
+  );
+  if (turnstileSiteKey) {
+    captchaContent = <Turnstile siteKey={turnstileSiteKey} onSuccess={retryWith} options={{ size: 'flexible' }} />;
+  } else if (process.env.NODE_ENV !== 'production') {
+    // Development without a Turnstile key: the API's mock verifier accepts the token "pass".
+    captchaContent = (
+      <Button type="button" variant="outline" onClick={() => retryWith('pass')}>
+        I am not a robot (development)
+      </Button>
+    );
   }
 
   return (
@@ -90,16 +104,7 @@ export function VerifyForm({
       </p>
       {captchaRequired && (
         <div className="mt-4" data-testid="verify-captcha">
-          {turnstileSiteKey ? (
-            <Turnstile siteKey={turnstileSiteKey} onSuccess={retryWith} options={{ size: 'flexible' }} />
-          ) : process.env.NODE_ENV !== 'production' ? (
-            // Development without a Turnstile key: the API's mock verifier accepts the token "pass".
-            <Button type="button" variant="outline" onClick={() => retryWith('pass')}>
-              I am not a robot (development)
-            </Button>
-          ) : (
-            <p className="text-sm text-muted">Verification is busy right now. Please wait a few minutes and try again.</p>
-          )}
+          {captchaContent}
         </div>
       )}
     </form>

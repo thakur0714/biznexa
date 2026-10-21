@@ -16,7 +16,7 @@ export async function api<T>(path: string, init?: RequestInit & { revalidate?: n
   const res = await fetch(`${API_URL}/api${path}`, {
     ...init,
     next: { revalidate: init?.revalidate ?? 60 },
-    headers: { accept: 'application/json', ...(init?.headers ?? {}) },
+    headers: { accept: 'application/json', ...init?.headers },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

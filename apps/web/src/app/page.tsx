@@ -43,6 +43,12 @@ async function load() {
   return { categories, popular, cms, featured: featured.items, latestPosts };
 }
 
+const STAGE_DOT: Record<string, string> = {
+  done: 'bg-seal text-white',
+  current: 'border-2 border-marigold bg-white',
+  next: 'border-2 border-rule bg-white',
+};
+
 /** Example of what a customer sees after buying — the core promise of the product. */
 function TrackerPreview() {
   const stages = [
@@ -67,9 +73,7 @@ function TrackerPreview() {
           <li key={s.name} className="relative flex gap-3 pb-5 last:pb-0">
             {i < stages.length - 1 && <span aria-hidden="true" className={`absolute left-[9px] top-5 h-[calc(100%-12px)] w-0.5 ${s.state === 'done' ? 'bg-seal' : 'bg-rule'}`} />}
             <span
-              className={`relative z-10 mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ${
-                s.state === 'done' ? 'bg-seal text-white' : s.state === 'current' ? 'border-2 border-marigold bg-white' : 'border-2 border-rule bg-white'
-              }`}
+              className={`relative z-10 mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ${STAGE_DOT[s.state]}`}
             >
               {s.state === 'done' && <Icon name="check" size={12} strokeWidth={3} />}
               {s.state === 'current' && <span className="h-2 w-2 rounded-full bg-marigold" />}
@@ -133,7 +137,12 @@ export default async function HomePage() {
             <ol className="relative grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 md:grid-cols-6">
               {JOURNEY.map((j, i) => {
                 const cats = byStage(j.stage);
-                const href = j.stage === 'CONSULT' ? '/consultants' : cats[0] ? `/services/${cats[0].slug}` : '/services';
+                let href = '/services';
+                if (j.stage === 'CONSULT') {
+                  href = '/consultants';
+                } else if (cats[0]) {
+                  href = `/services/${cats[0].slug}`;
+                }
                 return (
                   <li key={j.stage} className="rail-stop" style={{ animationDelay: `${300 + i * 90}ms` }}>
                     <span aria-hidden="true" className="relative z-10 grid h-6 w-6 place-items-center rounded-full border-2 border-night bg-marigold" />

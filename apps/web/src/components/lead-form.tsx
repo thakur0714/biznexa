@@ -4,18 +4,19 @@ import { useState } from 'react';
 import { Button, Field, Notice } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
+import { formText } from '@/lib/form';
 
 /** "Talk to an expert" enquiry. Lands in the admin Leads list. */
-export function LeadForm({ source, serviceId, compact = false, withMessage = false }: { source: 'service_page' | 'contact' | 'home' | 'consultants'; serviceId?: string; compact?: boolean; withMessage?: boolean }) {
+export function LeadForm({ source, serviceId, compact = false, withMessage = false }: Readonly<{ source: 'service_page' | 'contact' | 'home' | 'consultants'; serviceId?: string; compact?: boolean; withMessage?: boolean }>) {
   const api = useApi();
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<ClientApiError | null>(null);
   const [done, setDone] = useState('');
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const text = (name: string) => String(f.get(name) ?? '').trim() || undefined;
+    const text = (name: string) => formText(f, name).trim() || undefined;
     setState('sending');
     setError(null);
     try {
@@ -54,7 +55,7 @@ export function LeadForm({ source, serviceId, compact = false, withMessage = fal
           <textarea id={id('message')} name="message" rows={4} maxLength={1000} className="w-full rounded-md border border-rule bg-white px-3.5 py-2.5 text-[15px] outline-none focus:border-ink" />
         </div>
       )}
-      {error && error.errors.length === 0 && (
+      {error?.errors.length === 0 && (
         <div className={compact ? '' : 'sm:col-span-2'}>
           <Notice tone="error">{error.message}</Notice>
         </div>

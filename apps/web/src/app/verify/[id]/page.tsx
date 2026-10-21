@@ -9,13 +9,19 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Certificate verification', robots: { index: false } };
 
 /** Landing page for QR codes: /verify/{verificationId}?t={signature} */
-export default async function VerifyByIdPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ t?: string | string[]; captchaToken?: string | string[] }> }) {
+export default async function VerifyByIdPage({
+  params,
+  searchParams,
+}: Readonly<{
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ t?: string | string[]; captchaToken?: string | string[] }>;
+}>) {
   const { id } = await params;
   const sp = await searchParams;
   const tStr = Array.isArray(sp.t) ? sp.t[0] : sp.t;
   const captchaToken = (Array.isArray(sp.captchaToken) ? sp.captchaToken[0] : sp.captchaToken)?.slice(0, 2048) || undefined;
 
-  const cleanId = id.replace(/[^A-Za-z0-9]/g, '').slice(0, 32);
+  const cleanId = id.replaceAll(/[^A-Za-z0-9]/g, '').slice(0, 32);
   const cleanT = tStr?.slice(0, 32);
 
   const result = await verifyCertificate({ id: cleanId, t: cleanT, captchaToken });

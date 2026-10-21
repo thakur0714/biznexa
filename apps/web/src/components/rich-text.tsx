@@ -7,6 +7,6 @@ import { sanitizeRichText } from '@biznexa/rich-text';
  * this is the only place the website sets inner HTML from content. Server-only: the sanitiser never
  * ships to the browser.
  */
-export function RichText({ html, className = '' }: { html: string; className?: string }) {
+export function RichText({ html, className = '' }: Readonly<{ html: string; className?: string }>) {
   return <div className={`rich-text ${className}`} dangerouslySetInnerHTML={{ __html: sanitizeRichText(html) }} />;
 }

@@ -1,7 +1,7 @@
 import { Icon } from './icons';
 
 /** Two-column frame for login/register: the form, and a short reminder of what the account is for. */
-export function AuthShell({ title, subtitle, children }: { title: string; subtitle?: React.ReactNode; children: React.ReactNode }) {
+export function AuthShell({ title, subtitle, children }: Readonly<{ title: string; subtitle?: React.ReactNode; children: React.ReactNode }>) {
   return (
     <div className="mx-auto grid max-w-[1000px] grid-cols-1 gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1fr_380px] md:py-16">
       <div className="max-w-[440px]">

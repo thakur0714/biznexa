@@ -10,7 +10,7 @@ const STATUS = {
   WITHDRAWN: { label: 'Withdrawn', headline: 'Certificate found — withdrawn', tone: 'text-danger', bg: 'bg-danger-050', ring: 'ring-danger/30', seal: '#b42318' },
 } as const;
 
-function Seal({ color, ok }: { color: string; ok: boolean }) {
+function Seal({ color, ok }: Readonly<{ color: string; ok: boolean }>) {
   return (
     <svg width="76" height="76" viewBox="0 0 80 80" aria-hidden="true" className="shrink-0">
       <g fill="none" stroke={color} strokeWidth="2">
@@ -22,7 +22,7 @@ function Seal({ color, ok }: { color: string; ok: boolean }) {
   );
 }
 
-export function CertificateResult({ result, query }: { result: Schemas['CertificateVerifyResult']; query: string }) {
+export function CertificateResult({ result, query }: Readonly<{ result: Schemas['CertificateVerifyResult']; query: string }>) {
   if (!result.found || !result.certificate) {
     return (
       <div role="status" className="rounded-xl border border-danger/25 bg-white p-6 sm:p-8">

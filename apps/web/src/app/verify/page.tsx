@@ -24,7 +24,7 @@ const STATUS_TONE = {
   WITHDRAWN: 'danger',
 } satisfies Record<string, Tone>;
 
-export default async function VerifyPage({ searchParams }: { searchParams: SP }) {
+export default async function VerifyPage({ searchParams }: Readonly<{ searchParams: SP }>) {
   const sp = await searchParams;
   const number = one(sp.number);
   const id = one(sp.id);
@@ -34,7 +34,18 @@ export default async function VerifyPage({ searchParams }: { searchParams: SP })
 
   const result = number || id ? await verifyCertificate({ number, id, captchaToken }) : null;
   const orgs = !result && organization ? await searchOrganization(organization) : null;
-  const mode = id ? 'id' : organization ? 'organization' : 'number';
+  let mode: 'id' | 'organization' | 'number' = 'number';
+  if (id) {
+    mode = 'id';
+  } else if (organization) {
+    mode = 'organization';
+  }
+
+  let orgHeading = `No certificates found for “${organization}”`;
+  if (orgs?.ok && orgs.data.length) {
+    const plural = orgs.data.length > 1 ? 's' : '';
+    orgHeading = `${orgs.data.length} certificate${plural} for “${organization}”`;
+  }
 
   return (
     <Container className="max-w-[860px] py-12">
@@ -61,7 +72,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: SP })
         {orgs?.ok && (
           <section aria-labelledby="org-h">
             <h2 id="org-h" className="text-lg font-semibold">
-              {orgs.data.length ? `${orgs.data.length} certificate${orgs.data.length > 1 ? 's' : ''} for “${organization}”` : `No certificates found for “${organization}”`}
+              {orgHeading}
             </h2>
             {orgs.data.length > 0 && (
               <ul className="mt-4 divide-y divide-rule rounded-lg border border-rule bg-white">
