@@ -46,7 +46,7 @@ describe('TextArea and Checkbox', () => {
 
 describe('Button', () => {
   it('keeps the browser default type so it submits forms', () => {
-    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+    const onSubmit = vi.fn((e: React.SubmitEvent<HTMLFormElement>) => e.preventDefault());
     render(
       <form onSubmit={onSubmit}>
         <Button>Save</Button>
@@ -80,7 +80,7 @@ describe('Badge, EmptyState, Table', () => {
 });
 
 describe('Dialog', () => {
-  function Harness({ onClose }: { onClose?: () => void }) {
+  function Harness({ onClose }: Readonly<{ onClose?: () => void }>) {
     const [open, setOpen] = useState(false);
     return (
       <>
@@ -126,12 +126,12 @@ describe('Dialog', () => {
 });
 
 describe('Toast', () => {
-  function Trigger({ message, tone }: { message: string; tone?: 'info' | 'success' | 'error' }) {
+  function Trigger({ message, tone }: Readonly<{ message: string; tone?: 'info' | 'success' | 'error' }>) {
     const toast = useToast();
     return <button onClick={() => toast(message, tone)}>{message}</button>;
   }
 
-  it('announces, caps the stack, can be dismissed and expires', () => {
+  it('announces, caps the stack, can be dismissed and expires', async () => {
     vi.useFakeTimers();
     render(
       <ToastProvider>
@@ -152,10 +152,10 @@ describe('Toast', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Failed' }));
     expect(screen.getByRole('alert').textContent).toContain('Failed');
 
-    act(() => vi.advanceTimersByTime(5000));
+    await act(() => vi.advanceTimersByTime(5000));
     expect(region.textContent).not.toContain('Four');
     expect(region.textContent).toContain('Failed');
-    act(() => vi.advanceTimersByTime(3000));
+    await act(() => vi.advanceTimersByTime(3000));
     expect(region.textContent).toBe('');
     vi.useRealTimers();
   });

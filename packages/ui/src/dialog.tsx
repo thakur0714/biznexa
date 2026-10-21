@@ -13,14 +13,14 @@ export function Dialog({
   description,
   footer,
   children,
-}: {
+}: Readonly<{
   open: boolean;
   onClose: () => void;
   title: string;
   description?: ReactNode;
   footer?: ReactNode;
   children?: ReactNode;
-}) {
+}>) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descId = useId();
