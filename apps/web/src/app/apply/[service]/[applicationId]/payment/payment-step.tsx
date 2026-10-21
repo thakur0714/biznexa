@@ -69,7 +69,7 @@ export function PaymentStep({ service, applicationId }: Readonly<{ service: Serv
   const view = status && viewFor(status.outcome, confirming, timedOut);
   const busy = payState === 'starting' || payState === 'open' || payState === 'confirming';
   /** The advance is paid and the balance isn't (M3.19): the application is already submitted. */
-  const partlyPaid = Boolean(status?.orderStatus === 'PARTIALLY_PAID');
+  const partlyPaid = status?.orderStatus === 'PARTIALLY_PAID';
   const testMode = payState === 'mock' && checkout && (
     <Notice tone="info">
       Test mode: the mock payment gateway is in use, so no payment window opens. Order <span className="num">{checkout.orderCode}</span> is waiting for
