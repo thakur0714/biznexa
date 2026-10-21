@@ -10,16 +10,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../auth/auth-context';
-import { colors, radius, spacing } from '../theme';
+import { colors, spacing } from '../theme';
 import { Button, Card, Badge } from '../components/common';
 
 interface AccountScreenProps {
-  navigation: {
-    navigate: (screen: string) => void;
+  readonly navigation: {
+    readonly navigate: (screen: string) => void;
   };
 }
 
-export function AccountScreen({ navigation }: AccountScreenProps) {
+export function AccountScreen({ navigation }: Readonly<AccountScreenProps>) {
   const { user, logout, isBiometricsEnabled, toggleBiometrics } = useAuth();
 
   const handleBiometricsToggle = async (val: boolean) => {
@@ -57,8 +57,8 @@ export function AccountScreen({ navigation }: AccountScreenProps) {
               {user.email && <Text style={styles.userEmail}>{user.email}</Text>}
               {user.mobile && <Text style={styles.userMobile}>+91 {user.mobile}</Text>}
               <View style={styles.roleBadges}>
-                {user.roles.map((r, i) => (
-                  <Badge key={i} label={r} variant="ink" style={{ marginRight: 4, marginTop: 4 }} />
+                {user.roles.map((r) => (
+                  <Badge key={r} label={r} variant="ink" style={{ marginRight: 4, marginTop: 4 }} />
                 ))}
               </View>
             </View>

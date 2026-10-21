@@ -78,8 +78,8 @@ describe('Screen formatting and logic', () => {
     const parseQr = (data: string) => {
       let certNumber = data.trim();
       if (data.includes('number=')) {
-        const match = data.match(/number=([^&]+)/);
-        if (match && match[1]) {
+        const match = /number=([^&]+)/.exec(data);
+        if (match?.[1]) {
           certNumber = decodeURIComponent(match[1]);
         }
       } else if (data.includes('/verify/')) {
