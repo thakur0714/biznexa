@@ -162,7 +162,7 @@ export function MyServicesScreen({ navigation }: Readonly<MyServicesScreenProps>
     return (
       <>
       {isLoading && <LoadingState message="Loading your services…" style={{ flex: 1 }} />}
-      {!isLoading && error && <ErrorState message={error} onRetry={() => void fetchApplications(activeTab)} style={{ flex: 1 }} />}
+      {!isLoading && error ? <ErrorState message={error} onRetry={() => void fetchApplications(activeTab)} style={{ flex: 1 }} /> : null}
       {!isLoading && !error && (
       <FlatList
         data={data?.items ?? []}
@@ -184,7 +184,7 @@ export function MyServicesScreen({ navigation }: Readonly<MyServicesScreenProps>
               <Text style={styles.metaText}>Started on {formatDate(item.createdAt)}</Text>
             </View>
             <View style={styles.cardFooter}>
-              <Button title={nextActionLabel(item.nextAction)} variant={nextActionVariant(item.nextAction)} size="sm" onPress={() => handleAction(item)} />
+              <Button title={nextActionLabel(item.nextAction)} variant={nextActionVariant(item.nextAction)} size="sm" onPress={() => handleAction(item)} style={{ alignSelf: 'flex-start' }} />
               <TouchableOpacity onPress={() => handleOpenDetail(item.id)} style={styles.detailsLink}>
                 <Text style={styles.detailsLinkText}>View Details</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.ink} />
