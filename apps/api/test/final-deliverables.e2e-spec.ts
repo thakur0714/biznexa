@@ -37,7 +37,6 @@ describe('Final Deliverables API', () => {
 
     const support = await staffSession(http, prisma, 'SUPPORT', `support-${run}@biznexa.com`);
     supportToken = support.accessToken;
-    const _supportId = (await prisma.user.findUniqueOrThrow({ where: { email: `support-${run}@biznexa.com` } })).id;
 
     async function doRegister(name: string, email: string, mobile: string) {
       const res = await request(app.getHttpServer())
@@ -57,7 +56,6 @@ describe('Final Deliverables API', () => {
     const otherMobileSuffix = String((Number(mobileSuffix) + 1) % 1_000_000).padStart(6, '0');
     const c2 = await doRegister('C2', `deliverables-c2-${run}@example.com`, `9922${otherMobileSuffix}`);
     otherCustomerToken = c2.token;
-    const _otherCustomerId = c2.id;
   });
 
   afterAll(async () => {

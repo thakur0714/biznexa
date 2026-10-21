@@ -19,7 +19,6 @@ describe('InternalNotesController (e2e)', () => {
   let assignedStaffId: string;
   let unassignedStaffId: string;
   let customerId: string;
-
   let assignedApplicationId: string;
   let categoryId: string;
   let serviceId: string;
@@ -72,7 +71,7 @@ describe('InternalNotesController (e2e)', () => {
     
     await prisma.order.create({ data: { code: `ORD-${run}-1`, customerId, items: {}, total: 100, taxTotal: 0, subtotal: 100, status: 'CREATED', amountPaid: 0, discount: 0, govtFees: 0 } });
 
-    const app1 = await prisma.application.create({
+    await prisma.application.create({
       data: {
         code: `BN${run}1`,
         status: 'SUBMITTED',
@@ -84,7 +83,6 @@ describe('InternalNotesController (e2e)', () => {
         
       },
     });
-    const _applicationId = app1.id;
 
     
     await prisma.order.create({ data: { code: `ORD-${run}-2`, customerId, items: {}, total: 100, taxTotal: 0, subtotal: 100, status: 'CREATED', amountPaid: 0, discount: 0, govtFees: 0 } });
@@ -162,7 +160,6 @@ describe('InternalNotesController (e2e)', () => {
   });
 
   it('assigned ops -> list/create ok, delete own ok, other note 403', async () => {
-    await prisma.application.findUnique({ where: { id: assignedApplicationId }});
     
 
     const token = getAssignedStaffToken();

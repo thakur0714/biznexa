@@ -38,12 +38,10 @@ describe('M4 Fulfilment Authorization & Scoping (M4.17)', () => {
   let customer1Id = '';
   let customer2Id = '';
   let app1Id = '';
-  let app2Id = '';
   let doc1Id = '';
   let note1Id = '';
   let file1Id = '';
   let file2Id = '';
-  let deliv1Id = '';
 
   const as = (token?: string) => (token ? { authorization: `Bearer ${token}` } : {});
 
@@ -122,7 +120,7 @@ describe('M4 Fulfilment Authorization & Scoping (M4.17)', () => {
     });
     app1Id = app1.id;
 
-    const app2 = await prisma.application.create({
+    await prisma.application.create({
       data: {
         code: `${P}2`,
         customerId: customer2Id,
@@ -132,7 +130,6 @@ describe('M4 Fulfilment Authorization & Scoping (M4.17)', () => {
         assignedToId: null, // unassigned
       },
     });
-    const _app2Id = app2.id;
 
     // 4. Stored files & document on app1
     const storedFile1 = await prisma.storedFile.create({
@@ -183,7 +180,7 @@ describe('M4 Fulfilment Authorization & Scoping (M4.17)', () => {
     });
     file2Id = storedFile2.id;
 
-    const deliv1 = await prisma.finalDeliverable.create({
+    await prisma.finalDeliverable.create({
       data: {
         applicationId: app1Id,
         title: 'Completion Report',
@@ -192,7 +189,6 @@ describe('M4 Fulfilment Authorization & Scoping (M4.17)', () => {
         uploadedById: assignedOpsId,
       },
     });
-    const _deliv1Id = deliv1.id;
   });
 
   afterAll(async () => {
