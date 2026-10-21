@@ -81,7 +81,7 @@ export function ConsultantApplicationForm() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
     setBusyMessage('Checking your application…');
@@ -121,7 +121,7 @@ export function ConsultantApplicationForm() {
         setBusyMessage(`Uploading ${documentLabels[key].toLowerCase()}…`);
         const body = new FormData();
         body.append('file', file);
-        const stored = await api.call<StoredFileResult>((client) => client.POST('/api/files', {
+        const stored = await api.call<StoredFileResult>((client) => client.POST('/api/files', { // NOSONAR: uploads and progress messages intentionally run in document order.
           body: { file: file.name },
           bodySerializer: () => body,
         }));
@@ -140,7 +140,9 @@ export function ConsultantApplicationForm() {
       const result = await api.call<ConsultantApplicationResponse>((client) => client.POST('/api/consultants', { body: input }));
       setSubmitted(result);
     } catch (cause: unknown) {
-      setError(cause instanceof ClientApiError ? cause.message : cause instanceof Error ? cause.message : 'We couldn’t submit your application. Please try again.');
+      let message = 'We couldn’t submit your application. Please try again.';
+      if (cause instanceof ClientApiError || cause instanceof Error) message = cause.message;
+      setError(message);
     } finally {
       setBusy(false);
       setBusyMessage('');
@@ -148,7 +150,7 @@ export function ConsultantApplicationForm() {
   }
 
   if (!ready) {
-    return <Container className="py-12"><p role="status">Loading your account…</p></Container>;
+    return <Container className="py-12"><output>Loading your account…</output></Container>;
   }
   if (!user) {
     return (
@@ -181,7 +183,7 @@ export function ConsultantApplicationForm() {
         <fieldset disabled={busy} className="space-y-5 rounded-xl border border-rule bg-white p-4 sm:p-6">
           <legend className="px-2 text-lg font-semibold">Professional profile</legend>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-sm font-medium">Professional category
+            <label className="text-sm font-medium">Professional category{' '}
               <select className={controlClass} value={form.category} onChange={(event) => {
                 const value = consultantCategories.find((category) => category === event.target.value);
                 if (value) update('category', value);
@@ -189,35 +191,35 @@ export function ConsultantApplicationForm() {
                 {consultantCategories.map((category) => <option key={category} value={category}>{category.replaceAll('_', ' ')}</option>)}
               </select>
             </label>
-            <label className="text-sm font-medium">Qualification
+            <label className="text-sm font-medium">Qualification{' '}
               <input className={controlClass} value={form.qualification} onChange={(event) => update('qualification', event.target.value)} required maxLength={120} />
             </label>
-            <label className="text-sm font-medium">Membership number (ICAI / ICSI / Bar Council)
+            <label className="text-sm font-medium">Membership number (ICAI / ICSI / Bar Council){' '}
               <input className={controlClass} value={form.membershipNo} onChange={(event) => update('membershipNo', event.target.value)} maxLength={80} />
             </label>
-            <label className="text-sm font-medium">Years of experience
+            <label className="text-sm font-medium">Years of experience{' '}
               <input className={controlClass} type="number" min="0" max="60" step="1" value={form.experienceYears} onChange={(event) => update('experienceYears', event.target.value)} required />
             </label>
-            <label className="text-sm font-medium">Expertise (comma separated)
+            <label className="text-sm font-medium">Expertise (comma separated){' '}
               <input className={controlClass} value={form.expertise} onChange={(event) => update('expertise', event.target.value)} placeholder="GST, company law" required />
             </label>
-            <label className="text-sm font-medium">Languages (comma separated)
+            <label className="text-sm font-medium">Languages (comma separated){' '}
               <input className={controlClass} value={form.languages} onChange={(event) => update('languages', event.target.value)} placeholder="English, Hindi" required />
             </label>
-            <label className="text-sm font-medium">City
+            <label className="text-sm font-medium">City{' '}
               <input className={controlClass} value={form.city} onChange={(event) => update('city', event.target.value)} required maxLength={100} />
             </label>
-            <label className="text-sm font-medium">State
+            <label className="text-sm font-medium">State{' '}
               <input className={controlClass} value={form.state} onChange={(event) => update('state', event.target.value)} required maxLength={100} />
             </label>
-            <label className="text-sm font-medium">Area / locality (optional)
+            <label className="text-sm font-medium">Area / locality (optional){' '}
               <input className={controlClass} value={form.area} onChange={(event) => update('area', event.target.value)} maxLength={120} />
             </label>
-            <label className="text-sm font-medium">Fee per session (₹)
+            <label className="text-sm font-medium">Fee per session (₹){' '}
               <input className={controlClass} type="number" min="0.01" step="0.01" value={form.feeRupees} onChange={(event) => update('feeRupees', event.target.value)} required />
             </label>
           </div>
-          <label className="block text-sm font-medium">Short professional bio (optional)
+          <label className="block text-sm font-medium">Short professional bio (optional){' '}
             <textarea className={`${controlClass} min-h-28`} value={form.bio} onChange={(event) => update('bio', event.target.value)} maxLength={2000} />
           </label>
           <fieldset className="space-y-2">
@@ -245,7 +247,7 @@ export function ConsultantApplicationForm() {
           ))}
         </fieldset>
 
-        {busyMessage && <p role="status" className="text-sm text-muted">{busyMessage}</p>}
+        {busyMessage && <output className="text-sm text-muted">{busyMessage}</output>}
         <Button type="submit" variant="ink" disabled={busy} className="w-full sm:w-auto">{busy ? 'Submitting…' : 'Submit application'}</Button>
       </form>
     </Container>

@@ -7,10 +7,14 @@ const categoryNames: Record<string, string> = {
   BUSINESS_CONSULTANT: 'Business consultant', TECHNOLOGY_CONSULTANT: 'Technology consultant',
 };
 
-export function ConsultantCard({ consultant }: { consultant: PublicConsultantCard }) {
+export function ConsultantCard({ consultant }: Readonly<{ consultant: PublicConsultantCard }>) {
   return <article className="flex min-w-0 flex-col rounded-xl border border-rule bg-white p-4 shadow-xs sm:p-5">
     <div className="flex min-w-0 gap-3">
-      {consultant.photoUrl ? <img src={consultant.photoUrl} alt="" className="h-16 w-16 shrink-0 rounded-full object-cover" /> : <div aria-hidden="true" className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-paper text-xl font-bold text-ink">{consultant.name.split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</div>}
+      {consultant.photoUrl ? (
+        <>
+          <img src={consultant.photoUrl} alt="" className="h-16 w-16 shrink-0 rounded-full object-cover" />
+        </>
+      ) : <div aria-hidden="true" className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-paper text-xl font-bold text-ink">{consultant.name.split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</div>}
       <div className="min-w-0"><h2 className="break-words text-lg font-bold leading-tight">{consultant.name}</h2><p className="mt-1 text-sm text-muted">{categoryNames[consultant.category]}</p><p className="mt-1 break-words text-sm text-muted">{consultant.city}, {consultant.state}</p></div>
     </div>
     <p className="mt-4 line-clamp-2 min-h-10 text-sm text-muted">{consultant.expertise.join(' · ') || consultant.qualification}</p>

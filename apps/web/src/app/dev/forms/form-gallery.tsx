@@ -7,7 +7,7 @@ import { ApplicationForm, Container, Notice, Select, type UploadFiles } from '@b
 const FORMS: Record<string, FormSchemaInput> = { ...SERVICE_FORMS, generic: GENERIC_SERVICE_FORM };
 
 /** Nothing is uploaded here: each chosen file stands in as a made-up file id. */
-const fakeUpload: UploadFiles = async (files) => files.map(() => crypto.randomUUID());
+const fakeUpload: UploadFiles = (files) => Promise.resolve(files.map(() => crypto.randomUUID()));
 
 export function FormGallery() {
   const [slug, setSlug] = useState('private-limited-company-registration');
