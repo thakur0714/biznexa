@@ -21,7 +21,7 @@ const COMPANY: FormSchemaInput = {
       description: 'About the company you are registering.',
       fields: [
         { type: 'text', name: 'companyName', label: 'Proposed name', required: true },
-        { type: 'text', name: 'pan', label: 'PAN', pattern: '[A-Z]{5}[0-9]{4}[A-Z]', patternMessage: 'Enter a PAN like ABCDE1234F' },
+        { type: 'text', name: 'pan', label: 'PAN', pattern: String.raw`[A-Z]{5}[0-9]{4}[A-Z]`, patternMessage: 'Enter a PAN like ABCDE1234F' },
         { type: 'number', name: 'capital', label: 'Authorised capital', required: true, integer: true, min: 100000 },
         { type: 'select', name: 'hasGst', label: 'Registered under GST?', required: true, options: ['Yes', 'No'] },
         { type: 'text', name: 'gstin', label: 'GSTIN', required: true, showIf: { field: 'hasGst', equals: 'Yes' } },
@@ -41,7 +41,7 @@ const COMPANY: FormSchemaInput = {
           fields: [
             { type: 'text', name: 'fullName', label: 'Full name', required: true },
             { type: 'select', name: 'hasDin', label: 'Has a DIN?', required: true, options: ['Yes', 'No'] },
-            { type: 'text', name: 'din', label: 'DIN', required: true, pattern: '\\d{8}', showIf: { field: 'hasDin', equals: 'Yes' } },
+            { type: 'text', name: 'din', label: 'DIN', required: true, pattern: String.raw`\d{8}`, showIf: { field: 'hasDin', equals: 'Yes' } },
           ],
         },
       ],
@@ -69,6 +69,24 @@ const summary = () => screen.getByRole('alert');
 describe('ApplicationForm renders every seeded form', () => {
   const forms = [...Object.entries(SERVICE_FORMS), ['generic', GENERIC_SERVICE_FORM] as const];
 
+  const checkField = (f: FormField, scope: HTMLElement = document.body) => {
+    if (f.showIf && !conditionMet(f.showIf, {})) {
+      expect(screen.queryByLabelText(fieldLabel(f))).toBeNull();
+      return;
+    }
+    const [control] = controlsFor(f, scope);
+    expect(control).toBeTruthy();
+    if (f.type === 'repeater') {
+      fireEvent.click(within(control).getByRole('button', { name: `Add ${f.itemLabel.toLowerCase()}` }));
+      const row = within(control).getAllByRole('listitem')[0];
+      for (const sub of f.fields) {
+        if (!sub.showIf || conditionMet(sub.showIf, {})) {
+          expect(controlsFor(sub, row).length).toBeGreaterThan(0);
+        }
+      }
+    }
+  };
+
   it.each(forms)('%s: every step, field and repeater row', (_slug, input) => {
     const form = parse(input);
     for (const [i, step] of form.steps.entries()) {
@@ -76,17 +94,7 @@ describe('ApplicationForm renders every seeded form', () => {
       expect(screen.getByText(`Step ${i + 1} of ${form.steps.length}`)).toBeTruthy();
       expect(heading().textContent).toBe(step.title);
       for (const f of step.fields) {
-        if (f.showIf && !conditionMet(f.showIf, {})) {
-          expect(screen.queryByLabelText(fieldLabel(f))).toBeNull();
-          continue;
-        }
-        const [control] = controlsFor(f);
-        expect(control).toBeTruthy();
-        if (f.type === 'repeater') {
-          fireEvent.click(within(control).getByRole('button', { name: `Add ${f.itemLabel.toLowerCase()}` }));
-          const row = within(control).getAllByRole('listitem')[0];
-          for (const sub of f.fields) if (!sub.showIf || conditionMet(sub.showIf, {})) expect(controlsFor(sub, row).length).toBeGreaterThan(0);
-        }
+        checkField(f);
       }
       unmount();
     }
@@ -206,7 +214,7 @@ describe('ApplicationForm steps and validation', () => {
     expect(data).not.toHaveProperty('gstin');
   });
 
-  it('adds and removes repeater rows with per-row conditions and limits', () => {
+  it('adds and removes repeater rows with per-row conditions and limits', async () => {
     render(<ApplicationForm form={parse(COMPANY)} initialStep={1} onSubmit={() => {}} today={TODAY} />);
     const group = () => screen.getByRole('group', { name: 'Directors' });
     expect(within(group()).getByText('Add at least 2. Up to 3.')).toBeTruthy();
@@ -215,7 +223,7 @@ describe('ApplicationForm steps and validation', () => {
 
     vi.useFakeTimers();
     click('Add director');
-    act(() => vi.runAllTimers());
+    await act(() => vi.runAllTimers());
     vi.useRealTimers();
     expect(document.activeElement?.textContent).toBe('Director 1');
     click('Add director');
@@ -229,7 +237,7 @@ describe('ApplicationForm steps and validation', () => {
     type('Full name', 'Meena Iyer', second);
     type('Has a DIN?', 'No', second);
     expect(within(second).queryByLabelText('DIN')).toBeNull();
-    click('Next');
+    await act(() => click('Next'));
     expect(within(summary()).getByText('Directors › Director 1 › DIN: This field is required')).toBeTruthy();
     expect(within(first).getByLabelText('DIN').getAttribute('aria-invalid')).toBe('true');
     type('DIN', '01234567', first);
@@ -290,7 +298,7 @@ describe('ApplicationForm steps and validation', () => {
     expect(screen.queryByRole('list', { name: 'Steps' })).toBeNull(); // one step: no step list
     click('Continue');
     await waitFor(() => expect(screen.getByRole('button', { name: 'Submitting…' }).hasAttribute('disabled')).toBe(true));
-    await act(async () => finish());
+    await act(() => finish());
     expect(screen.getByRole('button', { name: 'Continue' }).hasAttribute('disabled')).toBe(false);
   });
 });
@@ -301,7 +309,7 @@ describe('File field', () => {
   const png = (name: string, size = 10) => new File([new Uint8Array(size)], name, { type: 'image/png' });
 
   it('checks type and size, uploads through the callback and stores the ids', async () => {
-    const uploadFiles = vi.fn(async (files: File[]) => files.map(() => id1));
+    const uploadFiles = vi.fn((files: File[]) => Promise.resolve(files.map(() => id1)));
     const onChange = vi.fn();
     render(<ApplicationForm form={form} initialStep={2} onSubmit={() => {}} onChange={onChange} uploadFiles={uploadFiles} today={TODAY} />);
     const input = screen.getByLabelText('Logo (optional)');
@@ -322,9 +330,7 @@ describe('File field', () => {
   });
 
   it('shows an upload failure and files saved earlier', async () => {
-    const uploadFiles = vi.fn(async () => {
-      throw new Error('The file could not be uploaded');
-    });
+    const uploadFiles = vi.fn(() => Promise.reject(new Error('The file could not be uploaded')));
     render(<ApplicationForm form={form} initialStep={2} initialValues={{ logo: [id1] }} onSubmit={() => {}} uploadFiles={uploadFiles} today={TODAY} />);
     expect(screen.getByText('File 1 attached')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Logo (optional)'), { target: { files: [png('logo.png')] } });
@@ -335,11 +341,11 @@ describe('File field', () => {
 
 describe('helpers', () => {
   it('capitalsOnly spots formats that only accept capitals', () => {
-    expect(capitalsOnly('[A-Z]{5}[0-9]{4}[A-Z]')).toBe(true);
-    expect(capitalsOnly('\\d{2}[A-Z]{5}\\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]')).toBe(true);
+    expect(capitalsOnly(String.raw`[A-Z]{5}[0-9]{4}[A-Z]`)).toBe(true);
+    expect(capitalsOnly(String.raw`\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]`)).toBe(true);
     expect(capitalsOnly('[A-Za-z ]+')).toBe(false);
-    expect(capitalsOnly('\\d{8}')).toBe(false);
-    expect(capitalsOnly(undefined)).toBe(false);
+    expect(capitalsOnly(String.raw`\d{8}`)).toBe(false);
+    expect(capitalsOnly()).toBe(false);
   });
 
   it('issueLabel names nested fields', () => {
@@ -365,7 +371,7 @@ describe('ApplicationForm: problems found by the server (M3.9)', () => {
   it('shows returned field problems on the first step that has one, ignoring fields the form lacks', async () => {
     const onSubmit = vi.fn().mockResolvedValue({ 'partners.0.pan': 'PAN does not match the partner', name: 'Name is already used', unknown: 'not shown' });
     render(<ApplicationForm form={TWO_STEPS} initialStep={1} initialValues={answers} onSubmit={onSubmit} today={TODAY} />);
-    await act(async () => click('Submit'));
+    await act(() => click('Submit'));
     expect(onSubmit).toHaveBeenCalledWith(answers);
     expect(heading().textContent).toBe('About you');
     expect(within(summary()).getByText('Name: Name is already used')).toBeTruthy();
@@ -375,14 +381,14 @@ describe('ApplicationForm: problems found by the server (M3.9)', () => {
     // The other step's problem is shown when the customer gets there and submits again.
     onSubmit.mockResolvedValueOnce({ 'partners.0.pan': 'PAN does not match the partner' });
     click('Next');
-    await act(async () => click('Submit'));
+    await act(() => click('Submit'));
     expect(within(summary()).getByText('Partners › Partner 1 › PAN: PAN does not match the partner')).toBeTruthy();
   });
 
   it('shows nothing when the server accepts the answers', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(<ApplicationForm form={TWO_STEPS} initialStep={1} initialValues={answers} onSubmit={onSubmit} today={TODAY} />);
-    await act(async () => click('Submit'));
+    await act(() => click('Submit'));
     expect(onSubmit).toHaveBeenCalledOnce();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(heading().textContent).toBe('Partners');

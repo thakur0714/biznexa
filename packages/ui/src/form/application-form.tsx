@@ -58,7 +58,7 @@ export function issueLabel(form: FormSchema, path: (string | number)[]): string 
  * "Next" checks the current step and "Submit" checks everything with the same `formDataValidator`
  * the API uses; problems are listed in a summary that links to each field.
  */
-export function ApplicationForm({ form, initialValues, initialStep = 0, onChange, onStepChange, onSubmit, submitLabel = 'Submit', uploadFiles, today, idPrefix = 'af' }: ApplicationFormProps) {
+export function ApplicationForm({ form, initialValues, initialStep = 0, onChange, onStepChange, onSubmit, submitLabel = 'Submit', uploadFiles, today, idPrefix = 'af' }: Readonly<ApplicationFormProps>) {
   const total = form.steps.length;
   const [step, setStep] = useState(() => Math.min(Math.max(initialStep, 0), total - 1));
   const [reached, setReached] = useState(step);
@@ -70,6 +70,8 @@ export function ApplicationForm({ form, initialValues, initialStep = 0, onChange
   const current = Math.min(step, total - 1);
   const s = form.steps[current];
   const last = current === total - 1;
+  let submitText = 'Next';
+  if (last) submitText = busy ? 'Submitting…' : submitLabel;
 
   // Move focus to the step heading after a step change, or to the summary when there are problems.
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -175,17 +177,26 @@ export function ApplicationForm({ form, initialValues, initialStep = 0, onChange
         {total > 1 && (
           <ol aria-label="Steps" className="mt-3 hidden flex-wrap gap-x-4 gap-y-1.5 sm:flex">
             {form.steps.map((st, i) => {
-              const state = i === current ? 'current' : i <= reached ? 'visited' : 'upcoming';
+              let state: 'current' | 'visited' | 'upcoming';
+              if (i === current) state = 'current';
+              else if (i <= reached) state = 'visited';
+              else state = 'upcoming';
+
+              let circleClass: string;
+              if (state === 'current') circleClass = 'bg-ink text-white';
+              else if (state === 'visited') circleClass = 'bg-ink-050 text-ink';
+              else circleClass = 'bg-paper text-muted';
+
               const label = (
                 <>
-                  <span aria-hidden className={`grid size-5 place-items-center rounded-full text-[11px] font-semibold ${state === 'current' ? 'bg-ink text-white' : state === 'visited' ? 'bg-ink-050 text-ink' : 'bg-paper text-muted'}`}>
+                  <span aria-hidden className={`grid size-5 place-items-center rounded-full text-[11px] font-semibold ${circleClass}`}>
                     {i < reached && i !== current ? '✓' : i + 1}
                   </span>
                   {st.title}
                 </>
               );
               return (
-                <li key={i} className="text-sm">
+                <li key={st.title} className="text-sm">
                   {state === 'visited' ? (
                     <button type="button" onClick={() => goTo(i)} className="flex items-center gap-1.5 rounded text-ink underline-offset-2 hover:underline">
                       {label}
@@ -258,7 +269,7 @@ export function ApplicationForm({ form, initialValues, initialStep = 0, onChange
             </Button>
           )}
           <Button type="submit" variant="ink" className="ml-auto" disabled={busy}>
-            {last ? (busy ? 'Submitting…' : submitLabel) : 'Next'}
+            {submitText}
           </Button>
         </div>
       </div>
