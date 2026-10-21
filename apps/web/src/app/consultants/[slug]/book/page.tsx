@@ -11,13 +11,13 @@ async function consultant(slug: string) {
   return apiOrNull<PublicConsultantSlots>(`/public/consultants/${encodeURIComponent(slug)}/slots`);
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<Props>): Promise<Metadata> {
   const data = await consultant((await params).slug);
   return { title: data ? `Book ${data.consultant.name}` : 'Book a consultation', robots: { index: false } };
 }
 
 /** Book a consultation (M8.8): type → date → slot → hold → pay. The slots are fetched fresh in the browser. */
-export default async function BookConsultantPage({ params }: Props) {
+export default async function BookConsultantPage({ params }: Readonly<Props>) {
   const { slug } = await params;
   const data = await consultant(slug);
   if (!data) notFound();

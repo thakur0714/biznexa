@@ -33,7 +33,7 @@ function pageHref(query: Search, page: number) {
   return qs ? `/consultants?${qs}` : '/consultants';
 }
 
-export default async function ConsultantsPage({ searchParams }: { searchParams: Promise<Search> }) {
+export default async function ConsultantsPage({ searchParams }: Readonly<{ searchParams: Promise<Search> }>) {
   const raw = await searchParams;
   const query = Object.fromEntries(Object.entries(raw).flatMap(([key, value]) => typeof value === 'string' ? [[key, value]] : []));
   const apiQuery: Record<string, string | undefined> = {
@@ -62,6 +62,13 @@ export default async function ConsultantsPage({ searchParams }: { searchParams: 
   const page = Number(query.page || 1);
   const limit = Number(query.limit || 12);
   const totalPages = Math.max(1, Math.ceil((result?.total ?? 0) / limit));
+  const queryText = queryString(query);
+  const retryHref = queryText ? `/consultants?${queryText}` : '/consultants';
+  let resultSummary = '';
+  if (result) {
+    resultSummary = `${result.total} consultant`;
+    if (result.total !== 1) resultSummary += 's';
+  }
 
   return (
     <Container className="py-8 sm:py-12">
@@ -92,11 +99,11 @@ export default async function ConsultantsPage({ searchParams }: { searchParams: 
         <div className="mt-4 flex flex-wrap gap-2">
           <button className="min-h-11 rounded-md bg-ink px-5 font-semibold text-white hover:opacity-90" type="submit">Apply filters</button>
           <Link href="/consultants" className="inline-flex min-h-11 items-center rounded-md px-4 font-semibold text-muted hover:bg-paper">Clear all</Link>
-          <span className="self-center text-sm text-muted">{result ? `${result.total} consultant${result.total === 1 ? '' : 's'}` : ''}</span>
+          <span className="self-center text-sm text-muted">{resultSummary}</span>
         </div>
       </form>
 
-      {error ? <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-5 text-red-900" role="alert">{error} <a className="ml-1 font-semibold underline" href={`/consultants${queryString(query) ? `?${queryString(query)}` : ''}`}>Retry</a></div> : null}
+      {error ? <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-5 text-red-900" role="alert">{error} <a className="ml-1 font-semibold underline" href={retryHref}>Retry</a></div> : null}
       {!error && result?.items.length === 0 ? <div className="mt-8"><EmptyState title="No consultants found" description="Try changing or clearing some filters." /></div> : null}
       {!error && result && result.items.length > 0 ? <>
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
