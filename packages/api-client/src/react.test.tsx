@@ -39,7 +39,7 @@ describe('createBrowserApi', () => {
   });
 
   it('renews an expired token once and repeats the request with the new one', async () => {
-    const refresh = vi.fn(async () => 'fresh');
+    const refresh = vi.fn(() => Promise.resolve('fresh'));
     reply = (req) => (req.headers.get('authorization') === 'Bearer old' ? json({ message: 'Please log in' }, 401) : json({ ok: true }));
     // The session still reports the old token: React has not re-rendered the provider yet.
     const api = createBrowserApi({ getToken: () => 'old', refresh });
@@ -52,7 +52,7 @@ describe('createBrowserApi', () => {
 
   it('reports a 401 when the session cannot be renewed, or when no token was sent', async () => {
     reply = () => json({ message: 'Please log in' }, 401);
-    const refresh = vi.fn(async () => null);
+    const refresh = vi.fn(() => Promise.resolve(null));
     await expect(categories(createBrowserApi({ getToken: () => 'old', refresh }))).rejects.toMatchObject({ status: 401, message: 'Please log in' });
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(sent).toHaveLength(1);
@@ -84,7 +84,7 @@ describe('createBrowserApi', () => {
 
 describe('ApiProvider / useApi', () => {
   it('keeps one client across token changes and sends the latest token', async () => {
-    const refresh = vi.fn(async () => null);
+    const refresh = vi.fn(() => Promise.resolve(null));
     let token: string | null = 'first';
     const wrapper = ({ children }: { children: ReactNode }) => (
       <ApiProvider token={token} refresh={refresh}>
