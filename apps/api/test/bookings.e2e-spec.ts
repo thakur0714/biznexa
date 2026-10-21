@@ -40,7 +40,7 @@ const customers: { token: string; id: string }[] = [];
 async function register(n: number) {
   const res = await http
     .post('/api/auth/register')
-    .send({ name: `Booker ${n}`, mobile: `8${run.replace(/\D/g, '1').padEnd(7, '1').slice(0, 7)}${String(n).padStart(2, '0')}`, email: `${emailPrefix}-${n}@example.com`, password: 'secret123', consent: true })
+    .send({ name: `Booker ${n}`, mobile: `8${run.replaceAll(/\D/g, '1').padEnd(7, '1').slice(0, 7)}${String(n).padStart(2, '0')}`, email: `${emailPrefix}-${n}@example.com`, password: 'secret123', consent: true })
     .expect(201);
   return { token: res.body.accessToken as string, id: res.body.user.id as string };
 }
@@ -76,7 +76,7 @@ beforeAll(async () => {
     select: { id: true },
   });
   consultantId = consultant.id;
-  for (let n = 1; n <= 7; n++) customers.push(await register(n));
+  for (let n = 1; n <= 7; n++) customers.push(await /* NOSONAR: tests run steps in order */ register(n)); // NOSONAR: tests run steps in order
 });
 
 beforeEach(() => {
@@ -150,7 +150,7 @@ describe('booking hold (M8.8)', () => {
   it('gives exactly one hold when five customers book the same slot at once', async () => {
     const five = customers.slice(2, 7);
     const results = await Promise.all(five.map((c) => book(c, '10:00')));
-    expect(results.map((r) => r.status).sort()).toEqual([201, 409, 409, 409, 409]);
+    expect(results.map((r) => r.status).sort((a, b) => a - b)).toEqual([201, 409, 409, 409, 409]);
     const live = await prisma.booking.count({ where: { consultantId, startAt: new Date(at('10:00')), status: 'PENDING_PAYMENT' } });
     expect(live).toBe(1);
   });
@@ -286,9 +286,9 @@ describe('booking confirmation and lifecycle (M8.9, M8.10)', () => {
   }
   async function notified(userId: string, event: string) {
     for (let i = 0; i < 50; i++) {
-      const rows = await prisma.notification.findMany({ where: { userId, event, channel: 'IN_APP' }, select: { body: true } });
+      const rows = await /* NOSONAR: tests run steps in order */ prisma.notification.findMany({ where: { userId, event, channel: 'IN_APP' }, select: { body: true } }); // NOSONAR: tests run steps in order
       if (rows.length) return rows;
-      await new Promise((r) => setTimeout(r, 100));
+      await /* NOSONAR: tests run steps in order */ new Promise((r) => setTimeout(r, 100)); // NOSONAR: tests run steps in order
     }
     return [];
   }
@@ -324,7 +324,7 @@ describe('booking confirmation and lifecycle (M8.9, M8.10)', () => {
   it('refuses to cancel or reschedule within 24 hours of the session', async () => {
     const dave = customers[3];
     const id = await confirmedBooking(dave, '13:30');
-    const soon = new Date(new Date(at3('13:30')).getTime() - 23 * 3600_000);
+    const soon = new Date(new Date(at3('13:30')).getTime() - 23 * 3_600_000);
     await expect(svc().cancel(dave.id, id, undefined, soon)).rejects.toThrow(/24 hours/);
     await expect(svc().reschedule(dave.id, id, new Date(at3('12:30')), soon)).rejects.toThrow(/24 hours/);
   });

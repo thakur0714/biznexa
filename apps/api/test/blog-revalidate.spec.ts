@@ -5,7 +5,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { AuditService } from '../src/audit/audit.service';
 import { QueueService } from '../src/queue/queue.service';
 import { EventBus } from '../src/events/event-bus';
-import { env } from '../src/config/env';
+
 
 jest.mock('../src/config/env', () => {
   let _env = { REVALIDATE_SECRET: 'test-secret', PUBLIC_WEB_URL: 'http://web' };

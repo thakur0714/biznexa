@@ -37,7 +37,7 @@ describe('Admin announcements (e2e)', () => {
     const service = await prisma.service.create({ data: { name: `Announce ${stamp}`, slug: `announce-${stamp}`, categoryId, shortDescription: 'test' } });
     const pkg = await prisma.servicePackage.create({ data: { serviceId: service.id, name: 'Basic', professionalFee: 1000 } });
     for (const [n, customerId] of [optedInId, optedOutId].entries()) {
-      await prisma.application.create({ data: { code: `ANN-${stamp}-${n}`, customerId, serviceId: service.id, packageId: pkg.id, status: 'SUBMITTED' } });
+      await /* NOSONAR: tests run steps in order */ prisma.application.create({ data: { code: `ANN-${stamp}-${n}`, customerId, serviceId: service.id, packageId: pkg.id, status: 'SUBMITTED' } });
     }
   });
   afterAll(async () => {

@@ -66,16 +66,16 @@ describe('application status changes (M4.1)', () => {
   it('allows exactly the moves of the state machine and refuses the rest with 409, changing nothing', async () => {
     for (const from of APPLICATION_STATUSES) {
       for (const to of APPLICATION_STATUSES) {
-        await setStatus(from);
+        await /* NOSONAR: tests run steps in order */ setStatus(from); // NOSONAR: tests run steps in order
         const note = to === 'CANCELLED' ? 'Customer asked to cancel' : undefined;
         if (canTransition('application', from, to)) {
-          await expect(statuses.transition({ applicationId: appId, to, actorId: staffId, note })).resolves.toMatchObject({ from, to });
-          expect((await prisma.application.findUniqueOrThrow({ where: { id: appId } })).status).toBe(to);
+          await /* NOSONAR: tests run steps in order */ expect(statuses.transition({ applicationId: appId, to, actorId: staffId, note })).resolves.toMatchObject({ from, to }); // NOSONAR: tests run steps in order
+          expect((await /* NOSONAR: tests run steps in order */ prisma.application.findUniqueOrThrow({ where: { id: appId } })).status).toBe(to); // NOSONAR: tests run steps in order
         } else {
-          const before = await prisma.applicationStageHistory.count({ where: { applicationId: appId } });
-          await expect(statuses.transition({ applicationId: appId, to, actorId: staffId, note })).rejects.toBeInstanceOf(ConflictException);
-          expect((await prisma.application.findUniqueOrThrow({ where: { id: appId } })).status).toBe(from);
-          expect(await prisma.applicationStageHistory.count({ where: { applicationId: appId } })).toBe(before);
+          const before = await /* NOSONAR: tests run steps in order */ prisma.applicationStageHistory.count({ where: { applicationId: appId } }); // NOSONAR: tests run steps in order
+          await /* NOSONAR: tests run steps in order */ expect(statuses.transition({ applicationId: appId, to, actorId: staffId, note })).rejects.toBeInstanceOf(ConflictException); // NOSONAR: tests run steps in order
+          expect((await /* NOSONAR: tests run steps in order */ prisma.application.findUniqueOrThrow({ where: { id: appId } })).status).toBe(from); // NOSONAR: tests run steps in order
+          expect(await /* NOSONAR: tests run steps in order */ prisma.applicationStageHistory.count({ where: { applicationId: appId } })).toBe(before); // NOSONAR: tests run steps in order
         }
       }
     }

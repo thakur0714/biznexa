@@ -47,7 +47,7 @@ describe('Admin Application Documents (M4.8)', () => {
 
     const supportSess = await staffSession(http, prisma, 'SUPPORT', `support-${run}@example.com`);
     supportToken = supportSess.accessToken;
-    supportId = (await prisma.user.findUniqueOrThrow({ where: { email: `support-${run}@example.com` } })).id;
+    await prisma.user.findUniqueOrThrow({ where: { email: `support-${run}@example.com` } });
 
     // Login for customer token
     const customerLogin = await http.post('/api/auth/register').send({
@@ -228,11 +228,11 @@ describe('Admin Application Documents (M4.8)', () => {
     // Sent by the notification queue (M6.3), so it lands shortly after the request.
     let notif = null;
     for (let i = 0; i < 100 && !notif; i++) {
-      notif = await prisma.notification.findFirst({
+      notif = await /* NOSONAR: tests run steps in order */ prisma.notification.findFirst({ // NOSONAR: tests run steps in order
         where: { userId: customerId, channel: 'IN_APP', event: 'document.rejected' },
         orderBy: { createdAt: 'desc' },
       });
-      if (!notif) await new Promise((r) => setTimeout(r, 50));
+      if (!notif) await /* NOSONAR: tests run steps in order */ new Promise((r) => setTimeout(r, 50)); // NOSONAR: tests run steps in order
     }
     expect(notif).not.toBeNull();
     expect(notif?.title).toBe('Document Rejected');
@@ -313,8 +313,8 @@ describe('Admin Application Documents (M4.8)', () => {
     const mine = await createTestApp(14, 'DOCUMENTS_UNDER_REVIEW', opsId);
     const theirs = await createTestApp(15, 'DOCUMENTS_UNDER_REVIEW', adminId);
 
-    const { doc: dMine, fileKey: fKeyMine } = await createTestDoc(mine.id);
-    const { doc: dTheirs, fileKey: fKeyTheirs } = await createTestDoc(theirs.id);
+    const { fileKey: fKeyMine } = await createTestDoc(mine.id);
+    const { fileKey: fKeyTheirs } = await createTestDoc(theirs.id);
 
     const fileMine = await prisma.storedFile.findUniqueOrThrow({ where: { fileKey: fKeyMine } });
     await prisma.storedFile.update({ where: { id: fileMine.id }, data: { scanStatus: 'CLEAN' } });
