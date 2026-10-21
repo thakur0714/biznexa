@@ -48,7 +48,7 @@ export function createBrowserApi(session: ApiSession, baseUrl?: string): Api {
   let renewed: { from: string; to: string } | null = null;
   const currentToken = () => {
     const t = session.getToken();
-    return renewed?.from === t && renewed ? renewed.to : t;
+    return renewed?.from === t ? renewed.to : t;
   };
   client.use({
     onRequest({ request }) {
