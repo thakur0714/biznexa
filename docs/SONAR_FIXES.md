@@ -32,16 +32,16 @@ Done and merged: API (most of S1), S3 and S11. The 4 findings left in S11 are pa
 | **S2b** ✅ | `apps/api/test`: files whose names start with `a`–`d` (`admin-*`, `app.*`, `application*`, `bookings*`, `certificate*`, `cms*`, `consultant*`, `customer*`, `data-isolation*`) | ~75 | Jules | `sonar-s2b-api-tests` |
 | **S2c** | `apps/api/test`: every other file (names from `e` to `z`, plus helpers such as `staff.ts`, `setup-env.js`) | ~120 | Jules | `sonar-s2c-api-tests` |
 | **S3** ✅ | `apps/web/src/components`, `apps/web/src/lib`, and in `apps/web/src/app`: the root files (`page.tsx`, `layout.tsx`, `error.tsx`, `globals.css`, …), `login/`, `register/`, `forgot-password/`, `verify/`, `services/`, `blog/` | ~110 | Gemini Flash (finished by Claude) | `sonar-s3-web-public` |
-| **S4** | `apps/web/src/app/dashboard` | ~80 | Antigravity | `sonar-s4-web-dashboard` |
+| **S4** | `apps/web/src/app/dashboard` | 82 | Codex | `sonar-s4-web-dashboard` |
 | **S5a** ✅ | `apps/web/src/app/consultants`, plus every other `apps/web/src/app/*` folder that S3, S4 and S5b don't list (today only `dev/`) | 31 | Codex | `sonar-s5a-web-consultants` |
 | **S5b** ✅ | `apps/web/src/app/apply` | 42 | Codex | `sonar-s5b-web-apply` |
-| **S6** | `apps/admin/src/app/(portal)/services` | ~85 | Antigravity | `sonar-s6-admin-services` |
-| **S7** | `apps/admin/src/app/(portal)/coupons`, `…/applications`, `…/certificates` | ~110 | Antigravity | `sonar-s7-admin-apps` |
-| **S8** | `apps/admin/src/app/(portal)/consultant`, `…/consultants`, `…/payments`, `…/customers`, `…/notifications` | ~80 | Antigravity | `sonar-s8-admin-people` |
-| **S9** | `apps/admin/src`: every other `(portal)` folder (settings, cms, documents, support, reports, privacy, reviews, audit, `[section]`, `layout.tsx`, `page.tsx`), plus `components/`, `lib/`, `app/two-factor`, `app/login`, `app/layout.tsx` | ~90 | Antigravity | `sonar-s9-admin-rest` |
+| **S6** | `apps/admin/src/app/(portal)/services` | 73 | Codex | `sonar-s6-admin-services` |
+| **S7** | `apps/admin/src/app/(portal)/coupons`, `…/applications`, `…/certificates` | 91 | Codex | `sonar-s7-admin-apps` |
+| **S8** | `apps/admin/src/app/(portal)/consultant`, `…/consultants`, `…/payments`, `…/customers`, `…/notifications` | 79 | Codex | `sonar-s8-admin-people` |
+| **S9** | `apps/admin/src`: every other `(portal)` folder (settings, cms, documents, support, reports, privacy, reviews, audit, `[section]`, `layout.tsx`, `page.tsx`), plus `components/`, `lib/`, `app/two-factor`, `app/login`, `app/layout.tsx` | ~127 | Codex | `sonar-s9-admin-rest` |
 | **S10a** ✅ | `apps/mobile`: everything except `src/screens` (`App.tsx`, `src/api`, `src/auth`, `src/navigation`, `src/components`, …) | ~45 | Codex | `sonar-s10a-mobile-core` |
 | **S10b** ✅ | `apps/mobile/src/screens`: every file except `BuyFlowScreen.tsx` and `ApplicationDetailScreen.tsx` | 41 | Codex | `sonar-s10b-mobile-screens` |
-| **S10c** | `apps/mobile/src/screens/BuyFlowScreen.tsx`, `apps/mobile/src/screens/ApplicationDetailScreen.tsx` | 30 | Codex or Claude | `sonar-s10c-mobile-flows` |
+| **S10c** | `apps/mobile/src/screens/BuyFlowScreen.tsx`, `apps/mobile/src/screens/ApplicationDetailScreen.tsx` | 30 | Codex | `sonar-s10c-mobile-flows` |
 | **S11** ✅ | `packages/ui`, `packages/config`, `packages/rich-text` | ~75 | Devin (finished by Claude) | `sonar-s11-ui` |
 | **S12a** | `packages/types` | 71 | Jules | `sonar-s12a-types` |
 | **S12b** | `packages/api-client` | 41 | Jules | `sonar-s12b-api-client` |
