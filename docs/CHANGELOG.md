@@ -1,5 +1,11 @@
 # Changelog
 
+## M12.5 — Staff users in Settings (19-Oct-2026)
+
+- Added the ADMIN-only `users.manage` permission using the additive M2.5.11 seed rules, plus a searchable, paginated staff list and create/role/status/2FA recovery actions in Settings.
+- Staff deactivation revokes all refresh sessions; the API prevents self-deactivation and changes that would leave no active ADMIN. 2FA reset clears enrollment, revokes all sessions, and requires enrollment again at next sign-in. Every write is audited without passwords or 2FA secrets.
+- Added API integration coverage for access control, last-admin protection, refresh revocation, 2FA reset, and audit redaction. Regenerated the API client.
+
 ## No Docker (19-Oct-2026)
 
 - Removed `docker-compose.yml` and the API/web Dockerfiles (D70). README now installs PostgreSQL 16 and Redis 7 directly for local development; servers run each app with `pnpm build` + `pnpm start`.

@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { requiresTwoFactor } from '@biznexa/types';
 import { PrismaService } from '../prisma/prisma.service';
+import type { Prisma } from '../generated/prisma/client';
 import { env } from '../config/env';
 
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
@@ -90,8 +91,8 @@ export class TokenService {
     await this.prisma.refreshToken.updateMany({ where: { tokenHash: sha256(raw), revokedAt: null }, data: { revokedAt: new Date() } });
   }
 
-  async revokeAll(userId: string) {
-    await this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+  async revokeAll(userId: string, db: Prisma.TransactionClient | PrismaService = this.prisma) {
+    await db.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
   }
 
   async revokeOthers(userId: string, currentRawToken?: string) {

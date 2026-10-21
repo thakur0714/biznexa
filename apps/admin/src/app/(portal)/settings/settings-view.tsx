@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { OPTION_SOURCES, formatDate, type RejectionPresets, type MobileVersion } from '@biznexa/types';
+import { OPTION_SOURCES, PERMS, formatDate, type RejectionPresets, type MobileVersion } from '@biznexa/types';
 import { Button, LinkButton, Field, Notice, Select, useToast } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { NotAllowed } from '@/components/portal-shell';
 import { useAuth } from '@/lib/auth';
+import { StaffUsersPage } from './staff-users-page';
 import { canSee, findNavItem } from '@/lib/nav';
 import { formFieldOf, sellerFormErrors, toSellerForm, toSellerRequest, type SavedSellerSettings, type SellerFormField, type SellerFormValues } from './seller-form';
 
@@ -16,12 +17,14 @@ export function SettingsView() {
   const item = findNavItem('settings');
   if (!user || !item) return null;
   if (!canSee(item, user.permissions)) return <NotAllowed />;
+  const canManageSettings = user.permissions.includes(PERMS.SETTINGS_MANAGE);
   return (
     <div className="space-y-12">
-      <SellerSettingsPage />
-      <RejectionPresetsPage />
-      <MobileVersionPage />
-      <div className="max-w-[800px] rounded-lg border border-rule bg-white p-6 shadow-xs">
+      {canManageSettings && <SellerSettingsPage />}
+      {canManageSettings && <RejectionPresetsPage />}
+      {canManageSettings && <MobileVersionPage />}
+      {user.permissions.includes(PERMS.USERS_MANAGE) && <StaffUsersPage />}
+      {canManageSettings && <div className="max-w-[800px] rounded-lg border border-rule bg-white p-6 shadow-xs">
         <h2 className="text-xl font-bold tracking-[-0.02em] text-night">Notification Templates</h2>
         <p className="mt-1 text-sm text-muted">
           Manage transactional message templates, DLT template IDs, and preview rendered notifications across email, SMS, push, and in-app channels.
@@ -31,7 +34,7 @@ export function SettingsView() {
             Open Notification Template Editor →
           </LinkButton>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

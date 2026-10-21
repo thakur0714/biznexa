@@ -21,6 +21,10 @@ describe('visibleNav', () => {
     expect(visibleNav([])).toEqual([]);
   });
 
+  it('shows Settings to a user with staff management access', () => {
+    expect(slugs([PERMS.USERS_MANAGE])).toContain('settings');
+  });
+
   it('shows an operations executive their work queues only', () => {
     expect(slugs(OPS)).toEqual(['', 'applications', 'documents', 'customers']);
   });
