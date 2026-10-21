@@ -50,8 +50,8 @@ export function PendingActionsView() {
       )}
       {result && result.items.length > 0 && (
         <ul className="space-y-3">
-          {result.items.map((item, index) => (
-            <li key={`${item.applicationId}-${item.kind}-${item.title}-${index}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white p-4 sm:p-5">
+          {result.items.map((item) => (
+            <li key={`${item.applicationId}-${item.kind}-${item.title}-${item.href}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white p-4 sm:p-5">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">{actionLabel[item.kind]}</p>
                 <h2 className="mt-1 font-semibold">{item.title}</h2>

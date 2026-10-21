@@ -81,6 +81,10 @@ export function PrivacyView() {
 
   const openExport = data.items.find((r) => r.type === 'EXPORT' && isOpen(r));
   const ready = data.items.find((r) => r.type === 'EXPORT' && r.downloadable);
+  let exportButtonLabel = 'Download my data';
+  if (ready) exportButtonLabel = 'Prepare a new copy';
+  if (exporting) exportButtonLabel = 'Requesting…';
+  if (openExport) exportButtonLabel = 'Preparing your file…';
   const openDeletion = data.items.find((r) => r.type === 'DELETION' && isOpen(r));
 
   return (
@@ -110,7 +114,7 @@ export function PrivacyView() {
             )}
             <Button type="button" variant="outline" onClick={requestExport} disabled={exporting || !!openExport}>
               {!ready && <Icon name="download" size={16} />}
-              <span>{openExport ? 'Preparing your file…' : exporting ? 'Requesting…' : ready ? 'Prepare a new copy' : 'Download my data'}</span>
+              <span>{exportButtonLabel}</span>
             </Button>
           </div>
         </div>
@@ -190,12 +194,12 @@ function DeleteAccountDialog({
   reauth,
   onClose,
   onDone,
-}: {
+}: Readonly<{
   open: boolean;
   reauth: DataRequestList['reauth'];
   onClose: () => void;
   onDone: () => Promise<void>;
-}) {
+}>) {
   const api = useApi();
   const [method, setMethod] = useState<'password' | 'otp'>(reauth.password ? 'password' : 'otp');
   const [reason, setReason] = useState('');
@@ -203,6 +207,7 @@ function DeleteAccountDialog({
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [sent, setSent] = useState<PrivacyOtpResponse | null>(null);
+  const devCodeHint = sent?.devCode ? ` (dev: ${sent.devCode})` : '';
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -286,8 +291,8 @@ function DeleteAccountDialog({
                 autoComplete="one-time-code"
                 maxLength={6}
                 value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                hint={`We sent a 6-digit code to ${sent.sentTo}${sent.devCode ? ` (dev: ${sent.devCode})` : ''}`}
+                onChange={(e) => setOtp(e.target.value.replaceAll(/\D/g, ''))}
+                hint={`We sent a 6-digit code to ${sent.sentTo}${devCodeHint}`}
               />
             ) : (
               <Button type="button" variant="outline" onClick={sendCode} disabled={busy || !reauth.otpChannel}>

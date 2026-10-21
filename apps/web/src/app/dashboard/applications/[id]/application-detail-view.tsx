@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
 import {
   conditionMet,
   formatDate,
@@ -64,7 +64,7 @@ function stageStateBadge(state: CustomerStageState): { label: string; tone: Tone
   }
 }
 
-function StageStepIcon({ stage, index }: { stage: CustomerTimelineStage; index: number }) {
+function StageStepIcon({ stage, index }: Readonly<{ stage: CustomerTimelineStage; index: number }>) {
   if (stage.state === 'done') {
     return (
       <span
@@ -108,11 +108,11 @@ function ReadOnlyLeafAnswer({
   field,
   value,
   onOpenFile,
-}: {
+}: Readonly<{
   field: FormLeafField;
   value: unknown;
   onOpenFile: (fileId: string) => void;
-}) {
+}>) {
   if (isEmptyValue(value)) {
     return <span className="text-muted">—</span>;
   }
@@ -126,11 +126,9 @@ function ReadOnlyLeafAnswer({
   }
 
   if (field.type === 'file') {
-    const ids = Array.isArray(value)
-      ? value.filter((x): x is string => typeof x === 'string')
-      : typeof value === 'string'
-        ? [value]
-        : [];
+    let ids: string[] = [];
+    if (Array.isArray(value)) ids = value.filter((x): x is string => typeof x === 'string');
+    else if (typeof value === 'string') ids = [value];
     if (ids.length === 0) return <span className="text-muted">—</span>;
     return (
       <div className="flex flex-wrap gap-2">
@@ -146,7 +144,7 @@ function ReadOnlyLeafAnswer({
   return <span className="whitespace-pre-wrap text-night">{String(value)}</span>;
 }
 
-export function ApplicationDetailView({ applicationId }: { applicationId: string }) {
+export function ApplicationDetailView({ applicationId }: Readonly<{ applicationId: string }>) {
   const api = useApi();
   const searchParams = useSearchParams();
   const queryTab = searchParams.get('tab');
@@ -183,6 +181,8 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const openInlineFile = (fileId: string) => { void openFileLink(fileId, 'inline'); };
 
   if (loadedForId !== applicationId) {
     setLoadedForId(applicationId);
@@ -306,7 +306,7 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
     }
   }
 
-  async function handleSendMessage(e: FormEvent) {
+  async function handleSendMessage(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const trimmed = draftMessage.trim();
     if (!trimmed || sendingMessage) return;
@@ -673,14 +673,14 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
                 No form answers available for this application.
               </div>
             ) : (
-              formDetail.formSchema.steps.map((step, stepIdx) => {
+              formDetail.formSchema.steps.map((step) => {
                 const formData = formDetail.formData ?? {};
                 const visibleFields = step.fields.filter(
                   (f: FormField) => !f.showIf || conditionMet(f.showIf, formData),
                 );
                 return (
                   <div
-                    key={`${step.title}-${stepIdx}`}
+                    key={`${step.title}-${step.fields.map((field) => field.name).join('-')}`}
                     className="rounded-lg border border-rule bg-white p-5 sm:p-6"
                   >
                     <h2 className="border-b border-rule pb-3 text-base font-bold text-night">{step.title}</h2>
@@ -704,7 +704,7 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
                                   ) : (
                                     rows.map((row, rowIdx) => (
                                       <div
-                                        key={rowIdx}
+                                        key={`${field.itemLabel}-${JSON.stringify(row)}`}
                                         className="rounded-md border border-rule bg-paper/60 p-3 text-xs"
                                       >
                                         <p className="mb-2 font-bold text-ink">
@@ -719,7 +719,7 @@ export function ApplicationDetailView({ applicationId }: { applicationId: string
                                                 <ReadOnlyLeafAnswer
                                                   field={sub}
                                                   value={row[sub.name]}
-                                                  onOpenFile={(fid) => void openFileLink(fid, 'inline')}
+                                                  onOpenFile={openInlineFile}
                                                 />
                                               </div>
                                             ))}

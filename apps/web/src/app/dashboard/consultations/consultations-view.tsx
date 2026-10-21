@@ -10,7 +10,13 @@ type Tab = 'UPCOMING' | 'PAST';
 const CANCEL_WINDOW = BOOKING_CHANGE_WINDOW_HOURS * 60 * 60 * 1000;
 
 function statusLabel(status: BookingView['status']) {
-  return status.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  return status.replaceAll('_', ' ').toLowerCase().replaceAll(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function consultationTone(status: BookingView['status']) {
+  if (status === 'CONFIRMED' || status === 'COMPLETED') return 'success' as const;
+  if (status === 'CANCELLED') return 'neutral' as const;
+  return 'warning' as const;
 }
 
 export function ConsultationsView() {
@@ -121,14 +127,16 @@ export function ConsultationsView() {
         {(['UPCOMING', 'PAST'] as const).map((value) => <button key={value} role="tab" aria-selected={tab === value} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === value ? 'bg-ink text-white' : 'border border-rule bg-white text-ink'}`} onClick={() => setTab(value)}>{value === 'UPCOMING' ? 'Upcoming' : 'Past'}</button>)}
       </div>
       {error && <div className="mb-4"><Notice tone="error">{error}</Notice></div>}
-      {loading ? <p role="status">Loading consultations…</p> : visible.length === 0 ? (
+      {loading && <p role="status">Loading consultations…</p>}
+      {!loading && visible.length === 0 && (
         <EmptyState title={tab === 'UPCOMING' ? 'No upcoming consultations' : 'No past consultations'} description={tab === 'UPCOMING' ? 'Your confirmed and upcoming bookings will appear here.' : 'Completed and cancelled bookings will appear here.'} />
-      ) : <div className="space-y-4">{visible.map((booking) => {
+      )}
+      {!loading && visible.length > 0 && <div className="space-y-4">{visible.map((booking) => {
         const canManage = booking.status === 'CONFIRMED' && new Date(booking.startAt).getTime() - now >= CANCEL_WINDOW;
         return <article key={booking.id} className="rounded-lg border border-rule bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div><h2 className="font-semibold">{booking.consultant.name}</h2><p className="mt-1 text-sm text-muted">{formatDate(booking.startAt)} · {new Date(booking.startAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' })} IST</p><p className="mt-1 text-xs text-muted">{booking.code} · {booking.type.replaceAll('_', ' ')} · {formatINR(booking.fee)}</p></div>
-            <Badge tone={booking.status === 'CONFIRMED' || booking.status === 'COMPLETED' ? 'success' : booking.status === 'CANCELLED' ? 'neutral' : 'warning'}>{statusLabel(booking.status)}</Badge>
+            <Badge tone={consultationTone(booking.status)}>{statusLabel(booking.status)}</Badge>
           </div>
           {booking.status === 'CONFIRMED' && booking.meetingLink && new Date(booking.endAt).getTime() >= now && <a className="mt-4 inline-flex rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-night" href={booking.meetingLink} target="_blank" rel="noreferrer">Join consultation</a>}
           {booking.status === 'COMPLETED' && <Link className="mt-4 inline-flex rounded-md border border-ink px-4 py-2 text-sm font-semibold text-ink hover:bg-paper" href={`/dashboard/consultations/${booking.id}/review`}>Leave review</Link>}

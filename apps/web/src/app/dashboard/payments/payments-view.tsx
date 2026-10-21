@@ -57,14 +57,26 @@ const REFUND_STATUS: Record<CustomerRefundView['status'], string> = {
   FAILED: 'Refund failed',
 };
 
+function refundTone(status: CustomerRefundView['status']): string {
+  if (status === 'FAILED') return 'text-danger';
+  if (status === 'PROCESSED') return 'text-emerald-700';
+  return 'text-amber-700';
+}
+
+function paymentBalanceUrl(item: CustomerPaymentListResponse['items'][number]): string | null {
+  if (item.order.serviceSlug && item.order.applicationId) return `/apply/${item.order.serviceSlug}/${item.order.applicationId}/payment`;
+  if (item.order.applicationId) return `/dashboard/applications/${item.order.applicationId}`;
+  return null;
+}
+
 /** Refunds of one payment (M4.13): amount, where it stands, and the credit note once it is ready. */
-function RefundList({ refunds, onCreditNote, busyId }: { refunds: CustomerRefundView[]; onCreditNote: (id: string) => void; busyId: string | null }) {
+function RefundList({ refunds, onCreditNote, busyId }: Readonly<{ refunds: CustomerRefundView[]; onCreditNote: (id: string) => void; busyId: string | null }>) {
   if (!refunds.length) return null;
   return (
     <ul className="mt-1.5 space-y-1" aria-label="Refunds">
       {refunds.map((r) => (
         <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-          <span className={r.status === 'FAILED' ? 'text-danger' : r.status === 'PROCESSED' ? 'text-emerald-700' : 'text-amber-700'}>
+          <span className={refundTone(r.status)}>
             {REFUND_STATUS[r.status]}: <span className="num font-semibold">{formatINR(r.amount, r.amount % 100 !== 0)}</span>
             {r.status === 'PROCESSED' && r.processedAt ? ` on ${formatDate(r.processedAt)}` : ''}
             {r.status === 'INITIATED' ? ' · usually 5–7 working days' : ''}
@@ -151,6 +163,8 @@ export function CustomerPaymentsView() {
   const handleDownloadCreditNote = (creditNoteId: string) => download('credit note', creditNoteId);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
+  const isHistoryLoading = loading && !data;
+  const isHistoryEmpty = !data || data.items.length === 0;
 
   return (
     <div className="space-y-8">
@@ -253,11 +267,12 @@ export function CustomerPaymentsView() {
           )}
         </div>
 
-        {loading && !data ? (
+        {isHistoryLoading && (
           <div className="rounded-lg border border-rule bg-white p-12 text-center text-sm text-muted">
             Loading payments…
           </div>
-        ) : !data || data.items.length === 0 ? (
+        )}
+        {!isHistoryLoading && isHistoryEmpty && (
           <EmptyState
             title="No payments yet"
             description="Payments you make for your applications and services will appear here."
@@ -267,7 +282,8 @@ export function CustomerPaymentsView() {
               </LinkButton>
             }
           />
-        ) : (
+        )}
+        {!isHistoryLoading && !isHistoryEmpty && data && (
           <>
             {/* Desktop Table View */}
             <div className="hidden overflow-hidden rounded-lg border border-rule bg-white shadow-sm sm:block">
@@ -284,12 +300,7 @@ export function CustomerPaymentsView() {
                 </thead>
                 <tbody className="divide-y divide-rule">
                   {data.items.map((item) => {
-                    const payBalanceUrl =
-                      item.order.serviceSlug && item.order.applicationId
-                        ? `/apply/${item.order.serviceSlug}/${item.order.applicationId}/payment`
-                        : item.order.applicationId
-                        ? `/dashboard/applications/${item.order.applicationId}`
-                        : null;
+                    const payBalanceUrl = paymentBalanceUrl(item);
 
                     return (
                       <tr key={item.id} className="hover:bg-paper/30">
@@ -358,12 +369,7 @@ export function CustomerPaymentsView() {
             {/* Mobile Card View (360px compatible) */}
             <div className="space-y-3 sm:hidden">
               {data.items.map((item) => {
-                const payBalanceUrl =
-                  item.order.serviceSlug && item.order.applicationId
-                    ? `/apply/${item.order.serviceSlug}/${item.order.applicationId}/payment`
-                    : item.order.applicationId
-                    ? `/dashboard/applications/${item.order.applicationId}`
-                    : null;
+                const payBalanceUrl = paymentBalanceUrl(item);
 
                 return (
                   <div

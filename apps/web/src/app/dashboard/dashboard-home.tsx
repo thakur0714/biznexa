@@ -88,7 +88,7 @@ export function DashboardHome() {
         <h2 className="text-xl font-semibold">Recent activity</h2>
         <LinkButton href="/services">Buy a new service</LinkButton>
       </div>
-      {!summaryLoading && summary && summary.activeApplications === 0 && summary.recentActivity.length === 0 ? (
+      {!summaryLoading && summary?.activeApplications === 0 && summary.recentActivity.length === 0 ? (
         <EmptyState
           className="p-8"
           icon={<Icon name="file" size={32} className="text-ink/40" />}
