@@ -33,7 +33,7 @@ Done and merged: API (most of S1), S3 and S11. The 4 findings left in S11 are pa
 | **S2c** | `apps/api/test`: every other file (names from `e` to `z`, plus helpers such as `staff.ts`, `setup-env.js`) | ~120 | Jules | `sonar-s2c-api-tests` |
 | **S3** ✅ | `apps/web/src/components`, `apps/web/src/lib`, and in `apps/web/src/app`: the root files (`page.tsx`, `layout.tsx`, `error.tsx`, `globals.css`, …), `login/`, `register/`, `forgot-password/`, `verify/`, `services/`, `blog/` | ~110 | Gemini Flash (finished by Claude) | `sonar-s3-web-public` |
 | **S4** | `apps/web/src/app/dashboard` | ~80 | Antigravity | `sonar-s4-web-dashboard` |
-| **S5a** | `apps/web/src/app/consultants`, plus every other `apps/web/src/app/*` folder that S3, S4 and S5b don't list (today only `dev/`) | 31 | Codex | `sonar-s5a-web-consultants` |
+| **S5a** ✅ | `apps/web/src/app/consultants`, plus every other `apps/web/src/app/*` folder that S3, S4 and S5b don't list (today only `dev/`) | 31 | Codex | `sonar-s5a-web-consultants` |
 | **S5b** | `apps/web/src/app/apply` | 42 | Codex | `sonar-s5b-web-apply` |
 | **S6** | `apps/admin/src/app/(portal)/services` | ~85 | Antigravity | `sonar-s6-admin-services` |
 | **S7** | `apps/admin/src/app/(portal)/coupons`, `…/applications`, `…/certificates` | ~110 | Antigravity | `sonar-s7-admin-apps` |
