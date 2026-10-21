@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Notice } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
@@ -19,15 +19,16 @@ export function OtpStep<T>({
   issued,
   onVerified,
   onChangeTarget,
-}: {
+}: Readonly<{
   channel: 'MOBILE' | 'EMAIL';
   target: string;
   purpose: 'LOGIN' | 'VERIFY_MOBILE' | 'RESET_PASSWORD';
   issued: OtpIssued;
   onVerified: (res: T) => void;
   onChangeTarget?: () => void;
-}) {
+}>) {
   const api = useApi();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [code, setCode] = useState('');
   const [wait, setWait] = useState(issued.resendAfter);
   const [devCode, setDevCode] = useState(issued.devCode);
@@ -36,12 +37,16 @@ export function OtpStep<T>({
   const [info, setInfo] = useState('');
 
   useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     if (wait <= 0) return;
     const t = setTimeout(() => setWait((w) => w - 1), 1000);
     return () => clearTimeout(t);
   }, [wait]);
 
-  async function verify(e: React.FormEvent) {
+  async function verify(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!/^\d{6}$/.test(code)) return setError('Enter the 6-digit code.');
     setBusy(true);
@@ -86,14 +91,14 @@ export function OtpStep<T>({
           Verification code
         </label>
         <input
+          ref={inputRef}
           id="otp-code"
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
           value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+          onChange={(e) => setCode(e.target.value.replaceAll(/\D/g, ''))}
           aria-invalid={!!error}
-          autoFocus
           className={`num h-14 w-full rounded-md border-2 bg-white px-4 text-center text-2xl tracking-[0.5em] outline-none focus:border-ink ${error ? 'border-danger' : 'border-rule'}`}
         />
       </div>

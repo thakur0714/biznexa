@@ -10,6 +10,7 @@ import { Button, Field, Notice } from '@biznexa/ui';
 import { ClientApiError, type FieldError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { safeNext, useAuth, type SessionUser } from '@/lib/auth';
+import { formText } from '@/lib/form';
 
 type Session = { accessToken: string; user: SessionUser };
 
@@ -25,14 +26,14 @@ export function RegisterForm() {
 
   const err = (f: string) => errors.find((e) => e.field === f)?.message;
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const input = {
-      name: String(f.get('name') ?? ''),
-      mobile: String(f.get('mobile') ?? ''),
-      email: String(f.get('email') ?? ''),
-      password: String(f.get('password') ?? ''),
+      name: formText(f, 'name'),
+      mobile: formText(f, 'mobile'),
+      email: formText(f, 'email'),
+      password: formText(f, 'password'),
       consent: f.get('consent') === 'on',
     };
     // Same rules as the API, so mistakes show before a round trip.
@@ -78,13 +79,16 @@ export function RegisterForm() {
     );
   }
 
+  const loginNext = next !== '/dashboard' ? `?next=${encodeURIComponent(next)}` : '';
+  const loginHref = `/login${loginNext}`;
+
   return (
     <AuthShell
       title="Create your account"
       subtitle={
         <>
           Already have an account?{' '}
-          <Link href={`/login${next !== '/dashboard' ? `?next=${encodeURIComponent(next)}` : ''}`} className="font-medium text-ink underline">
+          <Link href={loginHref} className="font-medium text-ink underline">
             Log in
           </Link>
         </>

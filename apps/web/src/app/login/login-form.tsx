@@ -9,6 +9,7 @@ import { Button, Field, Notice } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { safeNext, useAuth, type SessionUser } from '@/lib/auth';
+import { formText } from '@/lib/form';
 
 type Session = { accessToken: string; user: SessionUser };
 
@@ -33,20 +34,20 @@ export function LoginForm() {
     router.replace(next);
   }
 
-  async function passwordLogin(e: React.FormEvent<HTMLFormElement>) {
+  async function passwordLogin(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     setBusy(true);
     setError(null);
     try {
-      done(await api.call<Session>((c) => c.POST('/api/auth/login', { body: { email: String(f.get('email') ?? ''), password: String(f.get('password') ?? '') } })));
+      done(await api.call<Session>((c) => c.POST('/api/auth/login', { body: { email: formText(f, 'email'), password: formText(f, 'password') } })));
     } catch (err) {
       setError(err as ClientApiError);
       setBusy(false);
     }
   }
 
-  async function requestOtp(e: React.FormEvent) {
+  async function requestOtp(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     setError(null);
@@ -73,13 +74,59 @@ export function LoginForm() {
     </button>
   );
 
+  const registerNext = next !== '/dashboard' ? `?next=${encodeURIComponent(next)}` : '';
+  const registerHref = `/register${registerNext}`;
+
+  let formContent: React.ReactNode;
+  if (method === 'password') {
+    formContent = (
+      <form onSubmit={passwordLogin} noValidate className="space-y-4">
+        <Field id="email" name="email" type="email" label="Email" autoComplete="email" required error={error?.fieldError('email')} />
+        <Field id="password" name="password" type="password" label="Password" autoComplete="current-password" required error={error?.fieldError('password')} />
+        <div className="text-right text-sm">
+          <Link href="/forgot-password" className="font-medium text-ink hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+        {error?.errors.length === 0 && <Notice tone="error">{error.message}</Notice>}
+        <Button type="submit" variant="ink" className="w-full" disabled={busy}>
+          {busy ? 'Logging in…' : 'Log in'}
+        </Button>
+      </form>
+    );
+  } else if (issued) {
+    formContent = (
+      <OtpStep<Session> channel="MOBILE" target={mobile.trim()} purpose="LOGIN" issued={issued} onVerified={done} onChangeTarget={() => setIssued(null)} />
+    );
+  } else {
+    formContent = (
+      <form onSubmit={requestOtp} noValidate className="space-y-4">
+        <Field
+          id="mobile"
+          label="Mobile number"
+          inputMode="numeric"
+          autoComplete="tel-national"
+          maxLength={10}
+          value={mobile}
+          onChange={(e) => setMobile(e.target.value.replaceAll(/\D/g, ''))}
+          hint="We'll send a 6-digit code to this number."
+          error={error?.fieldError('target')}
+        />
+        {error?.errors.length === 0 && <Notice tone="error">{error.message}</Notice>}
+        <Button type="submit" variant="ink" className="w-full" disabled={busy || mobile.length !== 10}>
+          {busy ? 'Sending…' : 'Send code'}
+        </Button>
+      </form>
+    );
+  }
+
   return (
     <AuthShell
       title="Log in to BizNexa"
       subtitle={
         <>
           New here?{' '}
-          <Link href={`/register${next !== '/dashboard' ? `?next=${encodeURIComponent(next)}` : ''}`} className="font-medium text-ink underline">
+          <Link href={registerHref} className="font-medium text-ink underline">
             Create an account
           </Link>
         </>
@@ -91,41 +138,7 @@ export function LoginForm() {
       </div>
 
       <div className="mt-6">
-        {method === 'password' ? (
-          <form onSubmit={passwordLogin} noValidate className="space-y-4">
-            <Field id="email" name="email" type="email" label="Email" autoComplete="email" required error={error?.fieldError('email')} />
-            <Field id="password" name="password" type="password" label="Password" autoComplete="current-password" required error={error?.fieldError('password')} />
-            <div className="text-right text-sm">
-              <Link href="/forgot-password" className="font-medium text-ink hover:underline">
-                Forgot password?
-              </Link>
-            </div>
-            {error && error.errors.length === 0 && <Notice tone="error">{error.message}</Notice>}
-            <Button type="submit" variant="ink" className="w-full" disabled={busy}>
-              {busy ? 'Logging in…' : 'Log in'}
-            </Button>
-          </form>
-        ) : issued ? (
-          <OtpStep<Session> channel="MOBILE" target={mobile.trim()} purpose="LOGIN" issued={issued} onVerified={done} onChangeTarget={() => setIssued(null)} />
-        ) : (
-          <form onSubmit={requestOtp} noValidate className="space-y-4">
-            <Field
-              id="mobile"
-              label="Mobile number"
-              inputMode="numeric"
-              autoComplete="tel-national"
-              maxLength={10}
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
-              hint="We'll send a 6-digit code to this number."
-              error={error?.fieldError('target')}
-            />
-            {error && error.errors.length === 0 && <Notice tone="error">{error.message}</Notice>}
-            <Button type="submit" variant="ink" className="w-full" disabled={busy || mobile.length !== 10}>
-              {busy ? 'Sending…' : 'Send code'}
-            </Button>
-          </form>
-        )}
+        {formContent}
       </div>
     </AuthShell>
   );

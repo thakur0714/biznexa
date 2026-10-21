@@ -9,12 +9,12 @@ export function VerifyQrCaptcha({
   t,
   captchaRequired = false,
   turnstileSiteKey,
-}: {
+}: Readonly<{
   id: string;
   t?: string;
   captchaRequired?: boolean;
   turnstileSiteKey?: string;
-}) {
+}>) {
   const router = useRouter();
 
   if (!captchaRequired) {
@@ -28,18 +28,23 @@ export function VerifyQrCaptcha({
     router.push(`/verify/${encodeURIComponent(id)}?${params.toString()}`);
   }
 
+  let captchaContent: React.ReactNode = (
+    <p className="text-sm text-muted">Verification is busy right now. Please wait a few minutes and try again.</p>
+  );
+  if (turnstileSiteKey) {
+    captchaContent = <Turnstile siteKey={turnstileSiteKey} onSuccess={retryWith} options={{ size: 'flexible' }} />;
+  } else if (process.env.NODE_ENV !== 'production') {
+    // Development without a Turnstile key: the API's mock verifier accepts the token "pass".
+    captchaContent = (
+      <Button type="button" variant="outline" onClick={() => retryWith('pass')}>
+        I am not a robot (development)
+      </Button>
+    );
+  }
+
   return (
     <div className="mt-4" data-testid="verify-captcha">
-      {turnstileSiteKey ? (
-        <Turnstile siteKey={turnstileSiteKey} onSuccess={retryWith} options={{ size: 'flexible' }} />
-      ) : process.env.NODE_ENV !== 'production' ? (
-        // Development without a Turnstile key: the API's mock verifier accepts the token "pass".
-        <Button type="button" variant="outline" onClick={() => retryWith('pass')}>
-          I am not a robot (development)
-        </Button>
-      ) : (
-        <p className="text-sm text-muted">Verification is busy right now. Please wait a few minutes and try again.</p>
-      )}
+      {captchaContent}
     </div>
   );
 }

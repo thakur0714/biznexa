@@ -70,12 +70,12 @@ export function DocumentRow({
   applicationId,
   canUpload,
   onChange,
-}: {
+}: Readonly<{
   target: RowTarget;
   applicationId: string;
   canUpload: boolean;
   onChange: (list: DocumentChecklist) => void;
-}) {
+}>) {
   const api = useApi();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
@@ -145,6 +145,13 @@ export function DocumentRow({
     }
   }
 
+  let uploadLabel = 'Upload file';
+  if (c && !needsUpload(item)) {
+    uploadLabel = 'Replace file';
+  } else if (c) {
+    uploadLabel = 'Upload a new copy';
+  }
+
   return (
     <li className="rounded-lg border border-rule bg-white p-4 sm:p-5" aria-labelledby={headingId}>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -203,7 +210,7 @@ export function DocumentRow({
       {editable && (
         <div className="mt-3">
           <label htmlFor={inputId} className="text-sm font-medium">
-            {c && !needsUpload(item) ? 'Replace file' : c ? 'Upload a new copy' : 'Upload file'}
+            {uploadLabel}
             <span className="sr-only"> for {r.name}</span>
           </label>
           <input

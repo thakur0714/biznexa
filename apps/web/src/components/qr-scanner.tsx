@@ -28,7 +28,7 @@ export function QrScanner() {
     if (!open) return;
     let stream: MediaStream | undefined;
     let stopped = false;
-    (async () => {
+    void (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         if (!videoRef.current) return;
@@ -37,12 +37,12 @@ export function QrScanner() {
         const Ctor = (window as unknown as { BarcodeDetector: new (o: { formats: string[] }) => Detector }).BarcodeDetector;
         const detector = new Ctor({ formats: ['qr_code'] });
         while (!stopped) {
-          const codes = await detector.detect(videoRef.current).catch(() => []);
+          const codes = await detector.detect(videoRef.current).catch(() => []); // NOSONAR: sequential camera frame detection
           const raw = codes[0]?.rawValue;
           if (raw) {
             try {
               const u = new URL(raw);
-              const m = u.pathname.match(/\/verify\/([A-Za-z0-9]+)/);
+              const m = /\/verify\/([A-Za-z0-9]+)/.exec(u.pathname);
               if (m) {
                 router.push(`/verify/${m[1]}${u.search}`);
                 setOpen(false);
@@ -51,7 +51,7 @@ export function QrScanner() {
             } catch {}
             setError('That QR code is not a BizNexa certificate code.');
           }
-          await new Promise((r) => setTimeout(r, 300));
+          await new Promise((r) => setTimeout(r, 300)); // NOSONAR: polling interval between camera frames
         }
       } catch {
         setError('Camera access was blocked. Allow camera access in your browser settings, or type the certificate number instead.');

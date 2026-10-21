@@ -29,8 +29,37 @@ export async function cmsMetadata(slug: string) {
   return { title: page?.seoTitle || page?.title || 'BizNexa', ...(page?.metaDescription ? { description: page.metaDescription } : {}), ...(page?.ogImageUrl ? { openGraph: { images: [page.ogImageUrl] } } : {}) };
 }
 
+function renderBlock(b: Block, key: string) {
+  if (b.type === 'heading') {
+    return (
+      <h2 key={key} className="pt-4 text-xl font-semibold">
+        {b.text}
+      </h2>
+    );
+  }
+  if (b.type === 'list') {
+    return (
+      <ul key={key} className="list-disc space-y-1 pl-6">
+        {b.items?.map((it) => <li key={it}>{it}</li>)}
+      </ul>
+    );
+  }
+  return <p key={key}>{b.text}</p>;
+}
+
+function keyedBlocks(blocks: Block[]) {
+  const seen = new Map<string, number>();
+  return blocks.map((b) => {
+    const raw = b.text ?? b.items?.join('|') ?? b.type;
+    const count = (seen.get(raw) ?? 0) + 1;
+    seen.set(raw, count);
+    const key = count === 1 ? raw : `${raw}#${count}`;
+    return { block: b, key };
+  });
+}
+
 /** Renders a published CMS page (content managed by Admin). */
-export async function CmsPage({ slug }: { slug: string }) {
+export async function CmsPage({ slug }: Readonly<{ slug: string }>) {
   const page = await getCmsPage(slug);
   if (!page) notFound();
   return (
@@ -41,19 +70,7 @@ export async function CmsPage({ slug }: { slug: string }) {
         <RichText html={page.content.html} className="mt-8" />
       ) : (
         <div className="mt-8 space-y-4 text-[17px] leading-relaxed">
-          {(page.content.blocks ?? []).map((b, i) =>
-            b.type === 'heading' ? (
-              <h2 key={i} className="pt-4 text-xl font-semibold">
-                {b.text}
-              </h2>
-            ) : b.type === 'list' ? (
-              <ul key={i} className="list-disc space-y-1 pl-6">
-                {b.items?.map((it) => <li key={it}>{it}</li>)}
-              </ul>
-            ) : (
-              <p key={i}>{b.text}</p>
-            ),
-          )}
+          {keyedBlocks(page.content.blocks ?? []).map(({ block, key }) => renderBlock(block, key))}
         </div>
       )}
     </Container>

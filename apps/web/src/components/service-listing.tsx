@@ -38,13 +38,13 @@ export function ServiceListing({
   data,
   categories,
   category,
-}: {
+}: Readonly<{
   basePath: string;
   params: ListingParams;
   data: ServiceList;
   categories: CategorySummary[];
   category?: CategorySummary;
-}) {
+}>) {
   const band = PRICE_BANDS.findIndex((b) => b.min === (params.minPrice ?? '') && b.max === (params.maxPrice ?? ''));
 
   return (
@@ -99,7 +99,7 @@ export function ServiceListing({
 
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="popular" value="true" defaultChecked={params.popular === 'true'} className="accent-ink" />
-            Popular services only
+            <span>Popular services only</span>
           </label>
 
           <noscript>
@@ -170,7 +170,7 @@ export function normalizeParams(sp: Record<string, string | string[] | undefined
   let minPrice = one('minPrice');
   let maxPrice = one('maxPrice');
   const price = one('price');
-  if (price && price.includes('-')) {
+  if (price?.includes('-')) {
     const [a, b] = price.split('-');
     minPrice = a || undefined;
     maxPrice = b || undefined;

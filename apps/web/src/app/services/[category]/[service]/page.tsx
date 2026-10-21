@@ -17,15 +17,15 @@ async function getService(slug: string) {
   return apiOrNull<ServiceDetail>(`/catalogue/services/${encodeURIComponent(slug)}`);
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { category, service } = await params;
+export async function generateMetadata({ params }: Readonly<Props>): Promise<Metadata> {
+  const { service } = await params;
   const s = await getService(service);
   if (!s) return {};
   const canonical = `/services/${s.category.slug}/${s.slug}`;
   return {
     title: s.seoTitle?.replace(/ \| BizNexa$/, '') ?? s.name,
     description: s.metaDescription ?? s.shortDescription,
-    alternates: { canonical: category === s.category.slug ? canonical : canonical },
+    alternates: { canonical },
     openGraph: { title: s.name, description: s.shortDescription, url: canonical },
   };
 }
@@ -38,10 +38,10 @@ const SECTIONS = [
   { id: 'faqs', label: 'FAQs' },
 ];
 
-export default async function ServicePage({ params }: Props) {
+export default async function ServicePage({ params }: Readonly<Props>) {
   const { category, service } = await params;
   const s = await getService(service);
-  if (!s || s.category.slug !== category) notFound();
+  if (s?.category.slug !== category) notFound();
 
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
   const url = `${site}/services/${s.category.slug}/${s.slug}`;
@@ -77,7 +77,7 @@ export default async function ServicePage({ params }: Props) {
 
   return (
     <div className="pb-24 lg:pb-0">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replaceAll('<', String.raw`\u003c`) }} />
 
       <section className="border-b border-rule bg-white">
         <Container className="py-10">
@@ -122,8 +122,8 @@ export default async function ServicePage({ params }: Props) {
               Overview
             </h2>
             <div className="prose-plain mt-3 max-w-[68ch] text-[17px] leading-relaxed text-night/90">
-              {paragraphs.map((p, i) => (
-                <p key={i}>{p}</p>
+              {paragraphs.map((p) => (
+                <p key={p}>{p}</p>
               ))}
             </div>
             {s.benefits.length > 0 && (

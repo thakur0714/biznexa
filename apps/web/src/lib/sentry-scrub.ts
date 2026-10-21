@@ -1,9 +1,9 @@
 import type { Event } from '@sentry/nextjs';
 
 const clean = (value: string) => value
-  .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email]')
-  .replace(/(?<![\w-])(?:\+?91[ -]?)?[6-9]\d{9}(?![\w-])/g, '[mobile]')
-  .replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[token]');
+  .replaceAll(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[email]')
+  .replaceAll(/(?<![\w-])(?:\+?91[ -]?)?[6-9]\d{9}(?![\w-])/g, '[mobile]')
+  .replaceAll(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[token]');
 
 export function scrubSentryEvent<T extends Event>(event: T): T | null {
   event.user = undefined;

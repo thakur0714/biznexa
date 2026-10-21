@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/services' },
 };
 
-export default async function AllServicesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function AllServicesPage({ searchParams }: Readonly<{ searchParams: Promise<Record<string, string | string[] | undefined>> }>) {
   const params = normalizeParams(await searchParams);
   const [data, categories] = await Promise.all([
     api<ServiceList>(`/catalogue/services?${apiQuery(params)}`, { revalidate: 60 }),

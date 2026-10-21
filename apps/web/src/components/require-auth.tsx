@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 
 /** Sends visitors to /login (and back here afterwards) when there is no session. */
-export function RequireAuth({ children }: { children: React.ReactNode }) {
+export function RequireAuth({ children }: Readonly<{ children: React.ReactNode }>) {
   const { user, ready } = useAuth();
   const router = useRouter();
   const pathname = usePathname();

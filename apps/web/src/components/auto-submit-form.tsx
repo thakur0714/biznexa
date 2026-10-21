@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 
 /** A GET form that applies itself whenever a field changes (falls back to a submit button without JS). */
-export function AutoSubmitForm({ action, className, children }: { action: string; className?: string; children: React.ReactNode }) {
+export function AutoSubmitForm({ action, className, children }: Readonly<{ action: string; className?: string; children: React.ReactNode }>) {
   const router = useRouter();
   const ref = useRef<HTMLFormElement>(null);
 

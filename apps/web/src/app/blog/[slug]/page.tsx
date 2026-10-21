@@ -11,22 +11,35 @@ import { BlogPostCard } from '@/components/blog-post-card';
 export const revalidate = 300;
 const site = () => process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 const blogDataRevalidate = process.env.NODE_ENV === 'development' ? 0 : 300;
-async function getPost(slug: string): Promise<PublicBlogPostDetail | null> {
-  try { return await api<PublicBlogPostDetail>(`/public/blog/posts/${encodeURIComponent(slug)}`, { revalidate: blogDataRevalidate }); }
-  catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
+
+function resolveImageUrl(img?: string | null): string | undefined {
+  if (!img) return undefined;
+  return img.startsWith('http') ? img : `${site()}${img}`;
 }
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+
+async function getPost(slug: string): Promise<PublicBlogPostDetail | null> {
+  try {
+    return await api<PublicBlogPostDetail>(`/public/blog/posts/${encodeURIComponent(slug)}`, { revalidate: blogDataRevalidate });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function generateMetadata({ params }: Readonly<{ params: Promise<{ slug: string }> }>): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPost(slug);
   if (!post) return {};
   const title = post.seoTitle || post.title;
   const description = post.metaDescription || post.excerpt || `Read ${post.title} on BizNexa.`;
   const canonical = `/blog/${post.slug}`;
-  const image = post.featuredImage ? (post.featuredImage.startsWith('http') ? post.featuredImage : `${site()}${post.featuredImage}`) : undefined;
+  const image = resolveImageUrl(post.featuredImage);
   return { title, description, alternates: { canonical }, openGraph: { type: 'article', title, description, url: canonical, publishedTime: post.publishedAt, authors: post.authorName ? [post.authorName] : undefined, images: image ? [{ url: image }] : undefined } };
 }
 
-export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function BlogPostPage({ params }: Readonly<{ params: Promise<{ slug: string }> }>) {
   const { slug } = await params;
   const post = await getPost(slug);
   if (!post) notFound();
@@ -34,7 +47,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const related = await api<PublicBlogPagedList>(`/public/blog/posts?${query}`, { revalidate: blogDataRevalidate }).then((list) => list.items.filter((item) => item.slug !== post.slug).slice(0, 3)).catch(() => []);
   const latest = related.length ? related : await api<PublicBlogPagedList>('/public/blog/posts?page=1&pageSize=4', { revalidate: blogDataRevalidate }).then((list) => list.items.filter((item) => item.slug !== post.slug).slice(0, 3)).catch(() => []);
   const canonical = `${site()}/blog/${post.slug}`;
-  const article = { '@context': 'https://schema.org', '@type': 'Article', headline: post.title, description: post.metaDescription || post.excerpt || undefined, image: post.featuredImage ? (post.featuredImage.startsWith('http') ? post.featuredImage : `${site()}${post.featuredImage}`) : undefined, datePublished: post.publishedAt, author: { '@type': 'Person', name: post.authorName || 'BizNexa' }, publisher: { '@type': 'Organization', name: 'BizNexa' }, mainEntityOfPage: canonical };
+  const article = { '@context': 'https://schema.org', '@type': 'Article', headline: post.title, description: post.metaDescription || post.excerpt || undefined, image: resolveImageUrl(post.featuredImage), datePublished: post.publishedAt, author: { '@type': 'Person', name: post.authorName || 'BizNexa' }, publisher: { '@type': 'Organization', name: 'BizNexa' }, mainEntityOfPage: canonical };
   return <>
     <article>
       <Container className="max-w-3xl py-10 sm:py-16">
@@ -46,7 +59,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <RichText html={post.content} className="mt-10" />
         {post.tags.length > 0 && <nav aria-label="Article tags" className="mt-10 flex flex-wrap gap-2">{post.tags.map((tag) => <Link key={tag.id} href={`/blog/tag/${tag.slug}`} className="rounded-full border border-rule px-3 py-1.5 text-sm hover:border-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink">{tag.name}</Link>)}</nav>}
       </Container>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(article).replace(/</g, '\\u003c') }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(article).replaceAll('<', String.raw`\u003c`) }} />
     </article>
     {latest.length > 0 && <section aria-labelledby="related-posts" className="border-t border-rule bg-white"><Container className="py-12"><h2 id="related-posts" className="text-2xl font-bold">{related.length ? 'Related articles' : 'Latest articles'}</h2><div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{latest.map((item) => <BlogPostCard key={item.slug} post={item} />)}</div></Container></section>}
   </>;

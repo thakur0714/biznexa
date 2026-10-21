@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Logo } from '@biznexa/ui';
 import type { CategorySummary } from '@/lib/api';
 
-export function SiteFooter({ categories }: { categories: CategorySummary[] }) {
+export function SiteFooter({ categories }: Readonly<{ categories: CategorySummary[] }>) {
   return (
     <footer className="mt-24 bg-night text-white/75">
       <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.3fr_1fr_1fr_1fr]">

@@ -12,7 +12,7 @@ async function getCategory(slug: string) {
   return { categories, category: categories.find((c) => c.slug === slug) };
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<Props>): Promise<Metadata> {
   const { category } = await getCategory((await params).category);
   if (!category) return {};
   return {
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function CategoryPage({ params, searchParams }: Props) {
+export default async function CategoryPage({ params, searchParams }: Readonly<Props>) {
   const slug = (await params).category;
   const { categories, category } = await getCategory(slug);
   if (!category) notFound();

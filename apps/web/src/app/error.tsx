@@ -2,7 +2,7 @@
 
 import { Button, Container } from '@biznexa/ui';
 
-export default function Error({ reset }: { error: Error; reset: () => void }) {
+export default function AppError({ reset }: Readonly<{ reset: () => void }>) {
   return (
     <Container className="max-w-[640px] py-20">
       <h1 className="text-3xl font-bold tracking-[-0.02em]">This page didn’t load</h1>

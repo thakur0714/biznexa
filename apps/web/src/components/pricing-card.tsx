@@ -8,7 +8,7 @@ import { Badge, buttonClass } from '@biznexa/ui';
 import type { ServicePackage } from '@/lib/api';
 
 /** Sticky package picker: right rail on desktop, bottom bar on mobile. */
-export function PricingCard({ serviceSlug, packages }: { serviceSlug: string; packages: ServicePackage[] }) {
+export function PricingCard({ serviceSlug, packages }: Readonly<{ serviceSlug: string; packages: ServicePackage[] }>) {
   const initial = packages.find((p) => p.isMostPopular) ?? packages[0];
   const [selectedId, setSelectedId] = useState(initial?.id);
   const pkg = packages.find((p) => p.id === selectedId) ?? initial;
