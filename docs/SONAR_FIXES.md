@@ -4,7 +4,7 @@ The SonarQube for IDE extension (VS Code) reports about 1,500 warnings across th
 clean-up into small tasks that don't touch the same files, so several agents can work at once. Each task has a
 copy-paste prompt at the end.
 
-**Base branch:** `sonar-fixes`. The API (`apps/api/src`) is done on it, except task S1. Branch every task from `sonar-fixes`.
+**Base branch:** `main`. The old `sonar-fixes` branch was merged into `main` and deleted on 21-Oct-2026. Branch every task from `main`.
 
 ---
 
@@ -27,8 +27,10 @@ Done and merged: API (most of S1), S3 and S11. The 4 findings left in S11 are pa
 
 | Task | Folders (only these) | Approx. findings | Suggested agent | Branch |
 |---|---|---|---|---|
-| **S1** | `apps/api/src` (what's left: `tickets/`, `reminders/reminder-job.service.ts`, `invoices/invoice-template.ts`, `certificates/certificate-csv.ts`, `*.spec.ts` in `src`, `notifications/channels/whatsapp.channel.ts`, `notifications/providers/sms.provider.ts`, `main.ts`, `settings/`, `queue/`, `prisma/`, `consultants/availability.service.ts`, `config/env.ts`) | 52 left | Claude | `sonar-fixes` (direct) |
-| **S2** | `apps/api/test`, `apps/web/e2e`, `scripts/` | ~130 (see notes) | Jules | `sonar-s2-tests` |
+| **S1** | `apps/api/src` (what's left: `tickets/`, `reminders/reminder-job.service.ts`, `invoices/invoice-template.ts`, `certificates/certificate-csv.ts`, `*.spec.ts` in `src`, `notifications/channels/whatsapp.channel.ts`, `notifications/providers/sms.provider.ts`, `main.ts`, `settings/`, `queue/`, `prisma/`, `consultants/availability.service.ts`, `config/env.ts`) | 52 left | Claude | `sonar-s1-api` |
+| **S2a** | `apps/web/e2e`, `scripts/` | 37 | Jules (trial task) | `sonar-s2a-e2e` |
+| **S2b** | `apps/api/test`: files whose names start with `a`–`d` (`admin-*`, `app.*`, `application*`, `bookings*`, `certificate*`, `cms*`, `consultant*`, `customer*`, `data-isolation*`) | ~75 | Jules | `sonar-s2b-api-tests` |
+| **S2c** | `apps/api/test`: every other file (names from `e` to `z`, plus helpers such as `staff.ts`, `setup-env.js`) | ~120 | Jules | `sonar-s2c-api-tests` |
 | **S3** ✅ | `apps/web/src/components`, `apps/web/src/lib`, and in `apps/web/src/app`: the root files (`page.tsx`, `layout.tsx`, `error.tsx`, `globals.css`, …), `login/`, `register/`, `forgot-password/`, `verify/`, `services/`, `blog/` | ~110 | Gemini Flash (finished by Claude) | `sonar-s3-web-public` |
 | **S4** | `apps/web/src/app/dashboard` | ~80 | Antigravity | `sonar-s4-web-dashboard` |
 | **S5** | `apps/web/src/app/apply`, `apps/web/src/app/consultants`, every other `apps/web/src/app/*` folder that S3 and S4 don't list | ~75 | Codex | `sonar-s5-web-apply` |
@@ -38,11 +40,12 @@ Done and merged: API (most of S1), S3 and S11. The 4 findings left in S11 are pa
 | **S9** | `apps/admin/src`: every other `(portal)` folder (settings, cms, documents, support, reports, privacy, reviews, audit, `[section]`, `layout.tsx`, `page.tsx`), plus `components/`, `lib/`, `app/two-factor`, `app/login`, `app/layout.tsx` | ~90 | Antigravity | `sonar-s9-admin-rest` |
 | **S10** | `apps/mobile` (everything) | ~120 | Codex | `sonar-s10-mobile` |
 | **S11** ✅ | `packages/ui`, `packages/config`, `packages/rich-text` | ~75 | Devin (finished by Claude) | `sonar-s11-ui` |
-| **S12** | `packages/types`, `packages/api-client` | ~110 | Jules | `sonar-s12-types` |
+| **S12a** | `packages/types` | 71 | Jules | `sonar-s12a-types` |
+| **S12b** | `packages/api-client` | 41 | Jules | `sonar-s12b-api-client` |
 
 Notes:
-- **S2 (tests):** fix only unused imports, `replaceAll`, numeric separators, `structuredClone`, nested template literals and dead stores. **Leave** `await` in loops (tests run steps in order on purpose), "assertions in tests" (supertest's `.expect()` counts as an assertion) and hard-coded passwords. Those are seed/test credentials, so add `// NOSONAR: test credential` on those lines.
-- **S11/S12 change shared packages.** After them, run typecheck for **every** app (web, admin, mobile, api), because they all import these packages.
+- **S2a/S2b/S2c (tests):** fix only unused imports, `replaceAll`, numeric separators, `structuredClone`, nested template literals and dead stores. **Leave** `await` in loops (tests run steps in order on purpose), "assertions in tests" (supertest's `.expect()` counts as an assertion) and hard-coded passwords. Those are seed/test credentials, so add `// NOSONAR: test credential` on those lines.
+- **S11/S12a/S12b change shared packages.** After them, run typecheck for **every** app (web, admin, mobile, api), because they all import these packages.
 - One agent per task at a time. When a task is merged, mark it ✅ in this table.
 
 ---
@@ -118,7 +121,7 @@ The rule id is SonarQube's (what VS Code shows). The checker's ESLint name is in
   useEffect(() => { inputRef.current?.focus(); }, []);
   ```
   If the component took an `autoFocus` prop, keep the prop and focus only when it's true.
-- **S6479 "Use a stable ID as key"** `[react/no-array-index-key]`. Use the item's `id`/`slug`/`code`. If items have no id, build a key from their content, and add `#n` when the same content repeats. See `keyedBlocks` in `apps/web/src/components/cms-page.tsx` on `sonar-fixes` once S3 is merged. Never use `Math.random()`.
+- **S6479 "Use a stable ID as key"** `[react/no-array-index-key]`. Use the item's `id`/`slug`/`code`. If items have no id, build a key from their content, and add `#n` when the same content repeats. See `keyedBlocks` in `apps/web/src/components/cms-page.tsx` (on `main`). Never use `Math.random()`.
 - **S6772 "Ambiguous spacing after previous element"** `[react/jsx-child-element-spacing]`. Wrap the text in an element (`<span>`), or add `{' '}` where a space is wanted.
 - **S6478 "Move this component definition out of the parent"** `[react/no-unstable-nested-components]`. Move the component to module level and pass what it needs as props. Table cell callbacks such as `cell: (row) => <…/>` are fine and can stay.
 - **S6754 / S6767 / S6853 / S6848 / S1082**: follow the message. Name state as `[value, setValue]`, remove unused props, give labels `htmlFor`, use a `<button>` instead of a clickable `div`, add `onFocus`/`onBlur` next to `onMouseOver`/`onMouseOut`.
@@ -139,7 +142,7 @@ The rule id is SonarQube's (what VS Code shows). The checker's ESLint name is in
   - per-row work → `validateRow(row, ctx)`
   - a branch of a big `if` → its own private method
   
-  Keep names and messages identical. Examples on `sonar-fixes`: `publicDirectoryWhere` (consultants.service.ts), `validateCsvRow` (certificates.service.ts), `checkCoupon` (order-summary.service.ts).
+  Keep names and messages identical. Examples on `main`: `publicDirectoryWhere` (consultants.service.ts), `validateCsvRow` (certificates.service.ts), `checkCoupon` (order-summary.service.ts).
 - **S4624 "Do not use nested template literals"** `[sonarjs/no-nested-template-literals]`. Move the inner template into a `const` first:
   ```ts
   const ref = row.ref ? ` (${row.ref})` : ''; return `Paid${ref}`;
@@ -205,8 +208,8 @@ Replace `Sx` with the task id. The prompt is the same for every agent apart from
 **Antigravity / Codex (may run unit tests):**
 
 ```
-Read docs/SONAR_FIXES.md on branch sonar-fixes and do task Sx only.
-- Create branch <branch from the table> from sonar-fixes.
+Read docs/SONAR_FIXES.md on branch main and do task Sx only.
+- Create branch <branch from the table> from main.
 - Set up the checker (section 3) and run it on the task's folders.
 - Fix every finding using the fix catalogue (section 4). NOSONAR only as section 5 allows.
 - Don't change behaviour and don't touch files outside the task's folders.
@@ -218,15 +221,16 @@ Read docs/SONAR_FIXES.md on branch sonar-fixes and do task Sx only.
 **Jules (no tests):**
 
 ```
-Read docs/SONAR_FIXES.md on branch sonar-fixes and do task Sx only.
-- Create branch <branch from the table> from sonar-fixes.
+Read docs/SONAR_FIXES.md on branch main and do task Sx only.
+- Create branch <branch from the table> from main.
 - Set up the checker (section 3) and run it on the task's folders.
 - Fix every finding using the fix catalogue (section 4). NOSONAR only as section 5 allows.
 - Don't change behaviour and don't touch files outside the task's folders.
 - Do NOT run any tests, servers or Playwright. Run only the checker, typecheck and lint (section 3).
 - Before committing, review your own diff: every name you use exists, no `any` or `as unknown as`, and no
   stray files.
-- One commit ("chore(sonar): Sx <area>"), push the branch yourself, then report as section 6 says.
+- One commit ("chore(sonar): Sx <area>"), push the branch yourself. Do NOT open a pull request and don't wait
+  for GitHub CI. Claude reviews the branch locally. Then report as section 6 says.
 ```
 
-**Review (Claude):** fetch the branch and check that the diff only touches the task's folders. Run the checker, typecheck, lint and the app's tests. Check every NOSONAR against section 5. Then merge into `sonar-fixes`.
+**Review (Claude):** fetch the branch and check that the diff only touches the task's folders. Run the checker, typecheck, lint and the app's tests. Check every NOSONAR against section 5. Then merge into `main`.
