@@ -7,7 +7,7 @@ import { ApplySummary } from './apply-summary';
 
 export const metadata: Metadata = { title: 'Start your application', robots: { index: false } };
 
-export default async function ApplyPage({ params, searchParams }: { params: Promise<{ service: string }>; searchParams: Promise<{ package?: string }> }) {
+export default async function ApplyPage({ params, searchParams }: Readonly<{ params: Promise<{ service: string }>; searchParams: Promise<{ package?: string }> }>) {
   const { service } = await params;
   const { package: pkgId } = await searchParams;
   const s = await apiOrNull<ServiceDetail>(`/catalogue/services/${encodeURIComponent(service)}`);

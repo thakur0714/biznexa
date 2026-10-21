@@ -15,7 +15,7 @@ import { BusinessPicker, EMPTY_BUSINESS, type BusinessChoice, type SavedBusiness
  * Order review before the application form: pick the business, then "Continue to your details" starts a
  * draft order + application (M3.8). The form page (M3.9), upload and payment follow in Milestone 3.
  */
-export function ApplySummary({ service, pkg }: { service: ServiceDetail; pkg: ServicePackage }) {
+export function ApplySummary({ service, pkg }: Readonly<{ service: ServiceDetail; pkg: ServicePackage }>) {
   const steps = ['Review package', 'Your details', 'Upload documents', 'Pay securely'];
   const api = useApi();
   const router = useRouter();
@@ -68,7 +68,9 @@ export function ApplySummary({ service, pkg }: { service: ServiceDetail; pkg: Se
     setFieldErrors({});
     setBusy(true);
     try {
-      const businessEntityId = choice.kind === 'saved' ? choice.id : choice.kind === 'new' ? await saveNewBusiness() : null;
+      let businessEntityId: string | null = null;
+      if (choice.kind === 'saved') businessEntityId = choice.id;
+      else if (choice.kind === 'new') businessEntityId = await saveNewBusiness();
       if (choice.kind === 'new' && !businessEntityId) return;
       const draft = await api.call<DraftApplication>((c) => c.POST('/api/applications', { body: { packageId: pkg.id, businessEntityId } }));
       setStarted(draft);

@@ -50,7 +50,7 @@ const toFormErrors = (e: ClientApiError): FormErrors => Object.fromEntries(e.err
  * "Save and continue" sends the answers with `final: true` and the server checks every rule, then
  * moves on to the document step (M3.10).
  */
-export function ApplyForm({ service, applicationId }: { service: ServiceDetail; applicationId: string }) {
+export function ApplyForm({ service, applicationId }: Readonly<{ service: ServiceDetail; applicationId: string }>) {
   const api = useApi();
   const router = useRouter();
   const { user } = useAuth();
@@ -64,7 +64,7 @@ export function ApplyForm({ service, applicationId }: { service: ServiceDetail; 
 
   useEffect(() => {
     let live = true;
-    (async () => {
+    void (async () => {
       try {
         const detail = await api.call<ApplicationDetail>((c) => c.GET('/api/applications/{id}', { params: { path: { id: applicationId } } }));
         // The id is the customer's own, but the URL names a service too: don't show one service's form under another's name.
@@ -177,18 +177,57 @@ export function ApplyForm({ service, applicationId }: { service: ServiceDetail; 
 
   /** File fields upload each file through the shared upload endpoint (M2.5.6) and keep the returned ids. */
   const uploadFiles: UploadFiles = async (files) => {
-    const ids: string[] = [];
-    for (const file of files) {
+    return Promise.all(files.map(async (file) => {
       const body = new FormData();
       body.append('file', file);
-      const stored = await api.call<{ id: string }>((c) => c.POST('/api/files', { body: body as unknown as { file: string } }));
-      ids.push(stored.id);
-    }
-    return ids;
+      const uploadBody = Object.assign(body, { file: '' });
+      const stored = await api.call<{ id: string }>((c) => c.POST('/api/files', { body: uploadBody }));
+      return stored.id;
+    }));
   };
 
-  const status =
-    saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'All answers saved' : saveState === 'error' ? `Not saved. ${saveError}` : 'Answers save as you type';
+  let status = 'Answers save as you type';
+  if (saveState === 'saving') status = 'Saving…';
+  else if (saveState === 'saved') status = 'All answers saved';
+  else if (saveState === 'error') status = `Not saved. ${saveError}`;
+
+  let formContent: React.ReactNode = null;
+  if (submitted) {
+    formContent = (
+      <div className="mt-6">
+        <Notice tone="success">
+          Your details are saved. Opening the document step for application <strong className="num">{loaded?.app.code}</strong>…
+        </Notice>
+      </div>
+    );
+  } else if (loaded?.app.status === 'DRAFT') {
+    formContent = (
+      <div className="mt-6">
+        <ApplicationForm
+          form={loaded.form}
+          initialValues={loaded.initialValues}
+          initialStep={loaded.initialStep}
+          onChange={onChange}
+          onStepChange={(step) => writeStep(applicationId, step)}
+          onSubmit={onSubmit}
+          submitLabel="Save and continue"
+          uploadFiles={uploadFiles}
+          idPrefix="apply"
+        />
+      </div>
+    );
+  } else if (loaded) {
+    formContent = (
+      <div className="mt-6 space-y-4">
+        <Notice tone="info">
+          Application <strong className="num">{loaded.app.code}</strong> has already moved past this step, so its answers can’t be changed here.
+        </Notice>
+        <LinkButton href="/dashboard" variant="outline">
+          Go to your dashboard
+        </LinkButton>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-[760px] px-4 py-10 sm:px-6">
@@ -231,37 +270,7 @@ export function ApplyForm({ service, applicationId }: { service: ServiceDetail; 
         </div>
       )}
 
-      {loaded &&
-        (submitted ? (
-          <div className="mt-6">
-            <Notice tone="success">
-              Your details are saved. Opening the document step for application <strong className="num">{loaded.app.code}</strong>…
-            </Notice>
-          </div>
-        ) : loaded.app.status === 'DRAFT' ? (
-          <div className="mt-6">
-            <ApplicationForm
-              form={loaded.form}
-              initialValues={loaded.initialValues}
-              initialStep={loaded.initialStep}
-              onChange={onChange}
-              onStepChange={(step) => writeStep(applicationId, step)}
-              onSubmit={onSubmit}
-              submitLabel="Save and continue"
-              uploadFiles={uploadFiles}
-              idPrefix="apply"
-            />
-          </div>
-        ) : (
-          <div className="mt-6 space-y-4">
-            <Notice tone="info">
-              Application <strong className="num">{loaded.app.code}</strong> has already moved past this step, so its answers can’t be changed here.
-            </Notice>
-            <LinkButton href="/dashboard" variant="outline">
-              Go to your dashboard
-            </LinkButton>
-          </div>
-        ))}
+      {loaded && formContent}
     </div>
   );
 }
