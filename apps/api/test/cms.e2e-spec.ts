@@ -73,7 +73,7 @@ describe('CMS page draft and publish', () => {
       await http.get(`/api/cms/pages/${slug}`).expect(404);
       expect(await prisma.auditLog.count({ where: { entityType: 'CmsPage', entityId: existing.id, actor: users } })).toBeGreaterThanOrEqual(4);
     } finally {
-      await prisma.cmsPage.update({ where: { slug }, data: { title: existing.title, content: JSON.parse(JSON.stringify(existing.content)) as object, seoTitle: existing.seoTitle, metaDescription: existing.metaDescription, ogImageUrl: existing.ogImageUrl, contactEmail: existing.contactEmail, contactPhone: existing.contactPhone, status: existing.status, draftTitle: existing.draftTitle, draftContent: existing.draftContent === null ? Prisma.DbNull : (JSON.parse(JSON.stringify(existing.draftContent)) as object), draftSeoTitle: existing.draftSeoTitle, draftMetaDescription: existing.draftMetaDescription, draftOgImageUrl: existing.draftOgImageUrl, draftContactEmail: existing.draftContactEmail, draftContactPhone: existing.draftContactPhone } });
+      await prisma.cmsPage.update({ where: { slug }, data: { title: existing.title, content: structuredClone(existing.content) as object, seoTitle: existing.seoTitle, metaDescription: existing.metaDescription, ogImageUrl: existing.ogImageUrl, contactEmail: existing.contactEmail, contactPhone: existing.contactPhone, status: existing.status, draftTitle: existing.draftTitle, draftContent: existing.draftContent === null ? Prisma.DbNull : (structuredClone(existing.draftContent) as object), draftSeoTitle: existing.draftSeoTitle, draftMetaDescription: existing.draftMetaDescription, draftOgImageUrl: existing.draftOgImageUrl, draftContactEmail: existing.draftContactEmail, draftContactPhone: existing.draftContactPhone } });
     }
   });
 
@@ -109,8 +109,8 @@ describe('CMS page draft and publish', () => {
       if (existingContact) {
         await prisma.cmsPage.upsert({
           where: { slug: 'contact' },
-          create: { slug: 'contact', title: existingContact.title, content: JSON.parse(JSON.stringify(existingContact.content)) as object, seoTitle: existingContact.seoTitle, metaDescription: existingContact.metaDescription, ogImageUrl: existingContact.ogImageUrl, contactEmail: existingContact.contactEmail, contactPhone: existingContact.contactPhone, status: existingContact.status },
-          update: { title: existingContact.title, content: JSON.parse(JSON.stringify(existingContact.content)) as object, seoTitle: existingContact.seoTitle, metaDescription: existingContact.metaDescription, ogImageUrl: existingContact.ogImageUrl, contactEmail: existingContact.contactEmail, contactPhone: existingContact.contactPhone, status: existingContact.status },
+          create: { slug: 'contact', title: existingContact.title, content: structuredClone(existingContact.content) as object, seoTitle: existingContact.seoTitle, metaDescription: existingContact.metaDescription, ogImageUrl: existingContact.ogImageUrl, contactEmail: existingContact.contactEmail, contactPhone: existingContact.contactPhone, status: existingContact.status },
+          update: { title: existingContact.title, content: structuredClone(existingContact.content) as object, seoTitle: existingContact.seoTitle, metaDescription: existingContact.metaDescription, ogImageUrl: existingContact.ogImageUrl, contactEmail: existingContact.contactEmail, contactPhone: existingContact.contactPhone, status: existingContact.status },
         });
       } else {
         await prisma.cmsPage.deleteMany({ where: { slug: 'contact' } });

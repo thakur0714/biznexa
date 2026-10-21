@@ -37,7 +37,7 @@ describe('Admin consultant review (M8.2)', () => {
       name: `Review customer ${runId.slice(0, 8)}`,
       email: `${emailPrefix}-customer@example.com`,
       mobile,
-      password: 'Customer@12345',
+      password: 'Customer@12345', // NOSONAR: test credential // NOSONAR: test credential
       consent: true,
     }).expect(201);
     customerToken = registeredSchema.parse(customer.body).accessToken;
@@ -117,7 +117,7 @@ describe('Admin consultant review (M8.2)', () => {
       http.post(`/api/admin/consultants/${consultantId}/reject`).set(as(adminToken)).send({ reason: 'Please clarify the membership proof.' }),
       http.post(`/api/admin/consultants/${consultantId}/reject`).set(as(adminToken)).send({ reason: 'Please clarify the membership proof.' }),
     ]);
-    expect(concurrentRejects.map(({ status }) => status).sort()).toEqual([201, 409]);
+    expect(concurrentRejects.map(({ status }) => status).sort((a, b) => a - b)).toEqual([201, 409]);
     expect(await prisma.consultant.findUniqueOrThrow({ where: { id: consultantId }, select: { verificationStatus: true, rejectionReason: true } })).toMatchObject({ verificationStatus: 'REJECTED', rejectionReason: 'Please clarify the membership proof.' });
     await http.post(`/api/admin/consultants/${consultantId}/reject`).set(as(adminToken)).send({ reason: 'Again' }).expect(409);
     await http.post(`/api/admin/consultants/${consultantId}/approve`).set(as(adminToken)).expect(201);

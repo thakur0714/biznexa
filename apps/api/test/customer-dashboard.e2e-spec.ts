@@ -11,7 +11,7 @@ describe('Customer dashboard API (M5.2)', () => {
   let app: NestExpressApplication;
   let prisma: PrismaService;
   const runId = randomBytes(4).toString('hex');
-  const suffix = String((parseInt(runId, 16) % 800000000) + 100000000);
+  const suffix = String((Number.parseInt(runId, 16) % 800000000) + 100000000);
   const userIds: string[] = [];
   const orderIds: string[] = [];
   const applicationIds: string[] = [];
@@ -65,12 +65,12 @@ describe('Customer dashboard API (M5.2)', () => {
     serviceIds.push(service.id);
 
     const body = await prisma.certificationBody.create({ data: { name: `Dashboard Body ${runId}` } });
-    const baseSeq = (parseInt(runId, 16) % 800000) + 100000;
+    const baseSeq = (Number.parseInt(runId, 16) % 800000) + 100000;
 
     async function makeApp(customerId: string, offset: number, total: number, amountPaid: number) {
       const order = await prisma.order.create({ data: {
         code: formatOrderCode(baseSeq + offset), customerId, subtotal: total, total, amountPaid,
-        status: amountPaid >= total ? 'PAID' : amountPaid > 0 ? 'PARTIALLY_PAID' : 'CREATED',
+        status: (() => { if (amountPaid >= total) { return 'PAID'; } if (amountPaid > 0) { return 'PARTIALLY_PAID'; } return 'CREATED'; })(),
       } });
       orderIds.push(order.id);
       const application = await prisma.application.create({ data: {

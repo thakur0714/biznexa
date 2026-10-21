@@ -20,7 +20,10 @@ const run = randomUUID();
 const mobileRun = String(randomInt(1_000_000, 10_000_000));
 const base = '/api/business-entities';
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
-const gstinFor = (stateCode: string, pan: string) => `${stateCode}${pan}1Z${gstinCheckChar(`${stateCode}${pan}1Z`)}`;
+const gstinFor = (stateCode: string, pan: string) => {
+  const base = `${stateCode}${pan}1Z`;
+  return `${base}${gstinCheckChar(base)}`;
+};
 
 const PAN = 'AAPCA1234F';
 const acme: BusinessEntityInput = {

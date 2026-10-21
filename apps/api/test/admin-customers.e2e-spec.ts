@@ -40,7 +40,7 @@ beforeAll(async () => {
   customerId = loginRes.body.user.id;
 
   // Create a second customer for listing and isolation tests
-  const register2Res = await http.post('/api/auth/register').send({ name: `Another Cust ${run}`, email: email('c2'), mobile: `98${run}2`, password: 'Password@123', consent: true }).expect(201);
+  await http.post('/api/auth/register').send({ name: `Another Cust ${run}`, email: email('c2'), mobile: `98${run}2`, password: 'Password@123', consent: true }).expect(201);
   customer2Id = await prisma.user.findUniqueOrThrow({ where: { email: email('c2') } }).then((u) => u.id);
 
   // Set up specific status for listing test
@@ -190,7 +190,7 @@ describe('PATCH /api/admin/customers/:id/status', () => {
   beforeAll(async () => {
     patchCustomerEmail = email('patch');
     const registerRes = await http.post('/api/auth/register').send({ name: `Patch Cust ${run}`, email: patchCustomerEmail, mobile: `98${run}3`, password: 'Password@123', consent: true }).expect(201);
-    patchCustomerToken = registerRes.body.accessToken;
+
     patchCustomerRefreshToken = registerRes.body.refreshToken;
     patchCustomerId = registerRes.body.user.id;
   });

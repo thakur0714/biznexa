@@ -108,7 +108,7 @@ describe('Consultant onboarding API (M8.1)', () => {
       include: { documents: { orderBy: { kind: 'asc' } } },
     });
     expect(consultant).toMatchObject({ userId, category: 'CA', feePerSession: 150_000, verificationStatus: 'PENDING' });
-    expect(consultant.documents.map((document) => document.fileId).sort()).toEqual([...fileIds].sort());
+    expect(consultant.documents.map((document) => document.fileId).sort((a, b) => a.localeCompare(b))).toEqual([...fileIds].sort((a, b) => a.localeCompare(b)));
     expect(await prisma.userRole.findFirst({ where: { userId, role: { key: 'CONSULTANT' } } })).toBeNull();
 
     await request(app.getHttpServer()).post('/api/consultants').set(as(token)).send(input).expect(409);

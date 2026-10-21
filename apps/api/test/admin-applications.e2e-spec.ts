@@ -46,7 +46,7 @@ beforeAll(async () => {
 
   const customer = await http
     .post('/api/auth/register')
-    .send({ name: `Listy ${run}`, mobile: `8${run.padStart(9, '0').slice(-9)}`, email: email('cust'), password: 'Customer@12345', consent: true })
+    .send({ name: `Listy ${run}`, mobile: `8${run.padStart(9, '0').slice(-9)}`, email: email('cust'), password: 'Customer@12345', consent: true }) // NOSONAR: test credential // NOSONAR: test credential
     .expect(201);
   customerToken = customer.body.accessToken;
   ids.customer = customer.body.user.id;

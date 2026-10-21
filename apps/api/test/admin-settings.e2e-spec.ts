@@ -102,7 +102,7 @@ describe('mobile version (M3.14)', () => {
 afterAll(async () => {
   const kept = new Map(original.map((r) => [r.key, r.value]));
   await prisma.setting.deleteMany({ where: { key: { in: [...KEYS.filter((k) => !kept.has(k)), REJECTION_PRESETS_KEY] } } });
-  for (const [key, value] of kept) await prisma.setting.upsert({ where: { key }, update: { value: value as object }, create: { key, value: value as object } });
+  for (const [key, value] of kept) await /* NOSONAR: tests run steps in order */ prisma.setting.upsert({ where: { key }, update: { value: value as object }, create: { key, value: value as object } }); // NOSONAR: tests run steps in order
   await prisma.setting.deleteMany({ where: { key: REJECTION_PRESETS_KEY } });
   if (originalMobileVersion) await prisma.setting.update({ where: { key: MOBILE_VERSION_KEY }, data: { value: originalMobileVersion.value as string } });
   else await prisma.setting.deleteMany({ where: { key: MOBILE_VERSION_KEY } });
@@ -157,7 +157,7 @@ describe('admin seller settings (M3.14)', () => {
   it('refuses invalid details with each field listed and stores nothing', async () => {
     const before = await prisma.setting.findMany({ where: { key: { in: KEYS } }, orderBy: { key: 'asc' } });
     const bad = await put({ ...details, legalName: '', gstin: '03AABCB1234F1ZZ', email: 'billing', address: { ...address, pincode: '12' }, invoicePrefix: 'BN/' }).expect(400);
-    expect((bad.body.errors as { field: string }[]).map((e) => e.field).sort()).toEqual(['address.pincode', 'email', 'gstin', 'invoicePrefix', 'legalName']);
+    expect((bad.body.errors as { field: string }[]).map((e) => e.field).sort((a, b) => a.localeCompare(b))).toEqual(['address.pincode', 'email', 'gstin', 'invoicePrefix', 'legalName']);
 
     const elsewhere = await put({ ...details, gstin: gstin('07AABCB1234F1Z') }).expect(400);
     expect(elsewhere.body.errors).toEqual([{ field: 'gstin', message: 'This GSTIN is registered in Delhi, not Punjab' }]);

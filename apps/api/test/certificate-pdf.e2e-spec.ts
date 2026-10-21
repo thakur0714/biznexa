@@ -3,7 +3,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { randomInt, randomUUID } from 'node:crypto';
 import { QueueEvents } from 'bullmq';
-import { PERMS } from '@biznexa/types';
+
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -172,11 +172,11 @@ beforeAll(async () => {
 
 afterAll(async () => {
   for (const k of writtenKeys) {
-    await storage.remove(k).catch(() => undefined);
+    await /* NOSONAR: tests run steps in order */ storage.remove(k).catch(() => undefined); // NOSONAR: tests run steps in order
   }
   const certs = await prisma.certificate.findMany({ where: { certificationBodyId: bodyId }, select: { id: true, pdfKey: true } });
   for (const c of certs) {
-    if (c.pdfKey) await storage.remove(c.pdfKey).catch(() => undefined);
+    if (c.pdfKey) await /* NOSONAR: tests run steps in order */ storage.remove(c.pdfKey).catch(() => undefined); // NOSONAR: tests run steps in order
   }
   await prisma.certificateLookup.deleteMany({ where: { certificateId: { in: certs.map((c) => c.id) } } });
   await prisma.certificate.deleteMany({ where: { certificationBodyId: bodyId } });
@@ -234,7 +234,7 @@ describe('Certificate PDF template + generation (M7.3)', () => {
 
     const res = await http.get(link.url).buffer(true).parse(binary).expect(200);
     expect(res.headers['content-type']).toBe('application/pdf');
-    expect(res.headers['content-disposition']).toContain(`attachment; filename="Certificate ${certNum.replace(/\//g, '-')}.pdf"`);
+    expect(res.headers['content-disposition']).toContain(`attachment; filename="Certificate ${certNum.replaceAll('/', '-')}.pdf"`);
     expect(Buffer.compare(res.body as Buffer, await stored(pdfKey))).toBe(0);
   });
 
@@ -272,7 +272,7 @@ describe('Certificate PDF template + generation (M7.3)', () => {
     // Now public download succeeds
     const res = await http.get(`/api/public/certificates/${verId}/download`).buffer(true).parse(binary).expect(200);
     expect(res.headers['content-type']).toBe('application/pdf');
-    expect(res.headers['content-disposition']).toContain(`attachment; filename="Certificate ${certNum.replace(/\//g, '-')}.pdf"`);
+    expect(res.headers['content-disposition']).toContain(`attachment; filename="Certificate ${certNum.replaceAll('/', '-')}.pdf"`);
 
     // A suspended certificate's PDF is no longer public, even with the toggle on
     await prisma.certificate.update({ where: { id: certId }, data: { status: 'SUSPENDED' } });
