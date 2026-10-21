@@ -14,6 +14,26 @@ const STATUS_CONFIG: Record<string, { label: string; tone: Tone }> = {
   EXPIRED: { label: 'Expired', tone: 'neutral' },
 };
 
+function matchesCertificate(certificate: CustomerCertificateRow, statusFilter: 'ALL' | 'ACTIVE' | 'EXPIRING' | 'EXPIRED', query: string): boolean {
+  if (statusFilter === 'ACTIVE' && certificate.effectiveStatus !== 'ACTIVE') return false;
+  if (statusFilter === 'EXPIRING' && !(certificate.isExpiringSoon || (certificate.effectiveStatus === 'ACTIVE' && certificate.daysUntilExpiry <= 30 && certificate.daysUntilExpiry > 0))) return false;
+  if (statusFilter === 'EXPIRED' && certificate.effectiveStatus !== 'EXPIRED') return false;
+  if (!query.trim()) return true;
+  const normalizedQuery = query.toLowerCase();
+  return [certificate.certificateNumber, certificate.organizationName, certificate.type, certificate.verificationId]
+    .some((value) => value.toLowerCase().includes(normalizedQuery));
+}
+
+function certificateCounts(certs: CustomerCertificateRow[] | null) {
+  if (!certs) return { total: 0, active: 0, expiring: 0, expired: 0 };
+  return {
+    total: certs.length,
+    active: certs.filter((certificate) => certificate.effectiveStatus === 'ACTIVE').length,
+    expiring: certs.filter((certificate) => certificate.isExpiringSoon || (certificate.effectiveStatus === 'ACTIVE' && certificate.daysUntilExpiry <= 30 && certificate.daysUntilExpiry > 0)).length,
+    expired: certs.filter((certificate) => certificate.effectiveStatus === 'EXPIRED').length,
+  };
+}
+
 export function CustomerCertificatesView() {
   const api = useApi();
   const [certs, setCerts] = useState<CustomerCertificateRow[] | null>(null);
@@ -52,33 +72,11 @@ export function CustomerCertificatesView() {
     };
   }, [api]);
 
-  const counts = useMemo(() => {
-    if (!certs) return { total: 0, active: 0, expiring: 0, expired: 0 };
-    return {
-      total: certs.length,
-      active: certs.filter((c) => c.effectiveStatus === 'ACTIVE').length,
-      expiring: certs.filter((c) => c.isExpiringSoon || (c.effectiveStatus === 'ACTIVE' && c.daysUntilExpiry <= 30 && c.daysUntilExpiry > 0)).length,
-      expired: certs.filter((c) => c.effectiveStatus === 'EXPIRED').length,
-    };
-  }, [certs]);
+  const counts = useMemo(() => certificateCounts(certs), [certs]);
 
   const filtered = useMemo(() => {
     if (!certs) return [];
-    return certs.filter((c) => {
-      if (statusFilter === 'ACTIVE' && c.effectiveStatus !== 'ACTIVE') return false;
-      if (statusFilter === 'EXPIRING' && !(c.isExpiringSoon || (c.effectiveStatus === 'ACTIVE' && c.daysUntilExpiry <= 30 && c.daysUntilExpiry > 0))) return false;
-      if (statusFilter === 'EXPIRED' && c.effectiveStatus !== 'EXPIRED') return false;
-
-      if (query.trim()) {
-        const q = query.toLowerCase();
-        const matchesNum = c.certificateNumber.toLowerCase().includes(q);
-        const matchesOrg = c.organizationName.toLowerCase().includes(q);
-        const matchesType = c.type.toLowerCase().includes(q);
-        const matchesId = c.verificationId.toLowerCase().includes(q);
-        return matchesNum || matchesOrg || matchesType || matchesId;
-      }
-      return true;
-    });
+    return certs.filter((certificate) => matchesCertificate(certificate, statusFilter, query));
   }, [certs, statusFilter, query]);
 
   const handleDownloadPdf = async (cert: CustomerCertificateRow) => {

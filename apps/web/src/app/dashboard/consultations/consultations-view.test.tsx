@@ -23,13 +23,13 @@ const booking = {
 
 const requests: Array<{ method: string; path: string; body?: unknown }> = [];
 const fakeClient = {
-  GET: vi.fn(async (path: string) => {
+  GET: vi.fn((path: string) => {
     requests.push({ method: 'GET', path });
-    return { items: [booking] };
+    return Promise.resolve({ items: [booking] });
   }),
-  POST: vi.fn(async (path: string, options: { body?: unknown }) => {
+  POST: vi.fn((path: string, options: { body?: unknown }) => {
     requests.push({ method: 'POST', path, body: options.body });
-    return {};
+    return Promise.resolve({});
   }),
 };
 

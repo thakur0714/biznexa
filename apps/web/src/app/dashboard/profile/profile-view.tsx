@@ -90,7 +90,7 @@ export function CustomerProfileView() {
   }, [api]);
 
   // Handlers
-  const handleUpdateProfile = async (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setProfileSaving(true);
     setProfileSuccess(null);
@@ -124,7 +124,7 @@ export function CustomerProfileView() {
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setPasswordSaving(true);
     setPasswordSuccess(null);
@@ -172,7 +172,7 @@ export function CustomerProfileView() {
     }
   };
 
-  const handleSavePreferences = async (e: React.FormEvent) => {
+  const handleSavePreferences = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setPrefsSaving(true);
     setPrefsSuccess(null);

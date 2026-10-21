@@ -12,13 +12,13 @@ const posts: Array<{ url: string; body: unknown }> = [];
 let postError: Error | null = null;
 
 const fakeClient = {
-  GET: vi.fn(async () => ({ data: list, response: new Response(null, { status: 200 }) })),
-  POST: vi.fn(async (url: string, options?: { body?: unknown; params?: unknown }) => {
+  GET: vi.fn(() => Promise.resolve({ data: list, response: new Response(null, { status: 200 }) })),
+  POST: vi.fn((url: string, options?: { body?: unknown; params?: unknown }) => {
     posts.push({ url, body: options?.body ?? options?.params });
-    if (postError) throw postError;
-    if (url === '/api/privacy/requests/{id}/link') return { data: { url: '/api/data-exports/x/download?e=1&d=attachment&s=sig', expiresAt: '2026-10-17T08:06:00.000Z' }, response: new Response() };
-    if (url === '/api/privacy/otp') return { data: { channel: 'MOBILE', sentTo: '98******10', expiresIn: 300, resendAfter: 30 }, response: new Response() };
-    return { data: { ...REQUEST, status: 'PENDING' }, response: new Response(null, { status: 201 }) };
+    if (postError) return Promise.reject(postError);
+    if (url === '/api/privacy/requests/{id}/link') return Promise.resolve({ data: { url: '/api/data-exports/x/download?e=1&d=attachment&s=sig', expiresAt: '2026-10-17T08:06:00.000Z' }, response: new Response() });
+    if (url === '/api/privacy/otp') return Promise.resolve({ data: { channel: 'MOBILE', sentTo: '98******10', expiresIn: 300, resendAfter: 30 }, response: new Response() });
+    return Promise.resolve({ data: { ...REQUEST, status: 'PENDING' }, response: new Response(null, { status: 201 }) });
   }),
 };
 const fakeApi = { call: async (send: (client: typeof fakeClient) => Promise<{ data: unknown }>) => (await send(fakeClient)).data };
