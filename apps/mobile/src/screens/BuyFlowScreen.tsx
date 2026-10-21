@@ -227,8 +227,8 @@ export function BuyFlowScreen({ route, navigation }: Props) {
         return null;
       }
       const result = source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ quality: 0.85, allowsEditing: true, mediaTypes: ImagePicker.MediaTypeOptions.Images })
-        : await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: true, mediaTypes: ImagePicker.MediaTypeOptions.Images });
+        ? await ImagePicker.launchCameraAsync({ quality: 0.85, allowsEditing: true, mediaTypes: ['images'] })
+        : await ImagePicker.launchImageLibraryAsync({ quality: 0.85, allowsEditing: true, mediaTypes: ['images'] });
       if (result.canceled) return null;
       const asset = result.assets[0];
       const mimeType = asset.mimeType ?? 'image/jpeg';
