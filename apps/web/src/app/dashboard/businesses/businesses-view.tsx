@@ -24,6 +24,12 @@ function displayPan(pan: string | null | undefined): string {
   return pan.length === 10 ? maskPan(pan) : pan;
 }
 
+function formatBusinessLocation(entity: BusinessEntity): string {
+  if (!entity.address) return entity.state ?? 'No registered address';
+  const secondLine = entity.address.line2 ? `, ${entity.address.line2}` : '';
+  return `${entity.address.line1}${secondLine}, ${entity.address.city}, ${entity.address.state} - ${entity.address.pincode}`;
+}
+
 interface FormState {
   legalName: string;
   entityType: EntityType;
@@ -104,10 +110,10 @@ export function CustomerBusinessesView() {
     return entities.filter(
       (b) =>
         b.legalName.toLowerCase().includes(q) ||
-        (b.gstin && b.gstin.toLowerCase().includes(q)) ||
-        (b.pan && b.pan.toLowerCase().includes(q)) ||
-        (b.cin && b.cin.toLowerCase().includes(q)) ||
-        (b.state && b.state.toLowerCase().includes(q)),
+        b.gstin?.toLowerCase().includes(q) ||
+        b.pan?.toLowerCase().includes(q) ||
+        b.cin?.toLowerCase().includes(q) ||
+        b.state?.toLowerCase().includes(q),
     );
   }, [entities, searchQuery]);
 
@@ -136,8 +142,8 @@ export function CustomerBusinessesView() {
     setDialogOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
     setSaving(true);
     setFormError(null);
 
@@ -229,6 +235,59 @@ export function CustomerBusinessesView() {
     }
   };
 
+  let mainContent: React.ReactNode;
+  if (loading) {
+    mainContent = <div className="py-12 text-center text-sm text-muted">Loading your saved businesses...</div>;
+  } else if (!entities || entities.length === 0) {
+    mainContent = (
+      <div className="rounded-xl border border-rule bg-white p-8">
+        <EmptyState
+          title="No businesses saved yet"
+          description="Add your company or firm details once. We will automatically prefill your legal filings, registrations, and invoices."
+          action={<Button type="button" onClick={openAddModal}><Icon name="building" size={16} /><span>Add Your First Business</span></Button>}
+        />
+      </div>
+    );
+  } else if (filteredEntities.length === 0) {
+    mainContent = (
+      <div className="rounded-xl border border-rule bg-white p-8">
+        <EmptyState
+          title="No matching businesses"
+          description={`No businesses match "${searchQuery}". Try a different search term.`}
+          action={<Button type="button" variant="outline" onClick={() => setSearchQuery('')}>Clear Search</Button>}
+        />
+      </div>
+    );
+  } else {
+    mainContent = (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {filteredEntities.map((entity) => (
+          <div key={entity.id} className="flex flex-col justify-between rounded-xl border border-rule bg-white p-5 shadow-sm transition-all hover:border-ink/20 hover:shadow-md">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="truncate text-base font-semibold text-night" title={entity.legalName}>{entity.legalName}</h2>
+                  <span className="mt-0.5 inline-block text-xs text-muted">Added on {new Date(entity.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </div>
+                <Badge tone="neutral">{getEntityTypeLabel(entity.entityType)}</Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-3 rounded-lg border border-rule/60 bg-paper/40 p-3 text-xs">
+                <div><span className="block text-muted">PAN</span><span className="font-mono font-medium text-night">{displayPan(entity.pan)}</span></div>
+                <div><span className="block text-muted">GSTIN</span><span className="font-mono font-medium text-night">{entity.gstin ?? '—'}</span></div>
+                {entity.cin && <div className="col-span-2"><span className="block text-muted">CIN / LLPIN</span><span className="font-mono font-medium text-night">{entity.cin}</span></div>}
+              </div>
+              <div className="text-xs text-muted"><div className="flex items-start gap-1.5"><span className="shrink-0 text-night font-medium">Location:</span><span>{formatBusinessLocation(entity)}</span></div></div>
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-2 border-t border-rule/60 pt-3">
+              <Button type="button" variant="outline" size="sm" onClick={() => openEditModal(entity)}>Edit</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => { setDeleteTarget(entity); setDeleteError(null); }} className="text-danger hover:border-danger hover:bg-danger/5">Delete</Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -250,6 +309,10 @@ export function CustomerBusinessesView() {
       setDeleting(false);
     }
   };
+
+  let submitLabel = 'Add Business';
+  if (saving) submitLabel = 'Saving...';
+  else if (editingEntity) submitLabel = 'Save Changes';
 
   return (
     <div className="space-y-6">
@@ -299,120 +362,7 @@ export function CustomerBusinessesView() {
       )}
 
       {/* Main Content */}
-      {loading ? (
-        <div className="py-12 text-center text-sm text-muted">Loading your saved businesses...</div>
-      ) : !entities || entities.length === 0 ? (
-        <div className="rounded-xl border border-rule bg-white p-8">
-          <EmptyState
-            title="No businesses saved yet"
-            description="Add your company or firm details once. We will automatically prefill your legal filings, registrations, and invoices."
-            action={
-              <Button type="button" onClick={openAddModal}>
-                <Icon name="building" size={16} />
-                <span>Add Your First Business</span>
-              </Button>
-            }
-          />
-        </div>
-      ) : filteredEntities.length === 0 ? (
-        <div className="rounded-xl border border-rule bg-white p-8">
-          <EmptyState
-            title="No matching businesses"
-            description={`No businesses match "${searchQuery}". Try a different search term.`}
-            action={
-              <Button type="button" variant="outline" onClick={() => setSearchQuery('')}>
-                Clear Search
-              </Button>
-            }
-          />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {filteredEntities.map((entity) => (
-            <div
-              key={entity.id}
-              className="flex flex-col justify-between rounded-xl border border-rule bg-white p-5 shadow-sm transition-all hover:border-ink/20 hover:shadow-md"
-            >
-              <div className="space-y-4">
-                {/* Title & Entity Type Badge */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="truncate text-base font-semibold text-night" title={entity.legalName}>
-                      {entity.legalName}
-                    </h2>
-                    <span className="mt-0.5 inline-block text-xs text-muted">
-                      Added on {new Date(entity.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </span>
-                  </div>
-                  <Badge tone="neutral">
-                    {getEntityTypeLabel(entity.entityType)}
-                  </Badge>
-                </div>
-
-                {/* Key Identifiers Grid */}
-                <div className="grid grid-cols-2 gap-3 rounded-lg border border-rule/60 bg-paper/40 p-3 text-xs">
-                  <div>
-                    <span className="block text-muted">PAN</span>
-                    <span className="font-mono font-medium text-night">
-                      {displayPan(entity.pan)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-muted">GSTIN</span>
-                    <span className="font-mono font-medium text-night">
-                      {entity.gstin ?? '—'}
-                    </span>
-                  </div>
-                  {entity.cin && (
-                    <div className="col-span-2">
-                      <span className="block text-muted">CIN / LLPIN</span>
-                      <span className="font-mono font-medium text-night">
-                        {entity.cin}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Address & State */}
-                <div className="text-xs text-muted">
-                  <div className="flex items-start gap-1.5">
-                    <span className="shrink-0 text-night font-medium">Location:</span>
-                    <span>
-                      {entity.address
-                        ? `${entity.address.line1}${entity.address.line2 ? `, ${entity.address.line2}` : ''}, ${entity.address.city}, ${entity.address.state} - ${entity.address.pincode}`
-                        : entity.state ?? 'No registered address'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-5 flex items-center justify-end gap-2 border-t border-rule/60 pt-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openEditModal(entity)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setDeleteTarget(entity);
-                    setDeleteError(null);
-                  }}
-                  className="text-danger hover:border-danger hover:bg-danger/5"
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {mainContent}
 
       {/* Add / Edit Modal */}
       <Dialog
@@ -431,7 +381,7 @@ export function CustomerBusinessesView() {
               Cancel
             </Button>
             <Button type="button" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : editingEntity ? 'Save Changes' : 'Add Business'}
+              {submitLabel}
             </Button>
           </>
         }
@@ -541,7 +491,7 @@ export function CustomerBusinessesView() {
                   id="biz-pincode"
                   label="PIN Code"
                   value={formData.pincode}
-                  onChange={(e) => setFormData({ ...formData, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                  onChange={(e) => setFormData({ ...formData, pincode: e.target.value.replaceAll(/\D/g, '').slice(0, 6) })}
                   placeholder="110001"
                   maxLength={6}
                 />

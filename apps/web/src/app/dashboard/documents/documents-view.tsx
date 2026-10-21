@@ -63,7 +63,7 @@ export function DocumentsView() {
 
       {error && <Notice tone="error">{error}</Notice>}
       {!groups && !error && <p role="status" className="text-sm text-muted">Loading your documents…</p>}
-      {groups && groups.length === 0 && (
+      {groups?.length === 0 && (
         <EmptyState
           className="p-8"
           titleAs="h2"

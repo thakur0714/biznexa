@@ -43,6 +43,40 @@ const INITIAL_FORM: CreateFormState = {
   applicationId: '',
 };
 
+function handleTicketCardKeyDown(
+  event: React.KeyboardEvent<HTMLDivElement>,
+  ticketId: string,
+  openTicketDetail: (id: string) => void,
+) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    openTicketDetail(ticketId);
+  }
+}
+
+function filterTickets(
+  tickets: TicketSummary[] | null,
+  statusTab: 'ALL' | 'ACTIVE' | 'RESOLVED' | 'CLOSED',
+  searchQuery: string,
+): TicketSummary[] {
+  if (!tickets) return [];
+  return tickets.filter((ticket) => {
+    if (statusTab === 'ACTIVE' && (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED')) return false;
+    if (statusTab === 'RESOLVED' && ticket.status !== 'RESOLVED') return false;
+    if (statusTab === 'CLOSED' && ticket.status !== 'CLOSED') return false;
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return ticket.code.toLowerCase().includes(query) || ticket.subject.toLowerCase().includes(query) || Boolean(ticket.applicationCode?.toLowerCase().includes(query));
+  });
+}
+
+function createFormErrors(form: CreateFormState): { subject?: string; description?: string } {
+  const errors: { subject?: string; description?: string } = {};
+  if (!form.subject.trim() || form.subject.trim().length < 3) errors.subject = 'Subject must be at least 3 characters';
+  if (!form.description.trim() || form.description.trim().length < 5) errors.description = 'Description must be at least 5 characters';
+  return errors;
+}
+
 export function CustomerSupportView() {
   const api = useApi();
   const [tickets, setTickets] = useState<TicketSummary[] | null>(null);
@@ -155,37 +189,11 @@ export function CustomerSupportView() {
     setDetailError(null);
   };
 
-  const filteredTickets = useMemo(() => {
-    if (!tickets) return [];
-    return tickets.filter((t) => {
-      if (statusTab === 'ACTIVE') {
-        if (t.status === 'RESOLVED' || t.status === 'CLOSED') return false;
-      } else if (statusTab === 'RESOLVED') {
-        if (t.status !== 'RESOLVED') return false;
-      } else if (statusTab === 'CLOSED') {
-        if (t.status !== 'CLOSED') return false;
-      }
+  const filteredTickets = useMemo(() => filterTickets(tickets, statusTab, searchQuery), [tickets, statusTab, searchQuery]);
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesCode = t.code.toLowerCase().includes(q);
-        const matchesSubject = t.subject.toLowerCase().includes(q);
-        const matchesApp = t.applicationCode?.toLowerCase().includes(q);
-        return matchesCode || matchesSubject || !!matchesApp;
-      }
-      return true;
-    });
-  }, [tickets, statusTab, searchQuery]);
-
-  const handleCreateSubmit = async (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
-    const errors: { subject?: string; description?: string } = {};
-    if (!createForm.subject.trim() || createForm.subject.trim().length < 3) {
-      errors.subject = 'Subject must be at least 3 characters';
-    }
-    if (!createForm.description.trim() || createForm.description.trim().length < 5) {
-      errors.description = 'Description must be at least 5 characters';
-    }
+    const errors = createFormErrors(createForm);
 
     if (Object.keys(errors).length > 0) {
       setCreateErrors(errors);
@@ -220,7 +228,7 @@ export function CustomerSupportView() {
     }
   };
 
-  const handleSendReply = async (e: React.FormEvent) => {
+  const handleSendReply = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!selectedTicketId || !replyText.trim()) return;
 
@@ -480,11 +488,12 @@ export function CustomerSupportView() {
       </div>
 
       {/* Tickets List */}
-      {loading ? (
+      {loading && (
         <div className="rounded-xl border border-rule bg-white p-12 text-center text-sm text-muted">
           Loading your tickets...
         </div>
-      ) : filteredTickets.length === 0 ? (
+      )}
+      {!loading && filteredTickets.length === 0 && (
         <EmptyState
           title="No support tickets found"
           description={
@@ -498,12 +507,16 @@ export function CustomerSupportView() {
             </Button>
           }
         />
-      ) : (
+      )}
+      {!loading && filteredTickets.length > 0 && (
         <div className="space-y-3">
           {filteredTickets.map((ticket) => (
             <div
               key={ticket.id}
-              onClick={() => openTicketDetail(ticket.id)}
+              role="button"
+              tabIndex={0}
+              onClick={() => void openTicketDetail(ticket.id)}
+              onKeyDown={(event) => handleTicketCardKeyDown(event, ticket.id, openTicketDetail)}
               className="group cursor-pointer rounded-xl border border-rule bg-white p-4 shadow-xs transition-all hover:border-ink/50 hover:shadow-sm sm:p-5"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
