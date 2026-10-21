@@ -98,6 +98,23 @@ describe('staff users admin API', () => {
     expect(audit).not.toMatch(/passwordHash|totpSecret|twoFactorSecret/i);
   });
 
+  it('rejects a duplicate mobile, signs the user out on a role change, and leaves blocked or erased accounts alone', async () => {
+    const mobile = `97${run}20`;
+    const create = await http.post('/api/admin/staff-users').set(as(adminToken)).send({ name: 'Role Change', email: email('roles'), mobile, roles: ['SUPPORT'], temporaryPassword: 'Temporary@123' }).expect(201);
+    const id = create.body.id as string;
+    await http.post('/api/admin/staff-users').set(as(adminToken)).send({ name: 'Same Mobile', email: email('dupe'), mobile, roles: ['SUPPORT'], temporaryPassword: 'Temporary@123' }).expect(409);
+
+    const login = await http.post('/api/auth/login').send({ email: email('roles'), password: 'Temporary@123' }).expect(200);
+    await http.patch(`/api/admin/staff-users/${id}/roles`).set(as(adminToken)).send({ roles: ['OPERATIONS'] }).expect(200);
+    await http.post('/api/auth/refresh').send({ refreshToken: login.body.refreshToken }).expect(401);
+
+    for (const status of ['BLOCKED', 'DELETED'] as const) {
+      await prisma.user.update({ where: { id }, data: { status } });
+      await http.patch(`/api/admin/staff-users/${id}/status`).set(as(adminToken)).send({ active: true }).expect(409);
+      expect((await prisma.user.findUniqueOrThrow({ where: { id } })).status).toBe(status);
+    }
+  });
+
   it('does not allow an admin to reset their own 2FA', async () => {
     await http.post(`/api/admin/staff-users/${adminId}/reset-2fa`).set(as(adminToken)).expect(403);
   });
