@@ -9,19 +9,27 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { CustomerDocuments, DocumentChecklistItem } from '@biznexa/types';
-import { formatDate } from '@biznexa/types';
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';
 
 interface DocumentsScreenProps {
-  navigation: {
-    goBack: () => void;
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  readonly navigation: {
+    readonly goBack: () => void;
+    readonly navigate: (screen: string, params?: Record<string, unknown>) => void;
   };
 }
 
 type FilterOption = 'needs_action' | 'all';
+
+function emptyDocumentsTitle(filter: FilterOption): string {
+  return filter === 'needs_action' ? 'All caught up!' : 'No documents found';
+}
+
+function emptyDocumentsDescription(filter: FilterOption): string {
+  if (filter === 'needs_action') return 'No documents currently require upload or revision.';
+  return 'You do not have any applications with document checklists.';
+}
 
 function statusVariant(status: string): 'seal' | 'marigold' | 'ink' | 'danger' | 'neutral' {
   switch (status) {
@@ -38,7 +46,19 @@ function statusVariant(status: string): 'seal' | 'marigold' | 'ink' | 'danger' |
   }
 }
 
-export function DocumentsScreen({ navigation }: DocumentsScreenProps) {
+function documentStatusIcon(status: string): 'checkmark-circle' | 'alert-circle-outline' | 'time-outline' {
+  if (status === 'APPROVED') return 'checkmark-circle';
+  if (status === 'REJECTED' || status === 'REQUIRED') return 'alert-circle-outline';
+  return 'time-outline';
+}
+
+function documentStatusColor(status: string): string {
+  if (status === 'APPROVED') return colors.seal;
+  if (status === 'REJECTED' || status === 'REQUIRED') return colors.danger;
+  return colors.muted;
+}
+
+export function DocumentsScreen({ navigation }: Readonly<DocumentsScreenProps>) {
   const { api, user } = useAuth();
   const [filter, setFilter] = useState<FilterOption>('needs_action');
   const [documentsData, setDocumentsData] = useState<CustomerDocuments | null>(null);
@@ -102,6 +122,41 @@ export function DocumentsScreen({ navigation }: DocumentsScreenProps) {
     );
   }
 
+  let documentsContent: React.ReactNode;
+  if (isLoading) {
+    documentsContent = <LoadingState message="Loading documents…" style={{ flex: 1 }} />;
+  } else if (error) {
+    documentsContent = <ErrorState message={error} onRetry={() => void fetchDocuments(filter)} style={{ flex: 1 }} />;
+  } else {
+    documentsContent = (
+      <FlatList
+        data={documentsData ?? []}
+        keyExtractor={(item) => item.applicationId}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void fetchDocuments(filter, true)} tintColor={colors.ink} />}
+        ListEmptyComponent={<EmptyState icon="document-text-outline" title={emptyDocumentsTitle(filter)} description={emptyDocumentsDescription(filter)} />}
+        renderItem={({ item }) => {
+          const pending = item.checklist.pendingMandatory;
+          return (
+            <Card style={styles.appDocCard}>
+              <View style={styles.appDocHeader}>
+                <View style={{ flex: 1 }}><Text style={styles.appCode}>{item.applicationCode}</Text><Text style={styles.serviceTitle}>{item.serviceName}</Text></View>
+                {pending > 0 ? <Badge label={`${pending} Pending`} variant="marigold" /> : <Badge label="Complete" variant="seal" />}
+              </View>
+              <View style={styles.checklistSummary}>
+                {item.checklist.items.map((doc: DocumentChecklistItem) => {
+                  const status = doc.current?.status || (doc.requirement.isMandatory ? 'REQUIRED' : 'OPTIONAL');
+                  return <View key={doc.requirement.id} style={styles.docRow}><Ionicons name={documentStatusIcon(status)} size={16} color={documentStatusColor(status)} /><Text numberOfLines={1} style={styles.docRowTitle}>{doc.requirement.name}</Text><Badge label={status} variant={statusVariant(status)} /></View>;
+                })}
+              </View>
+              <Button title="Upload / Manage Documents" variant="primary" size="sm" onPress={() => navigation.navigate('ApplicationDetail', { applicationId: item.applicationId, initialTab: 'documents' })} style={{ marginTop: spacing.md }} />
+            </Card>
+          );
+        }}
+      />
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Filter Tabs */}
@@ -127,104 +182,7 @@ export function DocumentsScreen({ navigation }: DocumentsScreenProps) {
       </View>
 
       {/* Content */}
-      {isLoading ? (
-        <LoadingState message="Loading documents…" style={{ flex: 1 }} />
-      ) : error ? (
-        <ErrorState
-          message={error}
-          onRetry={() => void fetchDocuments(filter)}
-          style={{ flex: 1 }}
-        />
-      ) : (
-        <FlatList
-          data={documentsData ?? []}
-          keyExtractor={(item) => item.applicationId}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => void fetchDocuments(filter, true)}
-              tintColor={colors.ink}
-            />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              icon="document-text-outline"
-              title={filter === 'needs_action' ? 'All caught up!' : 'No documents found'}
-              description={
-                filter === 'needs_action'
-                  ? 'No documents currently require upload or revision.'
-                  : 'You do not have any applications with document checklists.'
-              }
-            />
-          }
-          renderItem={({ item }) => {
-            const pending = item.checklist.pendingMandatory;
-
-            return (
-              <Card style={styles.appDocCard}>
-                <View style={styles.appDocHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.appCode}>{item.applicationCode}</Text>
-                    <Text style={styles.serviceTitle}>{item.serviceName}</Text>
-                  </View>
-                  {pending > 0 ? (
-                    <Badge label={`${pending} Pending`} variant="marigold" />
-                  ) : (
-                    <Badge label="Complete" variant="seal" />
-                  )}
-                </View>
-
-                {/* Items preview */}
-                <View style={styles.checklistSummary}>
-                  {item.checklist.items.map((doc: DocumentChecklistItem) => {
-                    const status = doc.current?.status || (doc.requirement.isMandatory ? 'REQUIRED' : 'OPTIONAL');
-                    return (
-                      <View key={doc.requirement.id} style={styles.docRow}>
-                        <Ionicons
-                          name={
-                            status === 'APPROVED'
-                              ? 'checkmark-circle'
-                              : status === 'REJECTED' || status === 'REQUIRED'
-                              ? 'alert-circle-outline'
-                              : 'time-outline'
-                          }
-                          size={16}
-                          color={
-                            status === 'APPROVED'
-                              ? colors.seal
-                              : status === 'REJECTED' || status === 'REQUIRED'
-                              ? colors.danger
-                              : colors.muted
-                          }
-                        />
-                        <Text numberOfLines={1} style={styles.docRowTitle}>
-                          {doc.requirement.name}
-                        </Text>
-                        <Badge label={status} variant={statusVariant(status)} />
-                      </View>
-                    );
-                  })}
-                </View>
-
-                {/* Action button */}
-                <Button
-                  title="Upload / Manage Documents"
-                  variant="primary"
-                  size="sm"
-                  onPress={() =>
-                    navigation.navigate('ApplicationDetail', {
-                      applicationId: item.applicationId,
-                      initialTab: 'documents',
-                    })
-                  }
-                  style={{ marginTop: spacing.md }}
-                />
-              </Card>
-            );
-          }}
-        />
-      )}
+      {documentsContent}
     </View>
   );
 }

@@ -16,18 +16,18 @@ import { Card, Badge, Button } from '../components/common';
 import type { ServiceCard, CategorySummary, ServiceList } from '@biznexa/api-client';
 
 interface ServicesBrowseScreenProps {
-  route?: {
-    params?: {
+  readonly route?: {
+    readonly params?: {
       categorySlug?: string;
       popular?: boolean;
     };
   };
-  navigation: {
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  readonly navigation: {
+    readonly navigate: (screen: string, params?: Record<string, unknown>) => void;
   };
 }
 
-export function ServicesBrowseScreen({ route, navigation }: ServicesBrowseScreenProps) {
+export function ServicesBrowseScreen({ route, navigation }: Readonly<ServicesBrowseScreenProps>) {
   const { api } = useAuth();
   const [categories, setCategories] = useState<CategorySummary[]>([]);
   const [services, setServices] = useState<ServiceCard[]>([]);
@@ -74,7 +74,7 @@ export function ServicesBrowseScreen({ route, navigation }: ServicesBrowseScreen
   }, [api, selectedCategory, search, sortBy]);
 
   useEffect(() => {
-    fetchCategories();
+    void fetchCategories();
   }, [fetchCategories]);
 
   useEffect(() => {
@@ -84,18 +84,76 @@ export function ServicesBrowseScreen({ route, navigation }: ServicesBrowseScreen
   }, [route?.params?.categorySlug]);
 
   useEffect(() => {
-    fetchServices();
+    void fetchServices();
   }, [fetchServices]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchServices();
+    void fetchServices();
   };
 
   const formatRupees = (paise?: number | null) => {
     if (paise == null) return 'Price on request';
     return `₹${Math.round(paise / 100).toLocaleString('en-IN')}`;
   };
+
+  let servicesContent: React.ReactNode;
+  if (isLoading && !refreshing) {
+    servicesContent = (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={colors.ink} />
+        <Text style={styles.loadingText}>Loading catalogue...</Text>
+      </View>
+    );
+  } else if (services.length === 0) {
+    servicesContent = (
+      <View style={styles.centerContainer}>
+        <Text style={styles.emptyTitle}>No services found</Text>
+        <Text style={styles.emptySubtitle}>Try adjusting your search or category filters.</Text>
+        <Button
+          title="Reset Filters"
+          variant="secondary"
+          size="sm"
+          style={{ marginTop: spacing.md }}
+          onPress={() => {
+            setSearch('');
+            setSelectedCategory(null);
+          }}
+        />
+      </View>
+    );
+  } else {
+    servicesContent = (
+      <FlatList
+        data={services}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.ink]} />}
+        renderItem={({ item }) => (
+          <Card
+            style={styles.card}
+            onPress={() => navigation.navigate('ServiceDetail', { slug: item.slug })}
+          >
+            <View style={styles.cardTop}>
+              <Badge label={item.category.name} variant="ink" />
+              {item.estimatedTime && <Text style={styles.cardTimeline}>{item.estimatedTime}</Text>}
+            </View>
+            <Text style={styles.cardTitle}>{item.name}</Text>
+            <Text style={styles.cardDesc} numberOfLines={2}>{item.shortDescription}</Text>
+            <View style={styles.cardBottom}>
+              <View>
+                <Text style={styles.cardPriceLabel}>Starting at</Text>
+                <Text style={styles.cardPriceValue}>{formatRupees(item.startingPrice)}</Text>
+              </View>
+              {item.governmentFeeFrom > 0 && (
+                <Text style={styles.cardGovtFee}>+ {formatRupees(item.governmentFeeFrom)} govt fee</Text>
+              )}
+            </View>
+          </Card>
+        )}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -156,62 +214,7 @@ export function ServicesBrowseScreen({ route, navigation }: ServicesBrowseScreen
       </View>
 
       {/* Services List */}
-      {isLoading && !refreshing ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.ink} />
-          <Text style={styles.loadingText}>Loading catalogue...</Text>
-        </View>
-      ) : services.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Text style={styles.emptyTitle}>No services found</Text>
-          <Text style={styles.emptySubtitle}>Try adjusting your search or category filters.</Text>
-          <Button
-            title="Reset Filters"
-            variant="secondary"
-            size="sm"
-            style={{ marginTop: spacing.md }}
-            onPress={() => {
-              setSearch('');
-              setSelectedCategory(null);
-            }}
-          />
-        </View>
-      ) : (
-        <FlatList
-          data={services}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.ink]} />}
-          renderItem={({ item }) => (
-            <Card
-              style={styles.card}
-              onPress={() => navigation.navigate('ServiceDetail', { slug: item.slug })}
-            >
-              <View style={styles.cardTop}>
-                <Badge label={item.category.name} variant="ink" />
-                {item.estimatedTime && <Text style={styles.cardTimeline}>{item.estimatedTime}</Text>}
-              </View>
-
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.cardDesc} numberOfLines={2}>
-                {item.shortDescription}
-              </Text>
-
-              <View style={styles.cardBottom}>
-                <View>
-                  <Text style={styles.cardPriceLabel}>Starting at</Text>
-                  <Text style={styles.cardPriceValue}>{formatRupees(item.startingPrice)}</Text>
-                </View>
-                {item.governmentFeeFrom > 0 && (
-                  <Text style={styles.cardGovtFee}>
-                    + {formatRupees(item.governmentFeeFrom)} govt fee
-                  </Text>
-                )}
-              </View>
-            </Card>
-          )}
-        />
-      )}
+      {servicesContent}
     </View>
   );
 }

@@ -13,18 +13,18 @@ import { Card, Badge, Button } from '../components/common';
 import type { ServiceDetail } from '@biznexa/api-client';
 
 interface ServiceDetailScreenProps {
-  route: {
-    params: {
-      slug: string;
+  readonly route: {
+    readonly params: {
+      readonly slug: string;
     };
   };
-  navigation: {
-    goBack: () => void;
-    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  readonly navigation: {
+    readonly goBack: () => void;
+    readonly navigate: (screen: string, params?: Record<string, unknown>) => void;
   };
 }
 
-export function ServiceDetailScreen({ route, navigation }: ServiceDetailScreenProps) {
+export function ServiceDetailScreen({ route, navigation }: Readonly<ServiceDetailScreenProps>) {
   const { slug } = route.params;
   const { api, user } = useAuth();
   const [service, setService] = useState<ServiceDetail | null>(null);
@@ -56,7 +56,7 @@ export function ServiceDetailScreen({ route, navigation }: ServiceDetailScreenPr
   }, [api, slug]);
 
   useEffect(() => {
-    fetchService();
+    void fetchService();
   }, [fetchService]);
 
   const formatRupees = (paise?: number | null) => {
@@ -143,8 +143,8 @@ export function ServiceDetailScreen({ route, navigation }: ServiceDetailScreenPr
 
                 {/* Inclusions */}
                 <View style={styles.inclusionsList}>
-                  {pkg.inclusions?.map((inc, i) => (
-                    <View key={i} style={styles.inclusionRow}>
+                  {pkg.inclusions?.map((inc) => (
+                    <View key={inc} style={styles.inclusionRow}>
                       <Text style={styles.checkIcon}>✓</Text>
                       <Text style={styles.inclusionText}>{inc}</Text>
                     </View>
@@ -161,7 +161,7 @@ export function ServiceDetailScreen({ route, navigation }: ServiceDetailScreenPr
             <Text style={styles.sectionTitle}>Documents Required</Text>
             <Card style={styles.documentsCard}>
               {service.documents.map((doc, idx) => (
-                <View key={doc.id ?? idx} style={[styles.docRow, idx > 0 && styles.docDivider]}>
+                <View key={doc.id ?? `${doc.name}-${doc.description ?? ''}`} style={[styles.docRow, idx > 0 && styles.docDivider]}>
                   <View style={styles.docInfo}>
                     <Text style={styles.docName}>{doc.name}</Text>
                     {doc.description && <Text style={styles.docDesc}>{doc.description}</Text>}
@@ -179,7 +179,7 @@ export function ServiceDetailScreen({ route, navigation }: ServiceDetailScreenPr
             <Text style={styles.sectionTitle}>Process & Timeline</Text>
             <View style={styles.timelineList}>
               {service.stages.map((stage, idx) => (
-                <View key={stage.id ?? idx} style={styles.timelineItem}>
+                <View key={stage.id ?? `${stage.name}-${stage.description ?? ''}`} style={styles.timelineItem}>
                   <View style={styles.timelineMarker}>
                     <Text style={styles.timelineNumber}>{idx + 1}</Text>
                   </View>
@@ -200,7 +200,7 @@ export function ServiceDetailScreen({ route, navigation }: ServiceDetailScreenPr
             {service.faqs.map((faq, idx) => {
               const isOpen = expandedFaqIndex === idx;
               return (
-                <Card key={idx} style={styles.faqCard}>
+                <Card key={`${faq.question}-${faq.answer}`} style={styles.faqCard}>
                   <TouchableOpacity
                     onPress={() => setExpandedFaqIndex(isOpen ? null : idx)}
                     style={styles.faqHeader}

@@ -4,11 +4,11 @@ import * as DocumentPicker from 'expo-document-picker';
 import type { CustomerTicketListPage, TicketDetail, TicketSummary } from '@biznexa/types';
 import { useAuth } from '../auth/auth-context';
 import { uploadMobileFile } from '../api/upload';
-import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';
+import { Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';
 import { colors, spacing } from '../theme';
 import { fetchCachedList } from '../api/offline-cache';
 
-export function SupportScreen({ route }: { route?: { params?: { ticketId?: string } }; navigation: { navigate: (screen: string, params?: Record<string, unknown>) => void } }) {
+export function SupportScreen({ route }: Readonly<{ readonly route?: { readonly params?: { readonly ticketId?: string } } }>) {
   const { api, token, user } = useAuth();
   const [tickets, setTickets] = useState<TicketSummary[]>([]);
   const [ticket, setTicket] = useState<TicketDetail | null>(null);
