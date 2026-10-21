@@ -7,7 +7,7 @@ const when = (iso: string) => new Intl.DateTimeFormat('en-IN', {
   timeZone: 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
 }).format(new Date(iso));
 
-export function ConsultantProfileView({ profile, slots }: { profile: PublicConsultantProfile; slots: PublicConsultantSlots | null }) {
+export function ConsultantProfileView({ profile, slots }: Readonly<{ profile: PublicConsultantProfile; slots: PublicConsultantSlots | null }>) {
   const personId = `https://biznexa.com/consultants/${profile.slug}#person`;
   const serviceId = `https://biznexa.com/consultants/${profile.slug}#service`;
   const jsonLd = {
@@ -28,14 +28,18 @@ export function ConsultantProfileView({ profile, slots }: { profile: PublicConsu
   };
 
   return <>
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replaceAll('<', '\\u003c') }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replaceAll('<', String.raw`\u003c`) }} />
     <Container className="py-8 sm:py-12">
       <nav aria-label="Breadcrumb" className="text-sm text-muted"><Link href="/consultants" className="underline underline-offset-2">Consultants</Link><span aria-hidden="true"> / </span><span>{profile.name}</span></nav>
       <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <main className="min-w-0 space-y-6">
           <section className="rounded-xl border border-rule bg-white p-5 sm:p-7">
             <div className="flex flex-col gap-5 min-[420px]:flex-row">
-              {profile.photoUrl ? <img src={profile.photoUrl} alt={profile.name} className="h-24 w-24 shrink-0 rounded-full object-cover" /> : <div aria-hidden="true" className="grid h-24 w-24 shrink-0 place-items-center rounded-full bg-paper text-2xl font-bold">{profile.name.split(/\s+/).map((s) => s[0]).slice(0, 2).join('').toUpperCase()}</div>}
+              {profile.photoUrl ? (
+                <>
+                  <img src={profile.photoUrl} alt={profile.name} className="h-24 w-24 shrink-0 rounded-full object-cover" />
+                </>
+              ) : <div aria-hidden="true" className="grid h-24 w-24 shrink-0 place-items-center rounded-full bg-paper text-2xl font-bold">{profile.name.split(/\s+/).map((s) => s[0]).slice(0, 2).join('').toUpperCase()}</div>}
               <div className="min-w-0"><h1 className="break-words text-3xl font-bold tracking-tight">{profile.name}</h1><p className="mt-1 text-lg text-muted">{profile.qualification} · {categoryName(profile.category)}</p><p className="mt-2 text-muted">{profile.area ? `${profile.area}, ` : ''}{profile.city}, {profile.state}</p><p className="mt-2 text-sm text-muted">{profile.experienceYears} years of experience · {profile.languages.join(', ')}</p></div>
             </div>
             {profile.bio && <p className="mt-6 whitespace-pre-line leading-relaxed">{profile.bio}</p>}
