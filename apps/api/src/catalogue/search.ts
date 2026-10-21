@@ -26,7 +26,7 @@ const ALIASES: Record<string, string> = {
 export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
+    .replaceAll(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
     .filter((t) => t.length > 1)
     .flatMap((t) => (ALIASES[t] ?? t).split(' '));
@@ -90,5 +90,5 @@ export function rank<T extends SearchDoc>(docs: T[], query: string, limit = 10):
     }
     if (allMatched) scored.push({ doc, score: total + Math.min(doc.popularity, 100) / 100 });
   }
-  return scored.sort((a, b) => b.score - a.score).slice(0, limit).map((s) => s.doc);
+  return scored.toSorted((a, b) => b.score - a.score).slice(0, limit).map((s) => s.doc);
 }

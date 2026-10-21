@@ -25,7 +25,7 @@ export function base32Encode(buf: Buffer): string {
 }
 
 export function base32Decode(input: string): Buffer {
-  const clean = input.replace(/[\s=-]/g, '').toUpperCase();
+  const clean = input.replaceAll(/[\s=-]/g, '').toUpperCase();
   let bits = 0;
   let value = 0;
   const out: number[] = [];
@@ -52,7 +52,7 @@ export function totpCode(secret: string, step: number): string {
   const counter = Buffer.alloc(8);
   counter.writeBigUInt64BE(BigInt(step));
   const mac = createHmac('sha1', base32Decode(secret)).update(counter).digest();
-  const offset = mac[mac.length - 1] & 0x0f;
+  const offset = mac.at(-1)! & 0x0f;
   const bin = mac.readUInt32BE(offset) & 0x7fffffff;
   return String(bin % 10 ** DIGITS).padStart(DIGITS, '0');
 }

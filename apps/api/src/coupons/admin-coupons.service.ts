@@ -36,7 +36,10 @@ interface UsageRow {
   lastUsedAt: Date | null;
 }
 
-const toDate = (v: string | null | undefined) => (v === undefined ? undefined : v === null ? null : new Date(v));
+function toDate(v: string | null | undefined) {
+  if (v === undefined) return undefined;
+  return v === null ? null : new Date(v);
+}
 
 /**
  * Admin coupon management (M3.12, D39). Usage comes from `CouponRedemption` (written when a payment
@@ -164,7 +167,7 @@ export class AdminCouponsService {
         createdAt: c.createdAt.toISOString(),
         services: c.serviceIds.map((id) => {
           const s = serviceBy.get(id);
-          return { id, name: s?.name ?? 'Unknown service', removed: !s || s.deletedAt !== null };
+          return { id, name: s?.name ?? 'Unknown service', removed: s?.deletedAt !== null };
         }),
         status: couponStatus(c, redemptions, now),
         usage: {

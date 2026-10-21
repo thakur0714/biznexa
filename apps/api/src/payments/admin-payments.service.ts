@@ -8,7 +8,7 @@ function escapeCsvCell(val: string | number | null | undefined): string {
   if (val == null) return '""';
   let s = String(val);
   if (/^[=+\-@]/.test(s)) s = `'${s}`;
-  return `"${s.replace(/"/g, '""')}"`;
+  return `"${s.replaceAll('"', '""')}"`;
 }
 
 const DAY_MS = 86_400_000;

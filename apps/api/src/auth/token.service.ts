@@ -61,7 +61,7 @@ export class TokenService {
         tokenHash: sha256(raw),
         ip: meta.ip,
         userAgent: meta.userAgent?.slice(0, 255),
-        expiresAt: new Date(Date.now() + env().REFRESH_TTL_DAYS * 86400_000),
+        expiresAt: new Date(Date.now() + env().REFRESH_TTL_DAYS * 86_400_000),
         mfaAt,
       },
     });
@@ -79,7 +79,7 @@ export class TokenService {
     if (record.expiresAt.getTime() < Date.now()) throw new UnauthorizedException('Session expired. Please log in again.');
 
     const user = await this.prisma.user.findUnique({ where: { id: record.userId } });
-    if (!user || user.status !== 'ACTIVE') throw new UnauthorizedException('Account is not active');
+    if (user?.status !== 'ACTIVE') throw new UnauthorizedException('Account is not active');
 
     await this.prisma.refreshToken.update({ where: { id: record.id }, data: { revokedAt: new Date() } });
     const next = await this.createRefresh(record.userId, meta, record.family, record.mfaAt);
@@ -118,7 +118,7 @@ export class TokenService {
   verifyResetToken(token: string): { userId: string; fingerprint: string } {
     try {
       const p = this.jwt.verify(token);
-      if (p.typ !== 'reset' || typeof p.pwf !== 'string') throw new Error();
+      if (p.typ !== 'reset' || typeof p.pwf !== 'string') throw new Error('Not a password reset token');
       return { userId: p.sub, fingerprint: p.pwf };
     } catch {
       throw new UnauthorizedException('This reset link has expired. Please start again.');

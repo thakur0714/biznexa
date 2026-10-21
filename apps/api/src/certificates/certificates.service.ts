@@ -16,6 +16,7 @@ import {
   type CertificateImportRowError,
 } from '@biznexa/types';
 import { mapHeaders, parseCsv, parseCsvBoolean, parseCsvDate } from './certificate-csv';
+import { inSequence } from '../common/in-sequence';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../generated/prisma/client';
 import type { Prisma as PrismaType } from '../generated/prisma/client';
@@ -52,6 +53,115 @@ export interface LookupMeta {
   isPartnerApi?: boolean;
 }
 
+/** What the public verify page says about a certificate that is not active. */
+const STATUS_NOTE: Partial<Record<string, string>> = {
+  SUSPENDED: 'This certificate is temporarily suspended by the certification body.',
+  WITHDRAWN: 'This certificate has been withdrawn and is no longer valid.',
+  EXPIRED: 'This certificate has passed its validity date.',
+};
+
+type CertBody = { id: string; name: string };
+type ValidCsvRow = CertificateImportPreviewRow & { validFromDate: Date; validUntilDate: Date; issueDateDate: Date };
+interface CsvRowContext {
+  mapping: Record<string, number>;
+  bodyById: Map<string, CertBody>;
+  bodyByName: Map<string, CertBody>;
+  /** Lower-cased numbers already in the database. */
+  existingNumberSet: Set<string>;
+  /** Lower-cased number -> first CSV row that used it. */
+  seenCsvNumbers: Map<string, number>;
+}
+type RowError = Omit<CertificateImportRowError, 'rowNumber'>;
+
+/** A required text cell: at least 2 characters, at most `max`. */
+function requiredTextError(field: string, value: string, max: number, what: string): RowError[] {
+  if (!value || value.length < 2) return [{ field, message: `${what} is required (minimum 2 characters)` }];
+  if (value.length > max) return [{ field, message: `${what} cannot exceed ${max} characters` }];
+  return [];
+}
+
+function dateErrors(validFrom: Date | null, validUntil: Date | null): RowError[] {
+  const errors: RowError[] = [];
+  if (!validFrom) errors.push({ field: 'validFrom', message: 'Valid from date is required and must be a valid date' });
+  if (!validUntil) errors.push({ field: 'validUntil', message: 'Valid until date is required and must be a valid date' });
+  if (validFrom && validUntil && validUntil <= validFrom) errors.push({ field: 'validUntil', message: 'Valid until must be after valid from' });
+  return errors;
+}
+
+/** The certification body by id or (case-insensitive) name. */
+function matchBody(rawBody: string, ctx: CsvRowContext): { body?: CertBody; errors: RowError[] } {
+  if (!rawBody) return { errors: [{ field: 'certificationBody', message: 'Certification body is required' }] };
+  const body = ctx.bodyById.get(rawBody.toLowerCase()) || ctx.bodyByName.get(rawBody.trim().toLowerCase());
+  if (body) return { body, errors: [] };
+  return { errors: [{ field: 'certificationBody', message: `Certification body "${rawBody}" was not found. Please create it under Certification Bodies first.` }] };
+}
+
+/** An optional certificate number: right length, not repeated in the file, not already issued. */
+function certNumberErrors(certNumber: string, rowNumber: number, ctx: CsvRowContext): RowError[] {
+  if (!certNumber) return [];
+  if (certNumber.length < 3 || certNumber.length > 64) return [{ field: 'certificateNumber', message: 'Certificate number must be between 3 and 64 characters' }];
+  const errors: RowError[] = [];
+  const lowerNum = certNumber.toLowerCase();
+  const prevRow = ctx.seenCsvNumbers.get(lowerNum);
+  if (prevRow === undefined) ctx.seenCsvNumbers.set(lowerNum, rowNumber);
+  else errors.push({ field: 'certificateNumber', message: `Duplicate certificate number "${certNumber}" in CSV (already in row ${prevRow})` });
+  if (ctx.existingNumberSet.has(lowerNum)) errors.push({ field: 'certificateNumber', message: `Certificate number "${certNumber}" already exists in the database` });
+  return errors;
+}
+
+function lengthError(field: string, value: string | undefined, max: number, what: string): RowError[] {
+  return value && value.length > max ? [{ field, message: `${what} cannot exceed ${max} characters` }] : [];
+}
+
+/** One CSV data row: its errors, or the row ready to import. */
+function validateCsvRow(row: string[], rowNumber: number, ctx: CsvRowContext): { errors: CertificateImportRowError[]; valid?: ValidCsvRow } {
+  const cell = (fieldKey: string): string => {
+    const colIdx = ctx.mapping[fieldKey];
+    return colIdx !== undefined && row[colIdx] !== undefined ? row[colIdx].trim() : '';
+  };
+  const type = cell('type');
+  const orgName = cell('organizationName');
+  const certNumber = cell('certificateNumber');
+  const scope = cell('scope') || undefined;
+  const address = cell('address') || undefined;
+  const validFromDate = parseCsvDate(cell('validFrom'));
+  const validUntilDate = parseCsvDate(cell('validUntil'));
+  const issueDateDate = parseCsvDate(cell('issueDate')) || validFromDate || new Date();
+  const { body, errors: bodyErrors } = matchBody(cell('certificationBody'), ctx);
+
+  const errors = [
+    ...requiredTextError('organizationName', orgName, 200, 'Organisation name'),
+    ...requiredTextError('type', type, 120, 'Certificate type'),
+    ...dateErrors(validFromDate, validUntilDate),
+    ...bodyErrors,
+    ...certNumberErrors(certNumber, rowNumber, ctx),
+    ...lengthError('scope', scope, 1000, 'Scope'),
+    ...lengthError('address', address, 500, 'Address'),
+  ].map((e) => ({ rowNumber, ...e }));
+  if (errors.length || !body || !validFromDate || !validUntilDate) return { errors };
+
+  return {
+    errors,
+    valid: {
+      rowNumber,
+      certificateNumber: certNumber || undefined,
+      type,
+      organizationName: orgName,
+      scope,
+      address,
+      issueDate: issueDateDate.toISOString().slice(0, 10),
+      validFrom: validFromDate.toISOString().slice(0, 10),
+      validUntil: validUntilDate.toISOString().slice(0, 10),
+      certificationBodyId: body.id,
+      certificationBodyName: body.name,
+      showPdfPublicly: parseCsvBoolean(cell('showPdfPublicly')),
+      validFromDate,
+      validUntilDate,
+      issueDateDate,
+    },
+  };
+}
+
 @Injectable()
 export class CertificatesService {
   private readonly logger = new Logger('Certificates');
@@ -76,9 +186,10 @@ export class CertificatesService {
   /** Public verification. Never returns customer personal data. Every lookup is logged. */
   async verify(params: { number?: string; id?: string; t?: string }, meta: LookupMeta) {
     const number = params.number?.trim();
-    const id = params.id?.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const defaultMethod = id ? (params.t ? 'QR' : 'VERIFICATION_ID') : 'NUMBER';
-    const method = meta.isPartnerApi ? 'API' : defaultMethod;
+    const id = params.id?.trim().toUpperCase().replaceAll(/[^A-Z0-9]/g, '');
+    let method: 'API' | 'QR' | 'VERIFICATION_ID' | 'NUMBER' = 'NUMBER';
+    if (meta.isPartnerApi) method = 'API';
+    else if (id) method = params.t ? 'QR' : 'VERIFICATION_ID';
 
     const cert = await this.prisma.certificate.findFirst({
       where: id ? { verificationId: id } : { certificateNumber: { equals: number, mode: 'insensitive' } },
@@ -114,14 +225,7 @@ export class CertificatesService {
         validFrom: cert.validFrom,
         validUntil: cert.validUntil,
         status,
-        statusNote:
-          status === 'SUSPENDED'
-            ? 'This certificate is temporarily suspended by the certification body.'
-            : status === 'WITHDRAWN'
-              ? 'This certificate has been withdrawn and is no longer valid.'
-              : status === 'EXPIRED'
-                ? 'This certificate has passed its validity date.'
-                : null,
+        statusNote: STATUS_NOTE[status] ?? null,
         certificationBody: {
           name: cert.certificationBody.name,
           accreditation: cert.certificationBody.accreditation,
@@ -212,23 +316,31 @@ export class CertificatesService {
       (typeof target === 'string' && target.includes('certificateNumber'));
   }
 
-  async create(input: z.infer<typeof createCertificateInput>, actorId: string) {
-    let pdfKey: string | null = null;
-    if (input.fileId) {
-      const stored = await this.prisma.storedFile.findUnique({ where: { id: input.fileId } });
-      if (!stored) throw new BadRequestException('Uploaded file not found');
-      if (stored.mimeType !== 'application/pdf' && !stored.originalName.toLowerCase().endsWith('.pdf')) {
-        throw new BadRequestException('The attached file must be a PDF');
-      }
-      if (stored.scanStatus === 'INFECTED') {
-        throw new BadRequestException('This file was blocked because a virus was found in it. Please upload a clean copy.');
-      }
-      if (stored.scanStatus === 'PENDING') {
-        throw new ConflictException('This file is still being checked for viruses. Please try again in a minute.');
-      }
-      pdfKey = stored.fileKey;
+  /** The uploaded certificate PDF's storage key, once it is a clean PDF. */
+  private async attachedPdfKey(fileId: string): Promise<string> {
+    const stored = await this.prisma.storedFile.findUnique({ where: { id: fileId } });
+    if (!stored) throw new BadRequestException('Uploaded file not found');
+    if (stored.mimeType !== 'application/pdf' && !stored.originalName.toLowerCase().endsWith('.pdf')) {
+      throw new BadRequestException('The attached file must be a PDF');
     }
+    if (stored.scanStatus === 'INFECTED') {
+      throw new BadRequestException('This file was blocked because a virus was found in it. Please upload a clean copy.');
+    }
+    if (stored.scanStatus === 'PENDING') {
+      throw new ConflictException('This file is still being checked for viruses. Please try again in a minute.');
+    }
+    return stored.fileKey;
+  }
 
+  /** The application's business name, else the customer's own name. */
+  private async holderName(app: { customerId: string; businessEntity: { legalName: string | null } | null }): Promise<string> {
+    if (app.businessEntity?.legalName) return app.businessEntity.legalName;
+    const cust = await this.prisma.user.findUnique({ where: { id: app.customerId } });
+    return cust?.name || '';
+  }
+
+  async create(input: z.infer<typeof createCertificateInput>, actorId: string) {
+    const pdfKey = input.fileId ? await this.attachedPdfKey(input.fileId) : null;
     let organizationName = input.organizationName?.trim();
     let businessEntityId = input.businessEntityId || input.entityId;
 
@@ -238,17 +350,8 @@ export class CertificatesService {
         include: { businessEntity: true },
       });
       if (!app) throw new NotFoundException('Application not found');
-      if (!organizationName) {
-        if (app.businessEntity?.legalName) {
-          organizationName = app.businessEntity.legalName;
-        } else {
-          const cust = await this.prisma.user.findUnique({ where: { id: app.customerId } });
-          organizationName = cust?.name || '';
-        }
-      }
-      if (!businessEntityId && app.businessEntityId) {
-        businessEntityId = app.businessEntityId;
-      }
+      organizationName ||= await this.holderName(app);
+      businessEntityId ||= app.businessEntityId ?? undefined;
     }
 
     if (!organizationName) {
@@ -549,14 +652,8 @@ export class CertificatesService {
       bodyByName.set(b.name.trim().toLowerCase(), b);
     }
 
-    const csvCertNumbers: string[] = [];
     const certNumberIndex = mapping.certificateNumber;
-    for (let r = 1; r < rawRows.length; r++) {
-      if (certNumberIndex !== undefined && rawRows[r][certNumberIndex]) {
-        const num = rawRows[r][certNumberIndex].trim();
-        if (num) csvCertNumbers.push(num);
-      }
-    }
+    const csvCertNumbers = certNumberIndex === undefined ? [] : rawRows.slice(1).map((row) => row[certNumberIndex]?.trim() ?? '').filter(Boolean);
 
     const existingCerts =
       csvCertNumbers.length > 0
@@ -568,138 +665,18 @@ export class CertificatesService {
     const existingNumberSet = new Set(existingCerts.map((c) => c.certificateNumber.toLowerCase()));
 
     const errors: CertificateImportRowError[] = [];
-    const validRows: (CertificateImportPreviewRow & { validFromDate: Date; validUntilDate: Date; issueDateDate: Date })[] = [];
+    const validRows: ValidCsvRow[] = [];
     const seenCsvNumbers = new Map<string, number>();
 
     const dataRows = rawRows.slice(1);
     const totalRows = dataRows.length;
 
-    for (let idx = 0; idx < dataRows.length; idx++) {
-      const row = dataRows[idx];
-      const rowNumber = idx + 2;
-      let hasError = false;
-
-      const getVal = (fieldKey: string): string => {
-        const colIdx = mapping[fieldKey];
-        return colIdx !== undefined && row[colIdx] !== undefined ? row[colIdx].trim() : '';
-      };
-
-      const type = getVal('type');
-      const orgName = getVal('organizationName');
-      const rawIssueDate = getVal('issueDate');
-      const rawValidFrom = getVal('validFrom');
-      const rawValidUntil = getVal('validUntil');
-      const rawBody = getVal('certificationBody');
-      const certNumber = getVal('certificateNumber');
-      const scope = getVal('scope') || undefined;
-      const address = getVal('address') || undefined;
-      const showPdfPublicly = parseCsvBoolean(getVal('showPdfPublicly'));
-
-      if (!orgName || orgName.length < 2) {
-        errors.push({ rowNumber, field: 'organizationName', message: 'Organisation name is required (minimum 2 characters)' });
-        hasError = true;
-      } else if (orgName.length > 200) {
-        errors.push({ rowNumber, field: 'organizationName', message: 'Organisation name cannot exceed 200 characters' });
-        hasError = true;
-      }
-
-      if (!type || type.length < 2) {
-        errors.push({ rowNumber, field: 'type', message: 'Certificate type is required (minimum 2 characters)' });
-        hasError = true;
-      } else if (type.length > 120) {
-        errors.push({ rowNumber, field: 'type', message: 'Certificate type cannot exceed 120 characters' });
-        hasError = true;
-      }
-
-      const validFromDate = parseCsvDate(rawValidFrom);
-      if (!validFromDate) {
-        errors.push({ rowNumber, field: 'validFrom', message: 'Valid from date is required and must be a valid date' });
-        hasError = true;
-      }
-
-      const validUntilDate = parseCsvDate(rawValidUntil);
-      if (!validUntilDate) {
-        errors.push({ rowNumber, field: 'validUntil', message: 'Valid until date is required and must be a valid date' });
-        hasError = true;
-      }
-
-      if (validFromDate && validUntilDate && validUntilDate <= validFromDate) {
-        errors.push({ rowNumber, field: 'validUntil', message: 'Valid until must be after valid from' });
-        hasError = true;
-      }
-
-      const issueDateDate = parseCsvDate(rawIssueDate) || validFromDate || new Date();
-
-      let matchedBody: { id: string; name: string } | undefined;
-      if (!rawBody) {
-        errors.push({ rowNumber, field: 'certificationBody', message: 'Certification body is required' });
-        hasError = true;
-      } else {
-        matchedBody = bodyById.get(rawBody.toLowerCase()) || bodyByName.get(rawBody.trim().toLowerCase());
-        if (!matchedBody) {
-          errors.push({
-            rowNumber,
-            field: 'certificationBody',
-            message: `Certification body "${rawBody}" was not found. Please create it under Certification Bodies first.`,
-          });
-          hasError = true;
-        }
-      }
-
-      if (certNumber) {
-        if (certNumber.length < 3 || certNumber.length > 64) {
-          errors.push({ rowNumber, field: 'certificateNumber', message: 'Certificate number must be between 3 and 64 characters' });
-          hasError = true;
-        } else {
-          const lowerNum = certNumber.toLowerCase();
-          const prevRow = seenCsvNumbers.get(lowerNum);
-          if (prevRow !== undefined) {
-            errors.push({
-              rowNumber,
-              field: 'certificateNumber',
-              message: `Duplicate certificate number "${certNumber}" in CSV (already in row ${prevRow})`,
-            });
-            hasError = true;
-          } else {
-            seenCsvNumbers.set(lowerNum, rowNumber);
-          }
-
-          if (existingNumberSet.has(lowerNum)) {
-            errors.push({ rowNumber, field: 'certificateNumber', message: `Certificate number "${certNumber}" already exists in the database` });
-            hasError = true;
-          }
-        }
-      }
-
-      if (scope && scope.length > 1000) {
-        errors.push({ rowNumber, field: 'scope', message: 'Scope cannot exceed 1000 characters' });
-        hasError = true;
-      }
-      if (address && address.length > 500) {
-        errors.push({ rowNumber, field: 'address', message: 'Address cannot exceed 500 characters' });
-        hasError = true;
-      }
-
-      if (!hasError && matchedBody && validFromDate && validUntilDate) {
-        validRows.push({
-          rowNumber,
-          certificateNumber: certNumber || undefined,
-          type,
-          organizationName: orgName,
-          scope,
-          address,
-          issueDate: issueDateDate.toISOString().slice(0, 10),
-          validFrom: validFromDate.toISOString().slice(0, 10),
-          validUntil: validUntilDate.toISOString().slice(0, 10),
-          certificationBodyId: matchedBody.id,
-          certificationBodyName: matchedBody.name,
-          showPdfPublicly,
-          validFromDate,
-          validUntilDate,
-          issueDateDate,
-        });
-      }
-    }
+    const ctx: CsvRowContext = { mapping, bodyById, bodyByName, existingNumberSet, seenCsvNumbers };
+    dataRows.forEach((row, idx) => {
+      const result = validateCsvRow(row, idx + 2, ctx);
+      errors.push(...result.errors);
+      if (result.valid) validRows.push(result.valid);
+    });
 
     const invalidRowsCount = new Set(errors.map((e) => e.rowNumber)).size;
     return {
@@ -738,15 +715,13 @@ export class CertificatesService {
 
     let conflictNumber: string | undefined;
     const created = await this.prisma.$transaction(async (tx) => {
-      const results = [];
+      const results: Awaited<ReturnType<typeof tx.certificate.create>>[] = [];
 
-      for (const row of validRows) {
+      // One at a time: generated certificate numbers are a gap-free sequence in row order.
+      await inSequence(validRows, async (row) => {
         let certNumber = row.certificateNumber;
-        if (!certNumber) {
-          certNumber = await this.getNextCertificateNumber(tx);
-        } else {
-          await this.syncManualCertificateNumber(tx, certNumber);
-        }
+        if (certNumber) await this.syncManualCertificateNumber(tx, certNumber);
+        else certNumber = await this.getNextCertificateNumber(tx);
         conflictNumber = certNumber;
 
         const cert = await tx.certificate.create({
@@ -766,7 +741,7 @@ export class CertificatesService {
           },
         });
         results.push(cert);
-      }
+      });
 
       await this.audit.log(
         {
@@ -777,7 +752,7 @@ export class CertificatesService {
           after: {
             importedCount: results.length,
             firstCertificateNumber: results[0].certificateNumber,
-            lastCertificateNumber: results[results.length - 1].certificateNumber,
+            lastCertificateNumber: results.at(-1)!.certificateNumber,
           },
         },
         tx,
@@ -791,14 +766,9 @@ export class CertificatesService {
       throw error;
     });
 
-    for (const cert of created) {
-      await this.events.emit('certificate.issued', {
-        certificateId: cert.id,
-        certificateNumber: cert.certificateNumber,
-        status: cert.status,
-        actorId,
-      });
-    }
+    await this.events.emitInOrder(
+      created.map((cert) => ['certificate.issued', { certificateId: cert.id, certificateNumber: cert.certificateNumber, status: cert.status, actorId }] as const),
+    );
 
     return {
       success: true,
@@ -816,10 +786,11 @@ export class CertificatesService {
       select: { id: true, certificateNumber: true, status: true },
     });
     let count = 0;
-    for (const cert of due) {
+    // One at a time, so a large nightly batch doesn't flood the database or the notification queue.
+    await inSequence(due, async (cert) => {
       // Guarded on the old status so a concurrent admin change is not overwritten or announced twice.
       const res = await this.prisma.certificate.updateMany({ where: { id: cert.id, status: cert.status }, data: { status: 'EXPIRED', statusReason: reason } });
-      if (!res.count) continue;
+      if (!res.count) return;
       count++;
       await this.events.emit('certificate.status_changed', {
         certificateId: cert.id,
@@ -829,7 +800,7 @@ export class CertificatesService {
         actorId: null,
         reason,
       });
-    }
+    });
     if (count) this.logger.log(`Marked ${count} certificate(s) as expired`);
     return count;
   }

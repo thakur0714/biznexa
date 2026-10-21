@@ -72,6 +72,17 @@ interface Receipt {
  * A booking's payment (M8.8) → `BookingPaymentsService.applyWebhook`, in the same transaction.
  * Any signed event answers 200 so the gateway stops retrying; problems are kept on the event row and logged.
  */
+/**
+ * Redemptions are what coupon limits count (D38). The discount the customer was charged is honoured
+ * even if the limit filled up between starting and completing the payment (D44).
+ */
+async function redeemCoupon(tx: Prisma.TransactionClient, order: { id: string; couponId: string | null; customerId: string; discount: number }) {
+  if (!order.couponId || order.discount <= 0) return;
+  await tx.$queryRaw`SELECT id FROM "Coupon" WHERE id = ${order.couponId} FOR UPDATE`;
+  await tx.couponRedemption.create({ data: { couponId: order.couponId, userId: order.customerId, orderId: order.id, amount: order.discount } });
+  await tx.coupon.update({ where: { id: order.couponId }, data: { usedCount: { increment: 1 } } });
+}
+
 @Injectable()
 export class PaymentWebhookService {
   private readonly log = new Logger(PaymentWebhookService.name);
@@ -105,11 +116,12 @@ export class PaymentWebhookService {
     const received = event;
     const result = await this.prisma.$transaction((tx) => this.apply(tx, received));
     if (NEEDS_ATTENTION.has(result.outcome)) {
-      this.log.error(
-        `Webhook ${event.id} (${event.type}, gateway payment ${event.payment?.id ?? event.refund?.paymentId ?? '-'}${event.refund ? `, gateway refund ${event.refund.id}` : ''}, payment ${result.paymentId ?? '-'}): ${result.outcome}`,
-      );
+      const gatewayRefund = event.refund ? `, gateway refund ${event.refund.id}` : '';
+      const gatewayPayment = event.payment?.id ?? event.refund?.paymentId ?? '-';
+      this.log.error(`Webhook ${event.id} (${event.type}, gateway payment ${gatewayPayment}${gatewayRefund}, payment ${result.paymentId ?? '-'}): ${result.outcome}`);
     }
-    for (const [name, payload] of result.events) await this.events.emit(name, payload as never);
+    // In order: listeners of a later event may rely on an earlier one (application submitted, then payment succeeded).
+    await this.events.emitInOrder(result.events);
     return { outcome: result.outcome };
   }
 
@@ -205,13 +217,7 @@ export class PaymentWebhookService {
       };
     }
 
-    // Redemptions are what coupon limits count (D38). The discount the customer was charged is honoured
-    // even if the limit filled up between starting and completing the payment (D44).
-    if (order.couponId && order.discount > 0) {
-      await tx.$queryRaw`SELECT id FROM "Coupon" WHERE id = ${order.couponId} FOR UPDATE`;
-      await tx.couponRedemption.create({ data: { couponId: order.couponId, userId: order.customerId, orderId: order.id, amount: order.discount } });
-      await tx.coupon.update({ where: { id: order.couponId }, data: { usedCount: { increment: 1 } } });
-    }
+    await redeemCoupon(tx, order);
 
     const events: Emit[] = [];
     const submitted: string[] = [];
@@ -219,7 +225,7 @@ export class PaymentWebhookService {
     // One application per order today; sequential because they share the transaction.
     for (const app of order.applications) {
       if (app.status === 'PAYMENT_PENDING') {
-        events.push(...(await this.submit(tx, app, receipt)));
+        events.push(...(await this.submit(tx, app, receipt))); // NOSONAR: sequential, see above
         submitted.push(app.id);
       } else {
         this.log.warn(`Application ${app.id} is ${app.status}, not PAYMENT_PENDING, when its order was paid; left as it is`);

@@ -4,7 +4,7 @@ import { CaptchaVerifier } from './captcha-verifier';
 export class MockCaptchaVerifier extends CaptchaVerifier {
   readonly name = 'mock' as const;
 
-  async verify(token: string): Promise<boolean> {
-    return token === 'pass';
+  verify(token: string): Promise<boolean> {
+    return Promise.resolve(token === 'pass');
   }
 }

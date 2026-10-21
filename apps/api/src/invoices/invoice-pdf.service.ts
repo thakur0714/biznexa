@@ -94,6 +94,6 @@ export class InvoicePdfService implements OnModuleInit {
     const inv = await this.prisma.invoice.findUnique({ where: { id }, select: { number: true, pdfKey: true } });
     if (!inv?.pdfKey) throw new NotFoundException('Invoice not found');
     const { stream, size } = await this.storage.read(inv.pdfKey);
-    return { stream, size, disposition: contentDisposition(disposition, `Invoice ${inv.number.replace(/\//g, '-')}.pdf`) };
+    return { stream, size, disposition: contentDisposition(disposition, `Invoice ${inv.number.replaceAll('/', '-')}.pdf`) };
   }
 }

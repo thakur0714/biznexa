@@ -41,7 +41,10 @@ export class DataExportService implements OnApplicationBootstrap {
     // Requests whose job was lost (Redis down when queued, a crash) are queued again.
     const open = await this.prisma.dataRequest
       .findMany({ where: { type: 'EXPORT', status: { in: ['PENDING', 'PROCESSING'] } }, select: { id: true } })
-      .catch((e) => (this.log.error(`Could not list open exports: ${e}`), []));
+      .catch((e) => {
+        this.log.error(`Could not list open exports: ${e}`);
+        return [];
+      });
     for (const r of open) this.enqueue(r.id);
     if (open.length) this.log.log(`Queued ${open.length} data export(s) still to prepare`);
   }
@@ -94,7 +97,7 @@ export class DataExportService implements OnApplicationBootstrap {
   async openLinked(id: string, q: { e?: string; d?: string; s?: string }, now = Date.now()) {
     checkSignedLink('data-exports', id, q, now);
     const row = await this.prisma.dataRequest.findUnique({ where: { id } });
-    if (!row || row.type !== 'EXPORT') throw new NotFoundException('Export not found');
+    if (row?.type !== 'EXPORT') throw new NotFoundException('Export not found');
     const fileKey = assertDownloadable(row, now);
     const { stream, size } = await this.storage.read(fileKey);
     const day = (row.completedAt ?? new Date(now)).toISOString().slice(0, 10);
@@ -109,7 +112,7 @@ export class DataExportService implements OnApplicationBootstrap {
       select: { id: true, fileKey: true },
       take: 500,
     });
-    for (const r of expired) await this.removeFile(r.id, r.fileKey!);
+    await Promise.all(expired.map((r) => this.removeFile(r.id, r.fileKey!)));
     if (expired.length) this.log.log(`Deleted ${expired.length} expired data export(s)`);
     return expired.length;
   }

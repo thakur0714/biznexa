@@ -24,6 +24,8 @@ const id = (prefix: string) => `${prefix}_mock${randomBytes(7).toString('hex')}`
  * It signs exactly like Razorpay, so signature checks run the real code path. Tests play the
  * customer with `pay()` / `fail()` and the gateway's servers with `webhook()` / `signWebhook()`.
  */
+const mockEventId = () => `evt_mock${randomUUID().replaceAll('-', '').slice(0, 14)}`;
+
 export class MockPaymentGateway extends PaymentGateway {
   readonly name = 'MOCK' as const;
   readonly checkoutKey = 'rzp_test_mock';
@@ -36,7 +38,8 @@ export class MockPaymentGateway extends PaymentGateway {
   /** Makes the next gateway call throw this error (e.g. to test retries). */
   failNextCall: PaymentGatewayError | null = null;
 
-  async createOrder(input: CreateGatewayOrderInput): Promise<GatewayOrder> {
+  // async with no await on purpose: a failure must reject the promise, as the real gateway's calls do.
+  async createOrder(input: CreateGatewayOrderInput): Promise<GatewayOrder> { // NOSONAR
     this.throwIfFailing();
     assertOrderInput(input);
     const order = { id: id('order'), amount: input.amount, currency: 'INR' as const, receipt: input.receipt, status: 'created' as const, notes: input.notes ?? {} };
@@ -57,14 +60,14 @@ export class MockPaymentGateway extends PaymentGateway {
     return readRazorpayWebhook(rawBody, headers, (body, signature) => this.verifyWebhookSignature(body, signature));
   }
 
-  async fetchPayment(paymentId: string): Promise<GatewayPayment> {
+  async fetchPayment(paymentId: string): Promise<GatewayPayment> { // NOSONAR: rejects like the real gateway
     this.throwIfFailing();
     const payment = this.payments.get(paymentId);
     if (!payment) throw new PaymentGatewayError('The id provided does not exist', false, 400, 'BAD_REQUEST_ERROR');
     return { ...payment };
   }
 
-  async refund(input: GatewayRefundInput): Promise<GatewayRefund> {
+  async refund(input: GatewayRefundInput): Promise<GatewayRefund> { // NOSONAR: rejects like the real gateway
     this.throwIfFailing();
     assertRefundInput(input);
     const payment = this.payments.get(input.paymentId);
@@ -107,7 +110,7 @@ export class MockPaymentGateway extends PaymentGateway {
    * The webhook Razorpay would send about `payment` (from `pay()` / `fail()`): the exact body bytes and
    * headers, signed. Pass the same `eventId` to play a redelivery.
    */
-  webhook(event: string, payment: GatewayPayment, eventId = `evt_mock${randomUUID().replace(/-/g, '').slice(0, 14)}`) {
+  webhook(event: string, payment: GatewayPayment, eventId = mockEventId()) {
     const entity = {
       id: payment.id,
       entity: 'payment',
@@ -129,7 +132,7 @@ export class MockPaymentGateway extends PaymentGateway {
    * The `refund.processed` / `refund.failed` webhook Razorpay would send about `refund` (from `refund()`),
    * signed, with the refund and its payment in the payload. Pass the same `eventId` to play a redelivery.
    */
-  refundWebhook(event: 'refund.processed' | 'refund.failed', refund: GatewayRefund, eventId = `evt_mock${randomUUID().replace(/-/g, '').slice(0, 14)}`) {
+  refundWebhook(event: 'refund.processed' | 'refund.failed', refund: GatewayRefund, eventId = mockEventId()) {
     const status = event === 'refund.processed' ? 'processed' : 'failed';
     const stored = this.refunds.get(refund.id);
     if (stored) {

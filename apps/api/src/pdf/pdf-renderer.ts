@@ -19,8 +19,10 @@ export class PdfRenderError extends Error {}
  */
 export abstract class PdfRenderer {
   abstract render(html: string, options?: PdfOptions): Promise<Buffer>;
-  /** Frees the browser, if any. */
-  async close(): Promise<void> {}
+  /** Frees the browser, if any. Nothing to free by default. */
+  close(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 const RENDER_TIMEOUT_MS = 30_000;
@@ -89,32 +91,47 @@ export class PlaywrightPdfRenderer extends PdfRenderer {
  * (tags dropped), so the rest of the pipeline can be exercised. Refused in production (env check).
  */
 export class StubPdfRenderer extends PdfRenderer {
-  async render(html: string): Promise<Buffer> {
-    if (!html.trim()) throw new PdfRenderError('Nothing to render');
-    return textPdf(htmlText(html));
+  render(html: string): Promise<Buffer> {
+    if (!html.trim()) return Promise.reject(new PdfRenderError('Nothing to render'));
+    return Promise.resolve(textPdf(htmlText(html)));
   }
+}
+
+/** Removes every `<tag …>…</tag>` (case-insensitive) with a plain scan, which cannot backtrack. */
+function dropElements(html: string, tag: string): string {
+  const lower = html.toLowerCase();
+  let out = '';
+  let from = 0;
+  for (;;) {
+    const start = lower.indexOf(`<${tag}`, from);
+    const end = start < 0 ? -1 : lower.indexOf(`</${tag}>`, start);
+    if (end < 0) break;
+    out += html.slice(from, start);
+    from = end + tag.length + 3;
+  }
+  return out + html.slice(from);
 }
 
 /** Visible text of an HTML page, one line per block, for the stub. */
 export function htmlText(html: string): string[] {
-  return html
-    .replace(/<(script|style|head)[\s\S]*?<\/\1>/gi, '')
-    .replace(/<(br|\/p|\/div|\/tr|\/h\d|\/li)[^>]*>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, '&')
+  return ['script', 'style', 'head']
+    .reduce(dropElements, html)
+    .replaceAll(/<(br|\/p|\/div|\/tr|\/h\d|\/li)[^>]*>/gi, '\n')
+    .replaceAll(/<[^>]+>/g, ' ')
+    .replaceAll('&nbsp;', ' ')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&amp;', '&')
     .split('\n')
-    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .map((l) => l.replaceAll(/\s+/g, ' ').trim())
     .filter(Boolean);
 }
 
 /** A minimal PDF 1.4: one A4 page, Helvetica, one line of text per entry (ASCII; anything else becomes `?`). */
 export function textPdf(lines: string[]): Buffer {
-  const esc = (s: string) => s.replace(/[^\x20-\x7e]/g, '?').replace(/([\\()])/g, '\\$1');
+  const esc = (s: string) => s.replaceAll(/[^\x20-\x7e]/g, '?').replaceAll(/([\\()])/g, String.raw`\$1`);
   const text = lines.slice(0, 60).map((l, i) => `BT /F1 10 Tf 40 ${800 - i * 13} Td (${esc(l.slice(0, 110))}) Tj ET`).join('\n');
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
@@ -130,7 +147,8 @@ export function textPdf(lines: string[]): Buffer {
     out += `${i + 1} 0 obj\n${o}\nendobj\n`;
   });
   const xref = Buffer.byteLength(out, 'latin1');
-  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}`;
+  const xrefRows = offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('');
+  out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${xrefRows}`;
   out += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
   return Buffer.from(out, 'latin1');
 }

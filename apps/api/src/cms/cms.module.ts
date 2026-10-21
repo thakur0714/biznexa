@@ -1,8 +1,7 @@
 import { Controller, Get, Module, NotFoundException, Param, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
-import { Public } from '../common/auth.decorators';
-import { AuthUser, CurrentUser, PERMS, RequirePermissions } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, PERMS, Public, RequirePermissions } from '../common/auth.decorators';
 import { AuditService } from '../audit/audit.service';
 import { AuditModule } from '../audit/audit.module';
 import { richTextInput } from './rich-text';

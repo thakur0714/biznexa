@@ -50,7 +50,7 @@ export interface RazorpayRefund {
 }
 
 /** Only ids made of these characters are put into a URL path. */
-const SAFE_ID = /^[A-Za-z0-9_]+$/;
+const SAFE_ID = /^\w+$/;
 
 /**
  * Razorpay over its REST API (no SDK): Basic auth with the key id/secret, JSON bodies,
@@ -67,7 +67,8 @@ export class RazorpayGateway extends PaymentGateway {
   constructor(private readonly config: RazorpayConfig) {
     super();
     this.checkoutKey = config.keyId;
-    this.auth = `Basic ${Buffer.from(`${config.keyId}:${config.keySecret}`).toString('base64')}`;
+    const credentials = `${config.keyId}:${config.keySecret}`;
+    this.auth = `Basic ${Buffer.from(credentials).toString('base64')}`;
     this.baseUrl = (config.baseUrl ?? 'https://api.razorpay.com').replace(/\/$/, '');
     this.timeoutMs = config.timeoutMs ?? 15_000;
   }
@@ -132,7 +133,9 @@ export class RazorpayGateway extends PaymentGateway {
       // Razorpay errors: { error: { code, description, … } }. The description never holds secrets.
       const error = (json as { error?: { code?: string; description?: string } } | undefined)?.error;
       const retryable = res.status >= 500 || res.status === 429;
-      throw new PaymentGatewayError(`Razorpay ${method} ${path.split('/').slice(0, 3).join('/')}: ${error?.description ?? `HTTP ${res.status}`}`, retryable, res.status, error?.code);
+      const reason = error?.description ?? `HTTP ${res.status}`;
+      const where = path.split('/').slice(0, 3).join('/');
+      throw new PaymentGatewayError(`Razorpay ${method} ${where}: ${reason}`, retryable, res.status, error?.code);
     }
     if (json === undefined) throw new PaymentGatewayError('Razorpay sent an unreadable answer', true, res.status);
     return json as T;

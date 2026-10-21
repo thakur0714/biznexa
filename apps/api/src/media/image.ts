@@ -32,14 +32,10 @@ export async function reencodeImage(input: Buffer, type: MediaImageType): Promis
   let img = sharp(input, { animated, limitInputPixels: MAX_INPUT_PIXELS, failOn: 'error' });
   if (!animated) img = img.autoOrient();
   img = img.resize({ width: MAX_SIDE, height: MAX_SIDE, fit: 'inside', withoutEnlargement: true });
-  img =
-    type === 'image/jpeg'
-      ? img.jpeg({ quality: 85, mozjpeg: true })
-      : type === 'image/png'
-        ? img.png()
-        : type === 'image/webp'
-          ? img.webp({ quality: 85 })
-          : img.gif();
+  if (type === 'image/jpeg') img = img.jpeg({ quality: 85, mozjpeg: true });
+  else if (type === 'image/png') img = img.png();
+  else if (type === 'image/webp') img = img.webp({ quality: 85 });
+  else img = img.gif();
   const { data, info } = await img.toBuffer({ resolveWithObject: true });
   return { data, width: info.width, height: info.pageHeight ?? info.height };
 }

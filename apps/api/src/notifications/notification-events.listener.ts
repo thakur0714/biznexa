@@ -315,7 +315,7 @@ export class NotificationEventsListener implements OnModuleInit {
         orderBy: { changedAt: 'desc' },
         select: { id: true, visibleToCustomer: true },
       });
-      if (history && history.visibleToCustomer === false) {
+      if (history?.visibleToCustomer === false) {
         return;
       }
 
@@ -448,7 +448,8 @@ export class NotificationEventsListener implements OnModuleInit {
       templates = templates.filter(t => allowedChannels.includes(t.channel));
     }
 
-    for (const template of templates) {
+    // One template per channel; a channel that fails to queue must not stop the others.
+    await Promise.all(templates.map(async (template) => {
       try {
         const rendered = this.templateEngine.render(template, variables);
         await this.notifications.enqueue({
@@ -470,7 +471,7 @@ export class NotificationEventsListener implements OnModuleInit {
           }`,
         );
       }
-    }
+    }));
   }
 
   async handleMessageCreated(payload: DomainEventPayloads['message.created']): Promise<void> {

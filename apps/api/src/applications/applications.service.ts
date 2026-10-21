@@ -61,12 +61,9 @@ export class ApplicationsService {
 
   /** Customer My Services list (M5.3): own applications filtered by tab, with context-aware nextAction. */
   async list(customerId: string, q: CustomerApplicationListQuery): Promise<CustomerApplicationList> {
-    const statusFilter: Prisma.EnumApplicationStatusFilter | ApplicationStatus =
-      q.tab === 'completed'
-        ? { in: ['COMPLETED', 'DELIVERED'] }
-        : q.tab === 'cancelled'
-          ? 'CANCELLED'
-          : { notIn: ['DRAFT', 'COMPLETED', 'DELIVERED', 'CANCELLED'] };
+    let statusFilter: Prisma.EnumApplicationStatusFilter | ApplicationStatus = { notIn: ['DRAFT', 'COMPLETED', 'DELIVERED', 'CANCELLED'] };
+    if (q.tab === 'completed') statusFilter = { in: ['COMPLETED', 'DELIVERED'] };
+    else if (q.tab === 'cancelled') statusFilter = 'CANCELLED';
 
     const where: Prisma.ApplicationWhereInput = {
       customerId,
@@ -197,13 +194,8 @@ export class ApplicationsService {
 
     const stageItems = stages.map((s, idx) => {
       let state: CustomerStageState = 'upcoming';
-      if (isDoneAll) {
-        state = 'done';
-      } else if (currentIndex !== -1) {
-        if (idx < currentIndex) state = 'done';
-        else if (idx === currentIndex) state = 'current';
-        else state = 'upcoming';
-      }
+      if (isDoneAll || (currentIndex !== -1 && idx < currentIndex)) state = 'done';
+      else if (idx === currentIndex) state = 'current';
 
       const directDate = stageReachedAt.get(s.id);
       let reachedAt: string | null = null;

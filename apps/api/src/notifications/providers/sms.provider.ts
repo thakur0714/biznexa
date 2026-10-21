@@ -18,7 +18,7 @@ export interface SendSmsResult {
  * Masks a mobile number to protect customer PII in logs (e.g. 98******10).
  */
 export function maskMobile(mobile: string): string {
-  const clean = mobile.replace(/\D/g, '');
+  const clean = mobile.replaceAll(/\D/g, '');
   if (clean.length < 4) return '****';
   return `${clean.slice(0, 2)}******${clean.slice(-2)}`;
 }

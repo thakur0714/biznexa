@@ -99,12 +99,7 @@ export class OrderSummaryService {
       return frozenSummary(head, order, sellerState, !!app.businessEntityId);
     }
 
-    for (const item of order.items) {
-      const p = item.package;
-      if (!p.isActive || !p.service.isActive || p.service.deletedAt) {
-        throw new ConflictException(`${item.description} is no longer offered, so this order can’t be paid. Start again from the service page.`);
-      }
-    }
+    assertStillOffered(order.items);
     const base = order.items.map((i) => ({
       id: i.id,
       description: `${i.package.service.name} — ${i.package.name}`,
@@ -120,23 +115,7 @@ export class OrderSummaryService {
     const supply = placeOfSupply({ ...(await this.buyerStates(tx, customerId, app.businessEntityId)), seller: sellerState });
 
     const code = change ? change.code : (order.coupon?.code ?? null);
-    let couponNotice: string | null = null;
-    let coupon: { id: string; code: string; discount: number } | null = null;
-    let lineDiscounts = base.map(() => 0);
-    if (code) {
-      const result = await this.coupons.validate(
-        { code, userId: customerId, lines: base.map((l) => ({ serviceId: l.serviceId, professionalFee: l.professionalFee })) },
-        tx,
-      );
-      if (result.ok) {
-        coupon = { id: result.couponId, code: result.code, discount: result.discount };
-        lineDiscounts = result.lineDiscounts;
-      } else if (change) {
-        throw new BadRequestException({ message: result.message, errors: [{ field: 'code', message: result.message }] });
-      } else {
-        couponNotice = `Coupon ${code} was removed: ${result.message}`;
-      }
-    }
+    const { coupon, lineDiscounts, couponNotice } = await this.checkCoupon(tx, customerId, base, code, !!change);
 
     const lines: OrderLineInput[] = base.map((l, i) => ({ ...l, discount: lineDiscounts[i] }));
     const totals = orderTotals(lines, { sellerState, placeOfSupply: supply?.state ?? null });
@@ -154,8 +133,8 @@ export class OrderSummaryService {
         buyerState: supply && supply.source !== 'SELLER' ? supply.state : null,
       },
     });
-    for (const [i, l] of base.entries()) {
-      await tx.orderItem.update({
+    await Promise.all(base.map((l, i) =>
+      tx.orderItem.update({
         where: { id: l.id },
         data: {
           description: l.description,
@@ -166,10 +145,28 @@ export class OrderSummaryService {
           discount: lineDiscounts[i],
           advancePercent: l.advancePercent,
         },
-      });
-    }
+      }),
+    ));
 
-    return toSummary(head, true, base, totals, coupon && { code: coupon.code, discount: coupon.discount }, couponNotice, supply, 0);
+    return toSummary({ head, editable: true, lines: base, totals, coupon: coupon && { code: coupon.code, discount: coupon.discount }, couponNotice, supply, amountPaid: 0 });
+  }
+
+  /**
+   * Checks the order's coupon (or the one being applied). A coupon that no longer applies is an error
+   * when the customer is applying it now, and is dropped with a notice when it was applied before.
+   */
+  private async checkCoupon(tx: Prisma.TransactionClient, customerId: string, base: { serviceId: string; professionalFee: number }[], code: string | null, applyingNow: boolean) {
+    const none = { coupon: null, lineDiscounts: base.map(() => 0), couponNotice: null };
+    if (!code) return none;
+    const result = await this.coupons.validate(
+      { code, userId: customerId, lines: base.map((l) => ({ serviceId: l.serviceId, professionalFee: l.professionalFee })) },
+      tx,
+    );
+    if (result.ok) {
+      return { coupon: { id: result.couponId, code: result.code, discount: result.discount }, lineDiscounts: result.lineDiscounts, couponNotice: null };
+    }
+    if (applyingNow) throw new BadRequestException({ message: result.message, errors: [{ field: 'code', message: result.message }] });
+    return { ...none, couponNotice: `Coupon ${code} was removed: ${result.message}` };
   }
 
   private async sellerState(tx: Prisma.TransactionClient): Promise<string | null> {
@@ -194,16 +191,28 @@ export class OrderSummaryService {
 type Head = Pick<OrderSummary, 'applicationId' | 'applicationCode' | 'orderId' | 'orderCode' | 'orderStatus'>;
 type Line = Pick<OrderSummary['lines'][number], 'description' | 'sacCode'> & { advancePercent: number | null };
 
-function toSummary(
-  head: Head,
-  editable: boolean,
-  lines: Line[],
-  totals: ReturnType<typeof orderTotals>,
-  coupon: OrderSummary['coupon'],
-  couponNotice: string | null,
-  supply: OrderSummary['placeOfSupply'],
-  amountPaid: number,
-): OrderSummary {
+/** A package that was switched off or a service that was removed can't be paid for any more. */
+function assertStillOffered(items: OrderRow['items']) {
+  for (const item of items) {
+    const p = item.package;
+    if (!p.isActive || !p.service.isActive || p.service.deletedAt) {
+      throw new ConflictException(`${item.description} is no longer offered, so this order can’t be paid. Start again from the service page.`);
+    }
+  }
+}
+
+interface SummaryParts {
+  head: Head;
+  editable: boolean;
+  lines: Line[];
+  totals: ReturnType<typeof orderTotals>;
+  coupon: OrderSummary['coupon'];
+  couponNotice: string | null;
+  supply: OrderSummary['placeOfSupply'];
+  amountPaid: number;
+}
+
+function toSummary({ head, editable, lines, totals, coupon, couponNotice, supply, amountPaid }: SummaryParts): OrderSummary {
   // Part payment is a choice made before anything is paid; afterwards only the balance is left.
   const advance = amountPaid > 0 ? null : advancePayment(lines.map((l, i) => ({ total: totals.lines[i].total, governmentFee: totals.lines[i].governmentFee, advancePercent: l.advancePercent })));
   return {
@@ -251,11 +260,10 @@ function toSummary(
 function frozenSummary(head: Head, order: OrderRow, sellerState: string | null, hasBusiness: boolean): OrderSummary {
   const buyer = stateName(order.buyerState);
   const seller = stateName(sellerState);
-  const supply: OrderSummary['placeOfSupply'] = buyer
-    ? { state: buyer, source: hasBusiness ? 'BUSINESS' : 'PROFILE' }
-    : seller
-      ? { state: seller, source: 'SELLER' }
-      : null;
+  let supply: OrderSummary['placeOfSupply'] = null;
+  if (buyer) supply = { state: buyer, source: hasBusiness ? 'BUSINESS' : 'PROFILE' };
+  else if (seller) supply = { state: seller, source: 'SELLER' };
   const totals = orderTotals(order.items, { sellerState, placeOfSupply: supply?.state ?? null });
-  return toSummary(head, false, order.items, totals, order.coupon && { code: order.coupon.code, discount: order.discount }, null, supply, order.amountPaid);
+  const coupon = order.coupon && { code: order.coupon.code, discount: order.discount };
+  return toSummary({ head, editable: false, lines: order.items, totals, coupon, couponNotice: null, supply, amountPaid: order.amountPaid });
 }

@@ -16,7 +16,6 @@ import {
   CurrentUser,
   CustomerOnly,
   RequireAnyPermission,
-  RequirePermissions,
 } from '../common/auth.decorators';
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 import { MessagesService } from './messages.service';

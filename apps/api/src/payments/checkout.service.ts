@@ -101,16 +101,13 @@ export class CheckoutService {
     const context = { application: { id: app.id, code: app.code }, orderCode: order.code, customer };
 
     if (order.status === 'CREATED' && app.status === 'DRAFT') {
-      const plan = requested ?? 'FULL';
-      if (plan === 'BALANCE') throw new ConflictException('Nothing has been paid for this order yet, so there is no balance to pay.');
+      const plan = firstPaymentPlan(requested);
       await this.applications.assertFormComplete(tx, app);
 
       // Held until commit, so the coupon's rules and limits cannot change between this check and the charge.
       if (order.couponId) await tx.$queryRaw`SELECT id FROM "Coupon" WHERE id = ${order.couponId} FOR UPDATE`;
       const summary = await this.orders.price(tx, customerId, app.id);
-      // The customer agreed to a total with the coupon; don't charge a different one without showing it.
-      if (summary.couponNotice) throw new ConflictException(`${summary.couponNotice} Check the new total before paying.`);
-      if (summary.total < MIN_ONLINE_PAYMENT) throw new ConflictException('This order has nothing to pay online. Contact us and we will start it for you.');
+      assertChargeable(summary);
       const amount = amountFor(plan, summary);
 
       const payment = await tx.payment.create({
@@ -138,8 +135,7 @@ export class CheckoutService {
     }
 
     if (order.status === 'PAYMENT_PENDING' && app.status === 'PAYMENT_PENDING') {
-      const plan = requested ?? 'FULL';
-      if (plan === 'BALANCE') throw new ConflictException('Nothing has been paid for this order yet, so there is no balance to pay.');
+      const plan = firstPaymentPlan(requested);
       // Totals and the advance are frozen once payment has started (D40); the summary reads them as stored.
       const summary = await this.orders.price(tx, customerId, app.id);
       const payment = await this.openPayment(tx, order.id, amountFor(plan, summary));
@@ -267,8 +263,22 @@ export class CheckoutService {
 
 const describe = (lines: { description: string }[], plan: PaymentPlan) => {
   const what = lines.map((l) => l.description).join(', ');
-  return plan === 'FULL' ? what : `${plan === 'ADVANCE' ? 'Advance' : 'Balance'} · ${what}`;
+  if (plan === 'FULL') return what;
+  return `${plan === 'ADVANCE' ? 'Advance' : 'Balance'} · ${what}`;
 };
+
+/** Before anything is paid the plan is FULL or ADVANCE; there is no balance yet. */
+function firstPaymentPlan(requested: PaymentPlan | undefined): 'FULL' | 'ADVANCE' {
+  const plan = requested ?? 'FULL';
+  if (plan === 'BALANCE') throw new ConflictException('Nothing has been paid for this order yet, so there is no balance to pay.');
+  return plan;
+}
+
+/** The customer agreed to a total with the coupon; don't charge a different one without showing it. */
+function assertChargeable(summary: OrderSummary) {
+  if (summary.couponNotice) throw new ConflictException(`${summary.couponNotice} Check the new total before paying.`);
+  if (summary.total < MIN_ONLINE_PAYMENT) throw new ConflictException('This order has nothing to pay online. Contact us and we will start it for you.');
+}
 
 /** The amount for a plan before anything is paid: the total, or the advance when every package allows one. */
 function amountFor(plan: 'FULL' | 'ADVANCE', summary: OrderSummary): number {

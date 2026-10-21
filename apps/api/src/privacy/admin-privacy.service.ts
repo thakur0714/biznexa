@@ -80,7 +80,7 @@ export class AdminPrivacyService {
       { timeout: 30_000 },
     );
 
-    for (const key of fileKeys) await this.storage.remove(key).catch((e) => this.log.error(`Could not delete file ${key} of deleted account: ${e}`));
+    await Promise.all(fileKeys.map((key) => this.storage.remove(key).catch((e) => this.log.error(`Could not delete file ${key} of deleted account: ${e}`))));
     const row = await this.prisma.dataRequest.findUniqueOrThrow({ where: { id }, include });
     await this.events.emit('privacy.account_deleted', { requestId: id, userId: row.userId, ...contact });
     return this.toRow(row, []);

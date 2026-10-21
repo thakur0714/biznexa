@@ -181,7 +181,7 @@ export class AdminApplicationDocumentsService {
       name: docName,
       actorId: u.id,
     });
-    for (const event of events) await this.events.emit('application.status_changed', event);
+    await this.events.emitInOrder(events.map((event) => ['application.status_changed', event] as const));
 
     return { id: docId, status: 'APPROVED' };
   }
@@ -234,7 +234,7 @@ export class AdminApplicationDocumentsService {
       reason,
       actorId: u.id,
     });
-    for (const event of events) await this.events.emit('application.status_changed', event);
+    await this.events.emitInOrder(events.map((event) => ['application.status_changed', event] as const));
 
     return { id: docId, status: 'REJECTED' };
   }
@@ -284,7 +284,7 @@ export class AdminApplicationDocumentsService {
       reason: input.description,
       actorId: u.id,
     });
-    for (const event of events) await this.events.emit('application.status_changed', event);
+    await this.events.emitInOrder(events.map((event) => ['application.status_changed', event] as const));
 
     return { id: docId, status: 'REQUIRED' };
   }

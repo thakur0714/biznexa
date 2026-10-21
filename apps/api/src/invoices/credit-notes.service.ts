@@ -57,9 +57,10 @@ export class CreditNotesService implements OnModuleInit {
       select: { id: true },
     });
     let issued = 0;
+    // One at a time, oldest first: credit note numbers are a gap-free sequence in issue order.
     for (const { id } of due) {
       try {
-        if (await this.issue(id)) issued++;
+        if (await this.issue(id)) issued++; // NOSONAR
       } catch (e) {
         this.log.error(`Credit note for refund ${id} could not be issued: ${e instanceof Error ? e.message : e}`, e instanceof Error ? e.stack : undefined);
       }
@@ -123,7 +124,7 @@ export class CreditNotesService implements OnModuleInit {
         buyer: invoice.buyer as Prisma.InputJsonValue,
         placeOfSupply: invoice.placeOfSupply,
         taxType,
-        lines: JSON.parse(JSON.stringify(amounts.lines)) as Prisma.InputJsonValue,
+        lines: JSON.parse(JSON.stringify(amounts.lines)) as Prisma.InputJsonValue, // NOSONAR: a JSON round trip drops `undefined`, which structuredClone keeps
         taxableValue: amounts.taxableValue,
         cgst: amounts.cgst,
         sgst: amounts.sgst,

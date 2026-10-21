@@ -109,7 +109,7 @@ export class MessagesService {
     ]);
 
     return {
-      items: newestFirst.reverse().map((r) => this.toMessageDto(r, app.customerId)),
+      items: newestFirst.toReversed().map((r) => this.toMessageDto(r, app.customerId)),
       total,
       page: q.page,
       limit: q.limit,

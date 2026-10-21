@@ -104,7 +104,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
     // Compare against a dummy hash when the user doesn't exist so response time doesn't reveal accounts.
     const ok = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
-    if (!user || !user.passwordHash || !ok) throw new UnauthorizedException('Incorrect email or password');
+    if (!user?.passwordHash || !ok) throw new UnauthorizedException('Incorrect email or password');
     return this.session(user, meta);
   }
 
@@ -161,10 +161,12 @@ export class AuthService {
     }
     // Pre-hijacking (M12.1), as for Google: an OTP login proves who owns a mobile/email the account never
     // verified, so whoever registered with it loses the password and every session.
-    const takeover = purpose === 'LOGIN' && !(channel === 'MOBILE' ? user.mobileVerified : user.emailVerified);
-    const verification = purpose === 'LOGIN'
-      ? (channel === 'MOBILE' ? { mobileVerified: true } : { emailVerified: true })
-      : purpose === 'VERIFY_MOBILE' && channel === 'MOBILE' ? { mobileVerified: true } : {};
+    const channelVerified = channel === 'MOBILE' ? user.mobileVerified : user.emailVerified;
+    const takeover = purpose === 'LOGIN' && !channelVerified;
+    const channelFlag = channel === 'MOBILE' ? { mobileVerified: true } : { emailVerified: true };
+    let verification = {};
+    if (purpose === 'LOGIN') verification = channelFlag;
+    else if (purpose === 'VERIFY_MOBILE' && channel === 'MOBILE') verification = { mobileVerified: true };
     const verified = await this.prisma.user.update({
       where: { id: user.id },
       data: { ...verification, ...(takeover ? { passwordHash: null } : {}) },

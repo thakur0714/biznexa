@@ -46,7 +46,7 @@ export class StubVirusScanner extends VirusScanner {
 export function parseClamdReply(reply: string): ScanVerdict {
   const text = reply.split('\0')[0].trim();
   if (text === 'stream: OK') return { infected: false };
-  const found = text.match(/^stream: (.+) FOUND$/);
+  const found = /^stream: (.+) FOUND$/.exec(text);
   if (found) return { infected: true, signature: found[1] };
   throw new Error(`ClamAV could not scan the file: ${text || 'empty reply'}`);
 }
@@ -101,7 +101,8 @@ export class ClamAvScanner extends VirusScanner {
               const part = chunk.subarray(i, i + CHUNK);
               const size = Buffer.alloc(4);
               size.writeUInt32BE(part.length);
-              if (!socket.write(Buffer.concat([size, part]))) await Promise.race([once(socket, 'drain'), once(socket, 'close')]);
+              // Backpressure: wait for clamd to drain before the next chunk, so the order and memory use stay bounded.
+              if (!socket.write(Buffer.concat([size, part]))) await Promise.race([once(socket, 'drain'), once(socket, 'close')]); // NOSONAR
             }
             if (settled) return;
           }

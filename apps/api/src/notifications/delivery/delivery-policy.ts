@@ -51,9 +51,10 @@ export function isPermanentHttpStatus(status: number): boolean {
  */
 export function safeErrorText(message: string): string {
   return message
-    .replace(/[^\s@<>"'(),;:]+@[^\s@<>"'(),;:]+\.[a-z]{2,}/gi, '[email]')
-    .replace(/\+?\d[\d\s-]{6,}\d/g, '[number]')
-    .replace(/\s+/g, ' ')
+    // Dot-separated domain labels and digit-led groups keep both patterns linear (no backtracking).
+    .replaceAll(/[^\s@<>"'(),;:]+@(?:[^\s@<>"'(),;:.]+\.)+[a-z]{2,}/gi, '[email]')
+    .replaceAll(/\+?\d(?:[\s-]*\d){6,}/g, '[number]')
+    .replaceAll(/\s+/g, ' ')
     .trim()
     .slice(0, 300);
 }

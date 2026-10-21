@@ -10,18 +10,25 @@ const BATCH_SIZE = 100;
 export class AdminAnnouncementsService {
   constructor(private readonly prisma: PrismaService, private readonly audit: AuditService, private readonly queue: NotificationQueueService) {}
 
+  /** The customers a segment narrows to; undefined for "all customers". */
+  private async segmentCustomerIds(segment: AnnouncementSegment): Promise<string[] | undefined> {
+    if (segment.type === 'ALL_CUSTOMERS') return undefined;
+    if (segment.type === 'ACTIVE_APPLICATION_CATEGORY') {
+      const rows = await this.prisma.application.findMany({
+        where: { status: { notIn: ['CANCELLED', 'COMPLETED', 'DELIVERED'] }, service: { categoryId: segment.categoryId } },
+        select: { customerId: true }, distinct: ['customerId'],
+      });
+      return rows.map((row) => row.customerId);
+    }
+    const rows = await this.prisma.certificate.findMany({
+      where: { status: 'ACTIVE', validUntil: { gte: new Date(), lte: new Date(Date.now() + segment.days * 86_400_000) }, application: { isNot: null } },
+      select: { application: { select: { customerId: true } } },
+    });
+    return rows.flatMap((row) => row.application?.customerId ?? []);
+  }
+
   private async eligibleIds(segment: AnnouncementSegment): Promise<string[]> {
-    const customerIds = segment.type === 'ALL_CUSTOMERS'
-      ? undefined
-      : segment.type === 'ACTIVE_APPLICATION_CATEGORY'
-        ? (await this.prisma.application.findMany({
-            where: { status: { notIn: ['CANCELLED', 'COMPLETED', 'DELIVERED'] }, service: { categoryId: segment.categoryId } },
-            select: { customerId: true }, distinct: ['customerId'],
-          })).map((row) => row.customerId)
-        : (await this.prisma.certificate.findMany({
-            where: { status: 'ACTIVE', validUntil: { gte: new Date(), lte: new Date(Date.now() + segment.days * 86_400_000) }, application: { isNot: null } },
-            select: { application: { select: { customerId: true } } },
-          })).flatMap((row) => row.application?.customerId ?? []);
+    const customerIds = await this.segmentCustomerIds(segment);
     const users = await this.prisma.user.findMany({
       where: { status: 'ACTIVE', deletedAt: null, roles: { some: { role: { key: 'CUSTOMER' } } }, ...(customerIds ? { id: { in: customerIds } } : {}) },
       select: { id: true, notificationPrefs: true },
@@ -47,7 +54,7 @@ export class AdminAnnouncementsService {
     // Bound each slice so a large audience does not create an unbounded promise fan-out.
     for (let offset = 0; offset < users.length; offset += BATCH_SIZE) {
       const batch = users.slice(offset, offset + BATCH_SIZE);
-      const result = await Promise.all(batch.flatMap((userId) => input.channels.map(async (channel) => {
+      const result = await Promise.all(batch.flatMap((userId) => input.channels.map(async (channel) => { // NOSONAR: batches run one after another on purpose (see above)
         const templateId = channel === 'SMS' ? smsTemplate?.id : undefined;
         const row = await this.queue.enqueue({ userId, event: 'announcement.sent', category: 'MARKETING', sourceKey, channel, title: input.title, body: input.body, templateId });
         return row.created ? 1 : 0;

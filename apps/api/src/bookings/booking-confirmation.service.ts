@@ -23,32 +23,33 @@ export class BookingConfirmationService implements OnModuleInit {
 
   async confirmed(payload: DomainEventPayloads['booking.confirmed']) {
     const booking = await this.load(payload.bookingId);
-    if (!booking || booking.status !== 'CONFIRMED') return;
+    if (booking?.status !== 'CONFIRMED') return;
     await this.dispatch('consultation.booked', booking.customer, this.variables(booking), `${env().PUBLIC_WEB_URL}/dashboard/consultations`);
     await this.replaceReminders(booking.id, booking.startAt, booking.status);
   }
 
   async replaceReminders(bookingId: string, startAt: Date, status: string) {
     const q = this.queues.queue<Reminder>(QUEUE);
-    for (const offset of [24, 1] as const) {
+    // The 24 h and 1 h reminders are separate jobs, so both are replaced at once.
+    await Promise.all(([24, 1] as const).map(async (offset) => {
       const id = `${bookingId}-${offset}`;
       const old = await q.getJob(id);
       if (old) await old.remove().catch(() => undefined);
-      if (status !== 'CONFIRMED') continue;
+      if (status !== 'CONFIRMED') return;
       const delay = Math.max(0, startAt.getTime() - Date.now() - offset * 60 * 60_000);
       if (delay > 0) await q.add('booking-reminder', { bookingId, expectedStartAt: startAt.toISOString(), offset }, { jobId: id, delay });
-    }
+    }));
   }
 
   private async remind(data: Reminder) {
     const booking = await this.load(data.bookingId);
-    if (!booking || booking.status !== 'CONFIRMED' || booking.startAt.toISOString() !== data.expectedStartAt) return;
+    if (booking?.status !== 'CONFIRMED' || booking.startAt.toISOString() !== data.expectedStartAt) return;
     await this.dispatch('consultation.reminder', booking.customer, { ...this.variables(booking), minutesBefore: data.offset * 60 }, `${env().PUBLIC_WEB_URL}/dashboard/consultations`);
   }
 
   async cancelled(bookingId: string, reason?: string) {
     const booking = await this.load(bookingId);
-    if (!booking || booking.status !== 'CANCELLED') return;
+    if (booking?.status !== 'CANCELLED') return;
     await this.dispatch('consultation.cancelled', booking.customer, { ...this.variables(booking), reason: reason ?? 'Cancelled at your request' }, `${env().PUBLIC_WEB_URL}/dashboard/consultations`);
   }
 
@@ -64,9 +65,12 @@ export class BookingConfirmationService implements OnModuleInit {
 
   private async dispatch(event: 'consultation.booked' | 'consultation.reminder' | 'consultation.cancelled', recipient: { id: string; name: string; email: string | null; mobile: string | null }, variables: Record<string, unknown>, link: string) {
     const templates = await this.prisma.notificationTemplate.findMany({ where: { event, isActive: true } });
-    for (const template of templates) try {
-      const rendered = this.templates.render(template, variables);
-      await this.dispatcher.dispatch({ userId: recipient.id, channel: template.channel, event, title: rendered.subject, body: rendered.body, payload: variables, link, recipient: { email: recipient.email ?? undefined, mobile: recipient.mobile ?? undefined } });
-    } catch (error) { this.logger.error(`Booking ${event} notification failed: ${error instanceof Error ? error.message : String(error)}`); }
+    // One template per channel; a failure on one channel must not stop the others.
+    await Promise.all(templates.map(async (template) => {
+      try {
+        const rendered = this.templates.render(template, variables);
+        await this.dispatcher.dispatch({ userId: recipient.id, channel: template.channel, event, title: rendered.subject, body: rendered.body, payload: variables, link, recipient: { email: recipient.email ?? undefined, mobile: recipient.mobile ?? undefined } });
+      } catch (error) { this.logger.error(`Booking ${event} notification failed: ${error instanceof Error ? error.message : String(error)}`); }
+    }));
   }
 }

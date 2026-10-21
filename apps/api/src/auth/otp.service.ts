@@ -25,7 +25,7 @@ export class OtpService {
   async issue(channel: OtpChannel, target: string, purpose: OtpPurpose, opts: { ip?: string; deliver?: boolean } = {}) {
     const now = Date.now();
     const recent = await this.prisma.otpCode.findMany({
-      where: { target, purpose, createdAt: { gte: new Date(now - 3600_000) } },
+      where: { target, purpose, createdAt: { gte: new Date(now - 3_600_000) } },
       orderBy: { createdAt: 'desc' },
       select: { createdAt: true },
     });
@@ -71,7 +71,8 @@ export class OtpService {
     if (!timingSafeEqual(expected, actual)) {
       const updated = await this.prisma.otpCode.update({ where: { id: otp.id }, data: { attempts: { increment: 1 } } });
       const left = OTP_MAX_ATTEMPTS - updated.attempts;
-      throw new BadRequestException(left > 0 ? `Incorrect code. ${left} attempt${left === 1 ? '' : 's'} left.` : 'Incorrect code. Please request a new one.');
+      if (left <= 0) throw new BadRequestException('Incorrect code. Please request a new one.');
+      throw new BadRequestException(`Incorrect code. ${left} ${left === 1 ? 'attempt' : 'attempts'} left.`);
     }
     await this.prisma.otpCode.update({ where: { id: otp.id }, data: { consumedAt: new Date() } });
   }

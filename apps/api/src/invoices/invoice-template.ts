@@ -27,11 +27,11 @@ export interface InvoicePrint {
 /** Escapes text for HTML content and attribute values. Every value from the database goes through this. */
 export function esc(value: string | number | null | undefined): string {
   return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 const money = (paise: number) => esc(formatINR(paise, true));
@@ -80,6 +80,36 @@ function stateWithCode(state: string | null): string {
  * A credit note (M4.13, `inv.creditNote`) is the same page titled "Credit Note", with its own number and date,
  * the original invoice's number and date (rule 53), the refund and its reason in place of the payment.
  */
+/** One row of the lines table: a service with its GST split, or a government fee passed on at cost. */
+function lineRowHtml(l: InvoicePrint['lines'][number], i: number, igst: boolean, anyDiscount: boolean): string {
+  if (l.kind === 'GOVERNMENT_FEE') {
+    return `<tr class="govt">
+  <td class="n">${i + 1}</td>
+  <td>${esc(l.description)}<div class="note">Paid to the government on your behalf, at cost — not subject to GST</div></td>
+  <td></td>
+  <td class="r">${amount(l.total)}</td>${anyDiscount ? '<td class="r">—</td>' : ''}
+  <td class="r">—</td>
+  ${igst ? '<td class="r" colspan="2">—</td>' : '<td class="r" colspan="4">—</td>'}
+  <td class="r">${amount(l.total)}</td>
+</tr>`;
+  }
+  const half = l.gstRate / 2;
+  const discount = l.discount ? `−${amount(l.discount)}` : '—';
+  const discountCell = anyDiscount ? `<td class="r">${discount}</td>` : '';
+  const taxCells = igst
+    ? `<td class="r rate">${esc(l.gstRate)}%</td><td class="r">${amount(l.igst)}</td>`
+    : `<td class="r rate">${esc(half)}%</td><td class="r">${amount(l.cgst)}</td><td class="r rate">${esc(half)}%</td><td class="r">${amount(l.sgst)}</td>`;
+  return `<tr>
+  <td class="n">${i + 1}</td>
+  <td>${esc(l.description)}</td>
+  <td>${esc(l.sacCode ?? '')}</td>
+  <td class="r">${amount(l.professionalFee)}</td>${discountCell}
+  <td class="r">${amount(l.taxableValue)}</td>
+  ${taxCells}
+  <td class="r">${amount(l.total)}</td>
+</tr>`;
+}
+
 export function invoiceHtml(inv: InvoicePrint): string {
   const s = inv.seller;
   const b = inv.buyer;
@@ -90,38 +120,11 @@ export function invoiceHtml(inv: InvoicePrint): string {
   const cols = 5 + (anyDiscount ? 1 : 0) + taxCols;
   const sellerName = s.legalName || s.name || '';
   const cn = inv.creditNote;
-  const title = cn ? 'Credit Note' : s.gstin ? 'Tax Invoice' : 'Invoice';
+  let title = s.gstin ? 'Tax Invoice' : 'Invoice';
+  if (cn) title = 'Credit Note';
   const doc = cn ? 'Credit note' : 'Invoice';
 
-  const rows = inv.lines
-    .map((l, i) => {
-      if (l.kind === 'GOVERNMENT_FEE') {
-        return `<tr class="govt">
-  <td class="n">${i + 1}</td>
-  <td>${esc(l.description)}<div class="note">Paid to the government on your behalf, at cost — not subject to GST</div></td>
-  <td></td>
-  <td class="r">${amount(l.total)}</td>${anyDiscount ? '<td class="r">—</td>' : ''}
-  <td class="r">—</td>
-  ${igst ? '<td class="r" colspan="2">—</td>' : '<td class="r" colspan="4">—</td>'}
-  <td class="r">${amount(l.total)}</td>
-</tr>`;
-      }
-      const half = l.gstRate / 2;
-      return `<tr>
-  <td class="n">${i + 1}</td>
-  <td>${esc(l.description)}</td>
-  <td>${esc(l.sacCode ?? '')}</td>
-  <td class="r">${amount(l.professionalFee)}</td>${anyDiscount ? `<td class="r">${l.discount ? `−${amount(l.discount)}` : '—'}</td>` : ''}
-  <td class="r">${amount(l.taxableValue)}</td>
-  ${
-    igst
-      ? `<td class="r rate">${esc(l.gstRate)}%</td><td class="r">${amount(l.igst)}</td>`
-      : `<td class="r rate">${esc(half)}%</td><td class="r">${amount(l.cgst)}</td><td class="r rate">${esc(half)}%</td><td class="r">${amount(l.sgst)}</td>`
-  }
-  <td class="r">${amount(l.total)}</td>
-</tr>`;
-    })
-    .join('\n');
+  const rows = inv.lines.map((l, i) => lineRowHtml(l, i, igst, anyDiscount)).join('\n');
 
   const totals = [
     ['Taxable value', money(inv.taxableValue)],
@@ -138,6 +141,7 @@ export function invoiceHtml(inv: InvoicePrint): string {
   ]
     .filter(Boolean)
     .join(' ');
+  const paidPrefix = cn ? 'Original payment: ' : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -226,7 +230,7 @@ footer { display: flex; justify-content: space-between; align-items: flex-end; g
     <h2>${cn ? 'Refund' : 'Payment'}</h2>
     <div class="name">${money(inv.total)} ${cn ? 'refunded' : 'received'}</div>
     ${cn ? `<div>Reason: ${esc(cn.reason)}</div>` : ''}
-    ${paid ? `<div>${cn ? 'Original payment: ' : ''}${paid}</div>` : ''}
+    ${paid ? `<div>${paidPrefix}${paid}</div>` : ''}
     <div class="muted">${igst ? 'Inter-state supply: IGST' : 'Intra-state supply: CGST + SGST'}</div>
   </div>
 </section>

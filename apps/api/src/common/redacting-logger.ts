@@ -8,21 +8,29 @@ import { ConsoleLogger, type LogLevel } from '@nestjs/common';
  * Strings: emails, Indian mobile numbers, PANs, Aadhaar-shaped numbers, JWTs, bearer tokens and
  * `password=…`-style pairs are replaced. Objects: values under sensitive keys are replaced whole.
  */
+/** Keys whose `key=value` / `"key": "value"` pairs in free text get their value redacted. */
+const SECRET_PAIR_KEYS = ['password', 'passwd', 'pwd', 'secret', 'token', 'otp', 'api[_-]?key', 'authorization', 'cookie'];
+// The separator: optional spaces, an optional quote (then spaces), `:` or `=`, spaces and an optional quote.
+const SECRET_PAIR = new RegExp(String.raw`\b(${SECRET_PAIR_KEYS.join('|')})(\s*(?:["']\s*)?[:=]\s*["']?)([^\s"',;&}]+)`, 'gi');
+
 const REPLACEMENTS: [RegExp, string | ((...m: string[]) => string)][] = [
   [/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[token]'],
   [/\bBearer\s+[\w.~+/-]+=*/gi, 'Bearer [token]'],
-  [
-    /\b(password|passwd|pwd|secret|token|otp|api[_-]?key|authorization|cookie)(\s*["']?\s*[:=]\s*["']?)([^\s"',;&}]+)/gi,
-    (_m, key: string, sep: string) => `${key}${sep}[redacted]`,
-  ],
-  [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[email]'],
+  [SECRET_PAIR, (_m, key: string, sep: string) => `${key}${sep}[redacted]`],
+  // Domain labels are dot-separated, so the domain part cannot backtrack.
+  [/[\w.%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}/g, '[email]'],
   [/\b[A-Z]{5}\d{4}[A-Z]\b/g, '[pan]'],
   // Before mobiles: a 12-digit Aadhaar would otherwise leave two digits around a "[mobile]".
   [/(?<![\d-])[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?![\d-])/g, '[aadhaar]'],
   [/(?<![\w-])(?:\+?91[ -]?)?[6-9]\d{9}(?![\w-])/g, '[mobile]'],
 ];
 
-const SENSITIVE_KEY = /^(password|passwordhash|newpassword|currentpassword|secret|totpsecret|token|accesstoken|refreshtoken|resettoken|idtoken|otp|code|devcode|authorization|cookie|pan|panenc|aadhaar|email|mobile|phone)$/i;
+/** Object keys (any case) whose values are replaced whole. */
+const SENSITIVE_KEYS = new Set([
+  'password', 'passwordhash', 'newpassword', 'currentpassword', 'secret', 'totpsecret',
+  'token', 'accesstoken', 'refreshtoken', 'resettoken', 'idtoken', 'otp', 'code', 'devcode',
+  'authorization', 'cookie', 'pan', 'panenc', 'aadhaar', 'email', 'mobile', 'phone',
+]);
 
 export function redactString(s: string): string {
   let out = s;
@@ -44,7 +52,7 @@ export function redact(value: unknown, seen = new WeakSet<object>()): unknown {
   }
   if (Array.isArray(value)) return value.map((v) => redact(v, seen));
   return Object.fromEntries(
-    Object.entries(value).map(([k, v]) => [k, SENSITIVE_KEY.test(k) && v != null ? '[redacted]' : redact(v, seen)]),
+    Object.entries(value).map(([k, v]) => [k, SENSITIVE_KEYS.has(k.toLowerCase()) && v != null ? '[redacted]' : redact(v, seen)]),
   );
 }
 

@@ -74,13 +74,21 @@ export class PdfService implements OnApplicationBootstrap, OnModuleDestroy {
 
   /** Queue every record of these kinds (default all) that still has no PDF. */
   async queueMissing(kinds: string[] = [...this.documents.keys()]) {
-    for (const kind of kinds) {
+    const docs = kinds.map((kind) => {
       const doc = this.documents.get(kind);
       if (!doc) throw new Error(`Unknown PDF kind ${kind}`);
-      const ids = (await doc.missing?.().catch((e) => (this.log.error(`Could not list ${kind} records without a PDF: ${e}`), []))) ?? [];
+      return [kind, doc] as const;
+    });
+    await Promise.all(docs.map(async ([kind, doc]) => {
+      let ids: string[] = [];
+      try {
+        ids = (await doc.missing?.()) ?? [];
+      } catch (e) {
+        this.log.error(`Could not list ${kind} records without a PDF: ${e}`);
+      }
       for (const id of ids) this.enqueue(kind, id);
       if (ids.length) this.log.log(`Queued ${ids.length} ${kind} PDF(s) still to generate`);
-    }
+    }));
   }
 
   async onModuleDestroy() {

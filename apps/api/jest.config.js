@@ -10,10 +10,10 @@ module.exports = {
   roots: ['<rootDir>/src', '<rootDir>/test'],
   testRegex: String.raw`.*\.(spec|e2e-spec)\.ts$`,
   transform: {
-    '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.spec.json' }],
-    [`/node_modules/(?:\\.pnpm/${ESM_ONLY}@[^/]+/node_modules/)?${ESM_ONLY}/.+\\.js$`]: ['ts-jest', { tsconfig: { allowJs: true, isolatedModules: true }, diagnostics: false }],
+    [String.raw`^.+\.ts$`]: ['ts-jest', { tsconfig: 'tsconfig.spec.json' }],
+    [String.raw`/node_modules/(?:\.pnpm/${ESM_ONLY}@[^/]+/node_modules/)?${ESM_ONLY}/.+\.js$`]: ['ts-jest', { tsconfig: { allowJs: true, isolatedModules: true }, diagnostics: false }],
   },
-  transformIgnorePatterns: [`/node_modules/(?!(?:\\.pnpm/)?${ESM_ONLY}[@/])`],
+  transformIgnorePatterns: [String.raw`/node_modules/(?!(?:\.pnpm/)?${ESM_ONLY}[@/])`],
   moduleFileExtensions: ['ts', 'js', 'json'],
   testTimeout: 30000,
   maxWorkers: 3,
