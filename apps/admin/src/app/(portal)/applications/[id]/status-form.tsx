@@ -1,12 +1,12 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Field, Notice, Select } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
 import { APPLICATION_STATUS_LABEL, allowedNext, type ApplicationStatus, type ApplicationTransitionInput } from '@biznexa/types';
 
-export function StatusForm({ id, current, stages }: { id: string, current: ApplicationStatus, stages: { id: string, name: string }[] }) {
+export function StatusForm({ id, current, stages }: Readonly<{ id: string; current: ApplicationStatus; stages: { id: string; name: string }[] }>) {
   const api = useApi();
   const router = useRouter();
   
@@ -24,7 +24,7 @@ export function StatusForm({ id, current, stages }: { id: string, current: Appli
 
   const requiresReason = to === 'CANCELLED' || to === 'ON_HOLD';
 
-  async function submit(e: FormEvent) {
+  async function submit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (to === current && !stage) return;
     if (requiresReason && !note.trim()) {
@@ -43,7 +43,6 @@ export function StatusForm({ id, current, stages }: { id: string, current: Appli
       };
       await api.call(c => c.POST('/api/admin/applications/{id}/status', { params: { path: { id } }, body }));
       router.refresh();
-      setTo(to);
       setNote('');
     } catch (e: unknown) {
       setError((e as Error).message);

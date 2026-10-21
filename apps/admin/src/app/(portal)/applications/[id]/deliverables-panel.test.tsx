@@ -37,8 +37,8 @@ const uploadedFile: StoredFileResult = storedFileSchema.parse({
 });
 
 const fakeClient = {
-  GET: vi.fn(async () => ({ data: deliverableListSchema.parse(items), response: new Response(null, { status: 200 }) })),
-  POST: vi.fn(async (url: string, options?: RecordedPost['options']) => {
+  GET: vi.fn(() => Promise.resolve({ data: deliverableListSchema.parse(items), response: new Response(null, { status: 200 }) })),
+  POST: vi.fn((url: string, options?: RecordedPost['options']) => Promise.resolve().then(() => {
     calls.push({ url, options });
     if (url === '/api/files') {
       return { data: uploadedFile, response: new Response(null, { status: 201 }) };
@@ -54,7 +54,7 @@ const fakeClient = {
     });
     items = [created, ...items];
     return { data: created, response: new Response(null, { status: 201 }) };
-  }),
+  })),
 };
 
 vi.mock('@biznexa/api-client/react', () => ({

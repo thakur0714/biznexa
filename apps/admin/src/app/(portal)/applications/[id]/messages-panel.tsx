@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { Button, Notice } from '@biznexa/ui';
 import { formatDate, type Message, type MessageThreadPage, type StoredFileResult, type FileLinkResult } from '@biznexa/types';
 
-export function MessagesPanel({ applicationId }: { applicationId: string }) {
+export function MessagesPanel({ applicationId }: Readonly<{ applicationId: string }>) {
   const api = useApi();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,8 +73,54 @@ export function MessagesPanel({ applicationId }: { applicationId: string }) {
   }, [api, applicationId]);
 
   const trimmed = body.trim();
+  const fileKeyCounts = new Map<string, number>();
+  const fileKey = (file: File) => {
+    const raw = `${file.name}#${file.size}#${file.lastModified}`;
+    const count = (fileKeyCounts.get(raw) ?? 0) + 1;
+    fileKeyCounts.set(raw, count);
+    return count === 1 ? raw : `${raw}#${count}`;
+  };
+  let messageContent: React.ReactNode;
+  if (loading) {
+    messageContent = <p className="text-muted text-sm">Loading messages...</p>;
+  } else if (messages.length === 0) {
+    messageContent = <p className="text-muted text-sm">No messages yet.</p>;
+  } else {
+    messageContent = (
+      <div className="space-y-3">
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            data-sender-role={m.sender.isStaff ? 'staff' : 'customer'}
+            className={m.sender.isStaff ? 'p-3 rounded border bg-sky-50 border-sky-200 ml-6' : 'p-3 rounded border bg-paper border-rule mr-6'}
+          >
+            <div className="flex items-center justify-between gap-2 text-xs text-muted mb-1">
+              <span className="font-medium text-ink">{m.sender.name} ({m.sender.isStaff ? 'Staff' : 'Customer'})</span>
+              <span>{formatDate(m.createdAt)}</span>
+            </div>
+            {m.body && <p className="text-sm whitespace-pre-wrap">{m.body}</p>}
+            {m.attachments && m.attachments.length > 0 && (
+              <div className="mt-2 space-y-2">
+                {m.attachments.map((att) => (
+                  <div key={att.id} className="flex items-center gap-2 text-sm bg-white/50 p-2 rounded border border-rule">
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">{att.fileName}</p>
+                      <p className="text-xs text-muted">{(att.sizeBytes / 1024).toFixed(1)} KB</p>
+                    </div>
+                    <Button variant="outline" size="sm" type="button" disabled={openingFileId === att.id} onClick={() => openFile(att.id)}>
+                      {openingFileId === att.id ? 'Opening...' : 'Open'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
-  async function handleSend(e: FormEvent) {
+  async function handleSend(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if ((!trimmed && files.length === 0) || sending) return;
     setSending(true);
@@ -85,7 +131,8 @@ export function MessagesPanel({ applicationId }: { applicationId: string }) {
         const formData = new FormData();
         formData.append('file', f);
         const uploadBody = Object.assign(formData, { file: f.name });
-        const uploaded = await api.call<StoredFileResult>((c) => c.POST('/api/files', { body: uploadBody }));
+        // Uploads are intentionally sequential so file links retain the user's selected order.
+        const uploaded = await api.call<StoredFileResult>((c) => c.POST('/api/files', { body: uploadBody })); // NOSONAR: order matters; message attachments preserve selected file order
         fileIds.push(uploaded.id);
       }
 
@@ -110,54 +157,7 @@ export function MessagesPanel({ applicationId }: { applicationId: string }) {
       <h2 className="font-semibold text-lg">Messages</h2>
       {error && <Notice tone="error">{error}</Notice>}
 
-      {loading ? (
-        <p className="text-muted text-sm">Loading messages...</p>
-      ) : messages.length === 0 ? (
-        <p className="text-muted text-sm">No messages yet.</p>
-      ) : (
-        <div className="space-y-3">
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              data-sender-role={m.sender.isStaff ? 'staff' : 'customer'}
-              className={
-                m.sender.isStaff
-                  ? 'p-3 rounded border bg-sky-50 border-sky-200 ml-6'
-                  : 'p-3 rounded border bg-paper border-rule mr-6'
-              }
-            >
-              <div className="flex items-center justify-between gap-2 text-xs text-muted mb-1">
-                <span className="font-medium text-ink">
-                  {m.sender.name} ({m.sender.isStaff ? 'Staff' : 'Customer'})
-                </span>
-                <span>{formatDate(m.createdAt)}</span>
-              </div>
-              {m.body && <p className="text-sm whitespace-pre-wrap">{m.body}</p>}
-              {m.attachments && m.attachments.length > 0 && (
-                <div className="mt-2 space-y-2">
-                  {m.attachments.map(att => (
-                    <div key={att.id} className="flex items-center gap-2 text-sm bg-white/50 p-2 rounded border border-rule">
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate font-medium">{att.fileName}</p>
-                        <p className="text-xs text-muted">{(att.sizeBytes / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        type="button"
-                        disabled={openingFileId === att.id}
-                        onClick={() => openFile(att.id)}
-                      >
-                        {openingFileId === att.id ? 'Opening...' : 'Open'}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {messageContent}
 
       <form onSubmit={handleSend} className="space-y-2">
         <textarea
@@ -173,7 +173,7 @@ export function MessagesPanel({ applicationId }: { applicationId: string }) {
         {files.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
             {files.map((f, i) => (
-              <div key={i} className="flex items-center gap-1 bg-paper border border-rule rounded px-2 py-1 text-xs">
+              <div key={fileKey(f)} className="flex items-center gap-1 bg-paper border border-rule rounded px-2 py-1 text-xs">
                 <span className="truncate max-w-[150px]">{f.name}</span>
                 <button
                   type="button"

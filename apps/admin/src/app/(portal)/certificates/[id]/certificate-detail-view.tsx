@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { use, useEffect, useState } from 'react';
 import { formatDate, type AdminCertificateRow, type CertificateStatus } from '@biznexa/types';
 import { Badge, Button, Field, Notice, Select, useToast, type Tone } from '@biznexa/ui';
@@ -9,7 +10,7 @@ import { NotAllowed } from '@/components/portal-shell';
 import { useAuth } from '@/lib/auth';
 import { canSee, findNavItem } from '@/lib/nav';
 
-export function CertificateDetailView({ params }: { params: Promise<{ id: string }> }) {
+export function CertificateDetailView({ params }: Readonly<{ params: Promise<{ id: string }> }>) {
   const { id } = use(params);
   const { user } = useAuth();
   const item = findNavItem('certificates');
@@ -26,7 +27,7 @@ const STATUS: Record<CertificateStatus, { label: string; tone: Tone }> = {
 };
 
 export function validateStatusChange(input: { status: CertificateStatus; reason: string }): string | null {
-  if (!input.reason || !input.reason.trim()) {
+  if (!input.reason?.trim()) {
     return 'Reason for status change is required';
   }
   if (input.reason.trim().length < 3) {
@@ -45,7 +46,7 @@ type LookupRow = {
   createdAt: string;
 };
 
-function CertificateDetail({ id }: { id: string }) {
+function CertificateDetail({ id }: Readonly<{ id: string }>) {
   const api = useApi();
   const toast = useToast();
   const [cert, setCert] = useState<AdminCertificateRow | null>(null);
@@ -87,7 +88,7 @@ function CertificateDetail({ id }: { id: string }) {
           body: undefined,
         }),
       );
-      if (link?.url) window.open(link.url, '_blank');
+      if (link?.url) void window.open(link.url, '_blank');
     } catch (err: unknown) {
       toast((err as Error).message, 'error');
     }
@@ -142,7 +143,7 @@ function CertificateDetail({ id }: { id: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    async function loadCertificate() {
       try {
         const path = { params: { path: { id } } };
         const [c, q, l] = await Promise.all([
@@ -159,20 +160,21 @@ function CertificateDetail({ id }: { id: string }) {
       } catch (err: unknown) {
         if (!cancelled) setLoadError((err as Error).message);
       }
-    })();
+    }
+    void loadCertificate();
     return () => {
       cancelled = true;
     };
   }, [api, id]);
 
-  const handleStatusSubmit = async (e: React.FormEvent) => {
+  const handleStatusSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setStatusError(null);
 
     const err = validateStatusChange({ status: newStatus, reason });
     if (err) return setStatusError(err);
 
-    if (cert && newStatus === cert.status) {
+    if (newStatus === cert?.status) {
       return setStatusError('Select a different status');
     }
 
@@ -348,8 +350,9 @@ function CertificateDetail({ id }: { id: string }) {
 
             <div className="mt-4 border-t border-rule pt-4 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Upload custom PDF</label>
+                <label htmlFor="custom-certificate-pdf" className="block text-xs font-medium text-muted mb-1">Upload custom PDF</label>
                 <input
+                  id="custom-certificate-pdf"
                   type="file"
                   accept="application/pdf"
                   disabled={uploadingPdf}
@@ -375,8 +378,7 @@ function CertificateDetail({ id }: { id: string }) {
             <section className="rounded-lg border border-rule bg-white p-6 text-center">
               <h2 className="text-sm font-semibold text-night">QR Verification</h2>
               <div className="mt-4 flex justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qr.dataUrl} alt="Verification QR Code" className="h-48 w-48 rounded border border-rule" />
+                <Image src={qr.dataUrl} alt="Verification QR Code" width={192} height={192} unoptimized className="h-48 w-48 rounded border border-rule" />
               </div>
               <p className="mt-2 text-xs text-muted">Scans link directly to public verification page.</p>
               <a
