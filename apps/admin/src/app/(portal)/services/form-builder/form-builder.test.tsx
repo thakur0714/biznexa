@@ -8,7 +8,7 @@ import { toJson } from './builder';
 
 const auth = vi.hoisted(() => ({ permissions: [] as string[] }));
 vi.mock('@/lib/auth', () => ({
-  useAuth: () => ({ user: { id: 'u1', name: 'Asha Admin', roles: ['ADMIN'], permissions: auth.permissions }, token: 'token', refresh: async () => 'token' }),
+  useAuth: () => ({ user: { id: 'u1', name: 'Asha Admin', roles: ['ADMIN'], permissions: auth.permissions }, token: 'token', refresh: () => Promise.resolve('token') }),
 }));
 
 const SVC = '33333333-3333-4333-8333-333333333333';
@@ -78,7 +78,7 @@ beforeEach(() => {
 
 const renderBuilder = () =>
   render(
-    <ApiProvider token="token" refresh={async () => 'token'}>
+    <ApiProvider token="token" refresh={() => Promise.resolve('token')}>
       <ToastProvider>
         <FormBuilderView serviceId={SVC} />
       </ToastProvider>
@@ -312,7 +312,7 @@ describe('form builder', () => {
     expect(screen.getByRole('button', { name: 'Use version 2 for new applications' })).toBeTruthy();
   });
 
-  it('is not available without services.manage', async () => {
+  it('is not available without services.manage', () => {
     auth.permissions = [PERMS.ADMIN_ACCESS];
     renderBuilder();
     expect(screen.queryByText('Application form')).toBeNull();
@@ -320,7 +320,7 @@ describe('form builder', () => {
   });
 
   it('reports an unknown service', async () => {
-    vi.mocked(fetch).mockImplementation(async () => json({ message: 'Service not found' }, 404));
+    vi.mocked(fetch).mockImplementation(() => Promise.resolve(json({ message: 'Service not found' }, 404)));
     renderBuilder();
     expect(await screen.findByText('This service does not exist or was removed.')).toBeTruthy();
   });

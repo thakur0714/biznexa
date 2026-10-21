@@ -48,7 +48,7 @@ function useEditor() {
   return { ...form, err, listErr };
 }
 
-function Section({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
+function Section({ title, description, children }: Readonly<{ title: string; description?: ReactNode; children: ReactNode }>) {
   return (
     <section className="rounded-lg border border-rule bg-white p-5 sm:p-6">
       <h2 className="text-lg font-semibold">{title}</h2>
@@ -62,7 +62,7 @@ const counter = (value: string | undefined, max: number) => `${value?.length ?? 
 
 // ─────────────── Basic info & SEO ───────────────
 
-export function BasicPanel({ categories, isNew }: { categories: AdminCategoryRow[]; isNew: boolean }) {
+export function BasicPanel({ categories, isNew }: Readonly<{ categories: AdminCategoryRow[]; isNew: boolean }>) {
   const { register, setValue, err, control, formState } = useEditor();
   const [categoryId, slug, seoTitle, metaDescription, recurrence, name, shortDescription] = useWatch({
     control,
@@ -202,7 +202,7 @@ export function BasicPanel({ categories, isNew }: { categories: AdminCategoryRow
 
 // ─────────────── Shared row controls ───────────────
 
-function RowActions({ label, index, count, move, remove, removeBlocked }: { label: string; index: number; count: number; move: (from: number, to: number) => void; remove: () => void; removeBlocked?: string }) {
+function RowActions({ label, index, count, move, remove, removeBlocked }: Readonly<{ label: string; index: number; count: number; move: (from: number, to: number) => void; remove: () => void; removeBlocked?: string }>) {
   return (
     <div className="flex flex-wrap items-center gap-1">
       <Button type="button" variant="ghost" size="sm" disabled={index === 0} onClick={() => move(index, index - 1)} aria-label={`Move ${label} up`}>
@@ -222,7 +222,7 @@ function RowActions({ label, index, count, move, remove, removeBlocked }: { labe
   );
 }
 
-function Row({ title, actions, children }: { title: ReactNode; actions: ReactNode; children: ReactNode }) {
+function Row({ title, actions, children }: Readonly<{ title: ReactNode; actions: ReactNode; children: ReactNode }>) {
   return (
     <li className="rounded-lg border border-rule bg-white p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -243,7 +243,7 @@ function ListError({ message }: { message?: string }) {
 }
 
 /** An array field shown as a set of checkboxes (a single RHF checkbox would give a boolean, not a list). */
-function CheckboxGroup({ name, legend, options, hint }: { name: `documents.${number}.${'acceptedTypes' | 'packageIds'}`; legend: string; options: { value: string; label: string }[]; hint?: string }) {
+function CheckboxGroup({ name, legend, options, hint }: Readonly<{ name: `documents.${number}.${'acceptedTypes' | 'packageIds'}`; legend: string; options: { value: string; label: string }[]; hint?: string }>) {
   const { control, err } = useEditor();
   const { field } = useController({ control, name });
   const value = field.value;
@@ -382,7 +382,7 @@ export function PackagesPanel() {
 }
 
 function previewPrice(fee: string, gov: string, gst: string) {
-  const toPaise = (v: string) => Math.round(Number(v.replace(/[₹,\s]/g, '') || 0) * 100);
+  const toPaise = (v: string) => Math.round(Number(v.replaceAll(/[₹,\s]/g, '') || 0) * 100);
   const professionalFee = toPaise(fee);
   const governmentFee = toPaise(gov);
   if (!fee.trim() || !Number.isFinite(professionalFee) || !Number.isFinite(governmentFee) || professionalFee < 0 || governmentFee < 0) return null;
@@ -511,7 +511,7 @@ export function FaqsPanel() {
 
 // ─────────────── Related services ───────────────
 
-export function RelatedPanel({ services, selfId }: { services: AdminServiceRow[]; selfId?: string }) {
+export function RelatedPanel({ services, selfId }: Readonly<{ services: AdminServiceRow[]; selfId?: string }>) {
   const { control, listErr } = useEditor();
   const { field } = useController({ control, name: 'relatedServiceIds' });
   const [query, setQuery] = useState('');

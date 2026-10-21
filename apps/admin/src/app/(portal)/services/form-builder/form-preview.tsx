@@ -10,7 +10,7 @@ import { Button, FormFieldInput, Notice, type FormErrors as Errors, type FormVal
  * by the same components as the website's `ApplicationForm` (M3.6); this wrapper adds the admin
  * extras (jump to any step, show what would be stored, clear answers).
  */
-export function FormPreview({ form }: { form: FormSchema }) {
+export function FormPreview({ form }: Readonly<{ form: FormSchema }>) {
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<Values>({});
   const [errors, setErrors] = useState<Errors>({});
@@ -66,6 +66,7 @@ export function FormPreview({ form }: { form: FormSchema }) {
     setResult(null);
     setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== name && !k.startsWith(`${name}.`))));
   };
+  const stepKeyCounts = new Map<string, number>();
 
   return (
     <div className="rounded-lg border border-rule bg-white">
@@ -74,18 +75,22 @@ export function FormPreview({ form }: { form: FormSchema }) {
           Step {current + 1} of {form.steps.length}
         </p>
         <ol className="mt-2 flex flex-wrap gap-1.5" aria-label="Steps">
-          {form.steps.map((st, i) => (
-            <li key={i}>
-              <button
-                type="button"
-                onClick={() => go(i)}
-                aria-current={i === current ? 'step' : undefined}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${i === current ? 'bg-ink text-white' : 'bg-paper text-muted hover:text-night'}`}
-              >
-                {i + 1}. {st.title}
-              </button>
-            </li>
-          ))}
+          {form.steps.map((st, i) => {
+            const occurrence = stepKeyCounts.get(st.title) ?? 0;
+            stepKeyCounts.set(st.title, occurrence + 1);
+            return (
+              <li key={`${st.title}#${occurrence}`}>
+                <button
+                  type="button"
+                  onClick={() => go(i)}
+                  aria-current={i === current ? 'step' : undefined}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${i === current ? 'bg-ink text-white' : 'bg-paper text-muted hover:text-night'}`}
+                >
+                  {i + 1}. {st.title}
+                </button>
+              </li>
+            );
+          })}
         </ol>
       </div>
 
@@ -144,4 +149,4 @@ export function FormPreview({ form }: { form: FormSchema }) {
 }
 
 /** Files are not uploaded in the preview: each chosen file stands in as a made-up file id. */
-const fakeUpload: UploadFiles = async (files) => files.map(() => crypto.randomUUID());
+const fakeUpload: UploadFiles = (files) => Promise.resolve(files.map(() => crypto.randomUUID()));

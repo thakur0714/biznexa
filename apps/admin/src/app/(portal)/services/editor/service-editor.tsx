@@ -31,7 +31,7 @@ import { BasicPanel, countErrors, DocumentsPanel, FaqsPanel, PackagesPanel, Rela
 const WEB_URL = process.env.NEXT_PUBLIC_WEB_URL ?? 'http://localhost:3000';
 
 /** Service editor (M2.5.9): `/services/new` creates a service, `/services/{id}` edits one. */
-export function ServiceEditorView({ id }: { id?: string }) {
+export function ServiceEditorView({ id }: Readonly<{ id?: string }>) {
   const { user } = useAuth();
   const item = findNavItem('services');
   if (!user || !item) return null;
@@ -45,7 +45,7 @@ interface Loaded {
   detail: AdminServiceDetail | null;
 }
 
-function EditorLoader({ id }: { id?: string }) {
+function EditorLoader({ id }: Readonly<{ id?: string }>) {
   const api = useApi();
   const [data, setData] = useState<Loaded | null>(null);
   const [error, setError] = useState<{ status: number; message: string } | null>(null);
@@ -191,7 +191,7 @@ function ServiceEditor({ api, categories, services, detail }: Loaded & { api: Ap
     const done: Section[] = [];
     try {
       for (const section of sections) {
-        latest = await send(section, input, before.id);
+        latest = await send(section, input, before.id); // NOSONAR: sections must save in order because later writes can depend on earlier writes.
         done.push(section);
       }
       setSaved(latest);
@@ -222,7 +222,11 @@ function ServiceEditor({ api, categories, services, detail }: Loaded & { api: Ap
   );
 
   const onTabKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
-    const next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : null;
+    let next: number | null = null;
+    if (e.key === 'ArrowRight') next = i + 1;
+    else if (e.key === 'ArrowLeft') next = i - 1;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = TABS.length - 1;
     if (next === null) return;
     e.preventDefault();
     const t = TABS[(next + TABS.length) % TABS.length].id;
@@ -309,7 +313,7 @@ function ServiceEditor({ api, categories, services, detail }: Loaded & { api: Ap
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-rule bg-white/95 backdrop-blur lg:left-[260px]">
           <div className="flex max-w-[1000px] flex-wrap items-center justify-end gap-3 px-4 py-3 sm:px-8">
             <span className="mr-auto text-sm text-muted" role="status">
-              {isDirty ? 'Unsaved changes' : isNew ? '' : 'All changes saved'}
+              {saveStatus(isDirty, isNew)}
             </span>
             {isNew ? (
               <Link href="/services" className={buttonClass('outline')}>
@@ -329,11 +333,22 @@ function ServiceEditor({ api, categories, services, detail }: Loaded & { api: Ap
               </Button>
             )}
             <Button type="submit" variant="ink" disabled={saving || (!isNew && !isDirty)}>
-              {saving ? 'Saving…' : isNew ? 'Create service' : 'Save changes'}
+              {submitLabel(saving, isNew)}
             </Button>
           </div>
         </div>
       </form>
     </FormProvider>
   );
+}
+
+function saveStatus(isDirty: boolean, isNew: boolean): string {
+  if (isDirty) return 'Unsaved changes';
+  if (isNew) return '';
+  return 'All changes saved';
+}
+
+function submitLabel(saving: boolean, isNew: boolean): string {
+  if (saving) return 'Saving…';
+  return isNew ? 'Create service' : 'Save changes';
 }
