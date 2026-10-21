@@ -43,7 +43,7 @@ test('consultant application collects profile and three proof uploads', async ({
   await page.getByLabel('Fee per session (₹)').fill('1500');
   await page.getByLabel('Audio').check();
   for (const label of ['Qualification proof', 'Membership proof', 'Identity proof']) {
-    await page.getByLabel(label).setInputFiles({ name: `${label}.pdf`, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') });
+    await page.getByLabel(label).setInputFiles({ name: `${label}.pdf`, mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') }); // NOSONAR: tests run steps in order
   }
   await page.getByRole('button', { name: 'Submit application' }).click();
   await expect(page.getByRole('heading', { name: 'Application received' })).toBeVisible();
