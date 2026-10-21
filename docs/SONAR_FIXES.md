@@ -22,11 +22,14 @@ copy-paste prompt at the end.
 
 ## 2. Task list
 
+**Progress (21-Oct-2026, measured with the checker in section 3):** 1,422 findings on `main` before the clean-up, 1,004 now, so 418 fixed.
+Done and merged: API (most of S1), S3 and S11. The 4 findings left in S11 are parse errors for files outside the packages' tsconfig, skipped on purpose.
+
 | Task | Folders (only these) | Approx. findings | Suggested agent | Branch |
 |---|---|---|---|---|
-| **S1** | `apps/api/src` (what's left: `tickets/`, `reminders/reminder-job.service.ts`, `invoices/invoice-template.ts`, `certificates/certificate-csv.ts`, `*.spec.ts` in `src`, `notifications/channels/whatsapp.channel.ts`, `notifications/providers/sms.provider.ts`, `main.ts`, `settings/`, `queue/`, `prisma/`, `consultants/availability.service.ts`, `config/env.ts`) | ~50 | Claude | `sonar-fixes` (direct) |
+| **S1** | `apps/api/src` (what's left: `tickets/`, `reminders/reminder-job.service.ts`, `invoices/invoice-template.ts`, `certificates/certificate-csv.ts`, `*.spec.ts` in `src`, `notifications/channels/whatsapp.channel.ts`, `notifications/providers/sms.provider.ts`, `main.ts`, `settings/`, `queue/`, `prisma/`, `consultants/availability.service.ts`, `config/env.ts`) | 52 left | Claude | `sonar-fixes` (direct) |
 | **S2** | `apps/api/test`, `apps/web/e2e`, `scripts/` | ~130 (see notes) | Jules | `sonar-s2-tests` |
-| **S3** | `apps/web/src/components`, `apps/web/src/lib`, and in `apps/web/src/app`: the root files (`page.tsx`, `layout.tsx`, `error.tsx`, `globals.css`, …), `login/`, `register/`, `forgot-password/`, `verify/`, `services/`, `blog/` | ~110 | Antigravity | `sonar-s3-web-public` |
+| **S3** ✅ | `apps/web/src/components`, `apps/web/src/lib`, and in `apps/web/src/app`: the root files (`page.tsx`, `layout.tsx`, `error.tsx`, `globals.css`, …), `login/`, `register/`, `forgot-password/`, `verify/`, `services/`, `blog/` | ~110 | Gemini Flash (finished by Claude) | `sonar-s3-web-public` |
 | **S4** | `apps/web/src/app/dashboard` | ~80 | Antigravity | `sonar-s4-web-dashboard` |
 | **S5** | `apps/web/src/app/apply`, `apps/web/src/app/consultants`, every other `apps/web/src/app/*` folder that S3 and S4 don't list | ~75 | Codex | `sonar-s5-web-apply` |
 | **S6** | `apps/admin/src/app/(portal)/services` | ~85 | Antigravity | `sonar-s6-admin-services` |
@@ -34,7 +37,7 @@ copy-paste prompt at the end.
 | **S8** | `apps/admin/src/app/(portal)/consultant`, `…/consultants`, `…/payments`, `…/customers`, `…/notifications` | ~80 | Antigravity | `sonar-s8-admin-people` |
 | **S9** | `apps/admin/src`: every other `(portal)` folder (settings, cms, documents, support, reports, privacy, reviews, audit, `[section]`, `layout.tsx`, `page.tsx`), plus `components/`, `lib/`, `app/two-factor`, `app/login`, `app/layout.tsx` | ~90 | Antigravity | `sonar-s9-admin-rest` |
 | **S10** | `apps/mobile` (everything) | ~120 | Codex | `sonar-s10-mobile` |
-| **S11** | `packages/ui`, `packages/config`, `packages/rich-text` | ~75 | Jules | `sonar-s11-ui` |
+| **S11** ✅ | `packages/ui`, `packages/config`, `packages/rich-text` | ~75 | Devin (finished by Claude) | `sonar-s11-ui` |
 | **S12** | `packages/types`, `packages/api-client` | ~110 | Jules | `sonar-s12-types` |
 
 Notes:
