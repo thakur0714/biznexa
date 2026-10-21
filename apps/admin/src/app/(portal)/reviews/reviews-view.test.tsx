@@ -7,8 +7,8 @@ const BOOKING_ID = '22222222-2222-4222-8222-222222222222';
 const row = { id: REVIEW_ID, bookingId: BOOKING_ID, rating: 4, text: 'Helpful advice', status: 'PENDING', moderationReason: null, createdAt: '2026-10-18T10:00:00.000Z', bookingCode: 'BKG-2026-000001', customerName: 'Maya', consultantName: 'Asha' };
 const requests: Array<{ method: string; path: string; body?: unknown }> = [];
 const fakeClient = {
-  GET: vi.fn(async (path: string) => { requests.push({ method: 'GET', path }); return { data: { items: [row], total: 1, page: 1, pageSize: 20, pages: 1 } }; }),
-  POST: vi.fn(async (path: string, options: { body?: unknown }) => { requests.push({ method: 'POST', path, body: options.body }); return { data: { ...row, status: 'APPROVED' } }; }),
+  GET: vi.fn((path: string) => { requests.push({ method: 'GET', path }); return Promise.resolve({ data: { items: [row], total: 1, page: 1, pageSize: 20, pages: 1 } }); }),
+  POST: vi.fn((path: string, options: { body?: unknown }) => { requests.push({ method: 'POST', path, body: options.body }); return Promise.resolve({ data: { ...row, status: 'APPROVED' } }); }),
 };
 const fakeApi = { call: async (send: (client: typeof fakeClient) => Promise<{ data: unknown }>) => (await send(fakeClient)).data };
 vi.mock('@biznexa/api-client/react', () => ({ useApi: () => fakeApi }));

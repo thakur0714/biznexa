@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Badge, Button, EmptyState, Notice } from '@biznexa/ui';
+import { Badge, Button, EmptyState, Notice, type Tone } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
 import {
   type ReportConsultantsResponse,
@@ -21,6 +21,18 @@ const PRESETS: { id: ReportPreset; label: string }[] = [
   { id: 'this month', label: 'This Month' },
   { id: 'last month', label: 'Last Month' },
 ];
+
+function consultantStatusTone(status: string): Tone {
+  if (status === 'APPROVED') return 'success';
+  if (status === 'PENDING') return 'warning';
+  return 'danger';
+}
+
+function consultantVerificationTone(status: string): Tone {
+  if (status === 'APPROVED') return 'success';
+  if (status === 'PENDING') return 'warning';
+  return 'neutral';
+}
 
 export function ConsultantsReportView() {
   const { user } = useAuth();
@@ -216,13 +228,7 @@ export function ConsultantsReportView() {
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-night">{statusItem.label}</span>
                         <Badge
-                          tone={
-                            statusItem.status === 'APPROVED'
-                              ? 'success'
-                              : statusItem.status === 'PENDING'
-                              ? 'warning'
-                              : 'danger'
-                          }
+                          tone={consultantStatusTone(statusItem.status)}
                         >
                           {statusItem.count}
                         </Badge>
@@ -277,13 +283,7 @@ export function ConsultantsReportView() {
                             <td className="px-5 py-3 text-muted">{c.category}</td>
                             <td className="px-5 py-3">
                               <Badge
-                                tone={
-                                  c.verificationStatus === 'APPROVED'
-                                    ? 'success'
-                                    : c.verificationStatus === 'PENDING'
-                                    ? 'warning'
-                                    : 'neutral'
-                                }
+                                tone={consultantVerificationTone(c.verificationStatus)}
                               >
                                 {c.verificationStatus}
                               </Badge>

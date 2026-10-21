@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type SubmitEvent } from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { Notice, Button, EmptyState, Dialog, Field, useToast } from '@biznexa/ui';
 import { DataTable } from '@/components/data-table';
@@ -8,6 +8,7 @@ import { formatDate, type AdminDocumentReviewQueuePage, type AdminDocumentReview
 import Link from 'next/link';
 
 type DocumentItem = AdminDocumentReviewQueueRow;
+type DocumentCellInfo = { row: { original: DocumentItem } };
 
 export function DocumentsView() {
   const api = useApi();
@@ -54,7 +55,7 @@ export function DocumentsView() {
     }
   };
 
-  const handleReject = async (e: React.FormEvent) => {
+  const handleReject = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!rejectReason.trim()) {
       return;
@@ -123,25 +124,25 @@ export function DocumentsView() {
     {
       header: 'Document Name',
       accessorKey: 'name',
-      cell: ({ row }: { row: { original: DocumentItem } }) => row.original.name,
+      cell: (info: DocumentCellInfo) => info.row.original.name,
     },
     {
       header: 'Application',
       accessorKey: 'application',
-      cell: ({ row }: { row: { original: DocumentItem } }) => (
-        <Link href={`/applications/${row.original.application.id}`} className="text-sky-600 hover:underline">
-          {row.original.application.code}
+      cell: (info: DocumentCellInfo) => (
+        <Link href={`/applications/${info.row.original.application.id}`} className="text-sky-600 hover:underline">
+          {info.row.original.application.code}
         </Link>
       ),
     },
     {
       header: 'Customer',
       accessorKey: 'customer',
-      cell: ({ row }: { row: { original: DocumentItem } }) => (
+      cell: (info: DocumentCellInfo) => (
         <div>
-          <div>{row.original.application.customer?.name ?? '—'}</div>
-          {row.original.application.customer?.email && (
-            <div className="text-xs text-muted">{row.original.application.customer.email}</div>
+          <div>{info.row.original.application.customer?.name ?? '—'}</div>
+          {info.row.original.application.customer?.email && (
+            <div className="text-xs text-muted">{info.row.original.application.customer.email}</div>
           )}
         </div>
       ),
@@ -149,12 +150,12 @@ export function DocumentsView() {
     {
       header: 'File Info',
       accessorKey: 'fileInfo',
-      cell: ({ row }: { row: { original: DocumentItem } }) => (
+      cell: (info: DocumentCellInfo) => (
         <div>
-          <div>{row.original.fileName ?? '—'}</div>
-          {row.original.sizeBytes != null && (
+          <div>{info.row.original.fileName ?? '—'}</div>
+          {info.row.original.sizeBytes != null && (
             <div className="text-xs text-muted">
-              {(row.original.sizeBytes / 1024).toFixed(1)} KB
+              {(info.row.original.sizeBytes / 1024).toFixed(1)} KB
             </div>
           )}
         </div>
@@ -163,28 +164,40 @@ export function DocumentsView() {
     {
       header: 'Uploaded Time (IST)',
       accessorKey: 'uploadedAt',
-      cell: ({ row }: { row: { original: DocumentItem } }) => (row.original.uploadedAt ? formatDate(row.original.uploadedAt) : '—'),
+      cell: (info: DocumentCellInfo) => (info.row.original.uploadedAt ? formatDate(info.row.original.uploadedAt) : '—'),
     },
     {
       header: 'Actions',
       accessorKey: 'actions',
-      cell: ({ row }: { row: { original: DocumentItem } }) => (
+      cell: (info: DocumentCellInfo) => (
         <div className="flex gap-2 flex-wrap items-center">
-          {row.original.fileId && (
-            <Button variant="outline" size="sm" onClick={() => handlePreview(row.original)}>
+          {info.row.original.fileId && (
+            <Button variant="outline" size="sm" onClick={() => handlePreview(info.row.original)}>
               Preview
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => handleApprove(row.original.id)} disabled={isSubmitting}>
+          <Button variant="outline" size="sm" onClick={() => handleApprove(info.row.original.id)} disabled={isSubmitting}>
             Approve
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setRejectDialog(row.original.id)} disabled={isSubmitting}>
+          <Button variant="outline" size="sm" onClick={() => setRejectDialog(info.row.original.id)} disabled={isSubmitting}>
             Reject
           </Button>
         </div>
       ),
     },
   ];
+
+  let previewContent: React.ReactNode;
+  if (previewFile?.type?.startsWith('image/')) {
+    previewContent = (
+      // eslint-disable-next-line @next/next/no-img-element -- documents are customer uploads and may use any host
+      <img src={previewFile.url} alt="Document preview" className="max-w-full max-h-[60vh] object-contain" />
+    );
+  } else if (previewFile?.type === 'application/pdf') {
+    previewContent = <iframe src={previewFile.url} className="w-full h-[60vh] border-0" title="Document preview" />;
+  } else {
+    previewContent = <p className="text-muted">Preview not available for this file type. Download to view.</p>;
+  }
 
   return (
     <div className="max-w-[1200px]">
@@ -196,23 +209,26 @@ export function DocumentsView() {
       </div>
 
       <div className="mt-4">
-        {loadError ? (
+        {loadError && (
           <div className="space-y-3">
             <Notice tone="error">{loadError}</Notice>
             <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
               Try again
             </Button>
           </div>
-        ) : !data ? (
+        )}
+        {!loadError && !data && (
           <p className="text-muted" role="status">
             Loading documents…
           </p>
-        ) : data.items.length === 0 ? (
+        )}
+        {!loadError && data?.items.length === 0 && (
           <EmptyState
             title="No documents waiting for review"
             description="All documents have been reviewed."
           />
-        ) : (
+        )}
+        {!loadError && data && data.items.length > 0 && (
           <div>
             <DataTable
               caption="Documents"
@@ -293,15 +309,7 @@ export function DocumentsView() {
         <div className="min-h-[300px] flex items-center justify-center bg-paper border border-rule rounded mt-4">
           {!previewFile?.url && !previewFile?.error && <p className="text-muted">Loading preview...</p>}
           {previewFile?.error && <p className="text-danger p-4 text-center">{previewFile.error}</p>}
-          {previewFile?.url && (
-            previewFile.type?.startsWith('image/') ? (
-              <img src={previewFile.url} alt="Document preview" className="max-w-full max-h-[60vh] object-contain" />
-            ) : previewFile.type === 'application/pdf' ? (
-              <iframe src={previewFile.url} className="w-full h-[60vh] border-0" title="Document preview" />
-            ) : (
-              <p className="text-muted">Preview not available for this file type. Download to view.</p>
-            )
-          )}
+          {previewFile?.url && previewContent}
         </div>
       </Dialog>
     </div>

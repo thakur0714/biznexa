@@ -6,7 +6,7 @@ import { ApiProvider } from '@biznexa/api-client/react';
 import { SettingsView } from './settings-view';
 import { formFieldOf, sellerFormErrors, toSellerForm, toSellerRequest } from './seller-form';
 
-const auth = vi.hoisted(() => ({ permissions: [] as string[], refresh: vi.fn(async () => 'renewed-token') }));
+const auth = vi.hoisted(() => ({ permissions: [] as string[], refresh: vi.fn(() => Promise.resolve('renewed-token')) }));
 vi.mock('@/lib/auth', () => ({
   useAuth: () => ({ user: { id: 'u1', name: 'Asha Admin', roles: ['ADMIN'], permissions: auth.permissions }, token: 'token', refresh: auth.refresh }),
 }));

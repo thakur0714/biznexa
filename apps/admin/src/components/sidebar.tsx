@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { visibleNav } from '@/lib/nav';
 
 /** Sections the signed-in user's permissions allow (see lib/nav.ts). */
-export function SidebarNav({ permissions, roles = [], onNavigate }: { permissions: string[]; roles?: string[]; onNavigate?: () => void }) {
+export function SidebarNav({ permissions, roles = [], onNavigate }: Readonly<{ permissions: string[]; roles?: string[]; onNavigate?: () => void }>) {
   const pathname = usePathname();
   const groups = visibleNav(permissions, undefined, roles);
 

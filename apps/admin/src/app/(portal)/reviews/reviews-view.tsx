@@ -79,7 +79,8 @@ export function ReviewsView() {
       </Select>
     </header>
     {error && <Notice tone="error">{error}</Notice>}
-    {loading && !result ? <p role="status">Loading reviews…</p> : result?.items.length ? (
+    {loading && !result && <p role="status">Loading reviews…</p>}
+    {result?.items && result.items.length > 0 && (
       <div>
         <div className="space-y-3">{result.items.map((review) => <article key={review.id} className="rounded-lg border border-rule bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold">{review.consultantName}</h2><p className="text-sm text-muted">{review.customerName} · {review.bookingCode} · {new Date(review.createdAt).toLocaleDateString('en-IN')}</p></div><span aria-label={`${review.rating} out of 5 stars`} className="font-semibold text-amber-700">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)} <span className="text-xs">{review.rating}/5</span></span></div>
@@ -103,6 +104,7 @@ export function ReviewsView() {
           </div>
         )}
       </div>
-    ) : <EmptyState title={`No ${labels[status].toLowerCase()} reviews`} description="Reviews matching this status will appear here." />}
+    )}
+    {(!loading || result) && !result?.items?.length && <EmptyState title={`No ${labels[status].toLowerCase()} reviews`} description="Reviews matching this status will appear here." />}
   </main>;
 }

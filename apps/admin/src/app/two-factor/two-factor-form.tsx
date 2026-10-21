@@ -1,12 +1,13 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { needsTwoFactor, type TwoFactorSetup } from '@biznexa/types';
 import { Button, Field, Logo, Notice } from '@biznexa/ui';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { safeNext, useAuth, type SessionResponse } from '@/lib/auth';
+import { formText } from '@/lib/form';
 
 /** Groups the key in fours so it is easier to type into an app. */
 const groupKey = (secret: string) => secret.match(/.{1,4}/g)?.join(' ') ?? secret;
@@ -25,8 +26,13 @@ export function TwoFactorForm() {
   const [error, setError] = useState<ClientApiError | null>(null);
   const [busy, setBusy] = useState(false);
   const requested = useRef(false);
+  const codeRef = useRef<HTMLInputElement>(null);
 
   const settingUp = !!user && !user.twoFactor.enabled;
+
+  useEffect(() => {
+    if (!settingUp) codeRef.current?.focus();
+  }, [settingUp]);
 
   useEffect(() => {
     if (!ready) return;
@@ -55,9 +61,9 @@ export function TwoFactorForm() {
     void fetchSetup();
   }
 
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
-    const code = String(new FormData(e.currentTarget).get('code') ?? '');
+    const code = formText(new FormData(e.currentTarget), 'code');
     setBusy(true);
     setError(null);
     try {
@@ -87,6 +93,23 @@ export function TwoFactorForm() {
     );
   }
 
+  let setupContent: ReactNode;
+  if (setup) {
+    setupContent = <>
+      {/* eslint-disable-next-line @next/next/no-img-element -- data URL from the API */}
+      <img src={setup.qrDataUrl} alt="QR code for setting up two-factor authentication" width={180} height={180} className="mt-3 rounded border border-rule" />
+      <p className="mt-3 text-muted">Can’t scan it? Add an account in the app and type this key:</p>
+      <p className="mt-1 select-all break-all font-mono text-[15px] tracking-wider" aria-label="Setup key">{groupKey(setup.secret)}</p>
+    </>;
+  } else if (setupError) {
+    setupContent = <div className="mt-3 space-y-3"><Notice tone="error">{setupError.message}</Notice><Button type="button" variant="outline" size="sm" onClick={retrySetup}>Try again</Button></div>;
+  } else {
+    setupContent = <p className="mt-3 text-muted" role="status">Loading QR code…</p>;
+  }
+  let submitLabel = 'Continue';
+  if (settingUp) submitLabel = 'Turn on and continue';
+  if (busy) submitLabel = 'Checking…';
+
   return (
     <main id="main" className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-[440px]">
@@ -107,27 +130,7 @@ export function TwoFactorForm() {
               </li>
               <li>
                 <p className="font-semibold">2. Scan this QR code with the app</p>
-                {setup ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- data URL from the API */}
-                    <img src={setup.qrDataUrl} alt="QR code for setting up two-factor authentication" width={180} height={180} className="mt-3 rounded border border-rule" />
-                    <p className="mt-3 text-muted">Can’t scan it? Add an account in the app and type this key:</p>
-                    <p className="mt-1 select-all break-all font-mono text-[15px] tracking-wider" aria-label="Setup key">
-                      {groupKey(setup.secret)}
-                    </p>
-                  </>
-                ) : setupError ? (
-                  <div className="mt-3 space-y-3">
-                    <Notice tone="error">{setupError.message}</Notice>
-                    <Button type="button" variant="outline" size="sm" onClick={retrySetup}>
-                      Try again
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="mt-3 text-muted" role="status">
-                    Loading QR code…
-                  </p>
-                )}
+                {setupContent}
               </li>
               <li>
                 <p className="font-semibold">3. Enter the 6-digit code the app shows</p>
@@ -143,12 +146,12 @@ export function TwoFactorForm() {
             autoComplete="one-time-code"
             maxLength={7}
             required
-            autoFocus={!settingUp}
+            ref={codeRef}
             error={error?.fieldError('code')}
           />
-          {error && error.errors.length === 0 && <Notice tone="error">{error.message}</Notice>}
+          {error?.errors.length === 0 && <Notice tone="error">{error.message}</Notice>}
           <Button type="submit" variant="ink" className="w-full" disabled={busy || (settingUp && !setup)}>
-            {busy ? 'Checking…' : settingUp ? 'Turn on and continue' : 'Continue'}
+            {submitLabel}
           </Button>
         </form>
 

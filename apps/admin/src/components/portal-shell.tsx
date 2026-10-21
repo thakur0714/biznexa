@@ -12,7 +12,7 @@ import { Button } from '@biznexa/ui';
  * Protected frame for every portal page: sends visitors without a staff session to /login and
  * sessions that still need 2FA to /two-factor, then renders the permission-driven sidebar (a drawer below the lg breakpoint).
  */
-export function PortalShell({ children }: { children: React.ReactNode }) {
+export function PortalShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const { user, ready, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -67,7 +67,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       );
       if (elements.length === 0) return;
       const first = elements[0]!;
-      const last = elements[elements.length - 1]!;
+      const last = elements.at(-1)!;
       const active = document.activeElement;
       if (e.shiftKey) {
         if (!active || !sidebar.contains(active) || active === first) {
