@@ -17,7 +17,7 @@ const tones: Record<ToastTone, string> = {
 const ToastContext = createContext<ShowToast | null>(null);
 
 /** Hosts the toast stack and its live region. Mount once near the app root. */
-export function ToastProvider({ children }: { children: ReactNode }) {
+export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [items, setItems] = useState<{ id: number; message: string; tone: ToastTone }[]>([]);
   const nextId = useRef(0);
 

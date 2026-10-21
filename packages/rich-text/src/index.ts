@@ -32,7 +32,7 @@ const DROP_WITH_CONTENT = ['script', 'style', 'textarea', 'option', 'select', 'n
 const ABSOLUTE = /^(?:https?:)?[\\/]{2}/i;
 /** `//host`, `/\host` and `\\host` all leave the site in a browser. */
 const PROTOCOL_RELATIVE = /^[\\/]{2}/;
-const NUMBER = /^[1-9][0-9]{0,2}$/;
+const NUMBER = /^[1-9]\d{0,2}$/;
 
 const OPTIONS: IOptions = {
   allowedTags: [...RICH_TEXT_ALLOW_LIST.tags],
@@ -86,5 +86,5 @@ export function sanitizeRichText(html: string): string {
 export function isRichTextEmpty(html: string): boolean {
   const clean = sanitizeRichText(html);
   if (/<img\s/i.test(clean)) return false;
-  return sanitizeHtml(clean, { allowedTags: [], allowedAttributes: {} }).replace(/&nbsp;|\s/g, '') === '';
+  return sanitizeHtml(clean, { allowedTags: [], allowedAttributes: {} }).replaceAll(/&nbsp;|\s/g, '') === '';
 }
