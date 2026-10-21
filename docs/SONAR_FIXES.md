@@ -146,6 +146,8 @@ The rule id is SonarQube's (what VS Code shows). The checker's ESLint name is in
   - a branch of a big `if` → its own private method
   
   Keep names and messages identical. Examples on `main`: `publicDirectoryWhere` (consultants.service.ts), `validateCsvRow` (certificates.service.ts), `checkCoupon` (order-summary.service.ts).
+
+  In big React components, make only safe extractions (pure calculations, label/tone pickers, small render blocks). Don't restructure effects, state or the order of async calls. If a function is still over 15 after that, stop and list it under "Skipped" with file:line and its current complexity. A Skipped cognitive-complexity finding still meets the "checker shows no findings" condition: commit and push anyway.
 - **S4624 "Do not use nested template literals"** `[sonarjs/no-nested-template-literals]`. Move the inner template into a `const` first:
   ```ts
   const ref = row.ref ? ` (${row.ref})` : ''; return `Paid${ref}`;
