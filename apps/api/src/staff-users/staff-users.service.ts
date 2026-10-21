@@ -64,6 +64,7 @@ export class StaffUsersService {
 
   async create(input: CreateAdminStaffInput, actorId: string) {
     if (await this.prisma.user.findUnique({ where: { email: input.email }, select: { id: true } })) throw new ConflictException('An account with this email already exists');
+    if (await this.prisma.user.findUnique({ where: { mobile: input.mobile }, select: { id: true } })) throw new ConflictException('An account with this mobile number already exists');
     const roles = await this.rolesForInput(input.roles);
     const passwordHash = await bcrypt.hash(input.temporaryPassword, 12);
     const user = await this.prisma.$transaction(async (tx) => {
@@ -88,6 +89,8 @@ export class StaffUsersService {
       await this.protectLastAdmin(tx, user.status, beforeRoles, afterRoles);
       await tx.userRole.deleteMany({ where: { userId: id, role: { key: { not: 'CUSTOMER' } } } });
       await tx.userRole.createMany({ data: roles.map((role) => ({ userId: id, roleId: role.id })), skipDuplicates: true });
+      // Permissions live in the tokens, so sign the user out for the new roles to apply now.
+      await this.tokens.revokeAll(id, tx);
       await this.audit.log({ actorId, action: 'staff.roles', entityType: 'User', entityId: id, before: { roles: beforeRoles }, after: { roles: afterRoles } }, tx);
       return { id, name: user.name, email: user.email, mobile: user.mobile, roles: roles.map(({ key, name }) => ({ key, name })), status: user.status, active: user.status === 'ACTIVE', twoFactorEnabled: !!user.totpEnabledAt, lastLoginAt: user.lastLoginAt?.toISOString() ?? null } satisfies AdminStaffRow;
     }, { isolationLevel: 'Serializable' });
@@ -104,6 +107,8 @@ export class StaffUsersService {
     const result = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findFirst({ where: { id, ...staffFilter }, select: { id: true, name: true, email: true, mobile: true, status: true, totpEnabledAt: true, lastLoginAt: true } });
       if (!user) throw new NotFoundException('Staff user not found');
+      // Only switch between ACTIVE and DEACTIVATED: blocked or erased accounts keep their status.
+      if (user.status !== 'ACTIVE' && user.status !== 'DEACTIVATED') throw new ConflictException('This account cannot be activated or deactivated here');
       const beforeRoles = await this.roleKeys(tx, id);
       const nextStatus = input.active ? 'ACTIVE' : 'DEACTIVATED';
       if (user.status === 'ACTIVE' && nextStatus !== 'ACTIVE') await this.protectLastAdmin(tx, user.status, beforeRoles, []);
