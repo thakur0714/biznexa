@@ -37,10 +37,10 @@ const as = (token: string) => ({ authorization: `Bearer ${token}` });
 async function waitFor<T>(check: () => Promise<T | undefined | null | false>, ms = 10_000): Promise<T> {
   const until = Date.now() + ms;
   for (;;) {
-    const value = await check();
+    const value = await check(); // NOSONAR: tests run steps in order
     if (value) return value;
     if (Date.now() > until) throw new Error('Timed out waiting for condition');
-    await new Promise((r) => setTimeout(r, 25));
+    await new Promise((r) => setTimeout(r, 25)); // NOSONAR: tests run steps in order
   }
 }
 
@@ -223,7 +223,7 @@ describe('staff', () => {
 
     const future = await http
       .get('/api/admin/notifications/deliveries')
-      .query({ user: customerId, from: new Date(Date.now() + 3600_000).toISOString() })
+      .query({ user: customerId, from: new Date(Date.now() + 3_600_000).toISOString() })
       .set(as(adminToken))
       .expect(200);
     expect(future.body.total).toBe(0);
@@ -260,7 +260,7 @@ describe('staff', () => {
 it('holds a delayed notification until sendAt', async () => {
   const queue = app.get(NotificationQueueService);
   const sourceKey = `delayed-${randomUUID()}`;
-  const sendAt = new Date(Date.now() + 1_500);
+  const sendAt = new Date(Date.now() + 1500);
   const { id, created } = await queue.enqueue({ userId: customerId, channel: 'IN_APP', event: 'consultation.reminder', sourceKey, title: 'Soon', body: 'Your consultation starts soon', sendAt });
   expect(created).toBe(true);
 

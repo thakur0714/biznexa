@@ -169,7 +169,7 @@ describe('public URL', () => {
     expect(fileKey).toMatch(/^[0-9a-f]{2}\/[0-9a-f]{32}$/);
 
     for (const path of [`/api/media/${fileKey}`, `/api/media/${fileKey}.png`, `/api/media/${fileKey}.jpg`]) {
-      await http.get(path).expect(404);
+      await http.get(path).expect(404); // NOSONAR: tests run steps in order
     }
   });
 });

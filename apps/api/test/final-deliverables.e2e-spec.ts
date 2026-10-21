@@ -15,9 +15,9 @@ describe('Final Deliverables API', () => {
   const run = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
   let adminId: string, adminToken: string;
   let opsId: string, opsToken: string;
-  let supportId: string, supportToken: string;
+  let supportToken: string;
   let customerId: string, customerToken: string;
-  let otherCustomerId: string, otherCustomerToken: string;
+  let otherCustomerToken: string;
 
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -37,7 +37,7 @@ describe('Final Deliverables API', () => {
 
     const support = await staffSession(http, prisma, 'SUPPORT', `support-${run}@biznexa.com`);
     supportToken = support.accessToken;
-    supportId = (await prisma.user.findUniqueOrThrow({ where: { email: `support-${run}@biznexa.com` } })).id;
+    const _supportId = (await prisma.user.findUniqueOrThrow({ where: { email: `support-${run}@biznexa.com` } })).id;
 
     async function doRegister(name: string, email: string, mobile: string) {
       const res = await request(app.getHttpServer())
@@ -57,7 +57,7 @@ describe('Final Deliverables API', () => {
     const otherMobileSuffix = String((Number(mobileSuffix) + 1) % 1_000_000).padStart(6, '0');
     const c2 = await doRegister('C2', `deliverables-c2-${run}@example.com`, `9922${otherMobileSuffix}`);
     otherCustomerToken = c2.token;
-    otherCustomerId = c2.id;
+    const _otherCustomerId = c2.id;
   });
 
   afterAll(async () => {
@@ -94,8 +94,9 @@ describe('Final Deliverables API', () => {
   }
 
   async function uploadFile(token: string, requirementId?: string) {
-    const PDF = Buffer.concat([Buffer.from('%PDF-1.7\\n'), Buffer.alloc(100, 0x20)]);
-    const res = await http.post(`/api/files${requirementId ? `?requirementId=${requirementId}` : ''}`)
+    const PDF = Buffer.concat([Buffer.from(String.raw`%PDF-1.7\n`), Buffer.alloc(100, 0x20)]);
+    const query = requirementId ? `?requirementId=${requirementId}` : '';
+    const res = await http.post(`/api/files${query}`)
       .set('Authorization', `Bearer ${token}`)
       .attach('file', PDF, 'deliverable.pdf')
       .expect(201);
@@ -200,7 +201,7 @@ describe('Final Deliverables API', () => {
     const fileId = await uploadFile(adminToken);
 
     // Add deliverable
-    const addRes = await http.post(`/api/admin/applications/${a.id}/deliverables`)
+    await http.post(`/api/admin/applications/${a.id}/deliverables`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ title: 'Final Report', fileId })
       .expect(201);

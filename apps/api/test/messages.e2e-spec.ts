@@ -260,11 +260,11 @@ describe('MessagesController (e2e, M4.11)', () => {
       // Sent by the notification queue (M6.3): poll for it
       let notifications: any[] = [];
       for (let i = 0; i < 100; i++) {
-        notifications = await prisma.notification.findMany({
+        notifications = await prisma.notification.findMany({ // NOSONAR: tests run steps in order
           where: { userId: customer1Id, event: 'message.received', channel: 'IN_APP' },
         });
         if (notifications.length > 0) break;
-        await new Promise(r => setTimeout(r, 50));
+        await new Promise(r => setTimeout(r, 50)); // NOSONAR: tests run steps in order
       }
       expect(notifications.length).toBeGreaterThan(0);
       expect(notifications[0].title).toBe('New message received');
@@ -389,7 +389,7 @@ describe('MessagesController (e2e, M4.11)', () => {
 
   it('page 1 is the newest messages, each page oldest → newest', async () => {
     for (const body of ['paging 1', 'paging 2', 'paging 3']) {
-      await http.post(`/api/applications/${app1Id}/messages`).set(auth(customer1Token)).send({ body }).expect(201);
+      await http.post(`/api/applications/${app1Id}/messages`).set(auth(customer1Token)).send({ body }).expect(201); // NOSONAR: tests run steps in order
     }
     const page1 = await http.get(`/api/applications/${app1Id}/messages?limit=2`).set(auth(customer1Token)).expect(200);
     expect(page1.body.items.map((m: { body: string }) => m.body)).toEqual(['paging 2', 'paging 3']);

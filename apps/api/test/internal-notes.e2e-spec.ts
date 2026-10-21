@@ -1,6 +1,5 @@
 import { configureApp } from '../src/main';
 
-import { INestApplication } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as supertest from 'supertest';
 const request = supertest.default || supertest;
@@ -20,7 +19,7 @@ describe('InternalNotesController (e2e)', () => {
   let assignedStaffId: string;
   let unassignedStaffId: string;
   let customerId: string;
-  let applicationId: string;
+
   let assignedApplicationId: string;
   let categoryId: string;
   let serviceId: string;
@@ -71,7 +70,7 @@ describe('InternalNotesController (e2e)', () => {
     packageId = svc.packages[0].id;
 
     
-    const order1 = await prisma.order.create({ data: { code: `ORD-${run}-1`, customerId, items: {}, total: 100, taxTotal: 0, subtotal: 100, status: 'CREATED', amountPaid: 0, discount: 0, govtFees: 0 } });
+    await prisma.order.create({ data: { code: `ORD-${run}-1`, customerId, items: {}, total: 100, taxTotal: 0, subtotal: 100, status: 'CREATED', amountPaid: 0, discount: 0, govtFees: 0 } });
 
     const app1 = await prisma.application.create({
       data: {
@@ -85,10 +84,10 @@ describe('InternalNotesController (e2e)', () => {
         
       },
     });
-    applicationId = app1.id;
+    const _applicationId = app1.id;
 
     
-    const order2 = await prisma.order.create({ data: { code: `ORD-${run}-2`, customerId, items: {}, total: 100, taxTotal: 0, subtotal: 100, status: 'CREATED', amountPaid: 0, discount: 0, govtFees: 0 } });
+    await prisma.order.create({ data: { code: `ORD-${run}-2`, customerId, items: {}, total: 100, taxTotal: 0, subtotal: 100, status: 'CREATED', amountPaid: 0, discount: 0, govtFees: 0 } });
 
     const app2 = await prisma.application.create({
       data: {
@@ -163,7 +162,7 @@ describe('InternalNotesController (e2e)', () => {
   });
 
   it('assigned ops -> list/create ok, delete own ok, other note 403', async () => {
-    const check = await prisma.application.findUnique({ where: { id: assignedApplicationId }});
+    await prisma.application.findUnique({ where: { id: assignedApplicationId }});
     
 
     const token = getAssignedStaffToken();
