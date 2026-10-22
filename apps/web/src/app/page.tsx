@@ -173,7 +173,10 @@ export default async function HomePage() {
         </Container>
       </section>
 
-      {cms.banners.length > 0 && <section aria-label="Featured"><Container className="grid gap-4 py-10 sm:grid-cols-2">{cms.banners.map((banner) => <a key={banner.id} href={banner.linkUrl || '/services'} className="overflow-hidden rounded-xl border border-rule bg-white">{banner.imageUrl && <img src={banner.imageUrl} alt="" className="h-44 w-full object-cover" />}<div className="p-5"><h2 className="text-xl font-bold">{banner.title}</h2>{banner.subtitle && <p className="mt-2 text-muted">{banner.subtitle}</p>}</div></a>)}</Container></section>}
+      {cms.banners.length > 0 && <section aria-label="Featured"><Container className="grid gap-4 py-10 sm:grid-cols-2">{cms.banners.map((banner) => <a key={banner.id} href={banner.linkUrl || '/services'} className="overflow-hidden rounded-xl border border-rule bg-white">{banner.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- CMS/upload image, unknown host and size
+        <img src={banner.imageUrl} alt="" className="h-44 w-full object-cover" />
+      )}<div className="p-5"><h2 className="text-xl font-bold">{banner.title}</h2>{banner.subtitle && <p className="mt-2 text-muted">{banner.subtitle}</p>}</div></a>)}</Container></section>}
       {featured.length > 0 && <section aria-labelledby="featured-consultants-h"><Container className="py-12"><div className="flex flex-wrap items-end justify-between gap-4"><div><h2 id="featured-consultants-h" className="text-3xl font-bold tracking-[-0.02em]">Featured consultants</h2><p className="mt-1 text-muted">Meet trusted professionals ready to help your business.</p></div><LinkButton href="/consultants" variant="outline">Browse all consultants</LinkButton></div><div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{featured.map((consultant) => <ConsultantCard key={consultant.id} consultant={consultant} />)}</div></Container></section>}
       {cms.stats.length > 0 && <section className="border-y border-rule bg-white"><Container className="grid grid-cols-2 gap-6 py-8 text-center sm:grid-cols-4">{cms.stats.map((stat) => <div key={stat.label}><p className="text-3xl font-bold text-ink">{stat.value}</p><p className="mt-1 text-sm text-muted">{stat.label}</p></div>)}</Container></section>}
 

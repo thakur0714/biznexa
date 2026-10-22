@@ -99,7 +99,7 @@ export function evaluateCoupon(coupon: CouponForValidation | null, ctx: CouponCo
   if (coupon.expiresAt && now >= coupon.expiresAt.getTime()) return reject('EXPIRED');
 
   const covers = (l: CouponOrderLine) => !coupon.serviceIds.length || coupon.serviceIds.includes(l.serviceId);
-  const eligible = ctx.lines.filter(covers);
+  const eligible = ctx.lines.filter((item) => covers(item));
   if (!eligible.length) return reject('SERVICE_MISMATCH');
   const eligibleAmount = eligible.reduce((sum, l) => sum + l.professionalFee, 0);
 

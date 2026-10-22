@@ -19,6 +19,42 @@ const USER_STATUS_BADGES: Record<string, { label: string; tone: Tone }> = {
   DELETED: { label: 'Deleted', tone: 'neutral' },
 };
 
+const helper = createColumnHelper<AdminCustomerRow>();
+const columns = [
+  helper.accessor('name', {
+    header: 'Name',
+    cell: (info) => (
+      <Link href={`/customers/${info.row.original.id}`} className="font-medium text-ink hover:underline">
+        {info.getValue()}
+      </Link>
+    ),
+  }),
+  helper.accessor('email', {
+    header: 'Email',
+    cell: (info) => <span className="text-muted">{info.getValue() || '—'}</span>,
+  }),
+  helper.accessor('mobile', {
+    header: 'Mobile',
+    cell: (info) => <span className="text-muted">{info.getValue() || '—'}</span>,
+  }),
+  helper.accessor('status', {
+    header: 'Status',
+    cell: (info) => {
+      const s = info.getValue();
+      const badge = USER_STATUS_BADGES[s];
+      return badge ? <Badge tone={badge.tone}>{badge.label}</Badge> : <Badge>{s}</Badge>;
+    },
+  }),
+  helper.accessor('applicationCount', {
+    header: 'Applications',
+    cell: (info) => info.getValue(),
+  }),
+  helper.accessor('createdAt', {
+    header: 'Joined',
+    cell: (info) => <span className="text-muted whitespace-nowrap">{formatDate(info.getValue())}</span>,
+  }),
+];
+
 export function CustomersView() {
   const api = useApi();
   const { user } = useAuth();
@@ -59,45 +95,6 @@ export function CustomersView() {
     void load();
     return () => { cancel = true; };
   }, [api, canView, query, statusGroup, page, reload]);
-
-  const helper = createColumnHelper<AdminCustomerRow>();
-  const columns = useMemo(
-    () => [
-      helper.accessor('name', {
-        header: 'Name',
-        cell: (info) => (
-          <Link href={`/customers/${info.row.original.id}`} className="font-medium text-ink hover:underline">
-            {info.getValue()}
-          </Link>
-        ),
-      }),
-      helper.accessor('email', {
-        header: 'Email',
-        cell: (info) => <span className="text-muted">{info.getValue() || '—'}</span>,
-      }),
-      helper.accessor('mobile', {
-        header: 'Mobile',
-        cell: (info) => <span className="text-muted">{info.getValue() || '—'}</span>,
-      }),
-      helper.accessor('status', {
-        header: 'Status',
-        cell: (info) => {
-          const s = info.getValue();
-          const badge = USER_STATUS_BADGES[s];
-          return badge ? <Badge tone={badge.tone}>{badge.label}</Badge> : <Badge>{s}</Badge>;
-        },
-      }),
-      helper.accessor('applicationCount', {
-        header: 'Applications',
-        cell: (info) => info.getValue(),
-      }),
-      helper.accessor('createdAt', {
-        header: 'Joined',
-        cell: (info) => <span className="text-muted whitespace-nowrap">{formatDate(info.getValue())}</span>,
-      }),
-    ],
-    [helper]
-  );
 
   const tabs: { key: AdminCustomerListQuery['status'] | 'ALL'; label: string }[] = [
     { key: 'ALL', label: 'All' },

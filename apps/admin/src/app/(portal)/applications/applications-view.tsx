@@ -18,6 +18,23 @@ export function ApplicationsView() {
   return <ApplicationsPage />;
 }
 
+function parseFilter(params: Pick<URLSearchParams, 'get'>) {
+  return {
+    status: params.get('status') ? params.get('status')?.split(',') : undefined,
+    serviceId: params.get('serviceId') || undefined,
+    assignee: params.get('assignee') || undefined,
+    priority: params.get('priority') || undefined,
+    sla: params.get('sla') || undefined,
+    from: params.get('from') || undefined,
+    to: params.get('to') || undefined,
+    q: params.get('q') || undefined,
+    sort: params.get('sort') || 'createdAt',
+    dir: params.get('dir') || 'desc',
+    page: Number(params.get('page')) || 1,
+    limit: 25,
+  };
+}
+
 function ApplicationsPage() {
   const api = useApi();
   const { user } = useAuth();
@@ -59,20 +76,9 @@ function ApplicationsPage() {
   };
 
 
-  const filter = {
-      status: params.get('status') ? params.get('status')?.split(',') : undefined,
-      serviceId: params.get('serviceId') || undefined,
-      assignee: params.get('assignee') || undefined,
-      priority: params.get('priority') || undefined,
-      sla: params.get('sla') || undefined,
-      from: params.get('from') || undefined,
-      to: params.get('to') || undefined,
-      q: params.get('q') || undefined,
-      sort: params.get('sort') || 'createdAt',
-      dir: params.get('dir') || 'desc',
-      page: Number(params.get('page')) || 1,
-      limit: 25,
-    };
+  // The fetch effect keys on the query string: a parsed object is new on every render and would refetch in a loop (429s).
+  const queryString = params.toString();
+  const filter = parseFilter(params);
 
   const [data, setData] = useState<import('@biznexa/types').AdminApplicationPage | null>(null);
 
@@ -81,7 +87,8 @@ function ApplicationsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- the loading state is visible during the request
     setLoading(true);
     let cancelled = false;
-    api.call((c) => c.GET('/api/admin/applications', { params: { query: filter as unknown as Record<string, never> } }))
+    const query = parseFilter(new URLSearchParams(queryString));
+    api.call((c) => c.GET('/api/admin/applications', { params: { query: query as unknown as Record<string, never> } }))
       .then((d) => {
         if (!cancelled) {
           setData(d as unknown as import('@biznexa/types').AdminApplicationPage);
@@ -96,7 +103,7 @@ function ApplicationsPage() {
         }
       });
     return () => { cancelled = true; };
-  }, [api, filter]);
+  }, [api, queryString]);
 
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(params.toString());
@@ -210,7 +217,7 @@ function ApplicationsPage() {
                   <input
                     type="checkbox"
                     aria-label="Select all applications"
-                    onChange={e => setSelected(e.target.checked ? data?.items.map((i: import('@biznexa/types').AdminApplicationRow) => i.id) || [] : [])}
+                    onChange={e => setSelected(e.target.checked ? data?.items.map((i: import('@biznexa/types').AdminApplicationRow) => i.id) ?? [] : [])}
                     checked={selected.length > 0 && selected.length === data?.items.length}
                   />
                 </th>

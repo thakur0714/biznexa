@@ -124,5 +124,5 @@ export function generateCsvErrorReport(
     escapeCsvCell(e.field ?? ''),
     escapeCsvCell(e.message),
   ]);
-  return [headers.map(escapeCsvCell).join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+  return [headers.map((item) => escapeCsvCell(item)).join(','), ...rows.map((r) => r.join(','))].join('\r\n');
 }

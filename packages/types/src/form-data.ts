@@ -55,7 +55,7 @@ export function isEmptyValue(v: unknown): boolean {
   if (v == null) return true;
   if (typeof v === 'string') return v.trim() === '';
   if (Array.isArray(v)) return v.length === 0;
-  if (typeof v === 'object') return Object.values(v).every(isEmptyValue);
+  if (typeof v === 'object') return Object.values(v).every((item) => isEmptyValue(item));
   return false;
 }
 

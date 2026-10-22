@@ -90,7 +90,7 @@ function dateErrors(validFrom: Date | null, validUntil: Date | null): RowError[]
 /** The certification body by id or (case-insensitive) name. */
 function matchBody(rawBody: string, ctx: CsvRowContext): { body?: CertBody; errors: RowError[] } {
   if (!rawBody) return { errors: [{ field: 'certificationBody', message: 'Certification body is required' }] };
-  const body = ctx.bodyById.get(rawBody.toLowerCase()) || ctx.bodyByName.get(rawBody.trim().toLowerCase());
+  const body = ctx.bodyById.get(rawBody.toLowerCase()) ?? ctx.bodyByName.get(rawBody.trim().toLowerCase());
   if (body) return { body, errors: [] };
   return { errors: [{ field: 'certificationBody', message: `Certification body "${rawBody}" was not found. Please create it under Certification Bodies first.` }] };
 }
@@ -125,7 +125,7 @@ function validateCsvRow(row: string[], rowNumber: number, ctx: CsvRowContext): {
   const address = cell('address') || undefined;
   const validFromDate = parseCsvDate(cell('validFrom'));
   const validUntilDate = parseCsvDate(cell('validUntil'));
-  const issueDateDate = parseCsvDate(cell('issueDate')) || validFromDate || new Date();
+  const issueDateDate = parseCsvDate(cell('issueDate')) ?? validFromDate ?? new Date();
   const { body, errors: bodyErrors } = matchBody(cell('certificationBody'), ctx);
 
   const errors = [

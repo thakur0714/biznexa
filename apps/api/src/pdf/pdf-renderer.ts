@@ -115,7 +115,7 @@ function dropElements(html: string, tag: string): string {
 /** Visible text of an HTML page, one line per block, for the stub. */
 export function htmlText(html: string): string[] {
   return ['script', 'style', 'head']
-    .reduce(dropElements, html)
+    .reduce((value, tag) => dropElements(value, tag), html)
     .replaceAll(/<(br|\/p|\/div|\/tr|\/h\d|\/li)[^>]*>/gi, '\n')
     .replaceAll(/<[^<>]+>/g, ' ') // text is escaped, so a tag never holds a raw "<"
     .replaceAll('&nbsp;', ' ')

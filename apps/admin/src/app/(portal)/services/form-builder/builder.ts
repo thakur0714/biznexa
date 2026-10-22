@@ -489,7 +489,7 @@ function compactField(f: FormField): Record<string, unknown> {
   if (f.type === 'file') compactUpload(f, out);
   if (f.type === 'repeater') {
     if (f.itemLabel === 'Item') delete out.itemLabel;
-    out.fields = f.fields.map(compactField);
+    out.fields = f.fields.map((item) => compactField(item));
   }
   return out;
 }
@@ -499,5 +499,5 @@ function compactField(f: FormField): Record<string, unknown> {
  * would write. `formSchema.parse(compactForm(x))` gives `x` back.
  */
 export function compactForm(form: FormSchema): FormSchemaInput {
-  return { steps: form.steps.map((s) => ({ ...s, fields: s.fields.map(compactField) })) } as FormSchemaInput;
+  return { steps: form.steps.map((s) => ({ ...s, fields: s.fields.map((item) => compactField(item)) })) } as FormSchemaInput;
 }

@@ -61,7 +61,7 @@ describe('PlaywrightPdfRenderer (headless Chromium)', () => {
     expect(pageCount(await renderer.render('<p>Again</p>'))).toBe(1);
     // Concurrent renders share one browser.
     const many = await Promise.all([1, 2, 3].map((n) => renderer.render(`<p>Copy ${n}</p>`)));
-    expect(many.map(pageCount)).toEqual([1, 1, 1]);
+    expect(many.map((item) => pageCount(item))).toEqual([1, 1, 1]);
   });
 });
 

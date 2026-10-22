@@ -75,8 +75,8 @@ export function DocumentsView() {
       )}
 
       {groups?.map((group) => {
-        const items = filter === 'all' ? group.checklist.items : group.checklist.items.filter(isActionItem);
-        const additional = filter === 'all' ? group.checklist.additional : group.checklist.additional.filter(needsUpload);
+        const items = filter === 'all' ? group.checklist.items : group.checklist.items.filter((item) => isActionItem(item));
+        const additional = filter === 'all' ? group.checklist.additional : group.checklist.additional.filter((item) => needsUpload(item));
         return (
           <section key={group.applicationId} aria-labelledby={`application-${group.applicationId}`} className="space-y-3">
             <header className="flex flex-wrap items-end justify-between gap-2 border-b border-rule pb-3">

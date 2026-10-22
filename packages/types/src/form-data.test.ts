@@ -253,8 +253,8 @@ describe('formDataValidator: whole form', () => {
   });
 
   it('treats blank strings, empty lists and blank addresses as empty', () => {
-    expect([undefined, null, ' ', [], { line1: '', city: ' ' }].every(isEmptyValue)).toBe(true);
-    expect([0, 'a', ['x'], { city: 'Pune' }].some(isEmptyValue)).toBe(false);
+    expect([undefined, null, ' ', [], { line1: '', city: ' ' }].every((item) => isEmptyValue(item))).toBe(true);
+    expect([0, 'a', ['x'], { city: 'Pune' }].some((item) => isEmptyValue(item))).toBe(false);
   });
 });
 

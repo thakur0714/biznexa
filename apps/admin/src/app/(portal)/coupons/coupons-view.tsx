@@ -109,105 +109,7 @@ function Coupons() {
     [api, toast],
   );
 
-  const columns = useMemo(() => {
-    const col = createColumnHelper<AdminCouponRow>();
-    return [
-      col.accessor('code', {
-        header: 'Code',
-        cell: ({ row: { original: c } }) => (
-          <div>
-            <button type="button" onClick={() => setEditing(c)} className="font-mono font-semibold text-night underline-offset-2 hover:text-ink hover:underline">
-              {c.code}
-            </button>
-            <p className="text-xs text-muted">Created {formatDate(c.createdAt)}</p>
-          </div>
-        ),
-      }),
-      col.accessor((c) => discountLabel(c), {
-        id: 'discount',
-        header: 'Discount',
-        enableSorting: false,
-        cell: ({ row: { original: c } }) => (
-          <div>
-            {discountLabel(c)}
-            <p className="text-xs text-muted">
-              {c.minOrderValue ? `Min. ${formatINR(c.minOrderValue)} · ` : ''}
-              {c.services.length ? c.services.map((s) => (s.removed ? `${s.name} (removed)` : s.name)).join(', ') : 'All services'}
-            </p>
-          </div>
-        ),
-      }),
-      col.accessor((c) => c.expiresAt ?? undefined, {
-        id: 'valid',
-        header: 'Valid',
-        sortUndefined: 'last',
-        cell: ({ row: { original: c } }) => (
-          <span className="whitespace-nowrap">
-            {c.startsAt ? formatDate(c.startsAt) : 'Now'} – {c.expiresAt ? lastDay(c.expiresAt) : 'no end'}
-          </span>
-        ),
-      }),
-      col.accessor((c) => c.usage.redemptions, {
-        id: 'uses',
-        header: 'Uses',
-        meta: { className: 'text-right' },
-        cell: ({ row: { original: c } }) => (
-          <div>
-            {c.usage.redemptions}
-            {c.usageLimit != null && <span className="text-muted"> / {c.usageLimit}</span>}
-            <p className="text-xs text-muted">{c.perUserLimit == null ? 'No limit per customer' : `${c.perUserLimit} per customer`}</p>
-          </div>
-        ),
-      }),
-      col.accessor((c) => c.usage.customers, { id: 'customers', header: 'Customers', meta: { className: 'text-right' } }),
-      col.accessor((c) => c.usage.discountGiven, {
-        id: 'given',
-        header: 'Discount given',
-        meta: { className: 'text-right' },
-        cell: ({ getValue }) => formatINR(getValue()),
-      }),
-      col.accessor((c) => c.usage.lastUsedAt ?? undefined, {
-        id: 'lastUsed',
-        header: 'Last used',
-        sortUndefined: 'last',
-        cell: ({ getValue }) => {
-          const v = getValue();
-          return v ? formatDate(v) : <span className="text-muted">Never</span>;
-        },
-      }),
-      col.accessor('status', {
-        header: 'Status',
-        filterFn: 'equalsString',
-        cell: ({ getValue }) => <Badge tone={STATUS[getValue()].tone}>{STATUS[getValue()].label}</Badge>,
-      }),
-      col.display({
-        id: 'actions',
-        header: () => <span className="sr-only">Actions</span>,
-        meta: { className: 'text-right' },
-        cell: ({ row: { original: c } }) => (
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setEditing(c)} aria-label={`Edit ${c.code}`}>
-              Edit
-            </Button>
-            {c.isActive ? (
-              <Button variant="outline" size="sm" disabled={busyId === c.id} onClick={() => setPending({ kind: 'deactivate', row: c })} aria-label={`Deactivate ${c.code}`}>
-                Deactivate
-              </Button>
-            ) : (
-              <Button variant="ink" size="sm" disabled={busyId === c.id} onClick={() => setActive(c, true)} aria-label={`Activate ${c.code}`}>
-                {busyId === c.id ? 'Activating…' : 'Activate'}
-              </Button>
-            )}
-            {!c.inUse && (
-              <Button variant="ghost" size="sm" disabled={busyId === c.id} onClick={() => setPending({ kind: 'delete', row: c })} aria-label={`Delete ${c.code}`}>
-                Delete
-              </Button>
-            )}
-          </div>
-        ),
-      }),
-    ];
-  }, [busyId, setActive]);
+  const columns = useMemo(() => couponColumns(busyId, setActive, setEditing, setPending), [busyId, setActive]);
 
   const totals = useMemo(() => {
     const xs = coupons ?? [];
@@ -325,4 +227,104 @@ function Coupons() {
       />
     </div>
   );
+}
+
+function couponColumns(busyId: string | null, setActive: (row: AdminCouponRow, isActive: boolean) => Promise<void>, setEditing: (row: AdminCouponRow) => void, setPending: (p: Pending) => void) {
+  const col = createColumnHelper<AdminCouponRow>();
+  return [
+    col.accessor('code', {
+      header: 'Code',
+      cell: ({ row: { original: c } }) => (
+        <div>
+          <button type="button" onClick={() => setEditing(c)} className="font-mono font-semibold text-night underline-offset-2 hover:text-ink hover:underline">
+            {c.code}
+          </button>
+          <p className="text-xs text-muted">Created {formatDate(c.createdAt)}</p>
+        </div>
+      ),
+    }),
+    col.accessor((c) => discountLabel(c), {
+      id: 'discount',
+      header: 'Discount',
+      enableSorting: false,
+      cell: ({ row: { original: c } }) => (
+        <div>
+          {discountLabel(c)}
+          <p className="text-xs text-muted">
+            {c.minOrderValue ? `Min. ${formatINR(c.minOrderValue)} · ` : ''}
+            {c.services.length ? c.services.map((s) => (s.removed ? `${s.name} (removed)` : s.name)).join(', ') : 'All services'}
+          </p>
+        </div>
+      ),
+    }),
+    col.accessor((c) => c.expiresAt ?? undefined, {
+      id: 'valid',
+      header: 'Valid',
+      sortUndefined: 'last',
+      cell: ({ row: { original: c } }) => (
+        <span className="whitespace-nowrap">
+          {c.startsAt ? formatDate(c.startsAt) : 'Now'} – {c.expiresAt ? lastDay(c.expiresAt) : 'no end'}
+        </span>
+      ),
+    }),
+    col.accessor((c) => c.usage.redemptions, {
+      id: 'uses',
+      header: 'Uses',
+      meta: { className: 'text-right' },
+      cell: ({ row: { original: c } }) => (
+        <div>
+          {c.usage.redemptions}
+          {c.usageLimit != null && <span className="text-muted"> / {c.usageLimit}</span>}
+          <p className="text-xs text-muted">{c.perUserLimit == null ? 'No limit per customer' : `${c.perUserLimit} per customer`}</p>
+        </div>
+      ),
+    }),
+    col.accessor((c) => c.usage.customers, { id: 'customers', header: 'Customers', meta: { className: 'text-right' } }),
+    col.accessor((c) => c.usage.discountGiven, {
+      id: 'given',
+      header: 'Discount given',
+      meta: { className: 'text-right' },
+      cell: ({ getValue }) => formatINR(getValue()),
+    }),
+    col.accessor((c) => c.usage.lastUsedAt ?? undefined, {
+      id: 'lastUsed',
+      header: 'Last used',
+      sortUndefined: 'last',
+      cell: ({ getValue }) => {
+        const v = getValue();
+        return v ? formatDate(v) : <span className="text-muted">Never</span>;
+      },
+    }),
+    col.accessor('status', {
+      header: 'Status',
+      filterFn: 'equalsString',
+      cell: ({ getValue }) => <Badge tone={STATUS[getValue()].tone}>{STATUS[getValue()].label}</Badge>,
+    }),
+    col.display({
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      meta: { className: 'text-right' },
+      cell: ({ row: { original: c } }) => (
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setEditing(c)} aria-label={`Edit ${c.code}`}>
+            Edit
+          </Button>
+          {c.isActive ? (
+            <Button variant="outline" size="sm" disabled={busyId === c.id} onClick={() => setPending({ kind: 'deactivate', row: c })} aria-label={`Deactivate ${c.code}`}>
+              Deactivate
+            </Button>
+          ) : (
+            <Button variant="ink" size="sm" disabled={busyId === c.id} onClick={() => setActive(c, true)} aria-label={`Activate ${c.code}`}>
+              {busyId === c.id ? 'Activating…' : 'Activate'}
+            </Button>
+          )}
+          {!c.inUse && (
+            <Button variant="ghost" size="sm" disabled={busyId === c.id} onClick={() => setPending({ kind: 'delete', row: c })} aria-label={`Delete ${c.code}`}>
+              Delete
+            </Button>
+          )}
+        </div>
+      ),
+    }),
+  ];
 }

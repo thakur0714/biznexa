@@ -439,7 +439,7 @@ export function ApplicationDetailScreen({ route, navigation }: Readonly<Applicat
 
     // 2. Validate MIME type
     if (acceptedTypes.length > 0 && !acceptedTypes.includes(mimeType)) {
-      const validTypes = acceptedTypes.filter(isKnownFileType) as FileMimeType[];
+      const validTypes = acceptedTypes.filter((item) => isKnownFileType(item)) as FileMimeType[];
       Alert.alert('Invalid File Type', `Please upload one of: ${describeFileTypes(validTypes)}.`);
       return;
     }

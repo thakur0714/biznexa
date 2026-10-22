@@ -161,61 +161,7 @@ function PaymentsList() {
     }
   };
 
-  const columns = useMemo(() => {
-    const col = createColumnHelper<AdminPaymentRow>();
-    return [
-      col.accessor('createdAt', {
-        header: 'Created / Paid',
-        cell: ({ row: { original: p } }) => (
-          <div>
-            <p className="font-semibold text-night">{formatDate(p.createdAt)}</p>
-            <p className="text-xs text-muted">{p.paidAt ? `Paid ${formatDate(p.paidAt)}` : 'Unpaid'}</p>
-          </div>
-        ),
-      }),
-      col.accessor('orderCode', {
-        header: 'Order & App',
-        cell: ({ row: { original: p } }) => (
-          <div>
-            <p className="font-mono font-semibold text-night">{p.orderCode ?? '—'}</p>
-            <p className="font-mono text-xs text-muted">{p.applicationCode ?? '—'}</p>
-          </div>
-        ),
-      }),
-      col.accessor('customerName', {
-        header: 'Customer',
-        cell: ({ row: { original: p } }) => (
-          <div>
-            <p className="font-medium text-night">{p.customerName ?? '—'}</p>
-            <p className="text-xs text-muted">{p.customerEmail ?? '—'}</p>
-          </div>
-        ),
-      }),
-      col.accessor('amount', {
-        header: 'Amount',
-        meta: { className: 'text-right' },
-        cell: ({ getValue }) => <span className="font-semibold">{formatINR(getValue())}</span>,
-      }),
-      col.accessor('method', {
-        header: 'Method',
-        cell: ({ getValue }) => (getValue() ? <span className="uppercase text-xs font-medium">{getValue()}</span> : <span className="text-muted">—</span>),
-      }),
-      col.accessor('status', {
-        header: 'Status',
-        cell: ({ getValue }) => <Badge tone={STATUS_BADGES[getValue()]?.tone ?? 'neutral'}>{STATUS_BADGES[getValue()]?.label ?? getValue()}</Badge>,
-      }),
-      col.display({
-        id: 'actions',
-        header: () => <span className="sr-only">Actions</span>,
-        meta: { className: 'text-right' },
-        cell: ({ row: { original: p } }) => (
-          <Button variant="ghost" size="sm" onClick={() => loadPaymentDetail(p.id)} aria-label={`View payment ${p.id}`}>
-            Details
-          </Button>
-        ),
-      }),
-    ];
-  }, [loadPaymentDetail]);
+  const columns = useMemo(() => paymentColumns(loadPaymentDetail), [loadPaymentDetail]);
 
   const tabs: { key: StatusGroup; label: string }[] = [
     { key: 'all', label: 'All' },
@@ -534,4 +480,60 @@ function PaymentsList() {
       )}
     </div>
   );
+}
+
+function paymentColumns(loadPaymentDetail: (id: string) => void) {
+  const col = createColumnHelper<AdminPaymentRow>();
+  return [
+    col.accessor('createdAt', {
+      header: 'Created / Paid',
+      cell: ({ row: { original: p } }) => (
+        <div>
+          <p className="font-semibold text-night">{formatDate(p.createdAt)}</p>
+          <p className="text-xs text-muted">{p.paidAt ? `Paid ${formatDate(p.paidAt)}` : 'Unpaid'}</p>
+        </div>
+      ),
+    }),
+    col.accessor('orderCode', {
+      header: 'Order & App',
+      cell: ({ row: { original: p } }) => (
+        <div>
+          <p className="font-mono font-semibold text-night">{p.orderCode ?? '—'}</p>
+          <p className="font-mono text-xs text-muted">{p.applicationCode ?? '—'}</p>
+        </div>
+      ),
+    }),
+    col.accessor('customerName', {
+      header: 'Customer',
+      cell: ({ row: { original: p } }) => (
+        <div>
+          <p className="font-medium text-night">{p.customerName ?? '—'}</p>
+          <p className="text-xs text-muted">{p.customerEmail ?? '—'}</p>
+        </div>
+      ),
+    }),
+    col.accessor('amount', {
+      header: 'Amount',
+      meta: { className: 'text-right' },
+      cell: ({ getValue }) => <span className="font-semibold">{formatINR(getValue())}</span>,
+    }),
+    col.accessor('method', {
+      header: 'Method',
+      cell: ({ getValue }) => (getValue() ? <span className="uppercase text-xs font-medium">{getValue()}</span> : <span className="text-muted">—</span>),
+    }),
+    col.accessor('status', {
+      header: 'Status',
+      cell: ({ getValue }) => <Badge tone={STATUS_BADGES[getValue()]?.tone ?? 'neutral'}>{STATUS_BADGES[getValue()]?.label ?? getValue()}</Badge>,
+    }),
+    col.display({
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      meta: { className: 'text-right' },
+      cell: ({ row: { original: p } }) => (
+        <Button variant="ghost" size="sm" onClick={() => loadPaymentDetail(p.id)} aria-label={`View payment ${p.id}`}>
+          Details
+        </Button>
+      ),
+    }),
+  ];
 }

@@ -35,7 +35,7 @@ const ANSWERS = {
 
 describe('sensitive form answers (M12.2)', () => {
   it('treats PAN and bank account formats as sensitive, nothing else', () => {
-    expect(fields.filter(isSensitiveField).map((f) => f.name)).toEqual(['businessPan', 'accountNumber']);
+    expect(fields.filter((item) => isSensitiveField(item)).map((f) => f.name)).toEqual(['businessPan', 'accountNumber']);
   });
 
   it('encrypts sensitive answers, also inside repeater rows, and leaves the rest readable', () => {

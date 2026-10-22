@@ -61,7 +61,7 @@ const METHOD: Record<string, string> = { upi: 'UPI', card: 'Card', netbanking: '
 
 function address(a: InvoiceSeller['address']): string {
   if (!a) return '';
-  return [a.line1, a.line2, `${a.city}, ${a.state} ${a.pincode}`].filter(Boolean).map(esc).join('<br>');
+  return [a.line1, a.line2, `${a.city}, ${a.state} ${a.pincode}`].filter((item) => Boolean(item)).map((item) => esc(item)).join('<br>');
 }
 
 function stateWithCode(state: string | null): string {
@@ -116,7 +116,7 @@ function sellerHtml(s: InvoicePrint['seller'], sellerName: string): string {
     ${s.legalName && s.legalName !== s.name ? `<div>${esc(s.legalName)}</div>` : ''}
     <div class="muted">${address(s.address)}</div>
     <div>${s.gstin ? `GSTIN <strong class="mono">${esc(s.gstin)}</strong>` : '<span class="muted">Not registered under GST</span>'}</div>
-    <div class="muted">${[s.email, s.phone].filter(Boolean).map(esc).join(' · ')}</div>
+    <div class="muted">${[s.email, s.phone].filter((item) => Boolean(item)).map((item) => esc(item)).join(' · ')}</div>
   </div>`;
 }
 
@@ -127,7 +127,7 @@ function buyerHtml(b: InvoicePrint['buyer']): string {
     ${b.address ? `<div>${address(b.address)}</div>` : ''}
     <div>${b.gstin ? `GSTIN <strong class="mono">${esc(b.gstin)}</strong>` : '<span class="muted">Unregistered (no GSTIN)</span>'}</div>
     ${b.state ? `<div>State: ${stateWithCode(b.state)}</div>` : ''}
-    <div class="muted">${[b.email, b.mobile].filter(Boolean).map(esc).join(' · ')}</div>
+    <div class="muted">${[b.email, b.mobile].filter((item) => Boolean(item)).map((item) => esc(item)).join(' · ')}</div>
   </div>`;
 }
 

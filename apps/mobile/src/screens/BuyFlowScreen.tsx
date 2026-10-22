@@ -56,7 +56,7 @@ const KEYBOARD: Partial<Record<FormField['type'], React.ComponentProps<typeof Te
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const asAddress = (value: unknown): FormAddress =>
   value && typeof value === 'object' && !Array.isArray(value) ? (value as FormAddress) : { line1: '', line2: '', city: '', state: '', pincode: '' };
-const asRows = (value: unknown): Record<string, unknown>[] => (Array.isArray(value) ? value.filter(isRecord) : []);
+const asRows = (value: unknown): Record<string, unknown>[] => (Array.isArray(value) ? value.filter((item) => isRecord(item)) : []);
 const asFileIds = (value: unknown): string[] => (Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []);
 
 /** The form step saved on this device, unless the screen was opened at a given step. */

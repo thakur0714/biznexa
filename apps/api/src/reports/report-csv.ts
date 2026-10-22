@@ -21,10 +21,10 @@ export function escapeCsvCell(val: string | number | null | undefined): string {
 type Cell = string | number | null | undefined;
 
 /** One CSV line of escaped cells. */
-const row = (cells: Cell[]) => cells.map(escapeCsvCell).join(',');
+const row = (cells: Cell[]) => cells.map((item) => escapeCsvCell(item)).join(',');
 
 /** A titled block: its `--- TITLE ---` line, the column headings and one line per record. */
-const section = (title: string, header: string[], rows: Cell[][]) => [`--- ${title} ---`, row(header), ...rows.map(row)];
+const section = (title: string, header: string[], rows: Cell[][]) => [`--- ${title} ---`, row(header), ...rows.map((item) => row(item))];
 
 export function generateSalesCsv(data: ReportSalesResponse): string {
   return [

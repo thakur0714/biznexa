@@ -42,6 +42,84 @@ const PAYMENT_STATUS_BADGES: Record<string, { label: string; tone: Tone }> = {
   FAILED: { label: 'Failed', tone: 'danger' },
 };
 
+const appHelper = createColumnHelper<AdminCustomerDetail['applications'][number]>();
+const appColumns = [
+  appHelper.accessor('code', {
+    header: 'App Code',
+    cell: (info) => (
+      <Link href={`/applications/${info.row.original.id}`} className="font-medium text-ink hover:underline">
+        {info.getValue()}
+      </Link>
+    ),
+  }),
+  appHelper.accessor('serviceName', {
+    header: 'Service',
+  }),
+  appHelper.accessor('status', {
+    header: 'Status',
+    cell: (info) => {
+      const s = info.getValue();
+      const badge = APPLICATION_STATUS_BADGES[s];
+      return badge ? <Badge tone={badge.tone}>{badge.label}</Badge> : <Badge>{s}</Badge>;
+    },
+  }),
+  appHelper.accessor('createdAt', {
+    header: 'Date',
+    cell: (info) => <span className="text-muted whitespace-nowrap">{formatDate(info.getValue())}</span>,
+  }),
+];
+
+const entityHelper = createColumnHelper<AdminCustomerDetail['businessEntities'][number]>();
+const entityColumns = [
+  entityHelper.accessor('name', { header: 'Name' }),
+  entityHelper.accessor('type', { header: 'Type' }),
+];
+
+const orderHelper = createColumnHelper<AdminCustomerDetail['orders'][number]>();
+const orderColumns = [
+  orderHelper.accessor('code', { header: 'Order Code' }),
+  orderHelper.accessor('total', {
+    header: 'Total',
+    cell: (info) => formatINR(info.getValue()),
+  }),
+  orderHelper.accessor('amountPaid', {
+    header: 'Paid',
+    cell: (info) => formatINR(info.getValue()),
+  }),
+  orderHelper.accessor('status', {
+    header: 'Status',
+    cell: (info) => {
+      const s = info.getValue();
+      const badge = ORDER_STATUS_BADGES[s];
+      return badge ? <Badge tone={badge.tone}>{badge.label}</Badge> : <Badge>{s}</Badge>;
+    },
+  }),
+  orderHelper.accessor('createdAt', {
+    header: 'Date',
+    cell: (info) => <span className="text-muted whitespace-nowrap">{formatDate(info.getValue())}</span>,
+  }),
+];
+
+const paymentHelper = createColumnHelper<AdminCustomerDetail['payments'][number]>();
+const paymentColumns = [
+  paymentHelper.accessor('amount', {
+    header: 'Amount',
+    cell: (info) => formatINR(info.getValue()),
+  }),
+  paymentHelper.accessor('status', {
+    header: 'Status',
+    cell: (info) => {
+      const s = info.getValue();
+      const badge = PAYMENT_STATUS_BADGES[s];
+      return badge ? <Badge tone={badge.tone}>{badge.label}</Badge> : <Badge>{s}</Badge>;
+    },
+  }),
+  paymentHelper.accessor('createdAt', {
+    header: 'Date',
+    cell: (info) => <span className="text-muted whitespace-nowrap">{formatDate(info.getValue())}</span>,
+  }),
+];
+
 export function CustomerDetailView({ id }: Readonly<{ id: string }>) {
   const api = useApi();
   const { user } = useAuth();
@@ -111,96 +189,6 @@ export function CustomerDetailView({ id }: Readonly<{ id: string }>) {
       setIsUpdating(false);
     }
   };
-
-  const appHelper = createColumnHelper<AdminCustomerDetail['applications'][number]>();
-  const appColumns = useMemo(
-    () => [
-      appHelper.accessor('code', {
-        header: 'App Code',
-        cell: (info) => (
-          <Link href={`/applications/${info.row.original.id}`} className="font-medium text-ink hover:underline">
-            {info.getValue()}
-          </Link>
-        ),
-      }),
-      appHelper.accessor('serviceName', {
-        header: 'Service',
-      }),
-      appHelper.accessor('status', {
-        header: 'Status',
-        cell: (info) => {
-          const s = info.getValue();
-          const badge = APPLICATION_STATUS_BADGES[s];
-          return badge ? <Badge tone={badge.tone}>{badge.label}</Badge> : <Badge>{s}</Badge>;
-        },
-      }),
-      appHelper.accessor('createdAt', {
-        header: 'Date',
-        cell: (info) => <span className="text-muted whitespace-nowrap">{formatDate(info.getValue())}</span>,
-      }),
-    ],
-    [appHelper]
-  );
-
-  const entityHelper = createColumnHelper<AdminCustomerDetail['businessEntities'][number]>();
-  const entityColumns = useMemo(
-    () => [
-      entityHelper.accessor('name', { header: 'Name' }),
-      entityHelper.accessor('type', { header: 'Type' }),
-    ],
-    [entityHelper]
-  );
-
-  const orderHelper = createColumnHelper<AdminCustomerDetail['orders'][number]>();
-  const orderColumns = useMemo(
-    () => [
-      orderHelper.accessor('code', { header: 'Order Code' }),
-      orderHelper.accessor('total', {
-        header: 'Total',
-        cell: (info) => formatINR(info.getValue()),
-      }),
-      orderHelper.accessor('amountPaid', {
-        header: 'Paid',
-        cell: (info) => formatINR(info.getValue()),
-      }),
-      orderHelper.accessor('status', {
-        header: 'Status',
-        cell: (info) => {
-          const s = info.getValue();
-          const badge = ORDER_STATUS_BADGES[s];
-          return badge ? <Badge tone={badge.tone}>{badge.label}</Badge> : <Badge>{s}</Badge>;
-        },
-      }),
-      orderHelper.accessor('createdAt', {
-        header: 'Date',
-        cell: (info) => <span className="text-muted whitespace-nowrap">{formatDate(info.getValue())}</span>,
-      }),
-    ],
-    [orderHelper]
-  );
-
-  const paymentHelper = createColumnHelper<AdminCustomerDetail['payments'][number]>();
-  const paymentColumns = useMemo(
-    () => [
-      paymentHelper.accessor('amount', {
-        header: 'Amount',
-        cell: (info) => formatINR(info.getValue()),
-      }),
-      paymentHelper.accessor('status', {
-        header: 'Status',
-        cell: (info) => {
-          const s = info.getValue();
-          const badge = PAYMENT_STATUS_BADGES[s];
-          return badge ? <Badge tone={badge.tone}>{badge.label}</Badge> : <Badge>{s}</Badge>;
-        },
-      }),
-      paymentHelper.accessor('createdAt', {
-        header: 'Date',
-        cell: (info) => <span className="text-muted whitespace-nowrap">{formatDate(info.getValue())}</span>,
-      }),
-    ],
-    [paymentHelper]
-  );
 
   if (user && !canView) {
     return <NotAllowed />;

@@ -74,7 +74,7 @@ export class FilesService {
     if (!req) throw new BadRequestException('Unknown document requirement');
     const unknown = req.acceptedTypes.filter((t) => !isKnownFileType(t));
     if (unknown.length) this.logger.warn(`Requirement ${req.id} lists types the API cannot verify, ignored: ${unknown.join(', ')}`);
-    const acceptedTypes = req.acceptedTypes.filter(isKnownFileType);
+    const acceptedTypes = req.acceptedTypes.filter((item) => isKnownFileType(item));
     if (!acceptedTypes.length) throw new BadRequestException('This document does not accept uploads of any supported file type');
     return { requirementId: req.id, acceptedTypes, maxBytes: Math.min(req.maxSizeMb * MB, cap) };
   }

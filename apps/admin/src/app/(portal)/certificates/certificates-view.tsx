@@ -62,68 +62,7 @@ function CertificatesList() {
     };
   }, [api, query, status, page, reload]);
 
-  const columns = useMemo(() => {
-    const col = createColumnHelper<AdminCertificateRow>();
-    return [
-      col.accessor('certificateNumber', {
-        header: 'Certificate No.',
-        cell: ({ row: { original: c } }) => (
-          <div>
-            <Link
-              href={`/certificates/${c.id}`}
-              className="font-mono font-semibold text-night underline-offset-2 hover:text-ink hover:underline"
-            >
-              {c.certificateNumber}
-            </Link>
-            <p className="font-mono text-xs text-muted">ID: {c.verificationId}</p>
-          </div>
-        ),
-      }),
-      col.accessor('organizationName', {
-        header: 'Organisation',
-        cell: ({ row: { original: c } }) => (
-          <div>
-            <p className="font-semibold text-night">{c.organizationName}</p>
-            <p className="text-xs text-muted">{c.type}</p>
-          </div>
-        ),
-      }),
-      col.accessor((c) => c.certificationBody.name, {
-        id: 'certificationBody',
-        header: 'Certification Body',
-      }),
-      col.accessor('validUntil', {
-        header: 'Validity',
-        cell: ({ row: { original: c } }) => (
-          <span className="whitespace-nowrap text-sm">
-            {formatDate(c.validFrom)} – {formatDate(c.validUntil)}
-          </span>
-        ),
-      }),
-      col.accessor((c) => c._count.lookups, {
-        id: 'lookups',
-        header: 'Lookups',
-        meta: { className: 'text-right' },
-      }),
-      col.accessor('status', {
-        header: 'Status',
-        cell: ({ getValue }) => <Badge tone={STATUS[getValue()].tone}>{STATUS[getValue()].label}</Badge>,
-      }),
-      col.display({
-        id: 'actions',
-        header: () => <span className="sr-only">Actions</span>,
-        meta: { className: 'text-right' },
-        cell: ({ row: { original: c } }) => (
-          <Link
-            href={`/certificates/${c.id}`}
-            className="inline-flex items-center rounded-md border border-rule bg-white px-3 py-1.5 text-xs font-medium text-night hover:bg-paper"
-          >
-            View
-          </Link>
-        ),
-      }),
-    ];
-  }, []);
+  const columns = useMemo(() => certificateColumns(), []);
 
   let certificatesContent: React.ReactNode;
   if (loadError) {
@@ -235,4 +174,67 @@ function CertificatesList() {
       </div>
     </div>
   );
+}
+
+function certificateColumns() {
+  const col = createColumnHelper<AdminCertificateRow>();
+  return [
+    col.accessor('certificateNumber', {
+      header: 'Certificate No.',
+      cell: ({ row: { original: c } }) => (
+        <div>
+          <Link
+            href={`/certificates/${c.id}`}
+            className="font-mono font-semibold text-night underline-offset-2 hover:text-ink hover:underline"
+          >
+            {c.certificateNumber}
+          </Link>
+          <p className="font-mono text-xs text-muted">ID: {c.verificationId}</p>
+        </div>
+      ),
+    }),
+    col.accessor('organizationName', {
+      header: 'Organisation',
+      cell: ({ row: { original: c } }) => (
+        <div>
+          <p className="font-semibold text-night">{c.organizationName}</p>
+          <p className="text-xs text-muted">{c.type}</p>
+        </div>
+      ),
+    }),
+    col.accessor((c) => c.certificationBody.name, {
+      id: 'certificationBody',
+      header: 'Certification Body',
+    }),
+    col.accessor('validUntil', {
+      header: 'Validity',
+      cell: ({ row: { original: c } }) => (
+        <span className="whitespace-nowrap text-sm">
+          {formatDate(c.validFrom)} – {formatDate(c.validUntil)}
+        </span>
+      ),
+    }),
+    col.accessor((c) => c._count.lookups, {
+      id: 'lookups',
+      header: 'Lookups',
+      meta: { className: 'text-right' },
+    }),
+    col.accessor('status', {
+      header: 'Status',
+      cell: ({ getValue }) => <Badge tone={STATUS[getValue()].tone}>{STATUS[getValue()].label}</Badge>,
+    }),
+    col.display({
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      meta: { className: 'text-right' },
+      cell: ({ row: { original: c } }) => (
+        <Link
+          href={`/certificates/${c.id}`}
+          className="inline-flex items-center rounded-md border border-rule bg-white px-3 py-1.5 text-xs font-medium text-night hover:bg-paper"
+        >
+          View
+        </Link>
+      ),
+    }),
+  ];
 }

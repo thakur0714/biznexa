@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, type SubmitEvent } from 'react';
+import { useEffect, useState, useMemo, useRef, type SubmitEvent } from 'react';
 import {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_EVENT_VARIABLES,
@@ -75,6 +75,12 @@ function TemplateEditor() {
 
   const [selectedEvent, setSelectedEvent] = useState<string>('payment.succeeded');
   const [selectedChannel, setSelectedChannel] = useState<NotificationChannel>('EMAIL');
+  const selectedEventRef = useRef(selectedEvent);
+  const selectedChannelRef = useRef(selectedChannel);
+  useEffect(() => {
+    selectedEventRef.current = selectedEvent;
+    selectedChannelRef.current = selectedChannel;
+  }, [selectedEvent, selectedChannel]);
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -111,7 +117,7 @@ function TemplateEditor() {
           if (cancelled) return;
           const list = (res as { templates: AdminNotificationTemplate[] }).templates || [];
           setTemplates(list);
-          const current = list.find((t) => t.event === selectedEvent && t.channel === selectedChannel);
+          const current = list.find((t) => t.event === selectedEventRef.current && t.channel === selectedChannelRef.current);
           applyTemplate(current);
           setLoading(false);
           setLoadError(null);

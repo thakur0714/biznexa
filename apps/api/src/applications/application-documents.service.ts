@@ -98,7 +98,7 @@ export class ApplicationDocumentsService {
       if (query.status === 'all') return true;
       return checklist.pendingMandatory > 0 ||
         checklist.items.some((item) => item.current !== null && needsUpload(item)) ||
-        checklist.additional.some(needsUpload);
+        checklist.additional.some((item) => needsUpload(item));
     });
   }
 
@@ -273,13 +273,13 @@ export class ApplicationDocumentsService {
       const items: DocumentChecklistItem[] = appReqs
         .filter((r) => requirementApplies(r, app.packageId) || byRequirement.has(r.id))
         .map(({ packageIds: _p, ...requirement }) => {
-          const versions = (byRequirement.get(requirement.id) ?? []).map(toDocumentDto);
+          const versions = (byRequirement.get(requirement.id) ?? []).map((item) => toDocumentDto(item));
           const [current = null, ...previous] = versions;
           return { requirement, current, previous, canReplace: !current || canReplaceDocument(current.status) };
         });
 
       const additional: AdditionalDocumentItem[] = appRequests.map((r) => {
-        const [current = null, ...previous] = (byRequest.get(r.requestId!) ?? []).map(toDocumentDto);
+        const [current = null, ...previous] = (byRequest.get(r.requestId!) ?? []).map((item) => toDocumentDto(item));
         return {
           request: { id: r.requestId!, name: r.name, description: r.description, requestedAt: r.createdAt.toISOString() },
           current,
@@ -321,13 +321,13 @@ export class ApplicationDocumentsService {
       // A requirement later narrowed to other packages still shows here if something was uploaded for it.
       .filter((r) => requirementApplies(r, app.packageId) || byRequirement.has(r.id))
       .map(({ packageIds: _p, ...requirement }) => {
-        const versions = (byRequirement.get(requirement.id) ?? []).map(toDocumentDto);
+        const versions = (byRequirement.get(requirement.id) ?? []).map((item) => toDocumentDto(item));
         const [current = null, ...previous] = versions;
         return { requirement, current, previous, canReplace: !current || canReplaceDocument(current.status) };
       });
 
     const additional: AdditionalDocumentItem[] = requests.map((r) => {
-      const [current = null, ...previous] = (byRequest.get(r.requestId!) ?? []).map(toDocumentDto);
+      const [current = null, ...previous] = (byRequest.get(r.requestId!) ?? []).map((item) => toDocumentDto(item));
       return {
         request: { id: r.requestId!, name: r.name, description: r.description, requestedAt: r.createdAt.toISOString() },
         current,

@@ -120,72 +120,7 @@ export function DocumentsView() {
     };
   }, [api, page, reload]);
 
-  const columns = [
-    {
-      header: 'Document Name',
-      accessorKey: 'name',
-      cell: (info: DocumentCellInfo) => info.row.original.name,
-    },
-    {
-      header: 'Application',
-      accessorKey: 'application',
-      cell: (info: DocumentCellInfo) => (
-        <Link href={`/applications/${info.row.original.application.id}`} className="text-sky-600 hover:underline">
-          {info.row.original.application.code}
-        </Link>
-      ),
-    },
-    {
-      header: 'Customer',
-      accessorKey: 'customer',
-      cell: (info: DocumentCellInfo) => (
-        <div>
-          <div>{info.row.original.application.customer?.name ?? '—'}</div>
-          {info.row.original.application.customer?.email && (
-            <div className="text-xs text-muted">{info.row.original.application.customer.email}</div>
-          )}
-        </div>
-      ),
-    },
-    {
-      header: 'File Info',
-      accessorKey: 'fileInfo',
-      cell: (info: DocumentCellInfo) => (
-        <div>
-          <div>{info.row.original.fileName ?? '—'}</div>
-          {info.row.original.sizeBytes != null && (
-            <div className="text-xs text-muted">
-              {(info.row.original.sizeBytes / 1024).toFixed(1)} KB
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      header: 'Uploaded Time (IST)',
-      accessorKey: 'uploadedAt',
-      cell: (info: DocumentCellInfo) => (info.row.original.uploadedAt ? formatDate(info.row.original.uploadedAt) : '—'),
-    },
-    {
-      header: 'Actions',
-      accessorKey: 'actions',
-      cell: (info: DocumentCellInfo) => (
-        <div className="flex gap-2 flex-wrap items-center">
-          {info.row.original.fileId && (
-            <Button variant="outline" size="sm" onClick={() => handlePreview(info.row.original)}>
-              Preview
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={() => handleApprove(info.row.original.id)} disabled={isSubmitting}>
-            Approve
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setRejectDialog(info.row.original.id)} disabled={isSubmitting}>
-            Reject
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  const columns = documentColumns({ isSubmitting, onPreview: handlePreview, onApprove: handleApprove, onReject: setRejectDialog });
 
   let previewContent: React.ReactNode;
   if (previewFile?.type?.startsWith('image/')) {
@@ -314,4 +249,80 @@ export function DocumentsView() {
       </Dialog>
     </div>
   );
+}
+
+type DocumentActions = Readonly<{
+  isSubmitting: boolean;
+  onPreview: (doc: DocumentItem) => void;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+}>;
+
+function documentColumns({ isSubmitting, onPreview, onApprove, onReject }: DocumentActions) {
+  return [
+  {
+    header: 'Document Name',
+    accessorKey: 'name',
+    cell: (info: DocumentCellInfo) => info.row.original.name,
+  },
+  {
+    header: 'Application',
+    accessorKey: 'application',
+    cell: (info: DocumentCellInfo) => (
+      <Link href={`/applications/${info.row.original.application.id}`} className="text-sky-600 hover:underline">
+        {info.row.original.application.code}
+      </Link>
+    ),
+  },
+  {
+    header: 'Customer',
+    accessorKey: 'customer',
+    cell: (info: DocumentCellInfo) => (
+      <div>
+        <div>{info.row.original.application.customer?.name ?? '—'}</div>
+        {info.row.original.application.customer?.email && (
+          <div className="text-xs text-muted">{info.row.original.application.customer.email}</div>
+        )}
+      </div>
+    ),
+  },
+  {
+    header: 'File Info',
+    accessorKey: 'fileInfo',
+    cell: (info: DocumentCellInfo) => (
+      <div>
+        <div>{info.row.original.fileName ?? '—'}</div>
+        {info.row.original.sizeBytes != null && (
+          <div className="text-xs text-muted">
+            {(info.row.original.sizeBytes / 1024).toFixed(1)} KB
+          </div>
+        )}
+      </div>
+    ),
+  },
+  {
+    header: 'Uploaded Time (IST)',
+    accessorKey: 'uploadedAt',
+    cell: (info: DocumentCellInfo) => (info.row.original.uploadedAt ? formatDate(info.row.original.uploadedAt) : '—'),
+  },
+  {
+    header: 'Actions',
+    accessorKey: 'actions',
+    cell: (info: DocumentCellInfo) => (
+      <div className="flex gap-2 flex-wrap items-center">
+        {info.row.original.fileId && (
+          <Button variant="outline" size="sm" onClick={() => onPreview(info.row.original)}>
+            Preview
+          </Button>
+        )}
+        <Button variant="outline" size="sm" onClick={() => onApprove(info.row.original.id)} disabled={isSubmitting}>
+          Approve
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => onReject(info.row.original.id)} disabled={isSubmitting}>
+          Reject
+        </Button>
+      </div>
+    ),
+  },
+  ];
 }

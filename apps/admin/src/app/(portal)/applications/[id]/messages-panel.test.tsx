@@ -58,7 +58,7 @@ const fakeClient = {
     const body = options?.body instanceof FormData ? undefined : options?.body;
     const nextMsg: Message = messageSchema.parse({
       ...createdMessage,
-      body: body?.body !== undefined ? body.body : createdMessage.body,
+      body: body?.body ?? createdMessage.body,
       attachments: body?.fileIds ? [{ id: body.fileIds[0], fileName: 'attached.pdf', mimeType: 'application/pdf', sizeBytes: 1024 }] : [],
     });
     return {
@@ -200,7 +200,7 @@ describe('MessagesPanel (M4.11)', () => {
 
     await waitFor(() => {
       expect(calls.some(c => c.url === '/api/files' && c.method === 'POST')).toBe(true);
-      expect(calls.some(hasAttachedFile)).toBe(true);
+      expect(calls.some((item) => hasAttachedFile(item))).toBe(true);
     });
 
     await screen.findByText('attached.pdf');

@@ -45,7 +45,7 @@ export class NotificationDeliveriesService {
         take: filter.limit,
       }),
     ]);
-    return { items: rows.map(toItem), total, page: filter.page, limit: filter.limit, pages: Math.ceil(total / filter.limit) };
+    return { items: rows.map((item) => toItem(item)), total, page: filter.page, limit: filter.limit, pages: Math.ceil(total / filter.limit) };
   }
 
   async get(id: string): Promise<NotificationDelivery> {
