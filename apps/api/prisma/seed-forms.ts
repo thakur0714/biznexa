@@ -64,7 +64,7 @@ export async function seedForms(prisma: PrismaClient, { forms = SERVICE_FORMS, g
     const form = formSchema.parse(forms[s.slug] ?? generic);
     const wanted = canonical(form);
 
-    const outcome = await prisma.$transaction(async (tx) => {
+    const outcome = await prisma.$transaction(async (tx) => { // NOSONAR: services are seeded in order
       // Same lock as FormSchemasService, so a seed never races an admin's save.
       await tx.$queryRaw`SELECT id FROM "Service" WHERE id = ${s.id} FOR UPDATE`;
       const last = await tx.serviceFormSchema.findFirst({ where: { serviceId: s.id }, orderBy: { version: 'desc' }, select: { version: true } });

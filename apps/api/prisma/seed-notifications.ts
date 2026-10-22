@@ -1,5 +1,5 @@
 import type { PrismaClient, NotificationChannel } from '../src/generated/prisma/client';
-import { NOTIFICATION_EVENTS, type NotificationEvent } from '@biznexa/types';
+import type { NotificationEvent } from '@biznexa/types';
 
 export interface SeedTemplate {
   event: NotificationEvent;
@@ -746,7 +746,7 @@ export const SEED_NOTIFICATION_TEMPLATES: SeedTemplate[] = [
 
 export async function seedNotificationTemplates(prisma: PrismaClient): Promise<{ count: number }> {
   for (const t of SEED_NOTIFICATION_TEMPLATES) {
-    await prisma.notificationTemplate.upsert({
+    await prisma.notificationTemplate.upsert({ // NOSONAR: seed writes run in order
       where: {
         event_channel: {
           event: t.event,

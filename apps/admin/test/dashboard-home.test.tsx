@@ -146,7 +146,7 @@ describe('Admin Dashboard Home Page (M10.2)', () => {
     });
   });
 
-  it('hides reports KPI cards for staff without reports.view permission', async () => {
+  it('hides reports KPI cards for staff without reports.view permission', () => {
     mockUserPermissions = ['admin.access'];
     render(<DashboardPage />);
 

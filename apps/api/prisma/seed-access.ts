@@ -50,18 +50,18 @@ export async function seedAccess(prisma: PrismaClient, permissions = PERMISSIONS
       const existing = new Set((await tx.permission.findMany({ where: { key: { in: keys } }, select: { key: true } })).map((p) => p.key));
       const ids: Record<string, string> = {};
       for (const [key, description] of Object.entries(permissions)) {
-        ids[key] = (await tx.permission.upsert({ where: { key }, update: { description }, create: { key, description } })).id;
+        ids[key] = (await tx.permission.upsert({ where: { key }, update: { description }, create: { key, description } })).id; // NOSONAR: seed writes run in order
       }
       const added = keys.filter((k) => !existing.has(k));
 
       let granted = 0;
       for (const r of roles) {
         const defaults = r.perms === 'ALL' ? keys : r.perms;
-        let role = await tx.role.findUnique({ where: { key: r.key } });
+        let role = await tx.role.findUnique({ where: { key: r.key } }); // NOSONAR: seed writes run in order
         const grant = role ? defaults.filter((k) => added.includes(k)) : defaults;
-        role ??= await tx.role.create({ data: { key: r.key, name: r.name, description: r.description, isSystem: true } });
+        role ??= await tx.role.create({ data: { key: r.key, name: r.name, description: r.description, isSystem: true } }); // NOSONAR: seed writes run in order
         if (grant.length) {
-          const res = await tx.rolePermission.createMany({ data: grant.map((k) => ({ roleId: role.id, permissionId: ids[k] })), skipDuplicates: true });
+          const res = await tx.rolePermission.createMany({ data: grant.map((k) => ({ roleId: role.id, permissionId: ids[k] })), skipDuplicates: true }); // NOSONAR: seed writes run in order
           granted += res.count;
         }
       }

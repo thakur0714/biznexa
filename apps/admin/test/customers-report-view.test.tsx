@@ -108,7 +108,7 @@ describe('Admin Customers Report View (M10.4)', () => {
     });
   });
 
-  it('displays access denied when staff lacks reports.view permission', async () => {
+  it('displays access denied when staff lacks reports.view permission', () => {
     mockUserPermissions = ['admin.access'];
     render(<CustomersReportView />);
 

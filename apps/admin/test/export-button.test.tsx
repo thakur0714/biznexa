@@ -24,14 +24,14 @@ describe('ExportButton component', () => {
   });
 
   it('triggers export queue job and polls link', async () => {
-    mockPost.mockImplementation(async (path: string) => {
+    mockPost.mockImplementation((path: string) => {
       if (path === '/api/admin/reports/export') {
-        return { id: 'exp-123' };
+        return Promise.resolve({ id: 'exp-123' });
       }
       if (path === '/api/admin/reports/export/{id}/link') {
-        return { url: '/api/admin/reports/export/exp-123/download?e=123&s=abc' };
+        return Promise.resolve({ url: '/api/admin/reports/export/exp-123/download?e=123&s=abc' });
       }
-      return {};
+      return Promise.resolve({});
     });
 
     const assignMock = vi.fn();
