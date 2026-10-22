@@ -125,7 +125,7 @@ export class CatalogueService implements OnModuleInit {
       },
       include: cardInclude,
     });
-    let cards = rows.map(toCard);
+    let cards = rows.map((item) => toCard(item));
 
     if (q.q) {
       const ids = new Set(rank(cards.map((c) => ({ ...c, extra: `${c.category.name} ${c.shortDescription}` })), q.q, 500).map((c) => c.id));
@@ -160,7 +160,7 @@ export class CatalogueService implements OnModuleInit {
       const ids = value.popularServiceIds.filter((id): id is string => typeof id === 'string');
       const selected = await this.prisma.service.findMany({ where: { ...activeService, isActive: true, id: { in: ids } }, include: cardInclude });
       const byId = new Map(selected.map((s) => [s.id, s]));
-      return ids.map((id) => byId.get(id)).filter((s): s is CardRow => Boolean(s)).slice(0, limit).map(toCard);
+      return ids.map((id) => byId.get(id)).filter((s): s is CardRow => Boolean(s)).slice(0, limit).map((item) => toCard(item));
     }
     const rows = await this.prisma.service.findMany({
       where: { ...activeService, isPopular: true },
@@ -168,7 +168,7 @@ export class CatalogueService implements OnModuleInit {
       take: limit,
       include: cardInclude,
     });
-    return rows.map(toCard);
+    return rows.map((item) => toCard(item));
   }
 
   serviceDetail(slug: string) {
@@ -208,7 +208,7 @@ export class CatalogueService implements OnModuleInit {
         // Tax total is the same for CGST+SGST and IGST; the split is decided at checkout from the buyer's state.
         price: calculatePrice({ professionalFee: p.professionalFee, governmentFee: p.governmentFee, gstRate: p.gstRate }),
       })),
-      related: related.map((r) => r.to).filter((r) => r.isActive && !r.deletedAt).map(toCard),
+      related: related.map((r) => r.to).filter((r) => r.isActive && !r.deletedAt).map((item) => toCard(item)),
     };
   }
 
@@ -224,7 +224,7 @@ export class CatalogueService implements OnModuleInit {
       ]);
       this.searchCache = {
         at: Date.now(),
-        services: rows.map(toCard).map((c) => ({ ...c, type: 'service' as const, extra: `${c.category.name} ${c.subcategory?.name ?? ''} ${c.shortDescription}` })),
+        services: rows.map((item) => toCard(item)).map((c) => ({ ...c, type: 'service' as const, extra: `${c.category.name} ${c.subcategory?.name ?? ''} ${c.shortDescription}` })),
         posts: posts.map((post) => ({ id: post.id, name: post.title, slug: post.slug, excerpt: post.excerpt, type: 'post' as const, popularity: 0, extra: `${post.excerpt ?? ''} ${post.tags.map((tag) => tag.name).join(' ')} ${post.categories.map(({ category }) => category.name).join(' ')}` })),
       };
     }

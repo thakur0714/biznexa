@@ -112,7 +112,7 @@ export class BookingsService {
 
   async list(customerId: string): Promise<BookingList> {
     const rows = await this.prisma.booking.findMany({ where: { customerId }, orderBy: [{ startAt: 'desc' }, { id: 'asc' }], take: 100, select: bookingViewSelect });
-    return { items: rows.map(toBookingView) };
+    return { items: rows.map((item) => toBookingView(item)) };
   }
 
   /** The customer's own booking; anyone else's looks missing (404). */

@@ -20,7 +20,7 @@ export function requirementApplies(req: { packageIds: readonly string[] }, packa
 }
 
 /** Only the file types the API can verify by content (a requirement may list others; they are ignored on upload). */
-export const requirementFileTypes = (acceptedTypes: readonly string[]): FileMimeType[] => acceptedTypes.filter(isKnownFileType);
+export const requirementFileTypes = (acceptedTypes: readonly string[]): FileMimeType[] => acceptedTypes.filter((item) => isKnownFileType(item));
 
 export const applicationDocumentSchema = z.object({
   id: z.string().uuid(),
@@ -123,4 +123,4 @@ export function needsUpload(item: Pick<DocumentChecklistItem | AdditionalDocumen
 export const pendingMandatoryCount = (
   items: { requirement: Pick<DocumentChecklistItem['requirement'], 'isMandatory'>; current: DocumentChecklistItem['current'] }[],
   additional: Pick<AdditionalDocumentItem, 'current'>[] = [],
-): number => items.filter((i) => i.requirement.isMandatory && needsUpload(i)).length + additional.filter(needsUpload).length;
+): number => items.filter((i) => i.requirement.isMandatory && needsUpload(i)).length + additional.filter((item) => needsUpload(item)).length;

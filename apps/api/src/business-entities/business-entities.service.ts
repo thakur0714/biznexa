@@ -23,7 +23,7 @@ export class BusinessEntitiesService {
 
   async list(ownerId: string): Promise<BusinessEntityList> {
     const rows = await this.prisma.businessEntity.findMany({ where: { ownerId, deletedAt: null }, orderBy: { createdAt: 'asc' } });
-    return { items: rows.map(toDto) };
+    return { items: rows.map((item) => toDto(item)) };
   }
 
   async get(ownerId: string, id: string): Promise<BusinessEntity> {

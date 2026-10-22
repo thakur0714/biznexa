@@ -112,7 +112,7 @@ export function splitAmount(total: number, weights: number[]): number[] {
   const sum = weights.reduce((a, w) => a + w, 0);
   if (sum <= 0 || total <= 0) return weights.map(() => 0);
   const exact = weights.map((w) => (total * w) / sum);
-  const parts = exact.map(Math.floor);
+  const parts = exact.map((item) => Math.floor(item));
   let left = total - parts.reduce((a, p) => a + p, 0);
   const order = exact.map((e, i) => ({ i, r: e - Math.floor(e) })).sort((x, y) => y.r - x.r || x.i - y.i);
   for (const { i } of order) {

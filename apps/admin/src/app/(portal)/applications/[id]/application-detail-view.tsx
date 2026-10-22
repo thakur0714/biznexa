@@ -121,7 +121,7 @@ export function ApplicationDetailView({ id }: Readonly<{ id: string }>) {
         </div>
       </div>
 
-      <StatusForm id={id} current={data.status as import('@biznexa/types').ApplicationStatus} stages={data.stages || []} />
+      <StatusForm id={id} current={data.status as import('@biznexa/types').ApplicationStatus} stages={data.stages ?? []} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <section className="p-4 bg-white border border-rule rounded-md space-y-2">

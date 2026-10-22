@@ -154,7 +154,7 @@ export class AdminPaymentsService {
       customerEmail: p.order?.customer.email ?? null,
       customerMobile: p.order?.customer.mobile ?? null,
       refundable: REFUNDABLE_PAYMENT_STATUSES.includes(p.status) ? refundableAmount(p.amount, p.refunds) : 0,
-      refunds: p.refunds.map(toRefundView),
+      refunds: p.refunds.map((item) => toRefundView(item)),
       invoice: p.invoice
         ? {
             id: p.invoice.id,
@@ -223,6 +223,6 @@ export class AdminPaymentsService {
       escapeCsvCell(p.invoice?.number ?? ''),
     ]);
 
-    return [headers.map(escapeCsvCell).join(','), ...rows.map((r) => r.join(','))].join('\n');
+    return [headers.map((item) => escapeCsvCell(item)).join(','), ...rows.map((r) => r.join(','))].join('\n');
   }
 }

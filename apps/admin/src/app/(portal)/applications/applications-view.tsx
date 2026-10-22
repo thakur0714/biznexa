@@ -217,7 +217,7 @@ function ApplicationsPage() {
                   <input
                     type="checkbox"
                     aria-label="Select all applications"
-                    onChange={e => setSelected(e.target.checked ? data?.items.map((i: import('@biznexa/types').AdminApplicationRow) => i.id) || [] : [])}
+                    onChange={e => setSelected(e.target.checked ? data?.items.map((i: import('@biznexa/types').AdminApplicationRow) => i.id) ?? [] : [])}
                     checked={selected.length > 0 && selected.length === data?.items.length}
                   />
                 </th>

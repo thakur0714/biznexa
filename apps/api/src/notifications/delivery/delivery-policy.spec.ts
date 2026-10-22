@@ -53,8 +53,8 @@ describe('deliveryIdempotencyKey', () => {
 
 describe('permanent failures', () => {
   it('4xx except 408 / 429 is permanent', () => {
-    expect([400, 401, 403, 404, 422].every(isPermanentHttpStatus)).toBe(true);
-    expect([408, 429, 500, 502, 503, 200].some(isPermanentHttpStatus)).toBe(false);
+    expect([400, 401, 403, 404, 422].every((item) => isPermanentHttpStatus(item))).toBe(true);
+    expect([408, 429, 500, 502, 503, 200].some((item) => isPermanentHttpStatus(item))).toBe(false);
   });
 
   it('provider refusals and template errors are permanent; anything else is not', () => {

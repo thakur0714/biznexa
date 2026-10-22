@@ -22,7 +22,7 @@ function toSchema(schema: ZodType): JsonSchema {
 /** Merge `allOf` of objects (from `.and()`) into one object schema. */
 function flattenObject(json: JsonSchema): { properties: Record<string, JsonSchema>; required: string[] } {
   if (json.allOf) {
-    const parts = (json.allOf as JsonSchema[]).map(flattenObject);
+    const parts = (json.allOf as JsonSchema[]).map((item) => flattenObject(item));
     return { properties: Object.assign({}, ...parts.map((p) => p.properties)), required: parts.flatMap((p) => p.required) };
   }
   return { properties: json.properties ?? {}, required: json.required ?? [] };

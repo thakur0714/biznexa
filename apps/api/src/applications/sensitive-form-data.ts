@@ -31,7 +31,7 @@ export function sealFormData(form: FormSchema, data: Record<string, unknown>): R
     for (const f of step.fields) {
       if (!(f.name in out)) continue;
       if (f.type === 'repeater') {
-        const sub = f.fields.filter(isSensitiveField);
+        const sub = f.fields.filter((item) => isSensitiveField(item));
         if (!sub.length || !Array.isArray(out[f.name])) continue;
         out[f.name] = (out[f.name] as unknown[]).map((row) => {
           if (typeof row !== 'object' || row === null) return row;
@@ -60,7 +60,7 @@ export function openFormData(data: unknown, reveal: boolean): Record<string, unk
       const plain = decryptField(v[SEALED]);
       return reveal ? plain : maskSensitive(plain);
     }
-    if (Array.isArray(v)) return v.map(walk);
+    if (Array.isArray(v)) return v.map((item) => walk(item));
     if (typeof v === 'object' && v !== null) return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
     return v;
   };

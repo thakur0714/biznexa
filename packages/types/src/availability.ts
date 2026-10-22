@@ -151,10 +151,10 @@ function slotsForDate(date: string, rules: AvailabilityRules, sessionMinutes: nu
   const toRange = (w: { startTime: string; endTime: string }): Range => [timeToMinutes(w.startTime), timeToMinutes(w.endTime)];
   const sameDay = rules.exceptions.filter((e) => e.date === date);
   const windows = merge([
-    ...rules.weekly.filter((w) => w.weekday === weekday).map(toRange),
-    ...sameDay.filter((e) => !e.isBlocked).map(toRange),
+    ...rules.weekly.filter((w) => w.weekday === weekday).map((item) => toRange(item)),
+    ...sameDay.filter((e) => !e.isBlocked).map((item) => toRange(item)),
   ]);
-  const blocked = sameDay.filter((e) => e.isBlocked).map(toRange);
+  const blocked = sameDay.filter((e) => e.isBlocked).map((item) => toRange(item));
   const slots: GeneratedSlot[] = [];
 
   for (const [winStart, winEnd] of windows) {

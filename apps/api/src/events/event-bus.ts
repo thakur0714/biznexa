@@ -51,7 +51,7 @@ export class EventBus {
         return Promise.reject(err instanceof Error ? err : new Error(String(err)));
       }
     };
-    const results = await Promise.allSettled(targets.map(run));
+    const results = await Promise.allSettled(targets.map((item) => run(item)));
     for (const r of results) {
       if (r.status === 'rejected') {
         const err = r.reason instanceof Error ? r.reason : new Error(String(r.reason));
