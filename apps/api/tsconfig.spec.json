@@ -1,4 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "isolatedModules": true }
+  // Jest runs CommonJS only: keep `import()` (used by the generated Prisma client) compiled to require().
+  "compilerOptions": { "isolatedModules": true, "module": "commonjs", "moduleResolution": "node" }
 }
