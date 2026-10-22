@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Field, Notice, Select } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
@@ -16,6 +16,23 @@ export function ApplicationsView() {
   if (!canSee(item, user.permissions)) return <NotAllowed />;
 
   return <ApplicationsPage />;
+}
+
+function parseFilter(params: Pick<URLSearchParams, 'get'>) {
+  return {
+    status: params.get('status') ? params.get('status')?.split(',') : undefined,
+    serviceId: params.get('serviceId') || undefined,
+    assignee: params.get('assignee') || undefined,
+    priority: params.get('priority') || undefined,
+    sla: params.get('sla') || undefined,
+    from: params.get('from') || undefined,
+    to: params.get('to') || undefined,
+    q: params.get('q') || undefined,
+    sort: params.get('sort') || 'createdAt',
+    dir: params.get('dir') || 'desc',
+    page: Number(params.get('page')) || 1,
+    limit: 25,
+  };
 }
 
 function ApplicationsPage() {
@@ -59,22 +76,9 @@ function ApplicationsPage() {
   };
 
 
-  // Keep one filter object per search-param snapshot for the fetch effect.
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- effect depends on the parsed filter identity
-  const filter = useMemo(() => ({
-      status: params.get('status') ? params.get('status')?.split(',') : undefined,
-      serviceId: params.get('serviceId') || undefined,
-      assignee: params.get('assignee') || undefined,
-      priority: params.get('priority') || undefined,
-      sla: params.get('sla') || undefined,
-      from: params.get('from') || undefined,
-      to: params.get('to') || undefined,
-      q: params.get('q') || undefined,
-      sort: params.get('sort') || 'createdAt',
-      dir: params.get('dir') || 'desc',
-      page: Number(params.get('page')) || 1,
-      limit: 25,
-    }), [params]);
+  // The fetch effect keys on the query string: a parsed object is new on every render and would refetch in a loop (429s).
+  const queryString = params.toString();
+  const filter = parseFilter(params);
 
   const [data, setData] = useState<import('@biznexa/types').AdminApplicationPage | null>(null);
 
@@ -83,7 +87,8 @@ function ApplicationsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- the loading state is visible during the request
     setLoading(true);
     let cancelled = false;
-    api.call((c) => c.GET('/api/admin/applications', { params: { query: filter as unknown as Record<string, never> } }))
+    const query = parseFilter(new URLSearchParams(queryString));
+    api.call((c) => c.GET('/api/admin/applications', { params: { query: query as unknown as Record<string, never> } }))
       .then((d) => {
         if (!cancelled) {
           setData(d as unknown as import('@biznexa/types').AdminApplicationPage);
@@ -98,7 +103,7 @@ function ApplicationsPage() {
         }
       });
     return () => { cancelled = true; };
-  }, [api, filter]);
+  }, [api, queryString]);
 
   const updateFilter = (key: string, value: string) => {
     const next = new URLSearchParams(params.toString());
