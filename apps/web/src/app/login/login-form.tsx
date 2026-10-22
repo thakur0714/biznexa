@@ -80,7 +80,7 @@ export function LoginForm() {
   let formContent: React.ReactNode;
   if (method === 'password') {
     formContent = (
-      <form onSubmit={passwordLogin} noValidate className="space-y-4">
+      <form key="password" onSubmit={passwordLogin} noValidate className="space-y-4">
         <Field id="email" name="email" type="email" label="Email" autoComplete="email" required error={error?.fieldError('email')} />
         <Field id="password" name="password" type="password" label="Password" autoComplete="current-password" required error={error?.fieldError('password')} />
         <div className="text-right text-sm">
@@ -100,7 +100,7 @@ export function LoginForm() {
     );
   } else {
     formContent = (
-      <form onSubmit={requestOtp} noValidate className="space-y-4">
+      <form key="otp" onSubmit={requestOtp} noValidate className="space-y-4">
         <Field
           id="mobile"
           label="Mobile number"

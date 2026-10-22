@@ -26,6 +26,7 @@ export function configureApp(app: NestExpressApplication) {
     const requestId = randomUUID();
     const started = Date.now();
     res.setHeader('X-Request-Id', requestId);
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     // One line per request; not in tests, where it would print thousands of lines.
     if (cfg.NODE_ENV !== 'test') res.on('finish', () => {
       process.stdout.write(`${JSON.stringify({ timestamp: new Date().toISOString(), level: 'info', message: 'http_request', requestId, method: req.method, path: redactString(req.path), statusCode: res.statusCode, durationMs: Date.now() - started })}\n`);

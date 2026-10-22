@@ -1,9 +1,6 @@
 import type { MetadataRoute } from 'next';
 
+/** Search engines are kept out of the whole site for now (no sitemap either). */
 export default function robots(): MetadataRoute.Robots {
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
-  return {
-    rules: [{ userAgent: '*', allow: '/', disallow: ['/dashboard', '/apply', '/login', '/register', '/forgot-password', '/api/'] }],
-    sitemap: `${site}/sitemap.xml`,
-  };
+  return { rules: [{ userAgent: '*', disallow: '/' }] };
 }
