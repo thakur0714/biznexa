@@ -63,7 +63,7 @@ describe('LeadsView', () => {
     });
   });
 
-  it('shows NotAllowed for unauthorized users', async () => {
+  it('shows NotAllowed for unauthorized users', () => {
     vi.mocked(auth.useAuth).mockReturnValue({ user: { permissions: [] } } as unknown as any);
 
     render(

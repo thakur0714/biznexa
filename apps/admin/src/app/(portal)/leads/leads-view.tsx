@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { formatDate, type LeadListResponse, type LeadQuery } from '@biznexa/types';
 import { Button, EmptyState, Field, Notice, Select } from '@biznexa/ui';
@@ -50,12 +50,12 @@ export function LeadsView() {
         if (from) {
           // A bare YYYY-MM-DD parses as UTC midnight; add a time so it means local midnight.
           const fromDate = new Date(`${from}T00:00:00`);
-          if (!isNaN(fromDate.getTime())) queryParams.from = fromDate.toISOString();
+          if (!Number.isNaN(fromDate.getTime())) queryParams.from = fromDate.toISOString();
         }
         if (to) {
           const toDate = new Date(`${to}T00:00:00`);
           toDate.setHours(23, 59, 59, 999);
-          if (!isNaN(toDate.getTime())) queryParams.to = toDate.toISOString();
+          if (!Number.isNaN(toDate.getTime())) queryParams.to = toDate.toISOString();
         }
 
         const res = await api.call<LeadListResponse>((c) => c.GET('/api/admin/leads', { params: { query: queryParams } }));
@@ -65,7 +65,7 @@ export function LeadsView() {
         if (!cancel) setLoadError((err as Error).message || 'Failed to load leads');
       }
     }
-    load();
+    void load();
     return () => { cancel = true; };
   }, [api, canView, query, source, from, to, page, reload]);
 
@@ -133,11 +133,101 @@ export function LeadsView() {
     if (params.has('source')) setSource((params.get('source') as LeadQuery['source']) ?? 'ALL');
     if (params.has('from')) setFrom(params.get('from') || '');
     if (params.has('to')) setTo(params.get('to') || '');
-    if (params.has('page')) setPage(parseInt(params.get('page') || '1', 10));
+    if (params.has('page')) setPage(Number.parseInt(params.get('page') || '1', 10));
   }, []);
 
   if (user && !canView) {
     return <NotAllowed />;
+  }
+
+  let content: ReactNode;
+  if (loadError) {
+    content = (
+      <div className="space-y-3">
+        <Notice tone="error">{loadError}</Notice>
+        <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
+          Try again
+        </Button>
+      </div>
+    );
+  } else if (!data) {
+    content = (
+      <p className="text-muted" role="status">
+        Loading enquiries…
+      </p>
+    );
+  } else if (data.items.length === 0) {
+    content = (
+      <EmptyState
+        title="No enquiries found"
+        description="No enquiries match the selected filters or search query."
+        action={
+          (query || source !== 'ALL' || from || to) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setQuery('');
+                setSource('ALL');
+                setFrom('');
+                setTo('');
+                setPage(1);
+              }}
+            >
+              Clear filters
+            </Button>
+          )
+        }
+      />
+    );
+  } else {
+    content = (
+      <div>
+        <DataTable
+          caption="Enquiries"
+          data={data.items}
+          columns={columns}
+          getRowId={(p) => p.id}
+          minWidth={360} // responsive table logic typically lives in DataTable; we'll provide an arbitrary min width
+          empty={
+            <EmptyState
+              title="No enquiries match"
+              description="Try adjusting your filters or search query."
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setQuery('');
+                    setSource('ALL');
+                    setFrom('');
+                    setTo('');
+                    setPage(1);
+                  }}
+                >
+                  Clear filters
+                </Button>
+              }
+            />
+          }
+        />
+        {data.total > limit && (
+          <div className="mt-4 flex items-center justify-between border-t border-rule pt-4 text-sm">
+            <p className="text-muted">
+              Showing {(page - 1) * limit + 1}–{Math.min(page * limit, data.total)} of {data.total} enquiries
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                Previous
+              </Button>
+              <Button variant="outline" size="sm" disabled={page * limit >= data.total} onClick={() => setPage((p) => p + 1)}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -199,86 +289,7 @@ export function LeadsView() {
       </div>
 
       <div className="mt-4">
-        {loadError ? (
-          <div className="space-y-3">
-            <Notice tone="error">{loadError}</Notice>
-            <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>
-              Try again
-            </Button>
-          </div>
-        ) : !data ? (
-          <p className="text-muted" role="status">
-            Loading enquiries…
-          </p>
-        ) : data.items.length === 0 ? (
-          <EmptyState
-            title="No enquiries found"
-            description="No enquiries match the selected filters or search query."
-            action={
-              (query || source !== 'ALL' || from || to) && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setQuery('');
-                    setSource('ALL');
-                    setFrom('');
-                    setTo('');
-                    setPage(1);
-                  }}
-                >
-                  Clear filters
-                </Button>
-              )
-            }
-          />
-        ) : (
-          <div>
-            <DataTable
-              caption="Enquiries"
-              data={data.items}
-              columns={columns}
-              getRowId={(p) => p.id}
-              minWidth={360} // responsive table logic typically lives in DataTable; we'll provide an arbitrary min width
-              empty={
-                <EmptyState
-                  title="No enquiries match"
-                  description="Try adjusting your filters or search query."
-                  action={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setQuery('');
-                        setSource('ALL');
-                        setFrom('');
-                        setTo('');
-                        setPage(1);
-                      }}
-                    >
-                      Clear filters
-                    </Button>
-                  }
-                />
-              }
-            />
-            {data.total > limit && (
-              <div className="mt-4 flex items-center justify-between border-t border-rule pt-4 text-sm">
-                <p className="text-muted">
-                  Showing {(page - 1) * limit + 1}–{Math.min(page * limit, data.total)} of {data.total} enquiries
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                    Previous
-                  </Button>
-                  <Button variant="outline" size="sm" disabled={page * limit >= data.total} onClick={() => setPage((p) => p + 1)}>
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {content}
       </div>
     </div>
   );

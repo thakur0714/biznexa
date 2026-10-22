@@ -182,7 +182,11 @@ const windowShape = {
 };
 /** Minutes, or NaN for a malformed time (its own field already reports that). */
 const safeMinutes = (time: string | undefined) => (time !== undefined && TIME.test(time) ? timeToMinutes(time) : Number.NaN);
-const endAfterStart = (w: { startTime: string; endTime: string }) => !(safeMinutes(w.endTime) <= safeMinutes(w.startTime));
+const endAfterStart = (w: { startTime: string; endTime: string }) => {
+  const start = safeMinutes(w.startTime);
+  const end = safeMinutes(w.endTime);
+  return Number.isNaN(start) || Number.isNaN(end) || end > start;
+};
 const END_AFTER_START = { message: 'End time must be after the start time', path: ['endTime'] };
 
 export const weeklyWindowSchema = z

@@ -52,7 +52,6 @@ export const messageSchema = z.object({
   readAt: z.string().datetime().nullable(),
 });
 export type Message = z.infer<typeof messageSchema>;
-export type ApplicationMessage = Message;
 
 export const messageListQuery = z.object({
   page: z.coerce.number().int().min(1).max(10_000).default(1),
@@ -70,7 +69,6 @@ export const messageThreadPageSchema = z.object({
 });
 export const messagePageSchema = messageThreadPageSchema;
 export type MessageThreadPage = z.infer<typeof messageThreadPageSchema>;
-export type MessagePage = MessageThreadPage;
 
 export const messageUnreadCountSchema = z.object({
   count: z.number().int().min(0),

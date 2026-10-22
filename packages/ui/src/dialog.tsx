@@ -49,7 +49,7 @@ export function Dialog({
     );
     if (focusables.length === 0) return;
     const first = focusables[0]!;
-    const last = focusables[focusables.length - 1]!;
+    const last = focusables.at(-1)!;
     const active = document.activeElement as HTMLElement | null;
     if (e.shiftKey) {
       if (!active || !el.contains(active) || active === first) {

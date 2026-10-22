@@ -10,11 +10,11 @@ const config: NextConfig = {
   transpilePackages: ['@biznexa/types', '@biznexa/ui', '@biznexa/api-client', '@biznexa/rich-text'],
   poweredByHeader: false,
   // Browser calls go to /api on the same origin, so the refresh-token cookie stays first-party.
-  async rewrites() {
-    return [{ source: '/api/:path*', destination: `${API_URL}/api/:path*` }];
+  rewrites() {
+    return Promise.resolve([{ source: '/api/:path*', destination: `${API_URL}/api/:path*` }]);
   },
-  async headers() {
-    return [
+  headers() {
+    return Promise.resolve([
       {
         source: '/:path*',
         headers: [
@@ -25,7 +25,7 @@ const config: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
         ],
       },
-    ];
+    ]);
   },
 };
 
