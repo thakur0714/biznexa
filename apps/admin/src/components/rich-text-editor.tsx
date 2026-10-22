@@ -234,7 +234,7 @@ function Toolbar({
       tabIndex={i === index ? 0 : -1}
       aria-label={t.label}
       title={t.label}
-      aria-pressed={t.active === undefined ? undefined : t.active}
+      aria-pressed={t.active}
       // aria-disabled, not disabled: the button stays focusable, so the toolbar never drops out of the tab order.
       aria-disabled={disabled || t.enabled === false || undefined}
       onFocus={() => setCurrent(i)}
@@ -249,7 +249,7 @@ function Toolbar({
 
   return (
     <div ref={toolbarRef} role="toolbar" aria-label={`${label} formatting`} aria-controls={editorId} onKeyDown={onKeyDown} className="border-b border-rule p-1">
-      <div className="flex flex-wrap gap-0.5">{tools.map(button)}</div>
+      <div className="flex flex-wrap gap-0.5">{tools.map((t, i) => button(t, i))}</div>
       {tableTools.length > 0 && (
         <div className="mt-1 flex flex-wrap gap-0.5 border-t border-rule pt-1" aria-label="Table">
           {tableTools.map((t, i) => button(t, tools.length + i))}

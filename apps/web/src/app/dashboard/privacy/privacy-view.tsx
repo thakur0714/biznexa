@@ -79,13 +79,13 @@ export function PrivacyView() {
   if (loadError && !data) return <Notice tone="error">{loadError}</Notice>;
   if (!data) return <div className="py-10 text-center text-sm text-muted">Loading…</div>;
 
-  const openExport = data.items.find((r) => r.type === 'EXPORT' && isOpen(r));
+  const openExport = data.items.some((r) => r.type === 'EXPORT' && isOpen(r));
   const ready = data.items.find((r) => r.type === 'EXPORT' && r.downloadable);
   let exportButtonLabel = 'Download my data';
   if (ready) exportButtonLabel = 'Prepare a new copy';
   if (exporting) exportButtonLabel = 'Requesting…';
   if (openExport) exportButtonLabel = 'Preparing your file…';
-  const openDeletion = data.items.find((r) => r.type === 'DELETION' && isOpen(r));
+  const openDeletion = data.items.some((r) => r.type === 'DELETION' && isOpen(r));
 
   return (
     <div className="space-y-6">

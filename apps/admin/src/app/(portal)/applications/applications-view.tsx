@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Field, Notice, Select } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
@@ -59,7 +59,9 @@ function ApplicationsPage() {
   };
 
 
-  const filter = {
+  // Keep one filter object per search-param snapshot for the fetch effect.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- effect depends on the parsed filter identity
+  const filter = useMemo(() => ({
       status: params.get('status') ? params.get('status')?.split(',') : undefined,
       serviceId: params.get('serviceId') || undefined,
       assignee: params.get('assignee') || undefined,
@@ -72,7 +74,7 @@ function ApplicationsPage() {
       dir: params.get('dir') || 'desc',
       page: Number(params.get('page')) || 1,
       limit: 25,
-    };
+    }), [params]);
 
   const [data, setData] = useState<import('@biznexa/types').AdminApplicationPage | null>(null);
 

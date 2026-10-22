@@ -54,7 +54,10 @@ export default async function BlogPostPage({ params }: Readonly<{ params: Promis
         <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight sm:text-5xl">{post.title}</h1>
         {post.excerpt && <p className="mt-5 text-xl leading-8 text-muted">{post.excerpt}</p>}
         <p className="mt-5 text-sm text-muted">{post.authorName && <>{post.authorName} · </>}<time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time></p>
-        {post.featuredImage && <img src={post.featuredImage} alt="" className="mt-8 max-h-[520px] w-full rounded-xl object-cover" />}
+        {post.featuredImage && (
+          // eslint-disable-next-line @next/next/no-img-element -- CMS/upload image, unknown host and size
+          <img src={post.featuredImage} alt="" className="mt-8 max-h-[520px] w-full rounded-xl object-cover" />
+        )}
         <RichText html={post.content} className="mt-10" />
         {post.tags.length > 0 && <nav aria-label="Article tags" className="mt-10 flex flex-wrap gap-2">{post.tags.map((tag) => <Link key={tag.id} href={`/blog/tag/${tag.slug}`} className="rounded-full border border-rule px-3 py-1.5 text-sm hover:border-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink">{tag.name}</Link>)}</nav>}
       </Container>

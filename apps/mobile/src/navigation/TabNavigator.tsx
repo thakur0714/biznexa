@@ -18,27 +18,21 @@ export type RootTabParamList = {
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
+function TabIcon({ routeName, focused, color, size }: Readonly<{ routeName: keyof RootTabParamList; focused: boolean; color: string; size: number }>) {
+  let iconName: keyof typeof Ionicons.glyphMap = 'help-circle-outline';
+  if (routeName === 'Home') iconName = focused ? 'home' : 'home-outline';
+  else if (routeName === 'ServicesBrowse') iconName = focused ? 'grid' : 'grid-outline';
+  else if (routeName === 'MyServices') iconName = focused ? 'briefcase' : 'briefcase-outline';
+  else if (routeName === 'Certificates') iconName = focused ? 'ribbon' : 'ribbon-outline';
+  else if (routeName === 'Account') iconName = focused ? 'person' : 'person-outline';
+  return <Ionicons name={iconName} size={size} color={color} />;
+}
+
 export function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'help-circle-outline';
-
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'ServicesBrowse') {
-            iconName = focused ? 'grid' : 'grid-outline';
-          } else if (route.name === 'MyServices') {
-            iconName = focused ? 'briefcase' : 'briefcase-outline';
-          } else if (route.name === 'Certificates') {
-            iconName = focused ? 'ribbon' : 'ribbon-outline';
-          } else if (route.name === 'Account') {
-            iconName = focused ? 'person' : 'person-outline';
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
+        tabBarIcon: ({ focused, color, size }) => <TabIcon routeName={route.name} focused={focused} color={color} size={size} />,
         tabBarActiveTintColor: colors.ink,
         tabBarInactiveTintColor: colors.muted,
         tabBarStyle: {

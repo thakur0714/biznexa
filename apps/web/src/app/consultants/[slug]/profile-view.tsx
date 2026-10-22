@@ -35,7 +35,10 @@ export function ConsultantProfileView({ profile, slots }: Readonly<{ profile: Pu
         <main className="min-w-0 space-y-6">
           <section className="rounded-xl border border-rule bg-white p-5 sm:p-7">
             <div className="flex flex-col gap-5 min-[420px]:flex-row">
-              {profile.photoUrl ? <img src={profile.photoUrl} alt={profile.name} className="h-24 w-24 shrink-0 rounded-full object-cover" /> : <div aria-hidden="true" className="grid h-24 w-24 shrink-0 place-items-center rounded-full bg-paper text-2xl font-bold">{profile.name.split(/\s+/).map((s) => s[0]).slice(0, 2).join('').toUpperCase()}</div>}
+              {profile.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- CMS/upload image, unknown host and size
+                <img src={profile.photoUrl} alt={profile.name} className="h-24 w-24 shrink-0 rounded-full object-cover" />
+              ) : <div aria-hidden="true" className="grid h-24 w-24 shrink-0 place-items-center rounded-full bg-paper text-2xl font-bold">{profile.name.split(/\s+/).map((s) => s[0]).slice(0, 2).join('').toUpperCase()}</div>}
               <div className="min-w-0"><h1 className="break-words text-3xl font-bold tracking-tight">{profile.name}</h1><p className="mt-1 text-lg text-muted">{profile.qualification} · {categoryName(profile.category)}</p><p className="mt-2 text-muted">{profile.area ? `${profile.area}, ` : ''}{profile.city}, {profile.state}</p><p className="mt-2 text-sm text-muted">{profile.experienceYears} years of experience · {profile.languages.join(', ')}</p></div>
             </div>
             {profile.bio && <p className="mt-6 whitespace-pre-line leading-relaxed">{profile.bio}</p>}

@@ -58,15 +58,9 @@ function CertificateImportForm() {
     setPreviewResult(null);
     setSuccessCount(null);
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const content = evt.target?.result as string;
-      setCsvContent(content);
-    };
-    reader.onerror = () => {
+    file.text().then(setCsvContent).catch(() => {
       setErrorNotice('Failed to read the selected file. Please try again.');
-    };
-    reader.readAsText(file);
+    });
   };
 
   const handleValidate = async () => {
@@ -248,7 +242,7 @@ function CertificateImportForm() {
               />
             </svg>
             <p className="mt-2 text-sm font-medium text-night">
-              {fileName ? fileName : 'Click to select or drag and drop your CSV file'}
+              {fileName || 'Click to select or drag and drop your CSV file'}
             </p>
             <p className="mt-1 text-xs text-muted">
               {fileSize ? `${(fileSize / 1024).toFixed(1)} KB` : 'CSV spreadsheet up to 5 MB'}

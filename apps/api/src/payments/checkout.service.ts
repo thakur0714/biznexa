@@ -268,8 +268,7 @@ const describe = (lines: { description: string }[], plan: PaymentPlan) => {
 };
 
 /** Before anything is paid the plan is FULL or ADVANCE; there is no balance yet. */
-function firstPaymentPlan(requested: PaymentPlan | undefined): 'FULL' | 'ADVANCE' {
-  const plan = requested ?? 'FULL';
+function firstPaymentPlan(plan: PaymentPlan = 'FULL'): 'FULL' | 'ADVANCE' {
   if (plan === 'BALANCE') throw new ConflictException('Nothing has been paid for this order yet, so there is no balance to pay.');
   return plan;
 }
