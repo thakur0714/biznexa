@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Input, Card } from '../components/common';
 import {
   mobileSchema,
@@ -27,6 +28,7 @@ interface AuthModalScreenProps {
 type AuthMode = 'otp' | 'password' | 'register';
 
 export function AuthModalScreen({ navigation }: Readonly<AuthModalScreenProps>) {
+  const insets = useSafeAreaInsets();
   const { loginWithPassword, requestOtp, verifyOtp, loginWithGoogle, register } = useAuth();
   const [mode, setMode] = useState<AuthMode>('otp');
 
@@ -62,7 +64,8 @@ export function AuthModalScreen({ navigation }: Readonly<AuthModalScreenProps>) 
     try {
       const res = await requestOtp(mobile, 'LOGIN');
       setOtpSent(true);
-      setSuccessMsg(res.message || 'OTP sent successfully');
+      // The API only returns devCode outside production with the console SMS provider.
+      setSuccessMsg(res.devCode ? `Development mode: your code is ${res.devCode}` : res.message || 'OTP sent successfully');
     } catch (err: unknown) {
       setError((err as Error).message || 'Failed to send OTP');
     } finally {
@@ -158,7 +161,7 @@ export function AuthModalScreen({ navigation }: Readonly<AuthModalScreenProps>) 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.xl }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator, type BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import type { RouteProp } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ServicesBrowseScreen } from '../screens/ServicesBrowseScreen';
@@ -29,7 +30,7 @@ function TabIcon({ routeName, focused, color, size }: Readonly<{ routeName: keyo
   return <Ionicons name={iconName} size={size} color={color} />;
 }
 
-function screenOptions({ route }: Readonly<{ route: RouteProp<RootTabParamList> }>): BottomTabNavigationOptions {
+function screenOptions(route: RouteProp<RootTabParamList>, bottomInset: number): BottomTabNavigationOptions {
   return {
     tabBarIcon: ({ focused, color, size }) => <TabIcon routeName={route.name} focused={focused} color={color} size={size} />,
     tabBarActiveTintColor: colors.ink,
@@ -37,8 +38,8 @@ function screenOptions({ route }: Readonly<{ route: RouteProp<RootTabParamList> 
     tabBarStyle: {
       backgroundColor: colors.white,
       borderTopColor: colors.rule,
-      height: 60,
-      paddingBottom: 8,
+      height: 60 + bottomInset,
+      paddingBottom: 8 + bottomInset,
       paddingTop: 6,
     },
     tabBarLabelStyle: {
@@ -50,9 +51,11 @@ function screenOptions({ route }: Readonly<{ route: RouteProp<RootTabParamList> 
 }
 
 export function TabNavigator() {
+  // Gesture/3-button nav bars sit under the tab bar on edge-to-edge Android, so grow it by the bottom inset.
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
-      screenOptions={screenOptions}
+      screenOptions={({ route }) => screenOptions(route, insets.bottom)}
     >
       <Tab.Screen
         name="Home"

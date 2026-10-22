@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../auth/auth-context';
 import { colors, spacing } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, Badge } from '../components/common';
 
 interface AccountScreenProps {
@@ -20,6 +21,7 @@ interface AccountScreenProps {
 }
 
 export function AccountScreen({ navigation }: Readonly<AccountScreenProps>) {
+  const insets = useSafeAreaInsets();
   const { user, logout, isBiometricsEnabled, toggleBiometrics } = useAuth();
 
   const handleBiometricsToggle = async (val: boolean) => {
@@ -41,7 +43,7 @@ export function AccountScreen({ navigation }: Readonly<AccountScreenProps>) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
+      <View style={[styles.header, { marginTop: insets.top }]}>
         <Text style={styles.headerTitle}>Account & Settings</Text>
       </View>
 

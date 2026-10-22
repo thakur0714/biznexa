@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Sentry from '@sentry/react-native';
 import appConfig from './app.json';
@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from './src/auth/auth-context';
 import { RootNavigator, type RootStackParamList } from './src/navigation/RootNavigator';
 import { notificationDestination, notificationLink } from './src/navigation/notification-routing';
 import { isVersionBelow } from './src/api/version';
+import { SplashLoader } from './src/components/SplashLoader';
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';
 Sentry.init({
@@ -46,9 +47,15 @@ const linking: LinkingOptions<RootStackParamList> = {
 let pendingDestination: ReturnType<typeof notificationDestination> | null = null;
 
 function VersionGate({ children }: Readonly<{ children: React.ReactNode }>): React.ReactNode {
-  const { api } = useAuth();
+  const { api, isLoading } = useAuth();
   const [minimum, setMinimum] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  // Keep the loader up briefly so it doesn't flash when the check answers instantly.
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(true), 900);
+    return () => clearTimeout(timer);
+  }, []);
   useEffect(() => {
     let alive = true;
     // Give up after 5 s and open the app. React Native 0.76 has no AbortSignal.timeout, so use a timer.
@@ -59,7 +66,7 @@ function VersionGate({ children }: Readonly<{ children: React.ReactNode }>): Rea
     }).catch(() => undefined).finally(() => { clearTimeout(timer); if (alive) setChecked(true); });
     return () => { alive = false; clearTimeout(timer); controller.abort(); };
   }, [api]);
-  if (!checked) return <View style={gateStyles.center}><ActivityIndicator /><Text style={gateStyles.message}>Checking for updates…</Text></View>;
+  if (!checked || isLoading || !settled) return <SplashLoader />;
   if (minimum && isVersionBelow(appConfig.expo.version, minimum)) return <View style={gateStyles.center}>
     <Text style={gateStyles.title}>Update required</Text>
     <Text style={gateStyles.message}>BizNexa {minimum} or later is required. Install the latest version from your tester distribution, then reopen the app.</Text>

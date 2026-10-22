@@ -5,12 +5,14 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
+    "android": "expo run:android",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "ios": "expo run:ios"
   },
   "dependencies": {
+    "@babel/runtime": "^7.29.10",
     "@biznexa/api-client": "workspace:*",
     "@biznexa/config": "workspace:*",
     "@biznexa/types": "workspace:*",
@@ -25,9 +27,11 @@
     "expo-document-picker": "~13.0.3",
     "expo-image-picker": "~16.0.6",
     "expo-local-authentication": "~15.0.2",
+    "expo-modules-autolinking": "2.0.8",
     "expo-notifications": "~0.29.14",
     "expo-secure-store": "~14.0.1",
     "expo-status-bar": "~2.0.1",
+    "expo-system-ui": "~4.0.9",
     "react": "18.3.1",
     "react-native": "0.76.7",
     "react-native-razorpay": "^2.3.1",

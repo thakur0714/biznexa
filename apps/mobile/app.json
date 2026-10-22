@@ -6,14 +6,19 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "plugins": ["expo-notifications"],
+    "plugins": [
+      "expo-notifications"
+    ],
     "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
       "backgroundColor": "#1f2b7a"
     },
     "android": {
       "package": "com.biznexa.app",
       "versionCode": 1,
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1f2b7a"
       },
       "permissions": [
@@ -27,6 +32,11 @@
       "distribution": "internal-testers-only",
       "noIos": true,
       "noStore": true
-    }
+    },
+    "experiments": {
+      "tsconfigPaths": false
+    },
+    "icon": "./assets/icon.png",
+    "backgroundColor": "#1f2b7a"
   }
 }

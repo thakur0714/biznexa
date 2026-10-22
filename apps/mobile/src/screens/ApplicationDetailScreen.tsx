@@ -36,6 +36,7 @@ import {
 } from '@biznexa/types';
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';
 import { resolveApiUrl } from '../api/client';
 import { uploadMobileFile } from '../api/upload';
@@ -122,6 +123,7 @@ interface UploadTarget {
   isAdditional: boolean;
 }
 export function ApplicationDetailScreen({ route, navigation }: Readonly<ApplicationDetailScreenProps>) {
+  const insets = useSafeAreaInsets();
   const { applicationId, initialTab = 'timeline' } = route.params;
   const { api, token } = useAuth();
 
@@ -545,7 +547,7 @@ export function ApplicationDetailScreen({ route, navigation }: Readonly<Applicat
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Header Summary */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.night} />

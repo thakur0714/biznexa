@@ -38,7 +38,7 @@ export interface AuthContextValue {
 }
 
 type OtpPurpose = 'LOGIN' | 'VERIFY_MOBILE' | 'RESET_PASSWORD';
-type OtpRequestResult = { message: string; resendAfterSec?: number };
+type OtpRequestResult = { message: string; resendAfterSec?: number; devCode?: string };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -210,7 +210,7 @@ export function AuthProvider({ children, baseUrl }: Readonly<{ children: React.R
       throw new MobileApiError(response.status, err.message ?? 'Failed to send OTP');
     }
 
-    return data as { message: string; resendAfterSec?: number };
+    return data as OtpRequestResult;
   }, [api]);
 
   const verifyOtp = useCallback(async (mobile: string, code: string, purpose: 'LOGIN' | 'VERIFY_MOBILE' | 'RESET_PASSWORD' = 'LOGIN') => {

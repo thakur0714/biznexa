@@ -9,8 +9,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useIsFocused } from '@react-navigation/native';
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card, Badge } from '../components/common';
 import type { ServiceCard, CategorySummary } from '@biznexa/api-client';
 
@@ -24,6 +27,8 @@ interface HomeScreenProps {
 }
 
 export function HomeScreen({ navigation }: Readonly<HomeScreenProps>) {
+  const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const { api, user } = useAuth();
   const [popularServices, setPopularServices] = useState<PopularService[]>([]);
   const [categories, setCategories] = useState<CategorySummary[]>([]);
@@ -98,7 +103,8 @@ export function HomeScreen({ navigation }: Readonly<HomeScreenProps>) {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.ink]} />}
     >
       {/* Brand Header */}
-      <View style={styles.header}>
+      {isFocused && <StatusBar style="light" />}
+      <View style={[styles.header, { paddingTop: insets.top + spacing.lg }]}>
         <View style={styles.headerBrand}>
           <Text style={styles.headerLogo}>BizNexa</Text>
           <Badge label="Verified Portal" variant="seal" />

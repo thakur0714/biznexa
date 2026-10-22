@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/common';
 
 interface QrScannerScreenProps {
@@ -18,6 +19,7 @@ interface QrScannerScreenProps {
 }
 
 export function QrScannerScreen({ navigation, route }: Readonly<QrScannerScreenProps>) {
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
 
@@ -98,7 +100,7 @@ export function QrScannerScreen({ navigation, route }: Readonly<QrScannerScreenP
       />
 
       {/* Top Header Overlay */}
-      <View style={styles.topOverlay}>
+      <View style={[styles.topOverlay, { top: insets.top + spacing.md }]}>
         <TouchableOpacity
           style={styles.closeButton}
           onPress={() => navigation.goBack()}
