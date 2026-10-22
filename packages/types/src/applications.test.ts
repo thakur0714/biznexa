@@ -109,7 +109,7 @@ describe('prefillAnswers (M3.9)', () => {
   });
 
   it('gives a ready-made form answers that autosave accepts', () => {
-    const f = SERVICE_FORMS['gst-registration'];
+    const f = formSchema.parse(SERVICE_FORMS['gst-registration']);
     const values = prefillAnswers(f, { business, user });
     expect(Object.keys(values).length).toBeGreaterThan(3);
     expect(formDataValidator(f, { partial: true }).safeParse(values).success).toBe(true);

@@ -34,6 +34,10 @@ function certificateCounts(certs: CustomerCertificateRow[] | null) {
   };
 }
 
+/** A KPI card that doubles as a filter: its own colours when selected. */
+const kpiClass = (active: boolean, activeClass: string) =>
+  `rounded-lg border p-4 text-left transition ${active ? activeClass : 'border-rule bg-white hover:bg-paper/50'}`;
+
 export function CustomerCertificatesView() {
   const api = useApi();
   const [certs, setCerts] = useState<CustomerCertificateRow[] | null>(null);
@@ -220,9 +224,7 @@ export function CustomerCertificatesView() {
         <button
           type="button"
           onClick={() => setStatusFilter('ALL')}
-          className={`rounded-lg border p-4 text-left transition ${
-            statusFilter === 'ALL' ? 'border-ink bg-paper ring-1 ring-ink' : 'border-rule bg-white hover:bg-paper/50'
-          }`}
+          className={kpiClass(statusFilter === 'ALL', 'border-ink bg-paper ring-1 ring-ink')}
         >
           <p className="text-xs font-medium text-muted uppercase tracking-wider">Total</p>
           <p className="mt-1 text-2xl font-bold text-night">{counts.total}</p>
@@ -231,11 +233,7 @@ export function CustomerCertificatesView() {
         <button
           type="button"
           onClick={() => setStatusFilter('ACTIVE')}
-          className={`rounded-lg border p-4 text-left transition ${
-            statusFilter === 'ACTIVE'
-              ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
-              : 'border-rule bg-white hover:bg-paper/50'
-          }`}
+          className={kpiClass(statusFilter === 'ACTIVE', 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500')}
         >
           <p className="text-xs font-medium text-emerald-700 uppercase tracking-wider">Active</p>
           <p className="mt-1 text-2xl font-bold text-emerald-800">{counts.active}</p>
@@ -244,11 +242,7 @@ export function CustomerCertificatesView() {
         <button
           type="button"
           onClick={() => setStatusFilter('EXPIRING')}
-          className={`rounded-lg border p-4 text-left transition ${
-            statusFilter === 'EXPIRING'
-              ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-500'
-              : 'border-rule bg-white hover:bg-paper/50'
-          }`}
+          className={kpiClass(statusFilter === 'EXPIRING', 'border-amber-500 bg-amber-50 ring-1 ring-amber-500')}
         >
           <p className="text-xs font-medium text-amber-700 uppercase tracking-wider">Expiring Soon</p>
           <p className="mt-1 text-2xl font-bold text-amber-800">{counts.expiring}</p>
@@ -257,11 +251,7 @@ export function CustomerCertificatesView() {
         <button
           type="button"
           onClick={() => setStatusFilter('EXPIRED')}
-          className={`rounded-lg border p-4 text-left transition ${
-            statusFilter === 'EXPIRED'
-              ? 'border-slate-500 bg-slate-50 ring-1 ring-slate-500'
-              : 'border-rule bg-white hover:bg-paper/50'
-          }`}
+          className={kpiClass(statusFilter === 'EXPIRED', 'border-slate-500 bg-slate-50 ring-1 ring-slate-500')}
         >
           <p className="text-xs font-medium text-muted uppercase tracking-wider">Expired</p>
           <p className="mt-1 text-2xl font-bold text-muted">{counts.expired}</p>

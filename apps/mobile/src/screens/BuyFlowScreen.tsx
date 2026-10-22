@@ -28,6 +28,7 @@ import {
   type DocumentChecklist,
   type FormAddress,
   type FormData,
+  type FileMimeType,
   type FormField,
   type PaymentPlan,
 } from '@biznexa/types';
@@ -46,6 +47,38 @@ type Choice = { kind: 'saved'; id: string } | { kind: 'new' } | { kind: 'none' }
 type Asset = { uri: string; name: string; mimeType: string; size?: number };
 const emptyBusiness: BusinessEntityInput = { legalName: '', entityType: 'PRIVATE_LIMITED', pan: '', gstin: '', cin: '', address: null, state: null };
 const stepKey = (id: string) => `bn_apply_step:${id}`;
+
+const KEYBOARD: Partial<Record<FormField['type'], React.ComponentProps<typeof TextInput>['keyboardType']>> = {
+  number: 'decimal-pad',
+  email: 'email-address',
+  tel: 'phone-pad',
+};
+const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const asAddress = (value: unknown): FormAddress =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as FormAddress) : { line1: '', line2: '', city: '', state: '', pincode: '' };
+const asRows = (value: unknown): Record<string, unknown>[] => (Array.isArray(value) ? value.filter(isRecord) : []);
+const asFileIds = (value: unknown): string[] => (Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []);
+
+/** The form step saved on this device, unless the screen was opened at a given step. */
+function savedFormIndex(initialStep: Route['initialStep'], saved: string | null): number | null {
+  if (initialStep != null || !saved) return null;
+  const restored = Number(saved);
+  return Number.isInteger(restored) && restored >= 0 ? restored : null;
+}
+
+/** Alerts and returns false when a picked file's type or size doesn't fit the requirement. */
+function assetFits(mimeType: string, size: number | null | undefined, maxSizeMb: number, accepted: readonly FileMimeType[]): boolean {
+  if (!isKnownFileType(mimeType) || !accepted.includes(mimeType)) { Alert.alert('File type not accepted', `Accepted: ${accepted.join(', ')}`); return false; }
+  if (size != null && size > maxSizeMb * 1024 * 1024) { Alert.alert('File too large', `Maximum size is ${maxSizeMb} MB.`); return false; }
+  return true;
+}
+
+const FLOW_TITLE: Record<BuyFlowStep, string> = {
+  form: 'Your details',
+  documents: 'Upload documents',
+  payment: 'Secure payment',
+  complete: 'Application submitted',
+};
 
 type FieldProps = { field: FormField; value: unknown; error?: string; scope: Record<string, unknown>; onChange: (v: unknown) => void };
 function Field({ field, value, error, scope, onChange }: Readonly<FieldProps>) {
@@ -67,22 +100,19 @@ function Field({ field, value, error, scope, onChange }: Readonly<FieldProps>) {
     })}{errorText}</View>;
   }
   if (field.type === 'address') {
-    const address: FormAddress = value && typeof value === 'object' && !Array.isArray(value) ? value as FormAddress : { line1: '', line2: '', city: '', state: '', pincode: '' };
+    const address = asAddress(value);
     return <View style={styles.field}>{label}{(['line1', 'line2', 'city', 'state', 'pincode'] as const).map((part) => <View key={part}>{<TextInput style={styles.input} placeholder={{ line1: 'Address line 1', line2: 'Address line 2', city: 'City', state: 'State', pincode: 'PIN code' }[part]} value={address[part] ?? ''} onChangeText={(text) => onChange({ ...address, [part]: text })} />}{part === 'state' ? OPTION_SOURCES.states.map((state) => <TouchableOpacity key={state} style={styles.choice} onPress={() => onChange({ ...address, state })}><Text style={styles.body}>{address.state === state ? '☑' : '○'}  {state}</Text></TouchableOpacity>) : null}</View>)}{help}{errorText}</View>;
   }
   if (field.type === 'repeater') {
-    const rows = Array.isArray(value) ? value.filter((row): row is Record<string, unknown> => !!row && typeof row === 'object' && !Array.isArray(row)) : [];
+    const rows = asRows(value);
     return <View style={styles.field}>{label}{help}{rows.map((row, index) => <Card key={`${field.name}-${index}`} style={styles.rowCard}><Text style={styles.help}>{field.itemLabel} {index + 1}</Text>{field.fields.map((sub) => <Field key={sub.name} field={sub} value={row[sub.name]} scope={{ ...scope, ...row }} onChange={(v) => onChange(rows.map((item, i) => i === index ? { ...item, [sub.name]: v } : item))} />)}<Button title="Remove" variant="ghost" onPress={() => onChange(rows.filter((_, i) => i !== index))} /></Card>)}<Button title={`Add ${field.itemLabel.toLowerCase()}`} variant="secondary" onPress={() => onChange([...rows, {}])} disabled={field.maxItems !== undefined && rows.length >= field.maxItems} />{errorText}</View>; // NOSONAR: repeater rows have no id and are edited in place; a content key would remount a row on every keystroke
   }
   if (field.type === 'file') {
-    const fileIds = Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+    const fileIds = asFileIds(value);
     return <View style={styles.field}>{label}{help}<Text style={styles.help}>{fileIds.length} file(s) uploaded (max {field.maxSizeMb} MB each)</Text><Button title="Choose a file" variant="secondary" onPress={() => onPickFormFile(field, fileIds, onChange)} disabled={fileIds.length >= field.maxFiles} />{errorText}</View>;
   }
   const isLong = field.type === 'textarea';
-  let keyboardType: React.ComponentProps<typeof TextInput>['keyboardType'] = 'default';
-  if (field.type === 'number') keyboardType = 'decimal-pad';
-  else if (field.type === 'email') keyboardType = 'email-address';
-  else if (field.type === 'tel') keyboardType = 'phone-pad';
+  const keyboardType = KEYBOARD[field.type] ?? 'default';
   const placeholder = 'placeholder' in field ? field.placeholder : undefined;
   const inputValue = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
   const autoCapitalize = field.type === 'email' ? 'none' : 'sentences';
@@ -145,11 +175,8 @@ export function BuyFlowScreen({ route, navigation }: Readonly<Props>) {
       const checklistResult = await api.GET('/api/applications/{id}/documents', { params: { path: { id: incomingId } } });
       setChecklist(documentChecklistSchema.parse(checklistResult.data));
       if (initialStep === 'payment') setFlowStep('payment');
-      const saved = await AsyncStorage.getItem(stepKey(incomingId));
-      if (initialStep == null && saved) {
-        const restored = Number(saved);
-        if (Number.isInteger(restored) && restored >= 0) setFormIndex(restored);
-      }
+      const restored = savedFormIndex(initialStep, await AsyncStorage.getItem(stepKey(incomingId)));
+      if (restored !== null) setFormIndex(restored);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load the application. Check your connection and try again.');
     } finally { setLoading(false); }
@@ -236,16 +263,14 @@ export function BuyFlowScreen({ route, navigation }: Readonly<Props>) {
       if (result.canceled) return null;
       const asset = result.assets[0];
       const mimeType = asset.mimeType ?? 'image/jpeg';
-      if (!isKnownFileType(mimeType) || !accepted.includes(mimeType)) { Alert.alert('File type not accepted', `Accepted: ${accepted.join(', ')}`); return null; }
-      if (asset.fileSize != null && asset.fileSize > requirement.maxSizeMb * 1024 * 1024) { Alert.alert('File too large', `Maximum size is ${requirement.maxSizeMb} MB.`); return null; }
+      if (!assetFits(mimeType, asset.fileSize, requirement.maxSizeMb, accepted)) return null;
       return { uri: asset.uri, name: asset.fileName ?? `document-${Date.now()}.jpg`, mimeType, size: asset.fileSize };
     }
     const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, type: accepted });
     if (result.canceled) return null;
     const asset = result.assets[0];
     const mimeType = asset.mimeType ?? '';
-    if (!isKnownFileType(mimeType) || !accepted.includes(mimeType)) { Alert.alert('File type not accepted', `Accepted: ${accepted.join(', ')}`); return null; }
-    if (asset.size != null && asset.size > requirement.maxSizeMb * 1024 * 1024) { Alert.alert('File too large', `Maximum size is ${requirement.maxSizeMb} MB.`); return null; }
+    if (!assetFits(mimeType, asset.size, requirement.maxSizeMb, accepted)) return null;
     return { uri: asset.uri, name: asset.name, mimeType, size: asset.size };
   }
 
@@ -321,33 +346,18 @@ export function BuyFlowScreen({ route, navigation }: Readonly<Props>) {
 
   const formStep = application?.formSchema.steps[formIndex];
   const visibleFields = useMemo(() => formStep?.fields ?? [], [formStep]);
-  let displayedPaymentAmount: number | undefined;
-  if (paymentAmount !== null) displayedPaymentAmount = paymentAmount;
-  else if (selectedPackage) displayedPaymentAmount = selectedPackage.price.total;
+  const displayedPaymentAmount = paymentAmount ?? selectedPackage?.price.total;
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.ink} /><Text style={styles.body}>Loading your application…</Text></View>;
   if (error && !service) return <ErrorState message={error} onRetry={() => void load()} style={{ flex: 1 }} />;
   if (!service) return <ErrorState message="Service not found." onRetry={() => void load()} style={{ flex: 1 }} />;
 
-  let flowTitle = 'Application submitted';
-  if (flowStep === 'form') flowTitle = 'Your details';
-  else if (flowStep === 'documents') flowTitle = 'Upload documents';
-  else if (flowStep === 'payment') flowTitle = 'Secure payment';
-  if (!incomingId) return <ScrollView contentContainerStyle={styles.content}>
-    <Text style={styles.title}>Start your application</Text>
-    <Text style={styles.body}>{service.name} · {selectedPackage?.name ?? 'Choose a package'}</Text>
-    <Card style={styles.section}><Text style={styles.sectionTitle}>Who is this application for?</Text><Text style={styles.help}>Choose a saved business, add one, or apply as yourself.</Text>
-      {businesses.map((business) => <Choice key={business.id} selected={choice.kind === 'saved' && choice.id === business.id} title={business.legalName} subtitle={business.entityType} onPress={() => setChoice({ kind: 'saved', id: business.id })} />)}
-      <Choice selected={choice.kind === 'new'} title="Add a new business" onPress={() => setChoice({ kind: 'new' })} />
-      {choice.kind === 'new' && <View>{<Text style={styles.label}>Legal name</Text>}<TextInput style={styles.input} value={newBusiness.legalName} onChangeText={(legalName) => setNewBusiness({ ...newBusiness, legalName })} placeholder="Legal name" />{ENTITY_TYPES.map((entity) => <Choice key={entity.value} selected={newBusiness.entityType === entity.value} title={entity.label} onPress={() => setNewBusiness({ ...newBusiness, entityType: entity.value })} />)}<TextInput style={styles.input} value={newBusiness.pan ?? ''} onChangeText={(pan) => setNewBusiness({ ...newBusiness, pan: pan.toUpperCase() })} placeholder="PAN (optional)" maxLength={10} /><TextInput style={styles.input} value={newBusiness.gstin ?? ''} onChangeText={(gstin) => setNewBusiness({ ...newBusiness, gstin: gstin.toUpperCase() })} placeholder="GSTIN (optional)" maxLength={15} /></View>}
-      <Choice selected={choice.kind === 'none'} title="Myself" subtitle="Not for a business" onPress={() => setChoice({ kind: 'none' })} />
-    </Card>
-    {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    <Button title={busy ? 'Starting…' : 'Continue to your details'} onPress={() => void startApplication()} loading={busy} />
-  </ScrollView>;
+  if (!incomingId) {
+    return <StartApplicationView service={service} packageName={selectedPackage?.name} businesses={businesses} choice={choice} onChoice={setChoice} newBusiness={newBusiness} onNewBusiness={setNewBusiness} error={error} busy={busy} onStart={() => void startApplication()} />;
+  }
 
   return <ScrollView contentContainerStyle={styles.content}>
-    <Text style={styles.title}>{flowTitle}</Text>
+    <Text style={styles.title}>{FLOW_TITLE[flowStep]}</Text>
     <Text style={styles.body}>{service.name} · Application {application?.code ?? incomingId}</Text>
     {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
     {flowStep === 'form' && application && formStep && <>
@@ -364,15 +374,58 @@ export function BuyFlowScreen({ route, navigation }: Readonly<Props>) {
       <Button title={checklist.pendingMandatory > 0 ? `Continue · ${checklist.pendingMandatory} required remaining` : 'Continue to payment'} variant={checklist.pendingMandatory > 0 ? 'secondary' : 'primary'} onPress={() => setFlowStep(nextBuyFlowStep('documents'))} />
       <Button title="Back to details" variant="ghost" onPress={() => setFlowStep('form')} />
     </>}
-    {flowStep === 'payment' && application && <>
-      <Card style={styles.section}><Text style={styles.label}>Order summary</Text><Text style={styles.body}>Application {application.code}</Text>{displayedPaymentAmount !== undefined ? <Text style={styles.sectionTitle}>{`₹${Math.round(displayedPaymentAmount / 100).toLocaleString('en-IN')}`}</Text> : null}<Text style={styles.help}>The server calculates the final amount due. Payment success appears only after server confirmation.</Text></Card>
-      <Button title={busy ? 'Opening checkout…' : 'Pay securely'} onPress={() => void checkout()} loading={busy} />
-      {selectedPackage?.allowPartial && selectedPackage.advancePercent ? <Button title={`Pay ${selectedPackage.advancePercent}% advance`} variant="secondary" onPress={() => void checkout('ADVANCE')} disabled={busy} /> : null}
-      <Button title="Back to documents" variant="ghost" onPress={() => setFlowStep('documents')} />
-      <Text style={styles.help}>Razorpay offers UPI intent, cards, net banking and wallets when enabled for this order.</Text>
-    </>}
+    {flowStep === 'payment' && application && <PaymentStepView code={application.code} amount={displayedPaymentAmount} advancePercent={selectedPackage?.allowPartial ? selectedPackage.advancePercent : null} busy={busy} onPay={(plan) => void checkout(plan)} onBack={() => setFlowStep('documents')} />}
     {flowStep === 'complete' && paymentConfirmed && <><Card style={styles.section}><Text style={styles.sectionTitle}>Payment confirmed</Text><Text style={styles.body}>Application {application?.code} is submitted and visible in My Services.</Text></Card><Button title="View my services" onPress={() => navigation.navigate('MainTabs')} /></>}
   </ScrollView>;
+}
+
+type StartProps = {
+  service: ServiceDetail;
+  packageName: string | undefined;
+  businesses: BusinessEntity[];
+  choice: Choice;
+  onChoice: (choice: Choice) => void;
+  newBusiness: BusinessEntityInput;
+  onNewBusiness: (business: BusinessEntityInput) => void;
+  error: string;
+  busy: boolean;
+  onStart: () => void;
+};
+
+/** First screen for a new application: who it is for. */
+function StartApplicationView({ service, packageName, businesses, choice, onChoice, newBusiness, onNewBusiness, error, busy, onStart }: Readonly<StartProps>) {
+  return <ScrollView contentContainerStyle={styles.content}>
+      <Text style={styles.title}>Start your application</Text>
+      <Text style={styles.body}>{service.name} · {packageName ?? 'Choose a package'}</Text>
+      <Card style={styles.section}><Text style={styles.sectionTitle}>Who is this application for?</Text><Text style={styles.help}>Choose a saved business, add one, or apply as yourself.</Text>
+        {businesses.map((business) => <Choice key={business.id} selected={choice.kind === 'saved' && choice.id === business.id} title={business.legalName} subtitle={business.entityType} onPress={() => onChoice({ kind: 'saved', id: business.id })} />)}
+        <Choice selected={choice.kind === 'new'} title="Add a new business" onPress={() => onChoice({ kind: 'new' })} />
+        {choice.kind === 'new' && <View>{<Text style={styles.label}>Legal name</Text>}<TextInput style={styles.input} value={newBusiness.legalName} onChangeText={(legalName) => onNewBusiness({ ...newBusiness, legalName })} placeholder="Legal name" />{ENTITY_TYPES.map((entity) => <Choice key={entity.value} selected={newBusiness.entityType === entity.value} title={entity.label} onPress={() => onNewBusiness({ ...newBusiness, entityType: entity.value })} />)}<TextInput style={styles.input} value={newBusiness.pan ?? ''} onChangeText={(pan) => onNewBusiness({ ...newBusiness, pan: pan.toUpperCase() })} placeholder="PAN (optional)" maxLength={10} /><TextInput style={styles.input} value={newBusiness.gstin ?? ''} onChangeText={(gstin) => onNewBusiness({ ...newBusiness, gstin: gstin.toUpperCase() })} placeholder="GSTIN (optional)" maxLength={15} /></View>}
+        <Choice selected={choice.kind === 'none'} title="Myself" subtitle="Not for a business" onPress={() => onChoice({ kind: 'none' })} />
+      </Card>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <Button title={busy ? 'Starting…' : 'Continue to your details'} onPress={onStart} loading={busy} />
+  </ScrollView>;
+}
+
+type PaymentStepProps = {
+  code: string;
+  amount: number | undefined;
+  advancePercent: number | null | undefined;
+  busy: boolean;
+  onPay: (plan?: PaymentPlan) => void;
+  onBack: () => void;
+};
+
+/** Last step: order summary and checkout. */
+function PaymentStepView({ code, amount, advancePercent, busy, onPay, onBack }: Readonly<PaymentStepProps>) {
+  return <>
+    <Card style={styles.section}><Text style={styles.label}>Order summary</Text><Text style={styles.body}>Application {code}</Text>{amount !== undefined ? <Text style={styles.sectionTitle}>{`₹${Math.round(amount / 100).toLocaleString('en-IN')}`}</Text> : null}<Text style={styles.help}>The server calculates the final amount due. Payment success appears only after server confirmation.</Text></Card>
+    <Button title={busy ? 'Opening checkout…' : 'Pay securely'} onPress={() => onPay()} loading={busy} />
+    {advancePercent ? <Button title={`Pay ${advancePercent}% advance`} variant="secondary" onPress={() => onPay('ADVANCE')} disabled={busy} /> : null}
+    <Button title="Back to documents" variant="ghost" onPress={onBack} />
+    <Text style={styles.help}>Razorpay offers UPI intent, cards, net banking and wallets when enabled for this order.</Text>
+  </>;
 }
 
 function Choice({ selected, title, subtitle, onPress }: Readonly<{ selected: boolean; title: string; subtitle?: string; onPress: () => void }>) {

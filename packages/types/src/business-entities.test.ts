@@ -105,7 +105,7 @@ describe('businessEntityInput', () => {
     const values = new Set<string>(ENTITY_TYPES.map((t) => t.value));
     const used = Object.values(SERVICE_FORMS)
       .flatMap((form) => form.steps.flatMap((s) => s.fields))
-      .flatMap((f) => (f.name === 'entityType' && f.type === 'select' ? (f.options ?? []).map((o) => String(o.value)) : []));
+      .flatMap((f) => (f.name === 'entityType' && f.type === 'select' ? (f.options ?? []).map((o) => (typeof o === 'string' ? o : o.value)) : []));
     expect(used.length).toBeGreaterThan(0);
     // INDIVIDUAL ("no business yet") is a form-only answer, never saved as a business.
     expect(used.filter((v) => v !== 'INDIVIDUAL' && !values.has(v))).toEqual([]);

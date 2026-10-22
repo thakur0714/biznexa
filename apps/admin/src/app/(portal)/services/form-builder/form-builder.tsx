@@ -136,7 +136,7 @@ function FormBuilder({ api, service, list: initialList, opened }: Loaded & { api
   const tabRefs = useRef<Partial<Record<Tab, HTMLButtonElement | null>>>({});
 
   const parsed = useMemo(() => parseFormText(text), [text]);
-  const outline = parsed.kind === 'syntax' ? null : outlineOf(parsed.raw);
+  const outline = outlineFor(parsed);
   const issues = parsed.kind === 'invalid' ? parsed.issues : fromServer;
   const dirty = text !== baseline;
 
@@ -371,9 +371,7 @@ function FormBuilder({ api, service, list: initialList, opened }: Loaded & { api
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-rule bg-white/95 backdrop-blur lg:left-[260px]">
           <div className="flex max-w-[1400px] flex-wrap items-center justify-end gap-3 px-4 py-3 sm:px-8">
             <output className="mr-auto text-sm text-muted">
-              {parsed.kind === 'syntax'
-                ? 'The JSON has a syntax error'
-                : footerStatus(parsed, dirty)}
+              {footerStatus(parsed, dirty)}
             </output>
             <Checkbox id="form-activate" label="Use for new applications straight away" checked={activate} onChange={(e) => setActivate(e.target.checked)} />
             <Button type="button" variant="outline" disabled={!dirty || saving} onClick={() => {
@@ -441,7 +439,13 @@ function draftSavedMessage(version: number, current: number | null): string {
   return `Version ${version} saved as a draft. ${currentNote}`;
 }
 
+/** The form's outline, or null while the JSON can't be parsed. */
+function outlineFor(parsed: ReturnType<typeof parseFormText>) {
+  return parsed.kind === 'syntax' ? null : outlineOf(parsed.raw);
+}
+
 function footerStatus(parsed: ReturnType<typeof parseFormText>, dirty: boolean): string {
+  if (parsed.kind === 'syntax') return 'The JSON has a syntax error';
   if (parsed.kind === 'invalid') {
     const noun = parsed.issues.length === 1 ? 'problem' : 'problems';
     return `${parsed.issues.length} ${noun} to fix`;

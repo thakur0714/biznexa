@@ -121,6 +121,6 @@ export function needsUpload(item: Pick<DocumentChecklistItem | AdditionalDocumen
 
 /** Mandatory items that still need an upload — what "Documents Pending" means. */
 export const pendingMandatoryCount = (
-  items: Pick<DocumentChecklistItem, 'current' | 'requirement'>[],
+  items: { requirement: Pick<DocumentChecklistItem['requirement'], 'isMandatory'>; current: DocumentChecklistItem['current'] }[],
   additional: Pick<AdditionalDocumentItem, 'current'>[] = [],
 ): number => items.filter((i) => i.requirement.isMandatory && needsUpload(i)).length + additional.filter(needsUpload).length;

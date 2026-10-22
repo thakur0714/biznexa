@@ -92,6 +92,19 @@ function stageIndicator(isDone: boolean, isCurrent: boolean) {
   return <View style={styles.stageUpcomingDot} />;
 }
 
+/** Banner above the checklist: how many mandatory documents still need the customer. */
+function DocumentsNotice({ pendingMandatory }: Readonly<{ pendingMandatory: number }>) {
+  const pending = pendingMandatory > 0;
+  return (
+    <View style={[styles.docNoticeBanner, pending ? styles.docNoticePending : styles.docNoticeSuccess]}>
+      <Ionicons name={pending ? 'alert-circle' : 'checkmark-circle'} size={20} color={pending ? colors.amber : colors.seal} />
+      <Text style={styles.docNoticeText}>
+        {pending ? `${pendingMandatory} mandatory document(s) still require your action.` : 'All mandatory documents have been uploaded.'}
+      </Text>
+    </View>
+  );
+}
+
 /** A file picked from the camera, gallery or files. */
 interface PickedFile {
   uri: string;
@@ -824,25 +837,7 @@ export function ApplicationDetailScreen({ route, navigation }: Readonly<Applicat
           {loadStateContent(documentsLoading, Boolean(documentsError), <LoadingState message="Loading documents checklist…" />, <ErrorState message={documentsError ?? ''} onRetry={loadDocuments} />, documents ? (
             <>
               {/* Submission Notice Banner */}
-              <View
-                style={[
-                  styles.docNoticeBanner,
-                  documents.pendingMandatory > 0
-                    ? styles.docNoticePending
-                    : styles.docNoticeSuccess,
-                ]}
-              >
-                <Ionicons
-                  name={documents.pendingMandatory > 0 ? 'alert-circle' : 'checkmark-circle'}
-                  size={20}
-                  color={documents.pendingMandatory > 0 ? colors.amber : colors.seal}
-                />
-                <Text style={styles.docNoticeText}>
-                  {documents.pendingMandatory > 0
-                    ? `${documents.pendingMandatory} mandatory document(s) still require your action.`
-                    : 'All mandatory documents have been uploaded.'}
-                </Text>
-              </View>
+              <DocumentsNotice pendingMandatory={documents.pendingMandatory} />
 
               {/* Service Checklist Documents */}
               <View style={styles.sectionHeader}>

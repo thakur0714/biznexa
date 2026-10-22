@@ -1,0 +1,7 @@
+{
+  // Use the repo's TypeScript (5.9), not the newer one bundled with VS Code, so the editor shows the same errors as `tsc`.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  // Tailwind v4 at-rules (@theme, @utility) in packages/config/tokens.css.
+  "css.lint.unknownAtRules": "ignore"
+}

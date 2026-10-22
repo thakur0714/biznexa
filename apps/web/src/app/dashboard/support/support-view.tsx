@@ -77,6 +77,9 @@ function createFormErrors(form: CreateFormState): { subject?: string; descriptio
   return errors;
 }
 
+const tabClass = (active: boolean) =>
+  `rounded-md px-3 py-1.5 transition-colors ${active ? 'bg-white font-semibold text-night shadow-xs' : 'text-muted hover:text-night'}`;
+
 export function CustomerSupportView() {
   const api = useApi();
   const [tickets, setTickets] = useState<TicketSummary[] | null>(null);
@@ -441,36 +444,28 @@ export function CustomerSupportView() {
           <button
             type="button"
             onClick={() => setStatusTab('ALL')}
-            className={`rounded-md px-3 py-1.5 transition-colors ${
-              statusTab === 'ALL' ? 'bg-white font-semibold text-night shadow-xs' : 'text-muted hover:text-night'
-            }`}
+            className={tabClass(statusTab === 'ALL')}
           >
             All
           </button>
           <button
             type="button"
             onClick={() => setStatusTab('ACTIVE')}
-            className={`rounded-md px-3 py-1.5 transition-colors ${
-              statusTab === 'ACTIVE' ? 'bg-white font-semibold text-night shadow-xs' : 'text-muted hover:text-night'
-            }`}
+            className={tabClass(statusTab === 'ACTIVE')}
           >
             Active
           </button>
           <button
             type="button"
             onClick={() => setStatusTab('RESOLVED')}
-            className={`rounded-md px-3 py-1.5 transition-colors ${
-              statusTab === 'RESOLVED' ? 'bg-white font-semibold text-night shadow-xs' : 'text-muted hover:text-night'
-            }`}
+            className={tabClass(statusTab === 'RESOLVED')}
           >
             Resolved
           </button>
           <button
             type="button"
             onClick={() => setStatusTab('CLOSED')}
-            className={`rounded-md px-3 py-1.5 transition-colors ${
-              statusTab === 'CLOSED' ? 'bg-white font-semibold text-night shadow-xs' : 'text-muted hover:text-night'
-            }`}
+            className={tabClass(statusTab === 'CLOSED')}
           >
             Closed
           </button>

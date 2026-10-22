@@ -719,7 +719,7 @@ function SupportQueue() {
           Loading support queue...
         </div>
       )}
-      {!loading && (!tickets || tickets.length === 0) && (
+      {!loading && !tickets?.length && (
         <EmptyState
           title="No support tickets found"
           description="No tickets match your active filter criteria."

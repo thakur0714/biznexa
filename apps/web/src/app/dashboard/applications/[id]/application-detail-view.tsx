@@ -144,20 +144,104 @@ function ReadOnlyLeafAnswer({
   return <span className="whitespace-pre-wrap text-night">{String(value)}</span>;
 }
 
+
+/** The open tab: starts from `?tab=` and follows it when the link changes; the user can switch freely. */
+function useTabFromQuery(queryTab: string | null) {
+  const [activeTab, setActiveTab] = useState<DetailTab>(() => (isDetailTab(queryTab) ? queryTab : 'documents'));
+  const [lastQueryTab, setLastQueryTab] = useState<string | null>(queryTab);
+  if (queryTab !== lastQueryTab) {
+    setLastQueryTab(queryTab);
+    if (isDetailTab(queryTab)) setActiveTab(queryTab);
+  }
+  return [activeTab, setActiveTab] as const;
+}
+
+/** "1 required document pending" / "3 required documents pending". */
+const pendingLabel = (n: number) => (n === 1 ? '1 required document pending' : `${n} required documents pending`);
+
+/** The Documents tab: team requests first, then the service's checklist. */
+function DocumentsTab({ checklist, applicationId, onChange }: Readonly<{ checklist: DocumentChecklist | null; applicationId: string; onChange: (next: DocumentChecklist) => void }>) {
+  if (!checklist) {
+    return (
+      <div className="rounded-lg border border-rule bg-white p-6 text-sm text-muted">
+        No document checklist available for this application.
+      </div>
+    );
+  }
+  const pendingMandatory = checklist.pendingMandatory;
+  return (
+    <>
+      {!checklist.canUpload && (
+        <Notice tone="info">
+          This application is past the document upload stage, so documents are read-only.
+        </Notice>
+      )}
+
+      {checklist.additional.length > 0 && (
+        <div className="space-y-3" aria-labelledby="requested-by-team-heading">
+          <div>
+            <h2 id="requested-by-team-heading" className="text-base font-bold text-night">
+              Requested by our team
+            </h2>
+            <p className="text-xs text-muted">
+              Our team requested these additional documents to continue processing your application.
+            </p>
+          </div>
+          <ul className="space-y-3">
+            {checklist.additional.map((item) => (
+              <DocumentRow
+                key={item.request.id}
+                target={{ kind: 'additional', item }}
+                applicationId={applicationId}
+                canUpload={checklist.canUpload}
+                onChange={onChange}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {checklist.items.length === 0 ? (
+        checklist.additional.length === 0 && (
+          <EmptyState
+            className="rounded-lg border border-rule bg-white p-8"
+            title="No documents required"
+            description="This service does not require any document uploads."
+          />
+        )
+      ) : (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-night">Document Checklist</h2>
+            {pendingMandatory > 0 && (
+              <span className="text-xs font-semibold text-amber-700">
+                {pendingLabel(pendingMandatory)}
+              </span>
+            )}
+          </div>
+          <ul className="space-y-3">
+            {checklist.items.map((item) => (
+              <DocumentRow
+                key={item.requirement.id}
+                target={{ kind: 'requirement', item }}
+                applicationId={applicationId}
+                canUpload={checklist.canUpload}
+                onChange={onChange}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function ApplicationDetailView({ applicationId }: Readonly<{ applicationId: string }>) {
   const api = useApi();
   const searchParams = useSearchParams();
   const queryTab = searchParams.get('tab');
 
-  const [activeTab, setActiveTab] = useState<DetailTab>(() => (isDetailTab(queryTab) ? queryTab : 'documents'));
-  const [lastQueryTab, setLastQueryTab] = useState<string | null>(queryTab);
-
-  if (queryTab !== lastQueryTab) {
-    setLastQueryTab(queryTab);
-    if (isDetailTab(queryTab)) {
-      setActiveTab(queryTab);
-    }
-  }
+  const [activeTab, setActiveTab] = useTabFromQuery(queryTab);
 
   const [loadedForId, setLoadedForId] = useState<string>(applicationId);
   const [timeline, setTimeline] = useState<CustomerApplicationTimeline | null>(null);
@@ -591,77 +675,7 @@ export function ApplicationDetailView({ applicationId }: Readonly<{ applicationI
         {/* Tab: Documents */}
         {activeTab === 'documents' && (
           <section aria-label="Documents" className="space-y-5">
-            {!checklist ? (
-              <div className="rounded-lg border border-rule bg-white p-6 text-sm text-muted">
-                No document checklist available for this application.
-              </div>
-            ) : (
-              <>
-                {!checklist.canUpload && (
-                  <Notice tone="info">
-                    This application is past the document upload stage, so documents are read-only.
-                  </Notice>
-                )}
-
-                {checklist.additional.length > 0 && (
-                  <div className="space-y-3" aria-labelledby="requested-by-team-heading">
-                    <div>
-                      <h2 id="requested-by-team-heading" className="text-base font-bold text-night">
-                        Requested by our team
-                      </h2>
-                      <p className="text-xs text-muted">
-                        Our team requested these additional documents to continue processing your application.
-                      </p>
-                    </div>
-                    <ul className="space-y-3">
-                      {checklist.additional.map((item) => (
-                        <DocumentRow
-                          key={item.request.id}
-                          target={{ kind: 'additional', item }}
-                          applicationId={applicationId}
-                          canUpload={checklist.canUpload}
-                          onChange={setChecklist}
-                        />
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {checklist.items.length === 0 ? (
-                  checklist.additional.length === 0 && (
-                    <EmptyState
-                      className="rounded-lg border border-rule bg-white p-8"
-                      title="No documents required"
-                      description="This service does not require any document uploads."
-                    />
-                  )
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <h2 className="text-base font-bold text-night">Document Checklist</h2>
-                      {pendingMandatory > 0 && (
-                        <span className="text-xs font-semibold text-amber-700">
-                          {pendingMandatory === 1
-                            ? '1 required document pending'
-                            : `${pendingMandatory} required documents pending`}
-                        </span>
-                      )}
-                    </div>
-                    <ul className="space-y-3">
-                      {checklist.items.map((item) => (
-                        <DocumentRow
-                          key={item.requirement.id}
-                          target={{ kind: 'requirement', item }}
-                          applicationId={applicationId}
-                          canUpload={checklist.canUpload}
-                          onChange={setChecklist}
-                        />
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </>
-            )}
+            <DocumentsTab checklist={checklist} applicationId={applicationId} onChange={setChecklist} />
           </section>
         )}
 

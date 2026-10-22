@@ -172,26 +172,7 @@ describe('invoice lines', () => {
       for (const rate of [0, 5, 12, 18, 28]) {
         for (const pct of [1, 33, 50, 99]) {
           const items = [item({ id: 'a', professionalFee: fee, gstRate: rate, governmentFee: 20000, discount: Math.floor(fee / 7) }), item({ id: 'b', professionalFee: fee * 3 + 1, gstRate: 18 })];
-          for (const taxType of ['CGST_SGST', 'IGST'] as const) {
-            const order = items.map((i) => invoiceOrderLine(i, taxType));
-            const total = order.reduce((a, l) => a + l.taxableValue + l.cgst + l.sgst + l.igst + l.governmentFee, 0);
-            const advance = Math.max(1, Math.min(total - 1, Math.round((total * pct) / 100)));
-            const first = invoiceLines(order, [], advance, taxType);
-            const second = invoiceLines(order, first.lines, total - advance, taxType);
-            const both: InvoiceLine[] = [...first.lines, ...second.lines];
-            for (const l of order) {
-              const mine = both.filter((b) => b.orderItemId === l.orderItemId);
-              const svc = mine.flatMap((b) => (b.kind === 'SERVICE' ? [b] : []));
-              const s = (k: 'professionalFee' | 'discount' | 'taxableValue' | 'cgst' | 'sgst' | 'igst') => svc.reduce((a, b) => a + b[k], 0);
-              expect([s('professionalFee'), s('discount'), s('taxableValue'), s('cgst'), s('sgst'), s('igst')]).toEqual([l.professionalFee, l.discount, l.taxableValue, l.cgst, l.sgst, l.igst]);
-              expect(mine.filter((b) => b.kind === 'GOVERNMENT_FEE').reduce((a, b) => a + b.total, 0)).toBe(l.governmentFee);
-              for (const b of svc) {
-                expect(Math.min(b.taxableValue, b.cgst, b.sgst, b.igst, b.discount)).toBeGreaterThanOrEqual(0);
-                if (taxType === 'IGST') expect(b.cgst + b.sgst).toBe(0);
-                else expect(b.igst).toBe(0);
-              }
-            }
-          }
+          for (const taxType of ['CGST_SGST', 'IGST'] as const) expectSplitAddsUp(items.map((i) => invoiceOrderLine(i, taxType)), pct, taxType);
         }
       }
     }
@@ -217,3 +198,28 @@ describe('invoice lines', () => {
     expect(inv.total).toBe(charged(items, true).total);
   });
 });
+
+type OrderLine = ReturnType<typeof invoiceOrderLine>;
+
+/** Invoices the order as an advance of `pct`% and then the balance; every order line must add back up. */
+function expectSplitAddsUp(order: OrderLine[], pct: number, taxType: 'CGST_SGST' | 'IGST') {
+  const total = order.reduce((a, l) => a + l.taxableValue + l.cgst + l.sgst + l.igst + l.governmentFee, 0);
+  const advance = Math.max(1, Math.min(total - 1, Math.round((total * pct) / 100)));
+  const first = invoiceLines(order, [], advance, taxType);
+  const second = invoiceLines(order, first.lines, total - advance, taxType);
+  const both: InvoiceLine[] = [...first.lines, ...second.lines];
+  for (const l of order) expectLineAddsUp(l, both.filter((b) => b.orderItemId === l.orderItemId), taxType);
+}
+
+/** The invoice lines for one order line sum to it, never go negative and use only one kind of GST. */
+function expectLineAddsUp(l: OrderLine, mine: InvoiceLine[], taxType: 'CGST_SGST' | 'IGST') {
+  const svc = mine.flatMap((b) => (b.kind === 'SERVICE' ? [b] : []));
+  const s = (k: 'professionalFee' | 'discount' | 'taxableValue' | 'cgst' | 'sgst' | 'igst') => svc.reduce((a, b) => a + b[k], 0);
+  expect([s('professionalFee'), s('discount'), s('taxableValue'), s('cgst'), s('sgst'), s('igst')]).toEqual([l.professionalFee, l.discount, l.taxableValue, l.cgst, l.sgst, l.igst]);
+  expect(mine.filter((b) => b.kind === 'GOVERNMENT_FEE').reduce((a, b) => a + b.total, 0)).toBe(l.governmentFee);
+  for (const b of svc) {
+    expect(Math.min(b.taxableValue, b.cgst, b.sgst, b.igst, b.discount)).toBeGreaterThanOrEqual(0);
+    if (taxType === 'IGST') expect(b.cgst + b.sgst).toBe(0);
+    else expect(b.igst).toBe(0);
+  }
+}
