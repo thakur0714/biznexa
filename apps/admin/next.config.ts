@@ -7,6 +7,8 @@ const API_URL = process.env.API_URL ?? 'http://localhost:4000';
 const hsts = process.env.NODE_ENV === 'production' ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' }] : [];
 
 const config: NextConfig = {
+  // Serve the portal under a path (e.g. "/admin") when it shares the website's domain; unset = domain root.
+  basePath: process.env.ADMIN_BASE_PATH ?? '',
   transpilePackages: ['@biznexa/types', '@biznexa/ui', '@biznexa/api-client'],
   poweredByHeader: false,
   // Same-origin /api rewrite as the website (D11), so the refresh-token cookie stays first-party.

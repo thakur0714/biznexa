@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Button, Field, Notice, Select } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
 import { NotAllowed } from '@/components/portal-shell';
@@ -146,7 +147,7 @@ function ApplicationsPage() {
           </td>
         )}
         <td className="py-3 pr-4 font-medium text-night">
-          <a href={`/applications/${app.id}`} className="hover:underline">{app.code}</a>
+          <Link href={`/applications/${app.id}`} className="hover:underline">{app.code}</Link>
         </td>
         <td className="py-3 pr-4">{APPLICATION_STATUS_LABEL[app.status as keyof typeof APPLICATION_STATUS_LABEL] || app.status}</td>
         <td className="py-3 pr-4">{app.priority}</td>
