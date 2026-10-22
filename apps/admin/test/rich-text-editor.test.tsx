@@ -24,7 +24,7 @@ beforeAll(() => {
 
 let latest = '';
 
-function Harness({ initial = '', error }: { initial?: string; error?: string }) {
+function Harness({ initial = '', error }: Readonly<{ initial?: string; error?: string }>) {
   const [html, setHtml] = useState(initial);
   return (
     <RichTextEditor

@@ -21,11 +21,11 @@ const paise = (rupees: number) => Math.round(rupees * 100);
 const ladder = (base: number, factor: number) => Math.ceil((base * factor) / 500) * 500 - 1;
 
 export const DEMO_USERS = [
-  { name: 'Admin User', email: 'admin@biznexa.local', mobile: '9000000001', password: 'Admin@12345', role: 'ADMIN' },
-  { name: 'Ops Executive', email: 'ops@biznexa.local', mobile: '9000000002', password: 'Ops@12345', role: 'OPERATIONS' },
-  { name: 'Support Executive', email: 'support@biznexa.local', mobile: '9000000003', password: 'Support@12345', role: 'SUPPORT' },
-  { name: 'Demo Consultant', email: 'consultant@biznexa.local', mobile: '9000000004', password: 'Consultant@12345', role: 'CONSULTANT' },
-  { name: 'Demo Customer', email: 'customer@biznexa.local', mobile: '9876543210', password: 'Customer@12345', role: 'CUSTOMER' },
+  { name: 'Admin User', email: 'admin@biznexa.local', mobile: '9000000001', password: 'Admin@12345', role: 'ADMIN' }, // NOSONAR: seed credential
+  { name: 'Ops Executive', email: 'ops@biznexa.local', mobile: '9000000002', password: 'Ops@12345', role: 'OPERATIONS' }, // NOSONAR: seed credential
+  { name: 'Support Executive', email: 'support@biznexa.local', mobile: '9000000003', password: 'Support@12345', role: 'SUPPORT' }, // NOSONAR: seed credential
+  { name: 'Demo Consultant', email: 'consultant@biznexa.local', mobile: '9000000004', password: 'Consultant@12345', role: 'CONSULTANT' }, // NOSONAR: seed credential
+  { name: 'Demo Customer', email: 'customer@biznexa.local', mobile: '9876543210', password: 'Customer@12345', role: 'CUSTOMER' }, // NOSONAR: seed credential
 ];
 
 async function seedUsers() {
@@ -34,22 +34,22 @@ async function seedUsers() {
     return;
   }
   for (const u of DEMO_USERS) {
-    const role = await prisma.role.findUniqueOrThrow({ where: { key: u.role } });
-    const user = await prisma.user.upsert({
+    const role = await prisma.role.findUniqueOrThrow({ where: { key: u.role } }); // NOSONAR: seed writes run in order
+    const user = await prisma.user.upsert({ // NOSONAR: seed writes run in order
       where: { email: u.email },
       update: {},
       create: {
         name: u.name,
         email: u.email,
         mobile: u.mobile,
-        passwordHash: await bcrypt.hash(u.password, 12),
+        passwordHash: await bcrypt.hash(u.password, 12), // NOSONAR: seed writes run in order
         emailVerified: true,
         mobileVerified: true,
         consentAt: new Date(),
         customerProfile: u.role === 'CUSTOMER' ? { create: { state: 'PB', city: 'Ludhiana' } } : undefined,
       },
     });
-    await prisma.userRole.upsert({ where: { userId_roleId: { userId: user.id, roleId: role.id } }, update: {}, create: { userId: user.id, roleId: role.id } });
+    await prisma.userRole.upsert({ where: { userId_roleId: { userId: user.id, roleId: role.id } }, update: {}, create: { userId: user.id, roleId: role.id } }); // NOSONAR: seed writes run in order
   }
   console.log(`✓ ${DEMO_USERS.length} demo users`);
 }
@@ -57,91 +57,95 @@ async function seedUsers() {
 async function seedCatalogue() {
   let created = 0;
   for (const [ci, c] of CATEGORIES.entries()) {
-    const category = await prisma.category.upsert({
+    const category = await prisma.category.upsert({ // NOSONAR: seed writes run in order
       where: { slug: c.slug },
       update: {},
       create: {
-        slug: c.slug,
-        name: c.name,
-        tagline: c.tagline,
-        description: c.description,
-        icon: c.icon,
-        journeyStage: c.journeyStage,
-        sortOrder: ci,
+        slug: c.slug, name: c.name, tagline: c.tagline, description: c.description,
+        icon: c.icon, journeyStage: c.journeyStage, sortOrder: ci,
         seoTitle: `${c.name} Services Online | BizNexa`,
         metaDescription: c.description.slice(0, 160),
       },
     });
-
-    const subIds: Record<string, string> = {};
-    for (const [si, s] of (c.subcategories ?? []).entries()) {
-      const sub = await prisma.subcategory.upsert({
-        where: { categoryId_slug: { categoryId: category.id, slug: s.slug } },
-        update: {},
-        create: { categoryId: category.id, slug: s.slug, name: s.name, sortOrder: si },
-      });
-      subIds[s.slug] = sub.id;
-    }
-
-    for (const s of c.services) {
-      if (await prisma.service.findUnique({ where: { slug: s.slug } })) continue;
-      const govt = paise(s.govtFee ?? 0);
-      await prisma.service.create({
-        data: {
-          slug: s.slug,
-          name: s.name,
-          categoryId: category.id,
-          subcategoryId: s.subcategory ? subIds[s.subcategory] : undefined,
-          shortDescription: s.short,
-          overview: `${s.short}\n\n${c.description}\n\nWith BizNexa you fill one simple form, upload documents online and track every step from your dashboard. A dedicated expert prepares and files your application, and you receive the final documents in your account.`,
-          icon: s.icon ?? c.icon,
-          benefits: c.benefits,
-          estimatedTime: s.time,
-          estimatedDaysMin: s.days[0],
-          estimatedDaysMax: s.days[1],
-          sacCode: c.sac,
-          popularity: s.popular ?? 0,
-          isPopular: !!s.featured,
-          recurrence: s.recurrence,
-          seoTitle: `${s.name} Online | BizNexa`.slice(0, 70),
-          metaDescription: s.short.slice(0, 160),
-          packages: {
-            create: [
-              { name: 'Basic', professionalFee: paise(s.price), governmentFee: govt, inclusions: c.inclusions.basic, sortOrder: 0 },
-              { name: 'Standard', professionalFee: paise(ladder(s.price, 1.6)), governmentFee: govt, inclusions: c.inclusions.standard, isMostPopular: true, sortOrder: 1, allowPartial: c.slug === 'business-technology', advancePercent: c.slug === 'business-technology' ? 50 : null },
-              { name: 'Premium', professionalFee: paise(ladder(s.price, 2.6)), governmentFee: govt, inclusions: c.inclusions.premium, sortOrder: 2, allowPartial: c.slug === 'business-technology', advancePercent: c.slug === 'business-technology' ? 50 : null },
-            ],
-          },
-          documents: {
-            create: (s.documents ?? c.documents).map((name, i) => ({
-              name,
-              isMandatory: !/if applicable|if any|optional|if available|if existing|if different/i.test(name),
-              sortOrder: i,
-            })),
-          },
-          stages: { create: c.stages.map((name, i) => ({ name, sortOrder: i + 1 })) },
-          faqs: { create: c.faqs.map((f, i) => ({ question: f.q, answer: f.a, sortOrder: i })) },
-        },
-      });
-      created++;
-    }
-
-    // Related services: the next most popular services in the same category.
-    const services = await prisma.service.findMany({ where: { categoryId: category.id }, orderBy: { popularity: 'desc' } });
-    for (const s of services) {
-      const existing = await prisma.serviceRelation.count({ where: { fromId: s.id } });
-      if (existing) continue;
-      const related = services.filter((x) => x.id !== s.id).slice(0, 3);
-      if (related.length) await prisma.serviceRelation.createMany({ data: related.map((r) => ({ fromId: s.id, toId: r.id })) });
-    }
+    const subIds = await seedSubcategories(c, category.id); // NOSONAR: seed writes run in order
+    created += await seedServices(c, category.id, subIds); // NOSONAR: seed writes run in order
+    await seedServiceRelations(category.id); // NOSONAR: seed writes run in order
   }
   const total = await prisma.service.count();
   console.log(`✓ ${CATEGORIES.length} categories, ${total} services (${created} new)`);
 }
 
+async function seedSubcategories(c: (typeof CATEGORIES)[number], categoryId: string) {
+  const subIds: Record<string, string> = {};
+  for (const [si, subcategory] of (c.subcategories ?? []).entries()) {
+    const sub = await prisma.subcategory.upsert({ // NOSONAR: seed writes run in order
+      where: { categoryId_slug: { categoryId, slug: subcategory.slug } },
+      update: {},
+      create: { categoryId, slug: subcategory.slug, name: subcategory.name, sortOrder: si },
+    });
+    subIds[subcategory.slug] = sub.id;
+  }
+  return subIds;
+}
+
+async function seedServices(c: (typeof CATEGORIES)[number], categoryId: string, subIds: Record<string, string>) {
+  let created = 0;
+  for (const service of c.services) {
+    if (await prisma.service.findUnique({ where: { slug: service.slug } })) continue; // NOSONAR: seed writes run in order
+    const govt = paise(service.govtFee ?? 0);
+    await prisma.service.create({ // NOSONAR: seed writes run in order
+      data: {
+        slug: service.slug, name: service.name, categoryId,
+        subcategoryId: service.subcategory ? subIds[service.subcategory] : undefined,
+        shortDescription: service.short,
+        overview: `${service.short}\n\n${c.description}\n\nWith BizNexa you fill one simple form, upload documents online and track every step from your dashboard. A dedicated expert prepares and files your application, and you receive the final documents in your account.`,
+        icon: service.icon ?? c.icon, benefits: c.benefits, estimatedTime: service.time,
+        estimatedDaysMin: service.days[0], estimatedDaysMax: service.days[1], sacCode: c.sac,
+        popularity: service.popular ?? 0, isPopular: !!service.featured, recurrence: service.recurrence,
+        seoTitle: `${service.name} Online | BizNexa`.slice(0, 70), metaDescription: service.short.slice(0, 160),
+        packages: {
+          create: [
+            { name: 'Basic', professionalFee: paise(service.price), governmentFee: govt, inclusions: c.inclusions.basic, sortOrder: 0 },
+            { name: 'Standard', professionalFee: paise(ladder(service.price, 1.6)), governmentFee: govt, inclusions: c.inclusions.standard, isMostPopular: true, sortOrder: 1, allowPartial: c.slug === 'business-technology', advancePercent: c.slug === 'business-technology' ? 50 : null },
+            { name: 'Premium', professionalFee: paise(ladder(service.price, 2.6)), governmentFee: govt, inclusions: c.inclusions.premium, sortOrder: 2, allowPartial: c.slug === 'business-technology', advancePercent: c.slug === 'business-technology' ? 50 : null },
+          ],
+        },
+        documents: {
+          create: (service.documents ?? c.documents).map((name, i) => ({
+            name,
+            isMandatory: !/if applicable|if any|optional|if available|if existing|if different/i.test(name),
+            sortOrder: i,
+          })),
+        },
+        stages: { create: c.stages.map((name, i) => ({ name, sortOrder: i + 1 })) },
+        faqs: { create: c.faqs.map((f, i) => ({ question: f.q, answer: f.a, sortOrder: i })) },
+      },
+    });
+    created++;
+  }
+  return created;
+}
+
+async function seedServiceRelations(categoryId: string) {
+  // Related services: the next most popular services in the same category.
+  const services = await prisma.service.findMany({ where: { categoryId }, orderBy: { popularity: 'desc' } });
+  for (const service of services) {
+    const existing = await prisma.serviceRelation.count({ where: { fromId: service.id } }); // NOSONAR: seed writes run in order
+    if (existing) continue;
+    const related = services.filter((candidate) => candidate.id !== service.id).slice(0, 3);
+    if (related.length) await prisma.serviceRelation.createMany({ data: related.map((r) => ({ fromId: service.id, toId: r.id })) }); // NOSONAR: seed writes run in order
+  }
+}
+
+function certificateStatusReason(status: 'ACTIVE' | 'EXPIRED' | 'SUSPENDED') {
+  if (status === 'SUSPENDED') return 'Surveillance audit pending';
+  if (status === 'EXPIRED') return 'Validity period ended';
+  return null;
+}
+
 async function seedCertificates() {
   for (const b of CERTIFICATION_BODIES) {
-    await prisma.certificationBody.upsert({ where: { name: b.name }, update: {}, create: b });
+    await prisma.certificationBody.upsert({ where: { name: b.name }, update: {}, create: b }); // NOSONAR: seed writes run in order
   }
   if (isProd) return;
   const body = await prisma.certificationBody.findFirstOrThrow();
@@ -152,7 +156,7 @@ async function seedCertificates() {
     { certificateNumber: 'BNC-DEMO-000003', verificationId: 'DEMQ45KSUSPN', type: 'ISO 45001:2018 — Occupational Health & Safety', status: 'SUSPENDED' as const, from: new Date(`${year - 1}-07-01`), until: new Date(`${year + 2}-06-30`) },
   ];
   for (const d of demo) {
-    await prisma.certificate.upsert({
+    await prisma.certificate.upsert({ // NOSONAR: seed writes run in order
       where: { certificateNumber: d.certificateNumber },
       update: {},
       create: {
@@ -165,7 +169,7 @@ async function seedCertificates() {
         validFrom: d.from,
         validUntil: d.until,
         status: d.status,
-        statusReason: d.status === 'SUSPENDED' ? 'Surveillance audit pending' : d.status === 'EXPIRED' ? 'Validity period ended' : null,
+        statusReason: certificateStatusReason(d.status),
         certificationBodyId: body.id,
       },
     });
@@ -192,7 +196,7 @@ async function seedContent() {
     ],
   };
   for (const [key, value] of Object.entries(settings)) {
-    await prisma.setting.upsert({ where: { key }, update: {}, create: { key, value: value as object } });
+    await prisma.setting.upsert({ where: { key }, update: {}, create: { key, value: value as object } }); // NOSONAR: seed writes run in order
   }
   await prisma.setting.upsert({ where: { key: 'mobile.minSupportedVersion' }, update: {}, create: { key: 'mobile.minSupportedVersion', value: '1.0.0' } });
 
@@ -207,7 +211,7 @@ async function seedContent() {
     { slug: 'refund-policy', title: 'Refund Policy' },
   ];
   for (const p of pages) {
-    await prisma.cmsPage.upsert({
+    await prisma.cmsPage.upsert({ // NOSONAR: seed writes run in order
       where: { slug: p.slug },
       update: {},
       create: { ...p, status: 'PUBLISHED', content: { blocks: [{ type: 'paragraph', text: 'Content to be provided by the BizNexa team and reviewed by legal before launch.' }] } },
@@ -216,8 +220,8 @@ async function seedContent() {
 
   const blogCats = ['Business Articles', 'Tax Updates', 'Trademark', 'GST', 'Compliance Updates', 'Certification'];
   for (const name of blogCats) {
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    await prisma.blogCategory.upsert({ where: { slug }, update: {}, create: { slug, name } });
+    const slug = name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-');
+    await prisma.blogCategory.upsert({ where: { slug }, update: {}, create: { slug, name } }); // NOSONAR: seed writes run in order
   }
   console.log('✓ settings, CMS pages, testimonials, blog categories');
 }
