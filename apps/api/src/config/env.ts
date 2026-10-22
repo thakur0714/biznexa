@@ -107,7 +107,7 @@ function validateCorsOrigins(v: RawEnv, ctx: z.RefinementCtx): void {
     } catch {
       url = undefined;
     }
-    if (!url || url.origin !== o || o.includes('*')) {
+    if (url?.origin !== o || o.includes('*')) {
       ctx.addIssue({ code: 'custom', path: ['CORS_ORIGINS'], message: `"${o}" is not an origin (scheme://host[:port], no path or wildcard)` });
     } else if (v.NODE_ENV === 'production' && url.protocol !== 'https:') {
       ctx.addIssue({ code: 'custom', path: ['CORS_ORIGINS'], message: `"${o}" must use https in production` });

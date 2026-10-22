@@ -93,7 +93,7 @@ describe('LocalDiskStorage', () => {
 
 describe('file names', () => {
   it('cleans names for headers', () => {
-    expect(cleanFileName('C:\\Users\\me\\PAN card.pdf')).toBe('PAN card.pdf');
+    expect(cleanFileName(String.raw`C:\Users\me\PAN card.pdf`)).toBe('PAN card.pdf');
     expect(cleanFileName('a"b\r\nc.pdf')).toBe('abc.pdf');
     expect(cleanFileName('')).toBe('file');
     expect(cleanFileName(`${'x'.repeat(300)}.pdf`)).toHaveLength(150);

@@ -87,7 +87,7 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
   beforeEach(() => {
     mockPrisma = {
       payment: {
-        findMany: jest.fn().mockImplementation(async ({ where }) => {
+        findMany: jest.fn().mockImplementation(({ where }) => {
           const from = where.OR?.[0]?.paidAt?.gte;
           const to = where.OR?.[0]?.paidAt?.lte;
           return fixedPayments.filter((p) => {
@@ -99,7 +99,7 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
         }),
       },
       order: {
-        findMany: jest.fn().mockImplementation(async ({ where }) => {
+        findMany: jest.fn().mockImplementation(({ where }) => {
           const from = where.createdAt?.gte;
           const to = where.createdAt?.lte;
           return fixedOrders.filter((o) => {
@@ -142,7 +142,7 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
           },
         ]),
       },
-      $queryRaw: jest.fn().mockImplementation(async (query: any) => {
+      $queryRaw: jest.fn().mockImplementation((query: any) => {
         const sql = Array.isArray(query?.strings) ? query.strings.join(' ') : String(query);
         if (sql.includes('COUNT(DISTINCT o.id)')) {
           return [
@@ -206,7 +206,7 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
         return [];
       }),
       consultant: {
-        count: jest.fn().mockImplementation(async (args?: any) => {
+        count: jest.fn().mockImplementation((args?: any) => {
           if (args?.where?.verificationStatus === 'APPROVED') return 8;
           return 10;
         }),
@@ -421,7 +421,7 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
       expect(res.summary.active).toBe(8);
       expect(res.summary.bookingsCount).toBe(20);
       expect(res.summary.bookingRevenue).toBe(10000000);
-      expect(res.summary.averageRating).toBe(4.8);
+      expect(res.summary.averageRating).toBeCloseTo(4.8);
 
       expect(res.byVerificationStatus).toEqual([
         { status: 'APPROVED', label: 'Approved', count: 8 },
@@ -484,8 +484,8 @@ describe('ReportsService (Unit with fixed fixtures)', () => {
     it('enqueues export and generates valid 24h download link', async () => {
       const mockStorage = {
         write: jest.fn().mockResolvedValue(undefined),
-        read: jest.fn().mockImplementation(async (key: string) => ({
-          stream: (async function* () {
+        read: jest.fn().mockImplementation((key: string) => ({
+          stream: (function* () {
             yield Buffer.from('--- SALES REPORT SUMMARY ---');
           })(),
           size: 28,

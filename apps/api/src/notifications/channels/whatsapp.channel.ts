@@ -7,12 +7,12 @@ export class WhatsAppChannel implements NotificationChannel {
   readonly channel = 'WHATSAPP' as const;
   private readonly logger = new Logger(WhatsAppChannel.name);
 
-  async send(input: SendNotificationInput): Promise<NotificationResult> {
+  send(input: SendNotificationInput): Promise<NotificationResult> {
     // Phase 2 stub: only logs. Strictly NO PII in logs (no phone numbers or message content)!
     this.logger.log(`[WhatsAppChannel] Stub send event=${input.event} user=${input.userId}`);
-    return {
+    return Promise.resolve({
       success: true,
       channel: this.channel,
-    };
+    });
   }
 }

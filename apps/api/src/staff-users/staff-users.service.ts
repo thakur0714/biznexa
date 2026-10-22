@@ -14,7 +14,7 @@ export class StaffUsersService {
 
   private async roleKeys(db: Prisma.TransactionClient | PrismaService, userId: string) {
     const rows = await db.userRole.findMany({ where: { userId }, include: { role: { select: { key: true } } } });
-    return rows.map((row) => row.role.key).sort();
+    return rows.map((row) => row.role.key).sort((a, b) => a.localeCompare(b));
   }
 
   private async rolesForInput(keys: string[], db: Prisma.TransactionClient | PrismaService = this.prisma) {
@@ -72,7 +72,7 @@ export class StaffUsersService {
         data: { name: input.name, email: input.email, mobile: input.mobile, passwordHash, emailVerified: true, consentAt: new Date(), roles: { create: roles.map((role) => ({ roleId: role.id })) } },
         select: { id: true, name: true, email: true, mobile: true, status: true, totpEnabledAt: true, lastLoginAt: true },
       });
-      const roleKeys = roles.map((role) => role.key).sort();
+      const roleKeys = roles.map((role) => role.key).sort((a, b) => a.localeCompare(b));
       await this.audit.log({ actorId, action: 'staff.create', entityType: 'User', entityId: created.id, before: null, after: { name: created.name, email: created.email, mobile: created.mobile, roles: roleKeys, status: created.status, twoFactorEnabled: false } }, tx);
       return created;
     });
@@ -85,7 +85,7 @@ export class StaffUsersService {
       const user = await tx.user.findFirst({ where: { id, ...staffFilter }, select: { id: true, status: true, name: true, email: true, mobile: true, totpEnabledAt: true, lastLoginAt: true } });
       if (!user) throw new NotFoundException('Staff user not found');
       const beforeRoles = await this.roleKeys(tx, id);
-      const afterRoles = [...new Set([...input.roles, ...(beforeRoles.includes('CUSTOMER') ? ['CUSTOMER'] : [])])].sort();
+      const afterRoles = [...new Set([...input.roles, ...(beforeRoles.includes('CUSTOMER') ? ['CUSTOMER'] : [])])].sort((a, b) => a.localeCompare(b));
       await this.protectLastAdmin(tx, user.status, beforeRoles, afterRoles);
       await tx.userRole.deleteMany({ where: { userId: id, role: { key: { not: 'CUSTOMER' } } } });
       await tx.userRole.createMany({ data: roles.map((role) => ({ userId: id, roleId: role.id })), skipDuplicates: true });

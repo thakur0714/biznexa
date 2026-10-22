@@ -117,7 +117,7 @@ export function htmlText(html: string): string[] {
   return ['script', 'style', 'head']
     .reduce(dropElements, html)
     .replaceAll(/<(br|\/p|\/div|\/tr|\/h\d|\/li)[^>]*>/gi, '\n')
-    .replaceAll(/<[^>]+>/g, ' ')
+    .replaceAll(/<[^<>]+>/g, ' ') // text is escaped, so a tag never holds a raw "<"
     .replaceAll('&nbsp;', ' ')
     .replaceAll('&lt;', '<')
     .replaceAll('&gt;', '>')

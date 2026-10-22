@@ -40,7 +40,7 @@ export class AvailabilityService {
   /** The caller's consultant profile; only an approved consultant manages availability. */
   private async own(userId: string) {
     const consultant = await this.prisma.consultant.findUnique({ where: { userId }, select: { id: true, verificationStatus: true } });
-    if (!consultant || consultant.verificationStatus !== 'APPROVED') throw new ForbiddenException('Only an approved consultant can manage availability');
+    if (consultant?.verificationStatus !== 'APPROVED') throw new ForbiddenException('Only an approved consultant can manage availability');
     return consultant.id;
   }
 

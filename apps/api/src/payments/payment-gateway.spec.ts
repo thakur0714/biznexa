@@ -87,7 +87,7 @@ describe('RazorpayGateway', () => {
       { amount: 1000, receipt: 'x'.repeat(41) },
       { amount: 1000, receipt: 'r', notes: Object.fromEntries(Array.from({ length: 16 }, (_, i) => [`k${i}`, 'v'])) },
     ]) {
-      await expect(g.createOrder(input)).rejects.toMatchObject({ name: 'PaymentGatewayError', retryable: false });
+      await expect(g.createOrder(input)).rejects.toMatchObject({ name: 'PaymentGatewayError', retryable: false }); // NOSONAR: test steps run in order
     }
     expect(fake!.requests).toHaveLength(0);
   });
@@ -211,9 +211,9 @@ describe('RazorpayGateway', () => {
 
   it('marks 5xx, 429, unreadable answers, network errors and timeouts as retryable', async () => {
     for (const answer of [{ status: 502 }, { status: 429, body: { error: { code: 'BAD_REQUEST_ERROR', description: 'Too many requests' } } }, { status: 200, raw: '<html>' }]) {
-      const g = await gateway(() => answer);
-      await expect(g.fetchPayment('pay_1')).rejects.toMatchObject({ retryable: true });
-      await fake!.close();
+      const g = await gateway(() => answer); // NOSONAR: one fake server at a time
+      await expect(g.fetchPayment('pay_1')).rejects.toMatchObject({ retryable: true }); // NOSONAR: one fake server at a time
+      await fake!.close(); // NOSONAR: one fake server at a time
       fake = undefined;
     }
 

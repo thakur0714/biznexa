@@ -85,4 +85,4 @@ async function bootstrap() {
   Logger.log(`API ready on http://localhost:${cfg.PORT}/api  (docs: /api/docs)`, 'Bootstrap');
 }
 
-if (require.main === module) bootstrap();
+if (require.main === module) void bootstrap();

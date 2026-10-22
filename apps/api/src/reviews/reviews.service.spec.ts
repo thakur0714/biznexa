@@ -25,7 +25,7 @@ describe('ReviewsService', () => {
       booking: { findFirst: jest.fn() },
       review: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), aggregate: jest.fn(), findMany: jest.fn() },
       consultant: { update: jest.fn() },
-      $transaction: jest.fn(async (callback: (tx: MockPrisma) => unknown) => callback(prisma)),
+      $transaction: jest.fn((callback: (tx: MockPrisma) => unknown) => Promise.resolve(callback(prisma))),
       $queryRaw: jest.fn(),
     };
     service = new ReviewsService(prisma as unknown as PrismaService, audit as unknown as AuditService);

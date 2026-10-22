@@ -17,7 +17,7 @@ export const DEAD_LETTER_QUEUE = 'dead-letter';
 
 export const DEFAULT_JOB_OPTIONS: JobsOptions = {
   attempts: 5,
-  backoff: { type: 'exponential', delay: 5_000 }, // 5 s, 10 s, 20 s, 40 s
+  backoff: { type: 'exponential', delay: 5000 }, // 5 s, 10 s, 20 s, 40 s
   removeOnComplete: { age: 24 * 3600, count: 1000 },
   removeOnFail: { age: 7 * 24 * 3600 },
 };
@@ -123,7 +123,7 @@ export class QueueService implements OnModuleDestroy {
    * Redis round trip for health checks. Times out instead of hanging: queue connections
    * wait forever for Redis to come back (maxRetriesPerRequest: null), which is right for jobs but not for /health.
    */
-  async ping(timeoutMs = 2_000): Promise<boolean> {
+  async ping(timeoutMs = 2000): Promise<boolean> {
     let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<false>((resolve) => (timer = setTimeout(() => resolve(false), timeoutMs)));
     const roundTrip = this.queue(DEAD_LETTER_QUEUE)

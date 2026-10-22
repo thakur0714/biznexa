@@ -28,7 +28,7 @@ function fakeTx(seed: { email?: string | null; mobile?: string | null; uploads?:
         new Proxy(
           {},
           {
-            get: (_m, method: string) => async (args: Record<string, unknown>) => {
+            get: (_m, method: string) => (args: Record<string, unknown>) => {
               calls.push({ op: `${model}.${method}`, args });
               return results[`${model}.${method}`] ?? { count: 1 };
             },

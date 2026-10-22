@@ -21,7 +21,7 @@ describe('createZip', () => {
   });
 
   it('compresses', () => {
-    expect(createZip([entries[2]]).length).toBeLessThan(2_000);
+    expect(createZip([entries[2]]).length).toBeLessThan(2000);
   });
 
   it('refuses entry names that could escape the folder', () => {

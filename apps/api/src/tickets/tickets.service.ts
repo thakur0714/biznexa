@@ -110,7 +110,7 @@ export class TicketsService {
       db.message.count({ where }),
     ]);
 
-    const items = messagesDesc.reverse().map((m) => this.toMessageDto(m, customerId));
+    const items = messagesDesc.toReversed().map((m) => this.toMessageDto(m, customerId));
     return {
       items,
       total,
@@ -200,7 +200,7 @@ export class TicketsService {
     let attempts = 0;
     while (attempts < 10) {
       try {
-        const ticket = await this.prisma.$transaction(async (tx) => {
+        const ticket = await this.prisma.$transaction(async (tx) => { // NOSONAR: retry loop, one attempt after another
           const code = await this.getNextTicketCode(tx);
           const t = await tx.ticket.create({
             data: {
@@ -224,7 +224,7 @@ export class TicketsService {
           return t;
         });
 
-        await this.events.emit('ticket.created', {
+        await this.events.emit('ticket.created', { // NOSONAR: retry loop, one attempt after another
           ticketId: ticket.id,
           ticketCode: ticket.code,
           customerId,
@@ -235,7 +235,7 @@ export class TicketsService {
       } catch (e: unknown) {
         if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002' && attempts < 9) {
           attempts++;
-          await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 25) + 5));
+          await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 25) + 5)); // NOSONAR: retry back-off between attempts
           continue;
         }
         throw e;
@@ -655,16 +655,11 @@ export class TicketsService {
       select: { id: true, status: true },
     });
 
-    let closedCount = 0;
-    for (const t of resolvedTickets) {
-      const res = await this.prisma.ticket.updateMany({
-        where: { id: t.id, status: 'RESOLVED' },
-        data: { status: 'CLOSED' },
-      });
-      if (res.count > 0) {
-        closedCount++;
-      }
-    }
+    // Still RESOLVED re-checked in the update, so a ticket reopened since the read stays open.
+    const { count: closedCount } = await this.prisma.ticket.updateMany({
+      where: { id: { in: resolvedTickets.map((t) => t.id) }, status: 'RESOLVED' },
+      data: { status: 'CLOSED' },
+    });
 
     if (closedCount > 0) {
       this.logger.log(`Auto-closed ${closedCount} resolved ticket(s) older than 7 days`);

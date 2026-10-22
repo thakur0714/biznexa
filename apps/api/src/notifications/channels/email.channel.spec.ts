@@ -1,5 +1,5 @@
 import { EmailChannel } from './email.channel';
-import { FakeEmailProvider, SendGridEmailProvider, SmtpEmailProvider } from '../providers/email.provider';
+import { FakeEmailProvider, SendGridEmailProvider } from '../providers/email.provider';
 import type { TemplateEngineService } from '../template-engine.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 

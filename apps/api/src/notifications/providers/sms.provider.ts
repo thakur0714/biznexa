@@ -120,12 +120,18 @@ export class Msg91SmsProvider extends SmsProvider {
     // The request id is what MSG91's delivery report sends back (M6.3 callbacks).
     const body = parseJson(await res.text().catch(() => '')) as { type?: string; message?: unknown } | null;
     if (body?.type === 'error') {
-      this.logger.error(`MSG91 refused the SMS: ${String(body.message ?? '')}`);
-      throw new PermanentDeliveryError(`MSG91 refused the SMS: ${String(body.message ?? 'unknown reason')}`);
+      this.logger.error(`MSG91 refused the SMS: ${describeReason(body.message, '')}`);
+      throw new PermanentDeliveryError(`MSG91 refused the SMS: ${describeReason(body.message, 'unknown reason')}`);
     }
     const requestId = typeof body?.message === 'string' && body.message ? body.message : undefined;
     return { messageId: requestId };
   }
+}
+
+/** MSG91's error text; anything that isn't a string is shown as JSON rather than "[object Object]". */
+function describeReason(message: unknown, fallback: string): string {
+  if (message === undefined || message === null) return fallback;
+  return typeof message === 'string' ? message : JSON.stringify(message);
 }
 
 function parseJson(text: string): unknown {

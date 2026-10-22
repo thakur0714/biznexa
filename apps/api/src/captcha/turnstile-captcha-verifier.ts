@@ -16,7 +16,7 @@ export class TurnstileCaptchaVerifier extends CaptchaVerifier {
     const form = new URLSearchParams({ secret: this.secretKey, response: token });
     if (ip) form.set('remoteip', ip);
     try {
-      const res = await fetch(SITEVERIFY_URL, { method: 'POST', body: form, signal: AbortSignal.timeout(5_000) });
+      const res = await fetch(SITEVERIFY_URL, { method: 'POST', body: form, signal: AbortSignal.timeout(5000) });
       if (!res.ok) {
         this.log.error(`Turnstile siteverify answered ${res.status}`);
         return false;

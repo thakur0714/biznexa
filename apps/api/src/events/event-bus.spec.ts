@@ -50,9 +50,7 @@ describe('EventBus', () => {
     bus.on('certificate.status_changed', () => {
       throw new Error('sync boom');
     });
-    bus.on('certificate.status_changed', async () => {
-      throw new Error('async boom');
-    });
+    bus.on('certificate.status_changed', () => Promise.reject(new Error('async boom')));
     bus.on('certificate.status_changed', ok);
 
     await expect(bus.emit('certificate.status_changed', payload)).resolves.toBeDefined();

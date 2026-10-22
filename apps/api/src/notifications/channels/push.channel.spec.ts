@@ -160,7 +160,7 @@ describe('PushChannel & FCM Provider (M6.6)', () => {
       const provider = new RealFcmProvider('test-project-123', serviceAccount);
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ name: 'projects/test-project-123/messages/msg-789' }),
+        json: () => Promise.resolve({ name: 'projects/test-project-123/messages/msg-789' }),
       });
 
       const res = await provider.send({
@@ -182,14 +182,14 @@ describe('PushChannel & FCM Provider (M6.6)', () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: false,
         status: 404,
-        text: async () => JSON.stringify({
+        text: () => Promise.resolve(JSON.stringify({
           error: {
             code: 404,
             message: 'Requested entity was not found.',
             status: 'NOT_FOUND',
             details: [{ '@type': 'type.googleapis.com/google.firebase.fcm.v1.FcmError', errorCode: 'UNREGISTERED' }],
           },
-        }),
+        })),
       });
 
       const res = await provider.send({
@@ -207,7 +207,7 @@ describe('PushChannel & FCM Provider (M6.6)', () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: false,
         status: 404,
-        text: async () => JSON.stringify({ error: { code: 404, message: 'Requested entity was not found.', status: 'NOT_FOUND' } }),
+        text: () => Promise.resolve(JSON.stringify({ error: { code: 404, message: 'Requested entity was not found.', status: 'NOT_FOUND' } })),
       });
 
       const res = await provider.send({ token: 'good-token', title: 'Hello', body: 'World' });

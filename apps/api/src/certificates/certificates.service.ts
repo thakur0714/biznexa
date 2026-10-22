@@ -240,7 +240,7 @@ export class CertificatesService {
     const q = org.trim();
     if (q.length < 3) throw new BadRequestException('Enter at least 3 characters of the organisation name');
     const setting = await this.prisma.setting.findUnique({ where: { key: 'certificates.organizationSearch' } });
-    if (setting && setting.value === false) throw new BadRequestException('Search by organisation is turned off');
+    if (setting?.value === false) throw new BadRequestException('Search by organisation is turned off');
 
     const rows = await this.prisma.certificate.findMany({
       where: { organizationName: { contains: q, mode: 'insensitive' } },

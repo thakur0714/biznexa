@@ -25,7 +25,7 @@ export class SettingsService {
   /** Saves every field in one transaction; the audit entry holds only the keys that changed. */
   async updateSeller(data: SellerSettingsData, actorId: string): Promise<SellerSettings> {
     // As stored: no `undefined` (an address without line2). jsonb also reorders keys, hence a deep compare.
-    const values = JSON.parse(JSON.stringify(sellerSettingValues(data))) as Record<string, unknown>;
+    const values = JSON.parse(JSON.stringify(sellerSettingValues(data))) as Record<string, unknown>; // NOSONAR: a JSON round trip drops undefined
     const before = await this.prisma.setting.findMany({ where: { key: { in: KEYS } }, select: { key: true, value: true } });
     const old = new Map(before.map((r) => [r.key, r.value]));
     const changed = Object.keys(values).filter((k) => !isDeepStrictEqual(old.get(k) ?? null, values[k]));

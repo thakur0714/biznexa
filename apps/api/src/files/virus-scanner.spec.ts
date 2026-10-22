@@ -12,7 +12,7 @@ describe('StubVirusScanner', () => {
     expect(await stub.scan(Readable.from([EICAR]))).toEqual({ infected: true, signature: 'Eicar-Test-Signature' });
     const inside = Buffer.concat([PDF, EICAR, PDF]);
     for (const at of [1, 10, 40, 77]) {
-      expect((await stub.scan(Readable.from([inside.subarray(0, at), inside.subarray(at)]))).infected).toBe(true);
+      expect((await stub.scan(Readable.from([inside.subarray(0, at), inside.subarray(at)]))).infected).toBe(true); // NOSONAR: test steps run in order
     }
   });
 

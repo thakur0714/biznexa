@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationQueueService } from '../notifications/delivery/notification-queue.service';
 import { TemplateEngineService } from '../notifications/template-engine.service';
 import { env } from '../config/env';
+import { inSequence } from '../common/in-sequence';
 import { istDay, type NotificationEvent } from '@biznexa/types';
 import type { Prisma } from '../generated/prisma/client';
 
@@ -56,7 +57,8 @@ export class ReminderJobService {
       include: { businessEntity: true },
     });
 
-    for (const reminder of reminders) {
+    // One reminder at a time, so a run never opens many DB connections or provider calls at once.
+    await inSequence(reminders, async (reminder) => {
       try {
         // Every unsent offset whose day (in India) has come; after downtime several are due at once.
         const dueOffsets = reminder.offsets.filter(
@@ -66,7 +68,7 @@ export class ReminderJobService {
           if (reminder.offsets.every((o) => reminder.sentOffsets.includes(o))) {
             await this.prisma.reminder.update({ where: { id: reminder.id }, data: { status: 'SENT' } });
           }
-          continue;
+          return;
         }
 
         // Claim all of them in one atomic update; a parallel run that claimed any of them wins and we send nothing.
@@ -74,10 +76,10 @@ export class ReminderJobService {
           where: { id: reminder.id, status: 'SCHEDULED', NOT: { sentOffsets: { hasSome: dueOffsets } } },
           data: { sentOffsets: { push: dueOffsets } },
         });
-        if (claimed.count === 0) continue;
+        if (claimed.count === 0) return;
 
-        const sent = [...reminder.sentOffsets, ...dueOffsets];
-        if (reminder.offsets.every((o) => sent.includes(o))) {
+        const sent = new Set([...reminder.sentOffsets, ...dueOffsets]);
+        if (reminder.offsets.every((o) => sent.has(o))) {
           await this.prisma.reminder.update({ where: { id: reminder.id }, data: { status: 'SENT' } });
         }
         // One notification per claim, named by the nearest offset claimed (the one that is due now).
@@ -85,7 +87,7 @@ export class ReminderJobService {
       } catch (err) {
         this.logger.error(`Error processing reminder ${reminder.id}: ${err instanceof Error ? err.message : err}`);
       }
-    }
+    });
   }
 
   /** The service page to renew from (with the business preselected), else the dashboard. */

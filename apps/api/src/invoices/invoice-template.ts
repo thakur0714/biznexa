@@ -110,9 +110,61 @@ function lineRowHtml(l: InvoicePrint['lines'][number], i: number, igst: boolean,
 </tr>`;
 }
 
+function sellerHtml(s: InvoicePrint['seller'], sellerName: string): string {
+  return `  <div>
+    <h1>${esc(s.name || sellerName)}</h1>
+    ${s.legalName && s.legalName !== s.name ? `<div>${esc(s.legalName)}</div>` : ''}
+    <div class="muted">${address(s.address)}</div>
+    <div>${s.gstin ? `GSTIN <strong class="mono">${esc(s.gstin)}</strong>` : '<span class="muted">Not registered under GST</span>'}</div>
+    <div class="muted">${[s.email, s.phone].filter(Boolean).map(esc).join(' · ')}</div>
+  </div>`;
+}
+
+function buyerHtml(b: InvoicePrint['buyer']): string {
+  return `  <div class="party">
+    <h2>Billed to</h2>
+    <div class="name">${esc(b.name)}</div>
+    ${b.address ? `<div>${address(b.address)}</div>` : ''}
+    <div>${b.gstin ? `GSTIN <strong class="mono">${esc(b.gstin)}</strong>` : '<span class="muted">Unregistered (no GSTIN)</span>'}</div>
+    ${b.state ? `<div>State: ${stateWithCode(b.state)}</div>` : ''}
+    <div class="muted">${[b.email, b.mobile].filter(Boolean).map(esc).join(' · ')}</div>
+  </div>`;
+}
+
+function paymentHtml(inv: InvoicePrint): string {
+  const cn = inv.creditNote;
+  const paid = [
+    inv.payment.method ? esc(METHOD[inv.payment.method] ?? inv.payment.method) : '',
+    inv.payment.paidAt ? `on ${esc(formatDate(inv.payment.paidAt))}` : '',
+    inv.payment.reference ? `· ref. <span class="mono">${esc(inv.payment.reference)}</span>` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const paidPrefix = cn ? 'Original payment: ' : '';
+  return `  <div class="party">
+    <h2>${cn ? 'Refund' : 'Payment'}</h2>
+    <div class="name">${money(inv.total)} ${cn ? 'refunded' : 'received'}</div>
+    ${cn ? `<div>Reason: ${esc(cn.reason)}</div>` : ''}
+    ${paid ? `<div>${paidPrefix}${paid}</div>` : ''}
+    <div class="muted">${inv.taxType === 'IGST' ? 'Inter-state supply: IGST' : 'Intra-state supply: CGST + SGST'}</div>
+  </div>`;
+}
+
+function linesHeadHtml(igst: boolean, anyDiscount: boolean): string {
+  return `    <tr>
+      <th rowspan="2">#</th>
+      <th rowspan="2">Description</th>
+      <th rowspan="2">SAC</th>
+      <th rowspan="2" class="r">Fee (₹)</th>${anyDiscount ? '<th rowspan="2" class="r">Discount (₹)</th>' : ''}
+      <th rowspan="2" class="r">Taxable value (₹)</th>
+      ${igst ? '<th colspan="2" class="r">IGST</th>' : '<th colspan="2" class="r">CGST</th><th colspan="2" class="r">SGST</th>'}
+      <th rowspan="2" class="r">Amount (₹)</th>
+    </tr>
+    <tr>${igst ? '<th class="r">Rate</th><th class="r">₹</th>' : '<th class="r">Rate</th><th class="r">₹</th><th class="r">Rate</th><th class="r">₹</th>'}</tr>`;
+}
+
 export function invoiceHtml(inv: InvoicePrint): string {
   const s = inv.seller;
-  const b = inv.buyer;
   const igst = inv.taxType === 'IGST';
   const service = inv.lines.filter((l) => l.kind === 'SERVICE');
   const anyDiscount = service.some((l) => l.discount > 0);
@@ -133,15 +185,6 @@ export function invoiceHtml(inv: InvoicePrint): string {
   ]
     .map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`)
     .join('');
-
-  const paid = [
-    inv.payment.method ? esc(METHOD[inv.payment.method] ?? inv.payment.method) : '',
-    inv.payment.paidAt ? `on ${esc(formatDate(inv.payment.paidAt))}` : '',
-    inv.payment.reference ? `· ref. <span class="mono">${esc(inv.payment.reference)}</span>` : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-  const paidPrefix = cn ? 'Original payment: ' : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -191,13 +234,7 @@ footer { display: flex; justify-content: space-between; align-items: flex-end; g
 </head>
 <body>
 <header>
-  <div>
-    <h1>${esc(s.name || sellerName)}</h1>
-    ${s.legalName && s.legalName !== s.name ? `<div>${esc(s.legalName)}</div>` : ''}
-    <div class="muted">${address(s.address)}</div>
-    <div>${s.gstin ? `GSTIN <strong class="mono">${esc(s.gstin)}</strong>` : '<span class="muted">Not registered under GST</span>'}</div>
-    <div class="muted">${[s.email, s.phone].filter(Boolean).map(esc).join(' · ')}</div>
-  </div>
+${sellerHtml(s, sellerName)}
   <div class="doc">
     <div class="title">${esc(title)}</div>
     <div class="copy">Original for recipient</div>
@@ -218,35 +255,13 @@ footer { display: flex; justify-content: space-between; align-items: flex-end; g
 </header>
 
 <section class="parties">
-  <div class="party">
-    <h2>Billed to</h2>
-    <div class="name">${esc(b.name)}</div>
-    ${b.address ? `<div>${address(b.address)}</div>` : ''}
-    <div>${b.gstin ? `GSTIN <strong class="mono">${esc(b.gstin)}</strong>` : '<span class="muted">Unregistered (no GSTIN)</span>'}</div>
-    ${b.state ? `<div>State: ${stateWithCode(b.state)}</div>` : ''}
-    <div class="muted">${[b.email, b.mobile].filter(Boolean).map(esc).join(' · ')}</div>
-  </div>
-  <div class="party">
-    <h2>${cn ? 'Refund' : 'Payment'}</h2>
-    <div class="name">${money(inv.total)} ${cn ? 'refunded' : 'received'}</div>
-    ${cn ? `<div>Reason: ${esc(cn.reason)}</div>` : ''}
-    ${paid ? `<div>${paidPrefix}${paid}</div>` : ''}
-    <div class="muted">${igst ? 'Inter-state supply: IGST' : 'Intra-state supply: CGST + SGST'}</div>
-  </div>
+${buyerHtml(inv.buyer)}
+${paymentHtml(inv)}
 </section>
 
 <table class="lines">
   <thead>
-    <tr>
-      <th rowspan="2">#</th>
-      <th rowspan="2">Description</th>
-      <th rowspan="2">SAC</th>
-      <th rowspan="2" class="r">Fee (₹)</th>${anyDiscount ? '<th rowspan="2" class="r">Discount (₹)</th>' : ''}
-      <th rowspan="2" class="r">Taxable value (₹)</th>
-      ${igst ? '<th colspan="2" class="r">IGST</th>' : '<th colspan="2" class="r">CGST</th><th colspan="2" class="r">SGST</th>'}
-      <th rowspan="2" class="r">Amount (₹)</th>
-    </tr>
-    <tr>${igst ? '<th class="r">Rate</th><th class="r">₹</th>' : '<th class="r">Rate</th><th class="r">₹</th><th class="r">Rate</th><th class="r">₹</th>'}</tr>
+${linesHeadHtml(igst, anyDiscount)}
   </thead>
   <tbody>
 ${rows || `<tr><td colspan="${cols}">—</td></tr>`}

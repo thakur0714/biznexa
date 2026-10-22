@@ -134,7 +134,7 @@ describe('SmsChannel & MSG91 Provider (M6.5)', () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        text: async () => '{"type":"success"}',
+        text: () => Promise.resolve('{"type":"success"}'),
       } as Response);
 
       const res = await msg91.sendSms({
@@ -161,7 +161,7 @@ describe('SmsChannel & MSG91 Provider (M6.5)', () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        text: async () => '{"type":"success","message":"3561646b6a71353030303031"}',
+        text: () => Promise.resolve('{"type":"success","message":"3561646b6a71353030303031"}'),
       } as Response);
 
       const res = await msg91.sendSms({

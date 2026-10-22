@@ -26,20 +26,29 @@ export function parseCsv(text: string): string[][] {
     if (row.some((c) => c !== '')) rows.push(row);
     row = [];
   };
+  /** One character inside quotes: a doubled quote is a literal quote, a single one closes. Returns the last index read. */
+  const readQuoted = (at: number): number => {
+    const char = text[at];
+    if (char !== '"') cell += char;
+    else if (text[at + 1] === '"') {
+      cell += '"';
+      return at + 1;
+    } else insideQuotes = false;
+    return at;
+  };
 
-  for (let i = 0; i < text.length; i++) {
+  let i = 0;
+  while (i < text.length) {
     const char = text[i];
-    if (insideQuotes) {
-      if (char !== '"') cell += char;
-      else if (text[i + 1] === '"') cell += text[++i];
-      else insideQuotes = false;
-    } else if (char === '"') insideQuotes = true;
+    if (insideQuotes) i = readQuoted(i);
+    else if (char === '"') insideQuotes = true;
     else if (char === ',') endCell();
     else if (char === '\n') endRow();
     else if (char === '\r') {
       if (text[i + 1] === '\n') i++;
       endRow();
     } else cell += char;
+    i++;
   }
 
   if (cell !== '' || row.length > 0) endRow();

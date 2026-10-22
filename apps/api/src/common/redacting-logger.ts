@@ -17,8 +17,9 @@ const REPLACEMENTS: [RegExp, string | ((...m: string[]) => string)][] = [
   [/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[token]'],
   [/\bBearer\s+[\w.~+/-]+=*/gi, 'Bearer [token]'],
   [SECRET_PAIR, (_m, key: string, sep: string) => `${key}${sep}[redacted]`],
-  // Domain labels are dot-separated, so the domain part cannot backtrack.
-  [/[\w.%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}/g, '[email]'],
+  // Domain labels are dot-separated, so the domain part cannot backtrack; the lookbehind starts a match only at the
+  // start of the local part, so a long run without "@" is scanned once, not once per character.
+  [/(?<![\w.%+-])[\w.%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}/g, '[email]'],
   [/\b[A-Z]{5}\d{4}[A-Z]\b/g, '[pan]'],
   // Before mobiles: a 12-digit Aadhaar would otherwise leave two digits around a "[mobile]".
   [/(?<![\d-])[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}(?![\d-])/g, '[aadhaar]'],

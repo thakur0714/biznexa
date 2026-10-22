@@ -71,7 +71,7 @@ describe('StubPdfRenderer', () => {
     const text = pdf.toString('latin1');
     expect(text.startsWith('%PDF-1.4')).toBe(true);
     expect(text).toContain('(Tax & Invoice) Tj');
-    expect(text).toContain('(?1,180 \\(paid\\)) Tj');
+    expect(text).toContain(String.raw`(?1,180 \(paid\)) Tj`);
     expect(pageCount(pdf)).toBe(1);
     // Every xref offset points at its object.
     const offsets = [...text.matchAll(/^(\d{10}) 00000 n $/gm)].map((m) => Number(m[1]));

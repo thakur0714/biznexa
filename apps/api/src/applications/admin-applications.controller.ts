@@ -40,7 +40,7 @@ export class AdminApplicationsController {
     const csv = await this.applications.exportCSV(u, q);
     
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    const today = new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).split('/').reverse().join('-');
+    const today = new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }).split('/').toReversed().join('-');
     res.setHeader('Content-Disposition', `attachment; filename="applications-${today}.csv"`);
     
     res.send(csv);
