@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
+import { StaffAccountNotice } from './staff-account-notice';
 
 /** Sends visitors to /login (and back here afterwards) when there is no session. */
 export function RequireAuth({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -25,5 +26,6 @@ export function RequireAuth({ children }: Readonly<{ children: React.ReactNode }
       </output>
     );
   }
+  if (!user.roles.includes('CUSTOMER')) return <StaffAccountNotice />;
   return <>{children}</>;
 }

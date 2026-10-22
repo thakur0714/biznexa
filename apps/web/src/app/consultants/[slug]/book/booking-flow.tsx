@@ -8,6 +8,7 @@ import { useApi } from '@biznexa/api-client/react';
 import { Breadcrumbs, Button, LinkButton, Notice } from '@biznexa/ui';
 import { Icon } from '@/components/icons';
 import { useAuth } from '@/lib/auth';
+import { StaffAccountNotice } from '@/components/staff-account-notice';
 import { openRazorpayCheckout, type RazorpaySuccess } from '@/lib/razorpay';
 
 const TYPE_LABEL: Record<ConsultationType, string> = { AUDIO: 'Audio call', VIDEO: 'Video call', CHAT: 'Chat', MEETING: 'In person' };
@@ -60,6 +61,7 @@ export function BookingFlow({ slug, initial }: Readonly<{ slug: string; initial:
   const activeDate = date && days.has(date) ? date : (days.keys().next().value ?? null);
   const slotsOfDay = activeDate ? (days.get(activeDate) ?? []) : [];
   const picked = data.slots.find((s) => s.startAt === startAt) ?? null;
+  const isStaff = ready && user !== null && !user.roles.includes('CUSTOMER');
 
   const fetchSlots = useCallback(() => {
     const from = istDate(new Date());
@@ -69,6 +71,7 @@ export function BookingFlow({ slug, initial }: Readonly<{ slug: string; initial:
 
   // Fresh slots in the browser (the server's copy may be a minute old).
   useEffect(() => {
+    if (!ready || !user?.roles.includes('CUSTOMER')) return;
     let live = true;
     fetchSlots()
       .then((fresh) => live && setData(fresh))
@@ -76,7 +79,7 @@ export function BookingFlow({ slug, initial }: Readonly<{ slug: string; initial:
     return () => {
       live = false;
     };
-  }, [fetchSlots]);
+  }, [fetchSlots, ready, user]);
 
   // The hold countdown.
   useEffect(() => {
@@ -213,6 +216,8 @@ export function BookingFlow({ slug, initial }: Readonly<{ slug: string; initial:
   const left = booking?.holdExpiresAt ? Math.max(0, new Date(booking.holdExpiresAt).getTime() - now) : 0;
   const expired = phase === 'held' && left === 0;
   const mmss = `${Math.floor(left / 60_000)}:${String(Math.floor((left % 60_000) / 1000)).padStart(2, '0')}`;
+
+  if (isStaff) return <StaffAccountNotice />;
 
   return (
     <div className="mx-auto max-w-[760px] px-4 py-8 sm:px-6 sm:py-10">
