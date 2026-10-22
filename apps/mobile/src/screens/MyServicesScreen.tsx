@@ -8,13 +8,13 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type {
-  CustomerApplicationList,
-  CustomerApplicationRow,
-  CustomerApplicationTab,
-  CustomerApplicationNextAction,
+import {
+  type CustomerApplicationList,
+  type CustomerApplicationRow,
+  type CustomerApplicationTab,
+  type CustomerApplicationNextAction,
+  formatDate,
 } from '@biznexa/types';
-import { formatDate } from '@biznexa/types';
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';

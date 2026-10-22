@@ -228,7 +228,7 @@ function Coupons() {
   if (loadError) {
     listContent = <div className="space-y-3"><Notice tone="error">{loadError}</Notice><Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>Try again</Button></div>;
   } else if (!coupons) {
-    listContent = <p className="text-muted" role="status">Loading coupons…</p>;
+    listContent = <output className="block text-muted">Loading coupons…</output>;
   } else if (coupons.length === 0) {
     listContent = <EmptyState title="No coupons yet" description="Create a code customers can enter at checkout for a discount on the professional fee." action={<Button variant="ink" size="sm" onClick={() => setEditing(null)}>New coupon</Button>} />;
   } else {

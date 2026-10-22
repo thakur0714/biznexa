@@ -20,9 +20,9 @@ export function RequireAuth({ children }: Readonly<{ children: React.ReactNode }
 
   if (!ready || !user) {
     return (
-      <div className="mx-auto max-w-[1180px] px-6 py-24 text-center text-muted" role="status">
+      <output className="block mx-auto max-w-[1180px] px-6 py-24 text-center text-muted">
         Loading your account…
-      </div>
+      </output>
     );
   }
   return <>{children}</>;

@@ -6,7 +6,7 @@ const repoRoot = path.resolve(__dirname, '../../..');
 const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
 
 function fixture(action: 'create' | 'delete', runId: string) {
-  const output = execFileSync('pnpm', ['--filter', '@biznexa/api', 'exec', 'tsx', 'test/fixtures/featured-consultant.ts', action, runId], {
+  const output = execFileSync('pnpm', ['--filter', '@biznexa/api', 'exec', 'tsx', 'test/fixtures/featured-consultant.ts', action, runId], { // NOSONAR: dev tool from PATH
     cwd: repoRoot,
     env: { ...process.env, API_URL: apiUrl },
     stdio: 'pipe',

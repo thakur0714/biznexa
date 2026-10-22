@@ -78,7 +78,9 @@ beforeAll(async () => {
   });
   // Only this suite's kind.
   eventBus = app.get(EventBus);
-  eventBus.onAny((e) => void ((e.name !== 'pdf.generated' || e.payload.kind === KIND) && events.push(e)));
+  eventBus.onAny((e) => {
+    if ((e.name !== 'pdf.generated' || e.payload.kind === KIND)) events.push(e);
+  });
   startupCompletion = generated('left-over');
   await app.init();
   // The start-up sweep is off in tests (QUEUE_BOOT_SWEEP, setup-env.js): run it for this suite's kind only.

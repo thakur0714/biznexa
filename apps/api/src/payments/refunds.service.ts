@@ -1,6 +1,6 @@
 import { BadGatewayException, BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
-  formatINR,
+  formatINRTrimmed,
   paymentStatusAfterRefunds,
   refundableAmount,
   REFUNDABLE_PAYMENT_STATUSES,
@@ -114,7 +114,7 @@ export class RefundsService {
       }
       if (!payment.gatewayPaymentId || payment.gateway !== this.gateway.name) throw new ConflictException(`This payment was not taken through ${this.gateway.name} and cannot be refunded here`);
       const refundable = refundableAmount(payment.amount, payment.refunds);
-      if (input.amount > refundable) throw new BadRequestException(`At most ${formatINR(refundable, refundable % 100 !== 0)} of this payment can be refunded`);
+      if (input.amount > refundable) throw new BadRequestException(`At most ${formatINRTrimmed(refundable)} of this payment can be refunded`);
 
       const refund = await tx.refund.create({
         data: { paymentId, amount: input.amount, reason: input.reason, initiatedById: actorId, idempotencyKey },

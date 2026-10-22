@@ -90,7 +90,7 @@ export function AnnouncementsView() {
     {segmentType === 'EXPIRING_CERTIFICATE' && <Field id="announcement-days" label="Days until expiry" type="number" min={1} max={365} value={days} onChange={(e) => { setDays(e.target.value); setCount(null); }} />}
     <fieldset className="space-y-2"><legend className="text-sm font-medium">Channels</legend>{['IN_APP', 'EMAIL', 'PUSH', 'SMS'].map((channel) => <Checkbox id={`announcement-${channel.toLowerCase()}`} key={channel} label={channel} checked={channels.includes(channel)} onChange={() => toggle(channel)} />)}<p className="text-xs text-muted-foreground">SMS is sent only when an active DLT template is configured.</p></fieldset>
     {error && <Notice tone="error">{error}</Notice>}
-    <div className="flex items-center gap-3"><Button variant="outline" disabled={busy || (segmentType === 'ACTIVE_APPLICATION_CATEGORY' && !categoryId)} onClick={countRecipients}>Show recipient count</Button>{count !== null && <span role="status">{count} recipients</span>}</div>
+    <div className="flex items-center gap-3"><Button variant="outline" disabled={busy || (segmentType === 'ACTIVE_APPLICATION_CATEGORY' && !categoryId)} onClick={countRecipients}>Show recipient count</Button>{count !== null && <output>{count} recipients</output>}</div>
     <Button disabled={busy || count === null || !title.trim() || !body.trim() || !channels.length} onClick={send}>Queue announcement</Button>
   </section>;
 }

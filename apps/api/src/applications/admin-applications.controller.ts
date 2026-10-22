@@ -17,9 +17,8 @@ import {
   applicationTransitionSchema,
   type ApplicationTransitionInput,
 } from '@biznexa/types';
-import { AuthUser, CurrentUser, RequireAnyPermission } from '../common/auth.decorators';
+import { AuthUser, CurrentUser, RequireAnyPermission, RequirePermissions } from '../common/auth.decorators';
 import { ApiZodResponse, ZodQuery, ZodBody } from '../common/openapi';
-import { RequirePermissions } from '../common/auth.decorators';
 import { AdminApplicationsService } from './admin-applications.service';
 import { CertificatesService } from '../certificates/certificates.service';
 import type { Response } from 'express';

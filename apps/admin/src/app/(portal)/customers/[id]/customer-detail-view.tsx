@@ -219,9 +219,9 @@ export function CustomerDetailView({ id }: Readonly<{ id: string }>) {
 
   if (!data) {
     return (
-      <p className="text-muted" role="status">
+      <output className="block text-muted">
         Loading customer details…
-      </p>
+      </output>
     );
   }
 

@@ -45,7 +45,7 @@ export function ReviewForm({ bookingId }: Readonly<{ bookingId: string }>) {
 
   let reviewContent: React.ReactNode;
   if (loading) {
-    reviewContent = <p className="mt-5" role="status">Loading consultation…</p>;
+    reviewContent = <output className="block mt-5">Loading consultation…</output>;
   } else if (booking?.status !== 'COMPLETED') {
     reviewContent = <p className="mt-4 rounded-lg border border-rule bg-white p-5 text-sm">Reviews are available after the consultant marks the session completed.</p>;
   } else if (review) {

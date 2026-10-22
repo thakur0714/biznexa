@@ -12,12 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type {
-  CustomerCertificateList,
-  CustomerCertificateRow,
-  CertificateVerifyResult,
-} from '@biznexa/types';
-import { formatDate } from '@biznexa/types';
+import { type CustomerCertificateList, type CustomerCertificateRow, type CertificateVerifyResult, formatDate } from '@biznexa/types';
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';

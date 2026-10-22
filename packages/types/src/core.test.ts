@@ -181,7 +181,7 @@ describe('profile & password change schemas (M5.11)', () => {
     expect(changePasswordSchema.safeParse({ currentPassword: 'oldPass123', newPassword: 'newSecretPass1' }).success).toBe(true);
     expect(changePasswordSchema.safeParse({ currentPassword: '', newPassword: 'newSecretPass1' }).success).toBe(false);
     expect(changePasswordSchema.safeParse({ currentPassword: 'oldPass123', newPassword: 'short' }).success).toBe(false);
-    expect(changePasswordSchema.safeParse({ currentPassword: 'oldPass123', newPassword: 'letters_only' }).success).toBe(false);
+    expect(changePasswordSchema.safeParse({ currentPassword: 'oldPass123', newPassword: 'letters_only' }).success).toBe(false); // NOSONAR: test credential
     expect(changePasswordSchema.safeParse({ currentPassword: 'oldPass123', newPassword: '12345678' }).success).toBe(false);
   });
 });

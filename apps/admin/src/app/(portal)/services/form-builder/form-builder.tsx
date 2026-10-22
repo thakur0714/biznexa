@@ -107,9 +107,9 @@ function BuilderLoader({ serviceId }: Readonly<{ serviceId: string }>) {
   }
   if (!data) {
     return (
-      <p className="text-muted" role="status">
+      <output className="block text-muted">
         Loading…
-      </p>
+      </output>
     );
   }
   return <FormBuilder api={api} {...data} />;
@@ -370,11 +370,11 @@ function FormBuilder({ api, service, list: initialList, opened }: Loaded & { api
       {started && (
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-rule bg-white/95 backdrop-blur lg:left-[260px]">
           <div className="flex max-w-[1400px] flex-wrap items-center justify-end gap-3 px-4 py-3 sm:px-8">
-            <span className="mr-auto text-sm text-muted" role="status">
+            <output className="mr-auto text-sm text-muted">
               {parsed.kind === 'syntax'
                 ? 'The JSON has a syntax error'
                 : footerStatus(parsed, dirty)}
-            </span>
+            </output>
             <Checkbox id="form-activate" label="Use for new applications straight away" checked={activate} onChange={(e) => setActivate(e.target.checked)} />
             <Button type="button" variant="outline" disabled={!dirty || saving} onClick={() => {
                 change(baseline);

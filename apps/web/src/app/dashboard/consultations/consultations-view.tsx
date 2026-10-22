@@ -127,7 +127,7 @@ export function ConsultationsView() {
         {(['UPCOMING', 'PAST'] as const).map((value) => <button key={value} role="tab" aria-selected={tab === value} className={`rounded-md px-4 py-2 text-sm font-medium ${tab === value ? 'bg-ink text-white' : 'border border-rule bg-white text-ink'}`} onClick={() => setTab(value)}>{value === 'UPCOMING' ? 'Upcoming' : 'Past'}</button>)}
       </div>
       {error && <div className="mb-4"><Notice tone="error">{error}</Notice></div>}
-      {loading && <p role="status">Loading consultations…</p>}
+      {loading && <output className="block">Loading consultations…</output>}
       {!loading && visible.length === 0 && (
         <EmptyState title={tab === 'UPCOMING' ? 'No upcoming consultations' : 'No past consultations'} description={tab === 'UPCOMING' ? 'Your confirmed and upcoming bookings will appear here.' : 'Completed and cancelled bookings will appear here.'} />
       )}
@@ -142,7 +142,7 @@ export function ConsultationsView() {
           {booking.status === 'COMPLETED' && <Link className="mt-4 inline-flex rounded-md border border-ink px-4 py-2 text-sm font-semibold text-ink hover:bg-paper" href={`/dashboard/consultations/${booking.id}/review`}>Leave review</Link>}
           {booking.status === 'CONFIRMED' && <div className="mt-4 flex flex-wrap gap-2">
             <Button variant="outline" disabled={!canManage || busyId === booking.id} onClick={() => void loadSlots(booking)}>Reschedule</Button>
-            <Button variant="outline" disabled={!canManage || busyId === booking.id} onClick={() => void cancel(booking)}>Cancel</Button>
+            <Button variant="outline" disabled={!canManage || busyId === booking.id} onClick={() => cancel(booking)}>Cancel</Button>
             {!canManage && <span className="self-center text-xs text-muted">{`Changes are available until ${BOOKING_CHANGE_WINDOW_HOURS} hours before the session.`}</span>}
           </div>}
           {rescheduling === booking.id && <div className="mt-4 rounded-md bg-paper p-4">

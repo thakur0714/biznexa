@@ -145,12 +145,11 @@ export function CouponEditor({
           />
           {values.limitServices && (
             <div className="mt-3">
-              <div
-                role="group"
-                aria-label="Services this coupon works for"
+              <fieldset
                 aria-describedby={errors.serviceIds ? 'coupon-services-err' : undefined}
                 className={`max-h-48 space-y-2 overflow-y-auto rounded-md border bg-white p-3 ${errors.serviceIds ? 'border-danger' : 'border-rule'}`}
               >
+                <legend className="sr-only">Services this coupon works for</legend>
                 {[...services.map((s) => ({ id: s.id, name: s.isActive ? s.name : `${s.name} (inactive)` })), ...removed.map((s) => ({ id: s.id, name: `${s.name} (removed)` }))].map((s) => (
                   <Checkbox
                     key={s.id}
@@ -160,7 +159,7 @@ export function CouponEditor({
                     onChange={(e) => set('serviceIds', e.target.checked ? [...values.serviceIds, s.id] : values.serviceIds.filter((id) => id !== s.id))}
                   />
                 ))}
-              </div>
+              </fieldset>
               {errors.serviceIds && (
                 <p id="coupon-services-err" className="mt-1.5 text-sm text-danger">
                   {errors.serviceIds}

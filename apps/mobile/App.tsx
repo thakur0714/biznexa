@@ -1,5 +1,4 @@
-import React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Sentry from '@sentry/react-native';
@@ -7,11 +6,9 @@ import appConfig from './app.json';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createNavigationContainerRef, NavigationContainer, type LinkingOptions } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
-import { AuthProvider } from './src/auth/auth-context';
-import { RootNavigator } from './src/navigation/RootNavigator';
-import type { RootStackParamList } from './src/navigation/RootNavigator';
+import { AuthProvider, useAuth } from './src/auth/auth-context';
+import { RootNavigator, type RootStackParamList } from './src/navigation/RootNavigator';
 import { notificationDestination, notificationLink } from './src/navigation/notification-routing';
-import { useAuth } from './src/auth/auth-context';
 import { isVersionBelow } from './src/api/version';
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';

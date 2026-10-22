@@ -382,9 +382,9 @@ export function ApplicationDetailView({ applicationId }: Readonly<{ applicationI
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-rule bg-white p-10 text-center text-sm text-muted" role="status">
+      <output className="block rounded-lg border border-rule bg-white p-10 text-center text-sm text-muted">
         Loading application details…
-      </div>
+      </output>
     );
   }
 

@@ -4,9 +4,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { needsTwoFactor } from '@biznexa/types';
 import { useAuth } from '@/lib/auth';
-import { Logo } from '@biznexa/ui';
+import { Logo, Button } from '@biznexa/ui';
 import { SidebarNav } from './sidebar';
-import { Button } from '@biznexa/ui';
 
 /**
  * Protected frame for every portal page: sends visitors without a staff session to /login and
@@ -48,12 +47,10 @@ export function PortalShell({ children }: Readonly<{ children: React.ReactNode }
     if (!sidebar) return;
 
     const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const focusables = Array.from(sidebar.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    const first = Array.from(sidebar.querySelectorAll<HTMLElement>(FOCUSABLE)).find(
       (node) => node.offsetParent !== null || node.getClientRects().length > 0,
     );
-    if (focusables[0]) {
-      focusables[0].focus();
-    }
+    first?.focus();
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -85,9 +82,9 @@ export function PortalShell({ children }: Readonly<{ children: React.ReactNode }
 
   if (!ready || !user || pendingTwoFactor || outsideConsultantPortal) {
     return (
-      <div className="px-6 py-24 text-center text-muted" role="status">
+      <output className="block px-6 py-24 text-center text-muted">
         Checking your session…
-      </div>
+      </output>
     );
   }
 
@@ -108,7 +105,7 @@ export function PortalShell({ children }: Readonly<{ children: React.ReactNode }
 
       {menuOpen && <div className="fixed inset-0 z-30 bg-night/40 lg:hidden" aria-hidden="true" onClick={close} />}
 
-      <aside
+      <aside // NOSONAR: the sidebar is a modal drawer only on small screens; <dialog> can't switch
         ref={sidebarRef}
         id="admin-sidebar"
         role={menuOpen ? 'dialog' : undefined}

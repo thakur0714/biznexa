@@ -42,7 +42,7 @@ export function DeliverablesPanel({ applicationId, status }: Readonly<{ applicat
 
   let deliverablesContent: React.ReactNode;
   if (loading) {
-    deliverablesContent = <p role="status" className="text-sm text-muted">Loading deliverables…</p>;
+    deliverablesContent = <output className="block text-sm text-muted">Loading deliverables…</output>;
   } else if (!items.length) {
     deliverablesContent = <p className="text-sm text-muted">No final deliverables have been added.</p>;
   } else {

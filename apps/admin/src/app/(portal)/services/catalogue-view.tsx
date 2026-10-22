@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createColumnHelper, type ColumnFiltersState, type FilterFn } from '@tanstack/react-table';
 import { formatINR, type AdminCategoryRow, type AdminServiceRow } from '@biznexa/types';
 import Link from 'next/link';
@@ -269,9 +268,9 @@ function Catalogue() {
     );
   } else if (!services || !categories) {
     results = (
-      <p className="text-muted" role="status">
+      <output className="block text-muted">
         Loading the catalogue…
-      </p>
+      </output>
     );
   } else if (tab === 'services') {
     results = (
@@ -315,7 +314,8 @@ function Catalogue() {
         </LinkButton>
       </div>
 
-      <div className="mt-6 inline-flex rounded-md border border-rule bg-white p-1" role="group" aria-label="Show">
+      <fieldset className="mt-6 inline-flex rounded-md border border-rule bg-white p-1">
+        <legend className="sr-only">Show</legend>
         {(['services', 'categories'] as const).map((t) => (
           <button
             key={t}
@@ -327,7 +327,7 @@ function Catalogue() {
             {catalogueTabLabel(t, services, categories)}
           </button>
         ))}
-      </div>
+      </fieldset>
 
       <div className={`mt-4 grid gap-3 ${tab === 'services' ? 'sm:grid-cols-[1fr_220px_160px]' : 'sm:grid-cols-[1fr_160px]'}`}>
         <Field

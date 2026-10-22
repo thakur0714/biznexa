@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { formatDate, formatINR, type ApplicationDetail, type PaymentStatusView } from '@biznexa/types';
+import { formatDate, formatINRExact, type ApplicationDetail, type PaymentStatusView } from '@biznexa/types';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { Breadcrumbs, Button, LinkButton, Notice } from '@biznexa/ui';
@@ -12,7 +12,7 @@ import type { ServiceDetail } from '@/lib/api';
 import { useCheckout } from '../use-checkout';
 import { InvoiceDownloads } from './invoice-downloads';
 
-const money = (paise: number) => formatINR(paise, true);
+const money = (paise: number) => formatINRExact(paise);
 
 /** Where "Track Application" goes until the application detail page with its timeline (M5.4). */
 const TRACK_HREF = '/dashboard';

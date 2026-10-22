@@ -100,7 +100,9 @@ beforeAll(async () => {
   prisma = app.get(PrismaService);
   gateway = app.get(PaymentGateway) as MockPaymentGateway;
   // Invoice PDFs (M3.23) are generated in the background and can land during a later test: not counted here.
-  app.get(EventBus).onAny((e) => void (e.name !== 'pdf.generated' && events.push(e)));
+  app.get(EventBus).onAny((e) => {
+    if (e.name !== 'pdf.generated') events.push(e);
+  });
   ({ token: alice, id: aliceId } = await register(1));
 
   sellerSetting = await prisma.setting.findUnique({ where: { key: SELLER_STATE_KEY }, select: { value: true } });

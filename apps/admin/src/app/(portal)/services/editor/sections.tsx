@@ -5,7 +5,7 @@ import { get, useController, useFieldArray, useFormContext, useWatch, type Field
 import {
   calculatePrice,
   FILE_TYPES,
-  formatINR,
+  formatINRExact,
   MAX_RELATED_SERVICES,
   SERVICE_ICONS,
   SERVICE_RECURRENCES,
@@ -386,7 +386,7 @@ function previewPrice(fee: string, gov: string, gst: string) {
   const professionalFee = toPaise(fee);
   const governmentFee = toPaise(gov);
   if (!fee.trim() || !Number.isFinite(professionalFee) || !Number.isFinite(governmentFee) || professionalFee < 0 || governmentFee < 0) return null;
-  return formatINR(calculatePrice({ professionalFee, governmentFee, gstRate: Number(gst) }).total, true);
+  return formatINRExact(calculatePrice({ professionalFee, governmentFee, gstRate: Number(gst) }).total);
 }
 
 // ─────────────── Documents ───────────────

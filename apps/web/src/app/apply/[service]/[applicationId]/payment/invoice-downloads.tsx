@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { formatDate, formatINR, type FileLinkResult, type InvoiceSummary } from '@biznexa/types';
+import { formatDate, formatINRExact, type FileLinkResult, type InvoiceSummary } from '@biznexa/types';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { Button } from '@biznexa/ui';
@@ -72,7 +72,7 @@ export function InvoiceDownloads({ applicationId, paidKey }: Readonly<{ applicat
               <div className="num text-sm">
                 <p className="font-semibold">{inv.number}</p>
                 <p className="text-muted">
-                  {formatDate(inv.issuedAt)} · {formatINR(inv.total, true)}
+                  {formatDate(inv.issuedAt)} · {formatINRExact(inv.total)}
                 </p>
               </div>
               {inv.pdfReady ? (

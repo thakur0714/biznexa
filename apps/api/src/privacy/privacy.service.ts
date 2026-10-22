@@ -1,8 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import type { CreateDataRequestInput, DataRequest as DataRequestResult, DataRequestList, PrivacyOtpResponse } from '@biznexa/types';
-import { Prisma } from '../generated/prisma/client';
-import type { DataRequest, User } from '../generated/prisma/client';
+import { Prisma, type DataRequest, type User } from '../generated/prisma/client';
 import type { DataRequestStatus } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';

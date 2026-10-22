@@ -152,9 +152,9 @@ export function LeadsView() {
     );
   } else if (!data) {
     content = (
-      <p className="text-muted" role="status">
+      <output className="block text-muted">
         Loading enquiries…
-      </p>
+      </output>
     );
   } else if (data.items.length === 0) {
     content = (

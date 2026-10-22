@@ -84,7 +84,7 @@ export function PrivacyRequestsView() {
       {error && <Notice tone="error">{error}</Notice>}
       {notice && <Notice tone="success">{notice}</Notice>}
       {loading && (
-        <p role="status">Loading privacy requests…</p>
+        <output className="block">Loading privacy requests…</output>
       )}
       {!loading && result?.items && result.items.length > 0 && (
         <>

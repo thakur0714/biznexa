@@ -48,8 +48,8 @@ describe('links', () => {
     'vbscript:msgbox(1)',
     'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==',
     '//evil.example',
-    '/\\evil.example',
-    '\\\\evil.example',
+    String.raw`/\evil.example`,
+    String.raw`\\evil.example`,
   ])('drops a dangerous href: %s', (href) => {
     const out = sanitizeRichText(`<a href="${href}">x</a>`);
     expect(out).not.toMatch(/href/);

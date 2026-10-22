@@ -50,7 +50,7 @@ export function CmsView() {
     return () => { alive = false; };
   }, [api, slug]);
   if (!user?.permissions.includes(PERMS.CMS_MANAGE)) return <NotAllowed />;
-  if (!form) return <p role="status">Loading pages…</p>;
+  if (!form) return <output className="block">Loading pages…</output>;
   const update = (key: keyof Page, value: string | null) => setForm((v) => v && ({ ...v, [key]: value }));
   function editable(p: Page): Page { return p.draftTitle !== null && p.draftTitle !== undefined ? { ...p, title: p.draftTitle, content: p.draftContent ?? p.content, seoTitle: p.draftSeoTitle ?? null, metaDescription: p.draftMetaDescription ?? null, ogImageUrl: p.draftOgImageUrl ?? null, contactEmail: p.draftContactEmail ?? null, contactPhone: p.draftContactPhone ?? null } : p; }
   async function save() {

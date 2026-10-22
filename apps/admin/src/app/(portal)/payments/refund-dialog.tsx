@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import type React from 'react';
-import { formatINR, MIN_REFUND_PAISE, type AdminPaymentDetail, type RefundView } from '@biznexa/types';
+import { useState, type SubmitEvent } from 'react';
+import { formatINRTrimmed, MIN_REFUND_PAISE, type AdminPaymentDetail, type RefundView } from '@biznexa/types';
 import { Button, Dialog, Field, Notice, TextArea } from '@biznexa/ui';
 import { useApi } from '@biznexa/api-client/react';
 
 /** Refund amounts are shown to the paisa when they have paise (₹1,250.50, not ₹1,251). */
-export const money = (paise: number) => formatINR(paise, paise % 100 !== 0);
+export const money = (paise: number) => formatINRTrimmed(paise);
 
 export type RefundMode = 'full' | 'partial';
 export interface RefundFormValues {
@@ -57,7 +56,7 @@ export function RefundDialog({ payment, open, onClose, onRefunded }: Readonly<{ 
   const refundable = payment.refundable;
   const set = (patch: Partial<RefundFormValues>) => setValues((v) => ({ ...v, ...patch }));
 
-  const submit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const submit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const checked = checkRefundForm(values, refundable);
     setErrors(checked.errors);

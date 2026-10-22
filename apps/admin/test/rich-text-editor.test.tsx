@@ -100,11 +100,15 @@ describe('RichTextEditor', () => {
     expect(latest).toBe('<h2>Hello world</h2>');
     expect(tool('Heading 2')).toHaveAttribute('aria-pressed', 'true');
 
-    act(() => void editor.commands.selectAll());
+    act(() => {
+      editor.commands.selectAll();
+    });
     fireEvent.click(tool('Bold'));
     expect(latest).toBe('<h2><strong>Hello world</strong></h2>');
 
-    const fresh = () => act(() => void editor.chain().setContent('<p>Item</p>', { emitUpdate: false }).setTextSelection(2).run());
+    const fresh = () => act(() => {
+      editor.chain().setContent('<p>Item</p>', { emitUpdate: false }).setTextSelection(2).run();
+    });
     fresh();
     fireEvent.click(tool('Bulleted list'));
     expect(latest).toBe('<ul><li><p>Item</p></li></ul>');
@@ -141,7 +145,9 @@ describe('RichTextEditor', () => {
 
   it('refuses unsafe link addresses and adds safe ones', async () => {
     const { editor } = await setup('<p>Read our guide</p>');
-    act(() => void editor.commands.selectAll());
+    act(() => {
+      editor.commands.selectAll();
+    });
     fireEvent.click(tool('Link'));
     const address = await screen.findByLabelText('Link address');
 
@@ -158,7 +164,9 @@ describe('RichTextEditor', () => {
 
   it('removes a link', async () => {
     const { editor } = await setup('<p><a href="/about">About</a></p>');
-    act(() => void editor.commands.setTextSelection(2));
+    act(() => {
+      editor.commands.setTextSelection(2);
+    });
     fireEvent.click(tool('Edit link'));
     fireEvent.click(await screen.findByRole('button', { name: 'Remove link' }));
     expect(latest).toBe('<p>About</p>');
@@ -218,7 +226,9 @@ describe('RichTextEditor', () => {
 
   it('reports an empty document as an empty string', async () => {
     const { editor } = await setup('<p>x</p>');
-    act(() => void editor.commands.clearContent(true));
+    act(() => {
+      editor.commands.clearContent(true);
+    });
     expect(latest).toBe('');
   });
 });

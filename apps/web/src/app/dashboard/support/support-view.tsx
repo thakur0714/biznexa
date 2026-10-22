@@ -511,7 +511,7 @@ export function CustomerSupportView() {
       {!loading && filteredTickets.length > 0 && (
         <div className="space-y-3">
           {filteredTickets.map((ticket) => (
-            <div
+            <div // NOSONAR: the whole card opens the ticket; a <button> cannot hold its headings and blocks
               key={ticket.id}
               role="button"
               tabIndex={0}

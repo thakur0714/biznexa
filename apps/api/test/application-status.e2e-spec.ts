@@ -40,7 +40,9 @@ beforeAll(async () => {
   close = () => app.close();
   prisma = app.get(PrismaService);
   statuses = app.get(ApplicationStatusService);
-  app.get(EventBus).onAny((e) => void (e.name === 'application.status_changed' && events.push(e)));
+  app.get(EventBus).onAny((e) => {
+    if (e.name === 'application.status_changed') events.push(e);
+  });
   staffId = await createStaff(prisma, 'OPERATIONS', `e2e-status-${run}-staff@example.com`);
   customerId = (await prisma.user.create({ data: { name: 'Status Test', email: `e2e-status-${run}-cust@example.com`, consentAt: new Date() } })).id;
   appId = await newApplication('DRAFT');

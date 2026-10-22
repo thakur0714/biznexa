@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import type React from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { formatDate, type AdminCustomerRow, type AdminCustomerListQuery } from '@biznexa/types';
 import { Badge, Button, EmptyState, Field, Notice, type Tone } from '@biznexa/ui';
@@ -112,9 +111,9 @@ export function CustomersView() {
   }
 
   const clearFilters = () => { setQuery(''); setStatusGroup('ALL'); setPage(1); };
-  let customerResults: React.ReactNode;
+  let customerResults: ReactNode;
   if (loadError) customerResults = <div className="space-y-3"><Notice tone="error">{loadError}</Notice><Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>Try again</Button></div>;
-  else if (!data) customerResults = <p className="text-muted" role="status">Loading customers…</p>;
+  else if (!data) customerResults = <output className="block text-muted">Loading customers…</output>;
   else if (data.items.length === 0) customerResults = <EmptyState title="No customers found" description="No customers match the selected filters or search query." action={Boolean(query || statusGroup !== 'ALL') && <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>} />;
   else customerResults = <div><DataTable caption="Customers" data={data.items} columns={columns} getRowId={(p) => p.id} minWidth={800} empty={<EmptyState title="No customers match" description="Try adjusting your filters or search query." action={<Button variant="outline" size="sm" onClick={clearFilters}>Clear filters</Button>} />} />{data.total > limit && <div className="mt-4 flex items-center justify-between border-t border-rule pt-4 text-sm"><p className="text-muted">Showing {(page - 1) * limit + 1}–{Math.min(page * limit, data.total)} of {data.total} customers</p><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button><Button variant="outline" size="sm" disabled={page * limit >= data.total} onClick={() => setPage((p) => p + 1)}>Next</Button></div></div>}</div>;
 

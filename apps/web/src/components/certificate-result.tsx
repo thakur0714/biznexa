@@ -25,7 +25,7 @@ function Seal({ color, ok }: Readonly<{ color: string; ok: boolean }>) {
 export function CertificateResult({ result, query }: Readonly<{ result: Schemas['CertificateVerifyResult']; query: string }>) {
   if (!result.found || !result.certificate) {
     return (
-      <div role="status" className="rounded-xl border border-danger/25 bg-white p-6 sm:p-8">
+      <div className="rounded-xl border border-danger/25 bg-white p-6 sm:p-8" aria-live="polite">
         <div className="flex items-start gap-4">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-danger-050 text-danger">
             <Icon name="x" size={24} />
@@ -60,7 +60,7 @@ export function CertificateResult({ result, query }: Readonly<{ result: Schemas[
   ];
 
   return (
-    <article role="status" aria-labelledby="cert-h" className={`overflow-hidden rounded-xl bg-white ring-2 ${st.ring}`}>
+    <article aria-live="polite" aria-labelledby="cert-h" className={`overflow-hidden rounded-xl bg-white ring-2 ${st.ring}`}>
       <header className={`flex items-center gap-5 px-6 py-6 sm:px-8 ${st.bg}`}>
         <Seal color={st.seal} ok={c.status === 'ACTIVE'} />
         <div>

@@ -89,9 +89,9 @@ export function TwoFactorForm() {
 
   if (!ready || !user || !needsTwoFactor(user.twoFactor)) {
     return (
-      <div className="px-6 py-24 text-center text-muted" role="status">
+      <output className="block px-6 py-24 text-center text-muted">
         Checking your session…
-      </div>
+      </output>
     );
   }
 
@@ -106,7 +106,7 @@ export function TwoFactorForm() {
   } else if (setupError) {
     setupContent = <div className="mt-3 space-y-3"><Notice tone="error">{setupError.message}</Notice><Button type="button" variant="outline" size="sm" onClick={retrySetup}>Try again</Button></div>;
   } else {
-    setupContent = <p className="mt-3 text-muted" role="status">Loading QR code…</p>;
+    setupContent = <output className="block mt-3 text-muted">Loading QR code…</output>;
   }
   let submitLabel = 'Continue';
   if (settingUp) submitLabel = 'Turn on and continue';

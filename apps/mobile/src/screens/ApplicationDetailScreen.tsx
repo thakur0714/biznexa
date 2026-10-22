@@ -17,19 +17,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import type {
-  CustomerApplicationTimeline,
-  CustomerTimelineStage,
-  DocumentChecklist,
-  DocumentChecklistItem,
-  AdditionalDocumentItem,
-  Message,
-  MessageThreadPage,
-  InvoiceSummary,
-  PaymentCheckout,
-  FileMimeType,
-} from '@biznexa/types';
 import {
+  type CustomerApplicationTimeline,
+  type CustomerTimelineStage,
+  type DocumentChecklist,
+  type DocumentChecklistItem,
+  type AdditionalDocumentItem,
+  type Message,
+  type MessageThreadPage,
+  type InvoiceSummary,
+  type PaymentCheckout,
+  type FileMimeType,
   formatDate,
   formatDateTime,
   formatINR,
@@ -94,6 +92,22 @@ function stageIndicator(isDone: boolean, isCurrent: boolean) {
   return <View style={styles.stageUpcomingDot} />;
 }
 
+/** A file picked from the camera, gallery or files. */
+interface PickedFile {
+  uri: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number | undefined;
+}
+
+/** Where a picked document goes, and what it may be. */
+interface UploadTarget {
+  requirementId: string | undefined;
+  requestId: string | undefined;
+  acceptedTypes: string[];
+  maxSizeMb: number;
+  isAdditional: boolean;
+}
 export function ApplicationDetailScreen({ route, navigation }: Readonly<ApplicationDetailScreenProps>) {
   const { applicationId, initialTab = 'timeline' } = route.params;
   const { api, token } = useAuth();
@@ -352,6 +366,7 @@ export function ApplicationDetailScreen({ route, navigation }: Readonly<Applicat
     const requestId = !isChecklist ? item.request.id : undefined;
     const acceptedTypes = isChecklist ? item.requirement.acceptedTypes : ['application/pdf', 'image/jpeg', 'image/png'];
     const maxSizeMb = isChecklist ? item.requirement.maxSizeMb : 10;
+    const target: UploadTarget = { requirementId, requestId, acceptedTypes, maxSizeMb, isAdditional };
 
     Alert.alert('Upload Document', 'Select a file source:', [
       {
@@ -362,15 +377,8 @@ export function ApplicationDetailScreen({ route, navigation }: Readonly<Applicat
           const res = await ImagePicker.launchCameraAsync({ quality: 0.85 });
           if (!res.canceled && res.assets[0]) {
             await processAndAttach(
-              res.assets[0].uri,
-              res.assets[0].fileName || 'document_photo.jpg',
-              'image/jpeg',
-              res.assets[0].fileSize,
-              requirementId,
-              requestId,
-              acceptedTypes,
-              maxSizeMb,
-              isAdditional
+              { uri: res.assets[0].uri, name: res.assets[0].fileName || 'document_photo.jpg', mimeType: 'image/jpeg', sizeBytes: res.assets[0].fileSize },
+              target,
             );
           }
         },
@@ -381,15 +389,8 @@ export function ApplicationDetailScreen({ route, navigation }: Readonly<Applicat
           const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.85 });
           if (!res.canceled && res.assets[0]) {
             await processAndAttach(
-              res.assets[0].uri,
-              res.assets[0].fileName || 'document_image.jpg',
-              'image/jpeg',
-              res.assets[0].fileSize,
-              requirementId,
-              requestId,
-              acceptedTypes,
-              maxSizeMb,
-              isAdditional
+              { uri: res.assets[0].uri, name: res.assets[0].fileName || 'document_image.jpg', mimeType: 'image/jpeg', sizeBytes: res.assets[0].fileSize },
+              target,
             );
           }
         },
@@ -403,15 +404,8 @@ export function ApplicationDetailScreen({ route, navigation }: Readonly<Applicat
           });
           if (!res.canceled && res.assets[0]) {
             await processAndAttach(
-              res.assets[0].uri,
-              res.assets[0].name,
-              res.assets[0].mimeType || 'application/pdf',
-              res.assets[0].size,
-              requirementId,
-              requestId,
-              acceptedTypes,
-              maxSizeMb,
-              isAdditional
+              { uri: res.assets[0].uri, name: res.assets[0].name, mimeType: res.assets[0].mimeType || 'application/pdf', sizeBytes: res.assets[0].size },
+              target,
             );
           }
         },
@@ -421,15 +415,8 @@ export function ApplicationDetailScreen({ route, navigation }: Readonly<Applicat
   };
 
   const processAndAttach = async (
-    uri: string,
-    name: string,
-    mimeType: string,
-    sizeBytes: number | undefined,
-    requirementId: string | undefined,
-    requestId: string | undefined,
-    acceptedTypes: string[],
-    maxSizeMb: number,
-    isAdditional: boolean
+    { uri, name, mimeType, sizeBytes }: PickedFile,
+    { requirementId, requestId, acceptedTypes, maxSizeMb, isAdditional }: UploadTarget,
   ) => {
     // 1. Validate file size
     if (sizeBytes && sizeBytes > maxSizeMb * 1024 * 1024) {
@@ -792,7 +779,7 @@ export function ApplicationDetailScreen({ route, navigation }: Readonly<Applicat
           {/* Message Input Box */}
           <View style={styles.messageInputContainer}>
             <TouchableOpacity
-              onPress={() => void handlePickMessageAttachment()}
+              onPress={handlePickMessageAttachment}
               style={styles.attachIconButton}
               disabled={isSendingMessage}
             >

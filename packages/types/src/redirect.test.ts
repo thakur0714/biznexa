@@ -17,7 +17,7 @@ describe('safeRedirectPath', () => {
 
   it('blocks protocol-relative and backslash/whitespace tricks that browsers treat as another host', () => {
     expect(safeRedirectPath('//evil.com', '/home')).toBe('/home');
-    expect(safeRedirectPath('/\\evil.com', '/home')).toBe('/home');
+    expect(safeRedirectPath(String.raw`/\evil.com`, '/home')).toBe('/home');
     expect(safeRedirectPath('/\t/evil.com', '/home')).toBe('/home');
     expect(safeRedirectPath('/\n/evil.com', '/home')).toBe('/home');
   });

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import type React from 'react';
+import { useState, type ReactNode } from 'react';
 import { useAuth } from '@/lib/auth';
 import { PERMS } from '@biznexa/types';
 import { Button } from '@biznexa/ui';
@@ -25,7 +24,7 @@ export function NotificationsHub() {
     return <DeliveriesView />;
   }
 
-  let tabContent: React.ReactNode;
+  let tabContent: ReactNode;
   if (tab === 'templates') tabContent = <NotificationsView />;
   else if (tab === 'announcements') tabContent = <AnnouncementsView />;
   else tabContent = <DeliveriesView />;

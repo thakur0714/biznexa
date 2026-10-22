@@ -32,8 +32,7 @@ import {
   type PaymentPlan,
 } from '@biznexa/types';
 import type { ServiceDetail } from '@biznexa/api-client';
-import { Card, Button } from '../components/common';
-import { ErrorState } from '../components/common';
+import { Card, Button, ErrorState } from '../components/common';
 import { useAuth } from '../auth/auth-context';
 import { uploadMobileFile } from '../api/upload';
 import { loadRazorpayCheckout } from '../api/razorpay';

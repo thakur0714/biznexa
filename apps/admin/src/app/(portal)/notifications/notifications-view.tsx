@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import type React from 'react';
+import { useEffect, useState, useMemo, type SubmitEvent } from 'react';
 import {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_EVENT_VARIABLES,
@@ -209,7 +208,7 @@ function TemplateEditor() {
     );
   }, [currentTemplate, subject, body, dltTemplateId, isActive]);
 
-  async function handleSave(e: React.SubmitEvent<HTMLFormElement>) {
+  async function handleSave(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!currentTemplate) return;
 
@@ -255,9 +254,9 @@ function TemplateEditor() {
     return (
       <div className="max-w-[1100px] py-4">
         <h1 className="text-2xl font-bold tracking-[-0.02em] text-night">Notification Templates</h1>
-        <p className="mt-4 text-muted" role="status">
+        <output className="block mt-4 text-muted">
           Loading notification templates…
-        </p>
+        </output>
       </div>
     );
   }

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { formatDate, formatINR, gstStateCode, type InvoiceBuyer, type InvoiceLine, type InvoiceSeller, type InvoiceTaxType } from '@biznexa/types';
+import { formatDate, formatINRExact, gstStateCode, type InvoiceBuyer, type InvoiceLine, type InvoiceSeller, type InvoiceTaxType } from '@biznexa/types';
 
 /** Everything printed on an invoice: the `Invoice` row as issued (M3.21) plus its order code and payment reference. */
 export interface InvoicePrint {
@@ -34,9 +34,9 @@ export function esc(value: string | number | null | undefined): string {
     .replaceAll("'", '&#39;');
 }
 
-const money = (paise: number) => esc(formatINR(paise, true));
+const money = (paise: number) => esc(formatINRExact(paise));
 /** Amounts in the table: no ₹ on every cell, the column header says it. */
-const amount = (paise: number) => esc(formatINR(paise, true).replace('₹', ''));
+const amount = (paise: number) => esc(formatINRExact(paise).replace('₹', ''));
 
 let fontFaces: string | null = null;
 

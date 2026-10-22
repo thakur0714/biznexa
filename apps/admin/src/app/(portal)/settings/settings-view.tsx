@@ -113,9 +113,9 @@ function SellerSettingsPage() {
           </div>
         )}
         {!loadError && !values && (
-          <p className="text-muted" role="status">
+          <output className="block text-muted">
             Loading settings…
-          </p>
+          </output>
         )}
         {!loadError && values && (
           <form onSubmit={submit} noValidate className="space-y-6">
@@ -250,9 +250,9 @@ function RejectionPresetsPage() {
           </div>
         )}
         {!loadError && !saved && (
-          <p className="text-muted" role="status">
+          <output className="block text-muted">
             Loading presets…
-          </p>
+          </output>
         )}
         {!loadError && saved && (
           <form onSubmit={submit} noValidate className="space-y-6">
@@ -360,9 +360,9 @@ function MobileVersionPage() {
           </div>
         )}
         {!loadError && !saved && (
-          <p className="text-muted" role="status">
+          <output className="block text-muted">
             Loading settings…
-          </p>
+          </output>
         )}
         {!loadError && saved && (
           <form onSubmit={submit} noValidate className="space-y-6">

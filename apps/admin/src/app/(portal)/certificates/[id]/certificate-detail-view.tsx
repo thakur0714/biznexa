@@ -88,7 +88,7 @@ function CertificateDetail({ id }: Readonly<{ id: string }>) {
           body: undefined,
         }),
       );
-      if (link?.url) void window.open(link.url, '_blank');
+      if (link?.url) window.open(link.url, '_blank');
     } catch (err: unknown) {
       toast((err as Error).message, 'error');
     }
@@ -214,9 +214,9 @@ function CertificateDetail({ id }: Readonly<{ id: string }>) {
 
   if (!cert) {
     return (
-      <p className="text-muted" role="status">
+      <output className="block text-muted">
         Loading certificate details…
-      </p>
+      </output>
     );
   }
 

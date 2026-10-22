@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type React from 'react';
+import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import Link from 'next/link';
 import { useApi } from '@biznexa/api-client/react';
 import { consultantVerificationStatuses, type AdminConsultantList, type ConsultantVerificationStatus } from '@biznexa/types';
@@ -39,8 +38,8 @@ export function ConsultantsView() {
   if (!user || !item) return null;
   if (!canSee(item, user.permissions)) return <NotAllowed />;
 
-  let applicationsContent: React.ReactNode;
-  if (loading) applicationsContent = <p role="status">Loading consultant applications…</p>;
+  let applicationsContent: ReactNode;
+  if (loading) applicationsContent = <output className="block">Loading consultant applications…</output>;
   else if (result?.items.length) applicationsContent = <ConsultantApplicationTable result={result} page={page} setLoading={setLoading} setPage={setPage} />;
   else applicationsContent = <EmptyState title="No consultant applications" description="Applications matching this status will appear here." />;
 
@@ -59,7 +58,7 @@ export function ConsultantsView() {
   );
 }
 
-function ConsultantApplicationTable({ result, page, setLoading, setPage }: Readonly<{ result: AdminConsultantList; page: number; setLoading: React.Dispatch<React.SetStateAction<boolean>>; setPage: React.Dispatch<React.SetStateAction<number>> }>) {
+function ConsultantApplicationTable({ result, page, setLoading, setPage }: Readonly<{ result: AdminConsultantList; page: number; setLoading: Dispatch<SetStateAction<boolean>>; setPage: Dispatch<SetStateAction<number>> }>) {
   return <>
           <div className="overflow-x-auto rounded-lg border border-rule bg-white">
             <table className="w-full min-w-[680px] text-left text-sm">

@@ -188,7 +188,7 @@ describe('formDataValidator: repeaters', () => {
       fields: [
         { type: 'text', name: 'name', label: 'Name', required: true },
         { type: 'select', name: 'hasDin', label: 'Has DIN?', options: ['Yes', 'No'], required: true },
-        { type: 'text', name: 'din', label: 'DIN', required: true, pattern: '\\d{8}', showIf: { field: 'hasDin', equals: 'Yes' } },
+        { type: 'text', name: 'din', label: 'DIN', required: true, pattern: String.raw`\d{8}`, showIf: { field: 'hasDin', equals: 'Yes' } },
         { type: 'text', name: 'dpin', label: 'DPIN', required: true, showIf: { field: 'kind', equals: 'LLP' } },
       ],
     },

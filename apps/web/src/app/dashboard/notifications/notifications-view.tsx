@@ -6,8 +6,7 @@ import { useEffect, useState } from 'react';
 import { Badge, Button, EmptyState, LinkButton, Notice } from '@biznexa/ui';
 import { Icon } from '@/components/icons';
 import { notifyNotificationsChanged } from '@/components/notification-bell';
-import { formatDate } from '@biznexa/types';
-import type { NotificationItem, NotificationListPage } from '@biznexa/types';
+import { formatDate, type NotificationItem, type NotificationListPage } from '@biznexa/types';
 import { useApi } from '@biznexa/api-client/react';
 import { ClientApiError } from '@biznexa/api-client/browser';
 
@@ -137,7 +136,7 @@ export function NotificationsView() {
   let content: React.ReactNode;
   if (loading) {
     content = (
-      <div className="space-y-3" role="status" aria-busy="true" aria-label="Loading notifications">
+      <div className="space-y-3" aria-busy="true" aria-label="Loading notifications" aria-live="polite">
         {[1, 2, 3].map((i) => (
           <div key={i} className="animate-pulse rounded-lg border border-rule bg-white p-5">
             <div className="flex items-center justify-between gap-4">

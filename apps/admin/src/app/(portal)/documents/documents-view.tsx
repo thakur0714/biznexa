@@ -218,9 +218,9 @@ export function DocumentsView() {
           </div>
         )}
         {!loadError && !data && (
-          <p className="text-muted" role="status">
+          <output className="block text-muted">
             Loading documents…
-          </p>
+          </output>
         )}
         {!loadError && data?.items.length === 0 && (
           <EmptyState

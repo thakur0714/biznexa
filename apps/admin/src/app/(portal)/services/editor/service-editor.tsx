@@ -85,9 +85,9 @@ function EditorLoader({ id }: Readonly<{ id?: string }>) {
   }
   if (!data) {
     return (
-      <p className="text-muted" role="status">
+      <output className="block text-muted">
         Loading…
-      </p>
+      </output>
     );
   }
   return <ServiceEditor api={api} {...data} />;
@@ -312,9 +312,9 @@ function ServiceEditor({ api, categories, services, detail }: Loaded & { api: Ap
 
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-rule bg-white/95 backdrop-blur lg:left-[260px]">
           <div className="flex max-w-[1000px] flex-wrap items-center justify-end gap-3 px-4 py-3 sm:px-8">
-            <span className="mr-auto text-sm text-muted" role="status">
+            <output className="mr-auto text-sm text-muted">
               {saveStatus(isDirty, isNew)}
-            </span>
+            </output>
             {isNew ? (
               <Link href="/services" className={buttonClass('outline')}>
                 Cancel

@@ -141,7 +141,9 @@ beforeAll(async () => {
   gateway = app.get(PaymentGateway) as MockPaymentGateway;
   invoices = app.get(InvoicesService);
   // Invoice PDFs (M3.23) are generated in the background and can land during a later test: not counted here.
-  app.get(EventBus).onAny((e) => void (e.name !== 'pdf.generated' && events.push(e)));
+  app.get(EventBus).onAny((e) => {
+    if (e.name !== 'pdf.generated') events.push(e);
+  });
   // Every invoice of this run (listener and sweep both go through `issue`) is dated in this run's year. Anything
   // else this process issues (the 10-minute sweep can pick up another suite's payment) keeps today's date, so it
   // never takes a number from the counter deleted in afterAll.

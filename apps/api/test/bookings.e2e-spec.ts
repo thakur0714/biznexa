@@ -63,7 +63,7 @@ beforeAll(async () => {
   http = request(app.getHttpServer()) as unknown as ReturnType<typeof request>;
   prisma = app.get(PrismaService);
   gateway = app.get(PaymentGateway) as MockPaymentGateway;
-  app.get(EventBus).onAny((e) => void events.push(e));
+  app.get(EventBus).onAny((e) => { events.push(e); });
 
   consultantUser = await register(0);
   const consultant = await prisma.consultant.create({

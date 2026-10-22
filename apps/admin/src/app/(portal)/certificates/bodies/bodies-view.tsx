@@ -231,7 +231,7 @@ function Bodies() {
 
   let bodyContent: React.ReactNode;
   if (loadError) bodyContent = <div className="space-y-3"><Notice tone="error">{loadError}</Notice><Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>Try again</Button></div>;
-  else if (!bodies) bodyContent = <p className="text-muted" role="status">Loading certification bodies…</p>;
+  else if (!bodies) bodyContent = <output className="block text-muted">Loading certification bodies…</output>;
   else if (bodies.length === 0) bodyContent = <EmptyState title="No certification bodies yet" description="Add accredited bodies that issue ISO and other certifications." action={<Button variant="ink" size="sm" onClick={() => openEdit(null)}>Add body</Button>} />;
   else {
     bodyContent = (

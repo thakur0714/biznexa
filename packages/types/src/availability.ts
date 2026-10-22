@@ -109,7 +109,7 @@ function merge(ranges: Range[]): Range[] {
   const sorted = [...ranges].sort((a, b) => a[0] - b[0]);
   const out: Range[] = [];
   for (const [s, e] of sorted) {
-    const last = out[out.length - 1];
+    const last = out.at(-1);
     if (last && s <= last[1]) last[1] = Math.max(last[1], e);
     else out.push([s, e]);
   }

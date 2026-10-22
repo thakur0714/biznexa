@@ -3,9 +3,19 @@
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 const inrPaise = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
 
-/** Format paise as rupees. Whole rupees by default; pass exact=true to show paise. */
-export function formatINR(paise: number, exact = false): string {
-  return exact ? inrPaise.format(paise / 100) : inr.format(Math.round(paise / 100));
+/** Format paise as whole rupees (rounded): ₹1,180. */
+export function formatINR(paise: number): string {
+  return inr.format(Math.round(paise / 100));
+}
+
+/** Format paise as rupees and paise: ₹1,180.00. */
+export function formatINRExact(paise: number): string {
+  return inrPaise.format(paise / 100);
+}
+
+/** Whole rupees, with paise only when there are any: ₹1,180 or ₹1,180.50. */
+export function formatINRTrimmed(paise: number): string {
+  return paise % 100 === 0 ? formatINR(paise) : formatINRExact(paise);
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

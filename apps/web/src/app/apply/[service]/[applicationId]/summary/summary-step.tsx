@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { applyCouponInput, formatINR, type ApplicationDetail, type DocumentChecklist, type OrderSummary, type PaymentCheckout, type PaymentStatusView } from '@biznexa/types';
+import { applyCouponInput, formatINRExact, type ApplicationDetail, type DocumentChecklist, type OrderSummary, type PaymentCheckout, type PaymentStatusView } from '@biznexa/types';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { Breadcrumbs, Button, Field, LinkButton, Notice } from '@biznexa/ui';
@@ -11,7 +11,7 @@ import type { ServiceDetail } from '@/lib/api';
 import { useCheckout, type PayState } from '../use-checkout';
 
 /** Amounts with paise: GST is rarely a whole number of rupees. */
-const money = (paise: number) => formatINR(paise, true);
+const money = (paise: number) => formatINRExact(paise);
 
 const SUPPLY_TEXT: Record<NonNullable<OrderSummary['placeOfSupply']>['source'], string> = {
   BUSINESS: 'your business’s state',

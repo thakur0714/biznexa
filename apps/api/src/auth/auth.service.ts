@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
-import { Prisma } from '../generated/prisma/client';
+import { Prisma, type User } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { OtpService } from './otp.service';
@@ -9,7 +9,6 @@ import { passwordFingerprint, SessionMeta, TokenService } from './token.service'
 import { env } from '../config/env';
 import { requiresTwoFactor, type ChangePasswordInput, type TwoFactorState, type UpdateProfileInput } from '@biznexa/types';
 
-import type { User } from '../generated/prisma/client';
 import type { OtpChannel, OtpPurpose } from '../generated/prisma/enums';
 
 const BCRYPT_ROUNDS = 12;

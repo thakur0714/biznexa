@@ -25,7 +25,7 @@ describe('saveFormSchemaInput', () => {
 
   it('a stored (normalised) form parses again to the same value', () => {
     const stored = formSchema.parse(form);
-    expect(formSchema.parse(JSON.parse(JSON.stringify(stored)))).toEqual(stored);
+    expect(formSchema.parse(JSON.parse(JSON.stringify(stored)))).toEqual(stored); // NOSONAR: a JSON round trip, as the database stores it
     const version = { id: crypto.randomUUID(), serviceId: crypto.randomUUID(), version: 2, isCurrent: true, createdAt: new Date().toISOString(), applications: 0, schema: stored };
     expect(formSchemaVersionSchema.safeParse(version).success).toBe(true);
   });

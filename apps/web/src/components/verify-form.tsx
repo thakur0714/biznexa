@@ -64,7 +64,7 @@ export function VerifyForm({
     <form onSubmit={submit} noValidate action="/verify" method="get">
       <div role="radiogroup" aria-label="Search by" className="inline-flex flex-wrap rounded-md border border-rule bg-paper p-1 text-sm">
         {MODES.map((x) => (
-          <button
+          <button // NOSONAR: segmented control of buttons in an ARIA radiogroup; native radios would change its look and keys
             key={x.key}
             type="button"
             role="radio"

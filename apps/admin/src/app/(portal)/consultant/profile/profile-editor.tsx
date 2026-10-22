@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type React from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { consultantCategories, consultantProfileInputSchema, consultationTypes, formatINR, type ConsultantOwnProfile, type ConsultantProfileInput, type ConsultationType } from '@biznexa/types';
 import { Button, Field, Notice, TextArea } from '@biznexa/ui';
@@ -44,7 +43,7 @@ export function ConsultantProfileEditor() {
   if (!user) return null;
   if (!user.roles.includes('CONSULTANT')) return <NotAllowed />;
 
-  async function save(event: React.SubmitEvent<HTMLFormElement>) {
+  async function save(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form || saving) return;
     const parsed = consultantProfileInputSchema.safeParse(form);
@@ -71,7 +70,7 @@ export function ConsultantProfileEditor() {
     <header><h1 id="consultant-profile-heading" className="text-2xl font-semibold">My profile</h1><p className="mt-1 text-sm text-muted">Keep your public consultant profile current.</p></header>
     {error && <Notice tone="error"><div className="flex flex-wrap items-center justify-between gap-3"><span>{error}</span><Button size="sm" variant="outline" onClick={() => { setLoading(true); setError(''); setRetry((n) => n + 1); }}>Retry</Button></div></Notice>}
     {success && <Notice tone="success">{success}</Notice>}
-    {loading || !profile || !form ? <p role="status">Loading your profile…</p> : <>
+    {loading || !profile || !form ? <output className="block">Loading your profile…</output> : <>
       {profile.pendingFeeRequest && <section className="rounded-lg border border-amber-300 bg-amber-50 p-4" aria-label="Pending fee change"><h2 className="font-semibold">Fee change awaiting approval</h2><p className="mt-1 text-sm">Your current fee is {formatINR(profile.feePerSession)}. You requested {formatINR(profile.pendingFeeRequest.requestedFee)} on {new Date(profile.pendingFeeRequest.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}.</p></section>}
       <form onSubmit={save} className="space-y-5 rounded-lg border border-rule bg-white p-4 sm:p-6">
         <div className="grid gap-4 sm:grid-cols-2">

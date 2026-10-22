@@ -2,9 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
-import { formatINR } from '@biznexa/types';
+import { formatINR, type CatalogueSearchResponse } from '@biznexa/types';
 import { Icon } from './icons';
-import type { CatalogueSearchResponse } from '@biznexa/types';
 
 type Results = CatalogueSearchResponse;
 
@@ -115,12 +114,17 @@ export function SearchBox({ size = 'lg', autoFocus = false, defaultValue = '' }:
       </form>
 
       {open && results && (
-        <ul id={listId} role="listbox" className="absolute inset-x-0 top-[calc(100%+8px)] z-30 max-h-[360px] overflow-auto rounded-lg border border-rule bg-white py-1.5 shadow-[0_20px_40px_-18px_rgba(18,26,69,0.4)]">
+        <ul id={listId} role="listbox" // NOSONAR: ARIA combobox pattern; a <select> or <datalist> cannot hold links and group headings
+          className="absolute inset-x-0 top-[calc(100%+8px)] z-30 max-h-[360px] overflow-auto rounded-lg border border-rule bg-white py-1.5 shadow-[0_20px_40px_-18px_rgba(18,26,69,0.4)]">
           {options.length === 0 && <li className="px-4 py-3 text-sm text-muted">No matching service. Try a simpler word like “GST” or “trademark”, or talk to an expert.</li>}
           {options.map((o, i) => (
             <Fragment key={o.key}>
-            {(i === 0 || options[i - 1].group !== o.group) && <li role="presentation" className="px-4 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{o.group}</li>}
-            <li id={`${listId}-${i}`} role="option" aria-selected={i === active}>
+            {(i === 0 || options[i - 1].group !== o.group) && <li role="presentation" /* NOSONAR: group heading inside the ARIA listbox */ className="px-4 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{o.group}</li>}
+            <li // NOSONAR: ARIA combobox pattern (see the listbox)
+              id={`${listId}-${i}`}
+              role="option"
+              aria-selected={i === active}
+            >
               <a
                 href={o.href}
                 onMouseEnter={() => setActive(i)}

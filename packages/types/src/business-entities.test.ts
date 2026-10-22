@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { businessEntityInput, gstinCheckChar, gstinState, isValidGstin, maskPan, SERVICE_FORMS, ENTITY_TYPES, type BusinessEntityInput } from './index';
 
 const company: BusinessEntityInput = { legalName: 'Acme Widgets Private Limited', entityType: 'PRIVATE_LIMITED', pan: 'AAPCA1234F' };
-const gstinFor = (stateCode: string, pan: string) => `${stateCode}${pan}1Z${gstinCheckChar(`${stateCode}${pan}1Z`)}`;
+const gstinFor = (stateCode: string, pan: string) => {
+  const body = `${stateCode}${pan}1Z`;
+  return `${body}${gstinCheckChar(body)}`;
+};
 const errors = (input: unknown) => {
   const r = businessEntityInput.safeParse(input);
   return r.success ? {} : Object.fromEntries(r.error.issues.map((i) => [i.path.join('.'), i.message]));
@@ -99,12 +102,12 @@ describe('businessEntityInput', () => {
   });
 
   it('uses the same type values as the ready-made forms', () => {
-    const values: string[] = ENTITY_TYPES.map((t) => t.value);
+    const values = new Set<string>(ENTITY_TYPES.map((t) => t.value));
     const used = Object.values(SERVICE_FORMS)
       .flatMap((form) => form.steps.flatMap((s) => s.fields))
       .flatMap((f) => (f.name === 'entityType' && f.type === 'select' ? (f.options ?? []).map((o) => String(o.value)) : []));
     expect(used.length).toBeGreaterThan(0);
     // INDIVIDUAL ("no business yet") is a form-only answer, never saved as a business.
-    expect(used.filter((v) => v !== 'INDIVIDUAL' && !values.includes(v))).toEqual([]);
+    expect(used.filter((v) => v !== 'INDIVIDUAL' && !values.has(v))).toEqual([]);
   });
 });

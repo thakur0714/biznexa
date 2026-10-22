@@ -48,7 +48,7 @@ export function StaffUsersPage() {
 
   const maxPage = Math.max(1, Math.ceil((result?.total ?? 0) / limit));
   let tableContent: ReactNode = null;
-  if (!result && !error) tableContent = <p className="mt-5 text-sm text-muted" role="status">Loading staff users…</p>;
+  if (!result && !error) tableContent = <output className="block mt-5 text-sm text-muted">Loading staff users…</output>;
   else if (result?.items.length === 0) tableContent = <p className="mt-5 rounded-md border border-rule bg-white p-5 text-sm text-muted">No staff users found.</p>;
   else if (result) tableContent = (
     <>
@@ -113,7 +113,7 @@ function DialogShell({ title, onClose, children }: Readonly<{ title: string; onC
     document.addEventListener('keydown', onKeyDown);
     return () => { document.removeEventListener('keydown', onKeyDown); previous?.focus(); };
   }, []);
-  return <div role="presentation" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="staff-dialog-title" className="max-h-[90dvh] w-full overflow-y-auto rounded-t-xl bg-white p-5 shadow-xl sm:max-w-lg sm:rounded-xl"><div className="flex items-start justify-between gap-4"><h3 id="staff-dialog-title" className="text-lg font-bold">{title}</h3><button type="button" aria-label="Close dialog" onClick={onClose} className="rounded p-1 text-lg leading-none hover:bg-surface focus-visible:outline-2">×</button></div>{children}</section></div>;
+  return <div role="presentation" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="staff-dialog-title" className="max-h-[90dvh] w-full overflow-y-auto rounded-t-xl bg-white p-5 shadow-xl sm:max-w-lg sm:rounded-xl"><div className="flex items-start justify-between gap-4"><h3 id="staff-dialog-title" className="text-lg font-bold">{title}</h3><button type="button" aria-label="Close dialog" onClick={onClose} className="rounded p-1 text-lg leading-none hover:bg-surface focus-visible:outline-2">×</button></div>{children}</section></div>; // NOSONAR: custom modal with its own focus trap and backdrop click; a native <dialog> would change both
 }
 
 function RoleChecks({ roles, selected, setSelected }: Readonly<{ roles: RoleOption[]; selected: string[]; setSelected: (keys: string[]) => void }>) {

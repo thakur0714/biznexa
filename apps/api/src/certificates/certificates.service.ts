@@ -18,8 +18,7 @@ import {
 import { mapHeaders, parseCsv, parseCsvBoolean, parseCsvDate } from './certificate-csv';
 import { inSequence } from '../common/in-sequence';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '../generated/prisma/client';
-import type { Prisma as PrismaType } from '../generated/prisma/client';
+import { Prisma, type Prisma as PrismaType } from '../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { EventBus } from '../events/event-bus';
 import { env } from '../config/env';

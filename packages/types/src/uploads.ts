@@ -18,7 +18,7 @@ export type FileMimeType = keyof typeof FILE_TYPES;
 export const DEFAULT_ACCEPTED_TYPES: FileMimeType[] = ['application/pdf', 'image/jpeg', 'image/png'];
 export const DEFAULT_MAX_UPLOAD_MB = 10;
 
-export const isKnownFileType = (mime: string): mime is FileMimeType => Object.prototype.hasOwnProperty.call(FILE_TYPES, mime);
+export const isKnownFileType = (mime: string): mime is FileMimeType => Object.hasOwn(FILE_TYPES, mime);
 
 /** The type a file name claims by its extension, or null when the extension is unknown. */
 export function fileTypeFromName(name: string): FileMimeType | null {
@@ -31,7 +31,7 @@ export function fileTypeFromName(name: string): FileMimeType | null {
 /** "PDF, JPG or PNG" */
 export function describeFileTypes(types: readonly FileMimeType[]): string {
   const labels = types.map((t) => FILE_TYPES[t].label);
-  return labels.length <= 1 ? (labels[0] ?? '') : `${labels.slice(0, -1).join(', ')} or ${labels[labels.length - 1]}`;
+  return labels.length <= 1 ? (labels[0] ?? '') : `${labels.slice(0, -1).join(', ')} or ${labels.at(-1)}`;
 }
 
 /** Value for an `<input type="file" accept>` attribute. */

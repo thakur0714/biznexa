@@ -8,11 +8,15 @@ export function Notice({ tone = 'info', children }: Readonly<{ tone?: 'info' | '
     error: 'bg-danger-050 text-danger border-danger/20',
     success: 'bg-seal-050 text-seal border-seal/20',
   }[tone];
-  return (
-    <div role={tone === 'error' ? 'alert' : 'status'} className={`rounded-md border px-4 py-3 text-sm ${cls}`}>
-      {children}
-    </div>
-  );
+  const className = `rounded-md border px-4 py-3 text-sm ${cls}`;
+  if (tone === 'error') {
+    return (
+      <div role="alert" className={className}>
+        {children}
+      </div>
+    );
+  }
+  return <output className={`block ${className}`}>{children}</output>;
 }
 
 const badgeTones: Record<Tone, string> = {

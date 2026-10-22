@@ -20,7 +20,7 @@ test('published post appears in the listing and detail; draft stays hidden', asy
   const draftSlug = `${slug}-draft`;
   const email = `pw-blog-${run}@example.com`;
   const password = 'Playwright@12345'; // NOSONAR: test credential
-  execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], { cwd: path.resolve(__dirname, '../../..'), env: { ...process.env, ADMIN_NAME: 'Blog Playwright', ADMIN_EMAIL: email, ADMIN_MOBILE: `6${run.slice(-9).padStart(9, '0')}`, ADMIN_PASSWORD: password }, stdio: 'pipe' });
+  execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], { cwd: path.resolve(__dirname, '../../..'), env: { ...process.env, ADMIN_NAME: 'Blog Playwright', ADMIN_EMAIL: email, ADMIN_MOBILE: `6${run.slice(-9).padStart(9, '0')}`, ADMIN_PASSWORD: password }, stdio: 'pipe' }); // NOSONAR: dev tool from PATH
   const login = await request.post(`${apiUrl}/api/auth/login`, { data: { email, password } });
   expect(login.status()).toBe(200);
   const setup = await request.post(`${apiUrl}/api/auth/2fa/setup`, { headers: { authorization: `Bearer ${(await login.json()).accessToken}` } });

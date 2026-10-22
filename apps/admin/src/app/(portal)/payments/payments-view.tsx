@@ -307,9 +307,9 @@ function PaymentsList() {
           </div>
         )}
         {isLoading && (
-          <p className="text-muted" role="status">
+          <output className="block text-muted">
             Loading payments…
-          </p>
+          </output>
         )}
         {hasNoPayments && (
           <EmptyState
@@ -385,9 +385,9 @@ function PaymentsList() {
 
       <Dialog open={selectedId !== null} onClose={() => setSelectedId(null)} title="Payment Detail" description="Transaction info, order details and invoices.">
         {showDetailLoading && (
-          <p className="py-4 text-muted" role="status">
+          <output className="block py-4 text-muted">
             Loading detail…
-          </p>
+          </output>
         )}
         {showDetailError && (
           <Notice tone="error">{detailError}</Notice>

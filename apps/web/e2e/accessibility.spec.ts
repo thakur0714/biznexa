@@ -66,7 +66,7 @@ async function createAdminSession(
   const password = 'Playwright@12345'; // NOSONAR: test credential
   const mobile = `6${runId.replaceAll(/\D/g, '').padStart(9, '0').slice(-9)}`;
 
-  execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], {
+  execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], { // NOSONAR: dev tool from PATH
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -351,7 +351,7 @@ function cleanupRun(runId: string) {
   const cleanupScript = path.resolve(repoRoot, 'apps/api/test/fixtures/e2e-cleanup.ts');
   if (fs.existsSync(cleanupScript)) {
     try {
-      execFileSync('pnpm', ['--filter', '@biznexa/api', 'exec', 'tsx', 'test/fixtures/e2e-cleanup.ts', runId], {
+      execFileSync('pnpm', ['--filter', '@biznexa/api', 'exec', 'tsx', 'test/fixtures/e2e-cleanup.ts', runId], { // NOSONAR: dev tool from PATH
         cwd: repoRoot,
         env: process.env,
         stdio: 'pipe',

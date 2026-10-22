@@ -126,7 +126,10 @@ export function locate(text: string, path: Path): number | null {
     const close = open === '{' ? '}' : ']';
     i++;
     ws();
-    if (text[i] === close) return void i++;
+    if (text[i] === close) {
+      i++;
+      return;
+    }
     for (;;) {
       if (open === '{') {
         ws();
@@ -296,7 +299,9 @@ export function moveStep(raw: unknown, from: number, to: number): unknown {
 }
 
 export function removeStep(raw: unknown, index: number): unknown {
-  return edit(raw, (f) => void f.steps.splice(index, 1));
+  return edit(raw, (f) => {
+    f.steps.splice(index, 1);
+  });
 }
 
 export function addStep(raw: unknown): unknown {
@@ -324,7 +329,9 @@ export function moveField(raw: unknown, step: number, index: number, dir: -1 | 1
 }
 
 export function removeField(raw: unknown, step: number, index: number, parent?: number): unknown {
-  return edit(raw, (f) => void listOf(f, step, parent).splice(index, 1));
+  return edit(raw, (f) => {
+    listOf(f, step, parent).splice(index, 1);
+  });
 }
 
 export function addField(raw: unknown, step: number, type: FormFieldType, parent?: number): unknown {

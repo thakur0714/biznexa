@@ -310,11 +310,10 @@ describe('staff queue and deletion', () => {
     });
     serviceId = service.id;
     packageId = service.packages[0].id;
-    const consultantUser = await register(9);
+    await register(9);
     consultantId = (await prisma.consultant.create({
       data: { userId: await userId(9), slug: `e2e-priv-${run}`, category: 'CA', qualification: 'CA', experienceYears: 5, city: 'Pune', state: 'Maharashtra', feePerSession: 50000, consultationTypes: ['VIDEO'] },
     })).id;
-    void consultantUser;
 
     // Bob's legal records, which must survive his deletion unchanged.
     const order = await prisma.order.create({ data: { code: code('ORD-P'), customerId: bobId, subtotal: 100000, total: 118000, amountPaid: 118000, status: 'PAID' } });

@@ -79,7 +79,7 @@ export function ReviewsView() {
       </Select>
     </header>
     {error && <Notice tone="error">{error}</Notice>}
-    {loading && !result && <p role="status">Loading reviews…</p>}
+    {loading && !result && <output className="block">Loading reviews…</output>}
     {result?.items && result.items.length > 0 && (
       <div>
         <div className="space-y-3">{result.items.map((review) => <article key={review.id} className="rounded-lg border border-rule bg-white p-5">

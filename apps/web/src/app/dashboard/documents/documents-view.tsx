@@ -52,17 +52,18 @@ export function DocumentsView() {
         <p className="mt-1 text-muted">View and manage documents across your applications.</p>
       </div>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter documents">
+      <fieldset className="flex flex-wrap gap-2">
+        <legend className="sr-only">Filter documents</legend>
         <Button type="button" size="sm" variant={filter === 'needs_action' ? 'ink' : 'outline'} aria-pressed={filter === 'needs_action'} onClick={() => setFilter('needs_action')}>
           Needs action
         </Button>
         <Button type="button" size="sm" variant={filter === 'all' ? 'ink' : 'outline'} aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
           All
         </Button>
-      </div>
+      </fieldset>
 
       {error && <Notice tone="error">{error}</Notice>}
-      {!groups && !error && <p role="status" className="text-sm text-muted">Loading your documents…</p>}
+      {!groups && !error && <output className="block text-sm text-muted">Loading your documents…</output>}
       {groups?.length === 0 && (
         <EmptyState
           className="p-8"

@@ -38,7 +38,7 @@ export function PendingActionsView() {
       </div>
 
       {error && <Notice tone="error">{error}</Notice>}
-      {!result && !error && <p role="status" className="text-sm text-muted">Loading your pending actions…</p>}
+      {!result && !error && <output className="block text-sm text-muted">Loading your pending actions…</output>}
       {result?.items.length === 0 && (
         <EmptyState
           className="p-8"

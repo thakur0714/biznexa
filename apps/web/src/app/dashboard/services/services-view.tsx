@@ -176,9 +176,9 @@ export function MyServicesView() {
       {error && <Notice tone="error">{error}</Notice>}
 
       {loading && (
-        <div className="rounded-lg border border-rule bg-white p-10 text-center text-sm text-muted" role="status">
+        <output className="block rounded-lg border border-rule bg-white p-10 text-center text-sm text-muted">
           Loading your services…
-        </div>
+        </output>
       )}
       {!loading && items.length === 0 && (
         <EmptyState

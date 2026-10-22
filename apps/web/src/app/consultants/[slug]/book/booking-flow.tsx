@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { addDays, formatINR, istDate, type BookingCheckout, type BookingView, type ConsultationType, type PublicConsultantSlots } from '@biznexa/types';
+import { addDays, formatINRExact, istDate, type BookingCheckout, type BookingView, type ConsultationType, type PublicConsultantSlots } from '@biznexa/types';
 import { ClientApiError } from '@biznexa/api-client/browser';
 import { useApi } from '@biznexa/api-client/react';
 import { Breadcrumbs, Button, LinkButton, Notice } from '@biznexa/ui';
@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth';
 import { openRazorpayCheckout, type RazorpaySuccess } from '@/lib/razorpay';
 
 const TYPE_LABEL: Record<ConsultationType, string> = { AUDIO: 'Audio call', VIDEO: 'Video call', CHAT: 'Chat', MEETING: 'In person' };
-const money = (paise: number) => formatINR(paise, true);
+const money = (paise: number) => formatINRExact(paise);
 const dayLabel = (date: string) =>
   new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
 const timeLabel = (iso: string) => new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).format(new Date(iso));
@@ -257,7 +257,7 @@ export function BookingFlow({ slug, initial }: Readonly<{ slug: string; initial:
       )}
 
       {phase === 'confirming' && (
-        <div className="mt-6" role="status">
+        <div className="mt-6" aria-live="polite">
           <Notice tone="info">Payment received — confirming your booking…</Notice>
         </div>
       )}

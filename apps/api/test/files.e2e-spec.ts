@@ -241,7 +241,7 @@ describe('download', () => {
 describe('virus scan', () => {
   it('blocks the EICAR test file: marked INFECTED, bytes deleted, no download', async () => {
     const events: DomainEvent<'file.scanned'>[] = [];
-    const off = app.get(EventBus).on('file.scanned', (e) => void events.push(e));
+    const off = app.get(EventBus).on('file.scanned', (e) => { events.push(e); });
 
     const eicar = Buffer.concat([PDF.subarray(0, 9), EICAR, Buffer.from('\n')]);
     const res = await upload(alice, 'eicar.pdf', eicar).expect(201);

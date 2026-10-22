@@ -32,7 +32,7 @@ describe('createZip', () => {
   it('is accepted by the system unzip, when there is one', () => {
     let hasUnzip = true;
     try {
-      execFileSync('unzip', ['-v'], { stdio: 'ignore' });
+      execFileSync('unzip', ['-v'], { stdio: 'ignore' }); // NOSONAR: test tool from PATH
     } catch {
       hasUnzip = false;
     }
@@ -40,7 +40,7 @@ describe('createZip', () => {
     const dir = mkdtempSync(join(tmpdir(), 'bn-zip-'));
     try {
       writeFileSync(join(dir, 'a.zip'), createZip(entries));
-      expect(execFileSync('unzip', ['-t', join(dir, 'a.zip')]).toString()).toMatch(/No errors detected/);
+      expect(execFileSync('unzip', ['-t', join(dir, 'a.zip')]).toString()).toMatch(/No errors detected/); // NOSONAR: test tool from PATH
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

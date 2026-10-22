@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   formatDate,
   formatINR,
+  formatINRTrimmed,
   type CustomerPaymentListResponse,
   type CustomerRefundView,
 } from '@biznexa/types';
@@ -77,7 +78,7 @@ function RefundList({ refunds, onCreditNote, busyId }: Readonly<{ refunds: Custo
       {refunds.map((r) => (
         <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
           <span className={refundTone(r.status)}>
-            {REFUND_STATUS[r.status]}: <span className="num font-semibold">{formatINR(r.amount, r.amount % 100 !== 0)}</span>
+            {REFUND_STATUS[r.status]}: <span className="num font-semibold">{formatINRTrimmed(r.amount)}</span>
             {r.status === 'PROCESSED' && r.processedAt ? ` on ${formatDate(r.processedAt)}` : ''}
             {r.status === 'INITIATED' ? ' · usually 5–7 working days' : ''}
           </span>
@@ -186,13 +187,13 @@ export function CustomerPaymentsView() {
             </div>
           </div>
           <div className="num mt-3 text-2xl font-bold text-emerald-700 sm:text-3xl">
-            {data ? formatINR(data.totalPaid - data.totalRefunded, (data.totalPaid - data.totalRefunded) % 100 !== 0) : '—'}
+            {data ? formatINRTrimmed(data.totalPaid - data.totalRefunded) : '—'}
           </div>
           <p className="mt-1 text-xs text-muted">
             {data && data.totalRefunded > 0 ? (
               <>
                 Paid <span className="num">{formatINR(data.totalPaid)}</span>, refunded{' '}
-                <span className="num">{formatINR(data.totalRefunded, data.totalRefunded % 100 !== 0)}</span>
+                <span className="num">{formatINRTrimmed(data.totalRefunded)}</span>
               </>
             ) : (
               'Successful payments across all orders'

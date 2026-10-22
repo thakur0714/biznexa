@@ -16,9 +16,9 @@ export default async function ApplicationDetailPage({
   return (
     <Suspense
       fallback={
-        <div className="rounded-lg border border-rule bg-white p-10 text-center text-sm text-muted" role="status">
+        <output className="block rounded-lg border border-rule bg-white p-10 text-center text-sm text-muted">
           Loading application details…
-        </div>
+        </output>
       }
     >
       <ApplicationDetailView applicationId={id} />

@@ -15,7 +15,7 @@ describe('EventBus', () => {
   it('delivers an event with id and timestamp to listeners of that name only', async () => {
     const got: DomainEvent<'certificate.status_changed'>[] = [];
     const other = jest.fn();
-    bus.on('certificate.status_changed', (e) => void got.push(e));
+    bus.on('certificate.status_changed', (e) => { got.push(e); });
     bus.on('certificate.issued', other);
 
     const sent = await bus.emit('certificate.status_changed', payload);
@@ -39,7 +39,7 @@ describe('EventBus', () => {
 
   it('sends every event to onAny listeners', async () => {
     const names: string[] = [];
-    bus.onAny((e: AnyDomainEvent) => void names.push(e.name));
+    bus.onAny((e: AnyDomainEvent) => { names.push(e.name); });
     await bus.emit('certificate.issued', { certificateId: 'c1', certificateNumber: 'BNC-1', status: 'ACTIVE', actorId: 'u1' });
     await bus.emit('certificate.status_changed', payload);
     expect(names).toEqual(['certificate.issued', 'certificate.status_changed']);

@@ -85,7 +85,7 @@ beforeAll(async () => {
   http = request(app.getHttpServer()) as unknown as ReturnType<typeof request>;
   prisma = app.get(PrismaService);
   gateway = app.get(PaymentGateway) as MockPaymentGateway;
-  app.get(EventBus).on('application.status_changed', (e) => void events.push(e));
+  app.get(EventBus).on('application.status_changed', (e) => { events.push(e); });
   ({ token: alice, id: aliceId } = await register(1));
   ({ token: bob } = await register(2));
 

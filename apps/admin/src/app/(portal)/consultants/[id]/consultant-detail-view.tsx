@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type React from 'react';
+import { useEffect, useState, type SubmitEvent } from 'react';
 import Link from 'next/link';
 import { useApi } from '@biznexa/api-client/react';
 import { consultantCategories, consultationTypes, formatINR, type AdminConsultantDetail, type AdminConsultantProfileInput, type ConsultationType, type FileLinkResult } from '@biznexa/types';
@@ -48,7 +47,7 @@ export function ConsultantDetailView({ id }: Readonly<{ id: string }>) {
   if (!user || !item) return null;
   if (!canSee(item, user.permissions)) return <NotAllowed />;
 
-  async function saveProfile(event: React.SubmitEvent<HTMLFormElement>) {
+  async function saveProfile(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form || saving) return;
     setSaving(true); setError(''); setSuccess('');
@@ -122,7 +121,7 @@ export function ConsultantDetailView({ id }: Readonly<{ id: string }>) {
     <main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <Link href="/consultants" className="text-sm font-medium underline">← Consultant applications</Link>
       {error && <Notice tone="error">{error}</Notice>}{success && <Notice tone="success">{success}</Notice>}
-      {loading || !detail || !form ? <p role="status">Loading consultant review…</p> : <>
+      {loading || !detail || !form ? <output className="block">Loading consultant review…</output> : <>
         <header><h1 className="text-2xl font-semibold">{detail.name}</h1><p className="mt-1 text-sm text-muted">{detail.email} · {detail.verificationStatus} · {detail.category.replaceAll('_', ' ')} · {formatINR(detail.feePerSession)} per session</p></header>
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-rule bg-white p-4" aria-labelledby="consultant-featured-heading">
           <div><h2 id="consultant-featured-heading" className="font-semibold">Featured consultant</h2><p className="text-sm text-muted">Featured consultants can appear on the public homepage.</p></div>

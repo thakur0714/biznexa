@@ -40,7 +40,7 @@ export const createDataRequestInput = z
   .superRefine((v, ctx) => {
     if (v.type !== 'DELETION') return;
     if (v.confirm !== true) ctx.addIssue({ code: 'custom', path: ['confirm'], message: 'Please confirm you want to delete your account' });
-    if (!v.password === !v.otp) ctx.addIssue({ code: 'custom', path: ['password'], message: 'Enter your password or the code we sent you' });
+    if (Boolean(v.password) === Boolean(v.otp)) ctx.addIssue({ code: 'custom', path: ['password'], message: 'Enter your password or the code we sent you' });
   });
 export type CreateDataRequestInput = z.infer<typeof createDataRequestInput>;
 

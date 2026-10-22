@@ -5,11 +5,10 @@ import { LeadForm } from '@/components/lead-form';
 import { Icon } from '@/components/icons';
 import { Badge, Container, LinkButton } from '@biznexa/ui';
 import { api, type CategorySummary, type ServiceCard as Card } from '@/lib/api';
-import type { PublicConsultantDirectory } from '@biznexa/types';
+import { type PublicConsultantDirectory, type PublicBlogPagedList } from '@biznexa/types';
 import { ConsultantCard } from './consultants/consultant-card';
 import { RichText } from '@/components/rich-text';
 import { BlogPostCard } from '@/components/blog-post-card';
-import type { PublicBlogPagedList } from '@biznexa/types';
 
 export const revalidate = 300;
 const blogDataRevalidate = process.env.NODE_ENV === 'development' ? 0 : 300;

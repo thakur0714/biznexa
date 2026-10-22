@@ -223,10 +223,16 @@ function parseInto(schema: z.ZodTypeAny, raw: unknown, at: (string | number)[], 
 
 function rows(f: Extract<FormField, { type: 'repeater' }>, raw: unknown, scope: Record<string, unknown>, at: (string | number)[], o: Required<FormDataOptions>, ctx: Ctx): FormRow[] | undefined {
   const issue = (message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: at, message });
-  if (!Array.isArray(raw)) return void issue(`Add each ${f.itemLabel.toLowerCase()} as a row`);
+  if (!Array.isArray(raw)) {
+    issue(`Add each ${f.itemLabel.toLowerCase()} as a row`);
+    return undefined;
+  }
   const item = f.itemLabel.toLowerCase();
   const max = f.maxItems ?? 100;
-  if (raw.length > max) return void issue(`Add at most ${plural(max, item)}`);
+  if (raw.length > max) {
+    issue(`Add at most ${plural(max, item)}`);
+    return undefined;
+  }
   if (!o.partial && f.minItems && raw.length < f.minItems) issue(`Add at least ${plural(f.minItems, item)}`);
   return raw.map((r, i) => {
     const row: Record<string, unknown> = {};

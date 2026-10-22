@@ -2,10 +2,9 @@ import { BadRequestException, Injectable, NotFoundException, ConflictException, 
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../common/auth.decorators';
-import { CreateBlogCategoryInput, UpdateBlogCategoryInput, CreateTagInput, UpdateTagInput } from '@biznexa/types';
+import { CreateBlogCategoryInput, UpdateBlogCategoryInput, CreateTagInput, UpdateTagInput, type BlogPostInput } from '@biznexa/types';
 import { Prisma } from '../generated/prisma/client';
 import { QueueService } from '../queue/queue.service';
-import type { BlogPostInput } from '@biznexa/types';
 import { sanitizeRichText } from '@biznexa/rich-text';
 import { EventBus } from '../events/event-bus';
 import { env } from '../config/env';

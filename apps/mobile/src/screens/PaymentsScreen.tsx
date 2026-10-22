@@ -10,10 +10,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type {
-  CustomerPaymentListResponse,
-} from '@biznexa/types';
-import { formatDate, formatINR } from '@biznexa/types';
+import { type CustomerPaymentListResponse, formatDate, formatINR } from '@biznexa/types';
 import { useAuth } from '../auth/auth-context';
 import { colors, radius, spacing } from '../theme';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';

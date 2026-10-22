@@ -1,5 +1,4 @@
-import { createServer, type Server, type Socket } from 'node:net';
-import type { AddressInfo } from 'node:net';
+import { createServer, type Server, type Socket, type AddressInfo } from 'node:net';
 import { Readable } from 'node:stream';
 import { ClamAvScanner, EICAR, parseClamdReply, StubVirusScanner } from './virus-scanner';
 

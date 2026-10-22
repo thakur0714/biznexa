@@ -1,7 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Linking, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import type { BookingList, BookingView, PublicConsultantDirectory, PublicConsultantSlots, PublicConsultantCard } from '@biznexa/types';
-import { formatDateTime, formatINR } from '@biznexa/types';
+import {
+  type BookingList,
+  type BookingView,
+  type PublicConsultantDirectory,
+  type PublicConsultantSlots,
+  type PublicConsultantCard,
+  formatDateTime,
+  formatINR,
+} from '@biznexa/types';
 import { useAuth } from '../auth/auth-context';
 import { Button, Card, EmptyState, ErrorState, LoadingState } from '../components/common';
 import { colors, spacing } from '../theme';

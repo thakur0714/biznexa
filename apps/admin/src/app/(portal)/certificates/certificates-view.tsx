@@ -134,7 +134,7 @@ function CertificatesList() {
       </div>
     );
   } else if (!data) {
-    certificatesContent = <p className="text-muted" role="status">Loading certificates…</p>;
+    certificatesContent = <output className="block text-muted">Loading certificates…</output>;
   } else if (data.items.length === 0) {
     const description = query || status ? 'Try adjusting your search or filters.' : 'Issue your first certificate to get started.';
     const action = query || status

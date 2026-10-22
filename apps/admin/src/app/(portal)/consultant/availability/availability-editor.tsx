@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type React from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction, type SubmitEvent } from 'react';
 import { useApi } from '@biznexa/api-client/react';
 import { addDays, availabilityExceptionInputSchema, availabilityUpdateInputSchema, istDate, type ConsultantAvailability, type AvailabilityUpdateInput } from '@biznexa/types';
 import { Button, Notice } from '@biznexa/ui';
@@ -47,7 +46,7 @@ export function ConsultantAvailabilityEditor() {
   if (!user) return null;
   if (!user.roles.includes('CONSULTANT')) return <NotAllowed />;
 
-  async function saveSchedule(event: React.SubmitEvent<HTMLFormElement>) {
+  async function saveSchedule(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
     const parsed = availabilityUpdateInputSchema.safeParse({ ...settings, weekly });
@@ -62,7 +61,7 @@ export function ConsultantAvailabilityEditor() {
     finally { setSaving(false); }
   }
 
-  async function addException(event: React.SubmitEvent<HTMLFormElement>) {
+  async function addException(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
     const blocked = exceptionKind !== 'EXTRA_HOURS';
@@ -94,7 +93,7 @@ export function ConsultantAvailabilityEditor() {
     <header><h1 id="availability-heading" className="text-2xl font-semibold">Availability</h1><p className="mt-1 text-sm text-muted">Set your weekly consultation hours and one-off date exceptions. Times use India Standard Time.</p></header>
     {error && <Notice tone="error"><div className="flex flex-wrap items-center justify-between gap-3"><span>{error}</span><Button size="sm" variant="outline" onClick={() => { setLoading(true); setError(''); setRetry((n) => n + 1); }}>Retry</Button></div></Notice>}
     {notice && <Notice tone="success">{notice}</Notice>}
-    {loading || !availability ? <p role="status">Loading availability…</p> : <>
+    {loading || !availability ? <output className="block">Loading availability…</output> : <>
       <form onSubmit={saveSchedule} className="space-y-5 rounded-lg border border-rule bg-white p-4 sm:p-6">
         <h2 className="text-lg font-semibold">Weekly hours</h2>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -120,7 +119,7 @@ export function ConsultantAvailabilityEditor() {
   </main>;
 }
 
-function AvailabilityDay({ day, weekday, weekly, setWeekly, updateWindow }: Readonly<{ day: string; weekday: number; weekly: AvailabilityUpdateInput['weekly']; setWeekly: React.Dispatch<React.SetStateAction<AvailabilityUpdateInput['weekly']>>; updateWindow: (index: number, field: 'startTime' | 'endTime', value: string) => void }>) {
+function AvailabilityDay({ day, weekday, weekly, setWeekly, updateWindow }: Readonly<{ day: string; weekday: number; weekly: AvailabilityUpdateInput['weekly']; setWeekly: Dispatch<SetStateAction<AvailabilityUpdateInput['weekly']>>; updateWindow: (index: number, field: 'startTime' | 'endTime', value: string) => void }>) {
   const windows = weekly.map((window, index) => ({ window, index })).filter(({ window }) => window.weekday === weekday);
   return <section className="rounded-md border border-rule p-3" aria-label={`${day} hours`}>
     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-medium">{day}</h3><Button size="sm" variant="outline" type="button" onClick={() => setWeekly((current) => [...current, { weekday, startTime: '09:00', endTime: '12:00' }])}>Add hours</Button></div>

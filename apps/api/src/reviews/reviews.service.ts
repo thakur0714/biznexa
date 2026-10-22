@@ -1,7 +1,14 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
-import type { AdminReviewList, AdminReviewQuery, ReviewInput, ReviewModerationInput, ReviewView } from '@biznexa/types';
-import { adminReviewListSchema, reviewViewSchema } from '@biznexa/types';
+import {
+  type AdminReviewList,
+  type AdminReviewQuery,
+  type ReviewInput,
+  type ReviewModerationInput,
+  type ReviewView,
+  adminReviewListSchema,
+  reviewViewSchema,
+} from '@biznexa/types';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 

@@ -72,12 +72,10 @@ function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
     if (!sidebar) return;
 
     const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const focusables = Array.from(sidebar.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    const first = Array.from(sidebar.querySelectorAll<HTMLElement>(FOCUSABLE)).find(
       (node) => node.offsetParent !== null || node.getClientRects().length > 0,
     );
-    if (focusables[0]) {
-      focusables[0].focus();
-    }
+    first?.focus();
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -165,7 +163,7 @@ function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
       )}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[230px_1fr]">
-        <aside
+        <aside // NOSONAR: the sidebar is a modal drawer only on small screens; <dialog> can't switch
           ref={sidebarRef}
           id="dashboard-sidebar"
           role={drawerOpen ? 'dialog' : undefined}

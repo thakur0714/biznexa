@@ -540,7 +540,7 @@ describe('certificate verification', () => {
     const adminUser = await prisma.user.findUniqueOrThrow({ where: { email: email(90) } });
     const bodyId = verificationFixtureBodyId;
     const seen: AnyDomainEvent[] = [];
-    const off = app.get(EventBus).onAny((e) => void seen.push(e));
+    const off = app.get(EventBus).onAny((e) => { seen.push(e); });
     try {
       const issued = await http
         .post('/api/admin/certificates')

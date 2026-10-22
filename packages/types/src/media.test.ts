@@ -28,7 +28,7 @@ describe('safeLinkHref', () => {
     ['#faq', '#faq'],
   ])('accepts %s', (input, expected) => expect(safeLinkHref(input)).toBe(expected));
 
-  it.each(['', 'javascript:alert(1)', 'data:text/html,x', '//evil.example', '/\\evil.example', 'java script:alert(1)', 'vbscript:x', 'hello world'])(
+  it.each(['', 'javascript:alert(1)', 'data:text/html,x', '//evil.example', String.raw`/\evil.example`, 'java script:alert(1)', 'vbscript:x', 'hello world'])(
     'refuses %s',
     (input) => expect(safeLinkHref(input)).toBeNull(),
   );

@@ -1,5 +1,4 @@
-import { formDataValidator, type FormData, type FormSchema } from '@biznexa/types';
-import type { PaymentStatusView } from '@biznexa/types';
+import { formDataValidator, type FormData, type FormSchema, type PaymentStatusView } from '@biznexa/types';
 
 export type BuyFlowStep = 'form' | 'documents' | 'payment' | 'complete';
 

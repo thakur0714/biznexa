@@ -59,7 +59,7 @@ export function UpcomingDueDates() {
 
   let dueDateContent: React.ReactNode;
   if (items === null) {
-    dueDateContent = <p role="status" className="text-sm text-muted">Loading upcoming due dates…</p>;
+    dueDateContent = <output className="block text-sm text-muted">Loading upcoming due dates…</output>;
   } else if (items.length === 0) {
     dueDateContent = <EmptyState className="p-6" titleAs="h3" title="No upcoming due dates" description="Scheduled reminders will appear here." />;
   } else {

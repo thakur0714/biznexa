@@ -48,7 +48,7 @@ test('full order journey covers payment success and a customer-visible refund', 
   //    changed, so each run creates its own admin with the existing create-admin script.
   const adminEmail = `pw-admin-${runId}@example.com`;
   const adminPassword = 'Playwright@12345'; // NOSONAR: test credential
-  execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], {
+  execFileSync('pnpm', ['--filter', '@biznexa/api', 'create-admin'], { // NOSONAR: dev tool from PATH
     cwd: path.resolve(__dirname, '../../..'),
     env: { ...process.env, ADMIN_NAME: 'Playwright Admin', ADMIN_EMAIL: adminEmail, ADMIN_MOBILE: `6${runId.padStart(9, '0').slice(-9)}`, ADMIN_PASSWORD: adminPassword },
     stdio: 'pipe',

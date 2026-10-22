@@ -59,7 +59,7 @@ beforeAll(async () => {
   await app.init();
   http = request(app.getHttpServer()) as unknown as ReturnType<typeof request>;
   prisma = app.get(PrismaService);
-  app.get(EventBus).on('document.uploaded', (e) => void uploadedEvents.push(e));
+  app.get(EventBus).on('document.uploaded', (e) => { uploadedEvents.push(e); });
   ({ token: alice, id: aliceId } = await register(1));
   ({ token: bob } = await register(2));
 
