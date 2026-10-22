@@ -27,14 +27,14 @@ const records = new Map<string, string | null>();
 const written: string[] = [];
 
 const doc: PdfDocument = {
-  existing: async (id) => records.get(id) ?? null,
-  source: async (id) => (records.has(id) ? { html: `<!doctype html><h1>Record ${id}</h1><p>Total ₹1,180</p>` } : null),
-  attach: async (id, fileKey) => {
-    if (!records.has(id) || records.get(id)) return false;
+  existing: (id) => Promise.resolve(records.get(id) ?? null),
+  source: (id) => Promise.resolve(records.has(id) ? { html: `<!doctype html><h1>Record ${id}</h1><p>Total ₹1,180</p>` } : null),
+  attach: (id, fileKey) => {
+    if (!records.has(id) || records.get(id)) return Promise.resolve(false);
     records.set(id, fileKey);
-    return true;
+    return Promise.resolve(true);
   },
-  missing: async () => [...records].filter(([, key]) => !key).map(([id]) => id),
+  missing: () => Promise.resolve([...records].filter(([, key]) => !key).map(([id]) => id)),
 };
 
 async function bytes(key: string) {
@@ -91,7 +91,7 @@ beforeEach(() => {
 
 afterAll(async () => {
   jest.restoreAllMocks();
-  for (const key of written) await storage.remove(key);
+  for (const key of written) await storage.remove(key); // NOSONAR: test steps run in order
   await app.close();
 });
 
@@ -126,9 +126,9 @@ describe('PDF generation (M3.22)', () => {
 
   it('a run that loses the race deletes the file it made', async () => {
     records.set('c', null);
-    const race = jest.spyOn(doc, 'attach').mockImplementationOnce(async (id) => {
+    const race = jest.spyOn(doc, 'attach').mockImplementationOnce((id) => {
       records.set(id, 'aa/00000000000000000000000000000000'); // someone else's key, attached first
-      return false;
+      return Promise.resolve(false);
     });
     expect(await pdfs.generate(KIND, 'c')).toBe('exists');
     race.mockRestore();

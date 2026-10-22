@@ -174,7 +174,7 @@ describe('start payment (M3.16)', () => {
   it('tampering: amounts in the body are refused, and totals altered in the DB are recomputed before charging', async () => {
     const { id, orderId } = await draft(alice, aliceId);
     for (const body of [{ amount: 100 }, { total: 100 }, { couponId: randomUUID() }]) {
-      const res = await pay(alice, id, body).expect(400);
+      const res = await pay(alice, id, body).expect(400); // NOSONAR: test steps run in order
       expect(res.body.errors[0].field).toBe('');
     }
     expect(await state(id, orderId)).toMatchObject({ application: 'DRAFT', order: 'CREATED', payments: [] });

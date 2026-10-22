@@ -1,7 +1,7 @@
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { PrismaClient, Prisma } from '../src/generated/prisma/client';
+import { PrismaClient } from '../src/generated/prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { AppModule } from '../src/app.module';

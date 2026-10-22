@@ -44,7 +44,7 @@ type Route = {
   any: string[];
 };
 type Actor = { name: string; token?: string; roles: string[]; perms: string[]; twoFactorPending?: boolean };
-type Outcome = 'allowed' | 401 | 403;
+type Outcome = 'allowed' | '401' | '403';
 
 let routes: Route[] = [];
 const actors: Actor[] = [];
@@ -73,7 +73,7 @@ function discoverRoutes(): Route[] {
       };
       for (const base of bases) {
         for (const p of [paths].flat() as string[]) {
-          const path = `/api/${base}/${p}`.replace(/\/+/g, '/').replace(/(.)\/$/, '$1');
+          const path = `/api/${base}/${p}`.replaceAll(/\/+/g, '/').replace(/(.)\/$/, '$1');
           found.push({ method, path, handler: `${wrapper.name}.${name}`, ...meta });
         }
       }
@@ -85,13 +85,13 @@ function discoverRoutes(): Route[] {
 /** What the guard should answer this actor on this route. */
 function expected(route: Route, actor: Actor): Outcome {
   if (route.isPublic) return 'allowed';
-  if (!actor.token) return 401;
+  if (!actor.token) return '401';
   // Same order as the guard: the access marker first, then any permissions the route also declares.
-  if (route.access === 'customer' && !actor.roles.includes('CUSTOMER')) return 403;
+  if (route.access === 'customer' && !actor.roles.includes('CUSTOMER')) return '403';
   const held = actor.twoFactorPending ? [] : actor.perms;
-  if (!route.all.length && !route.any.length) return route.access ? 'allowed' : 403; // undeclared: refused for everyone
-  if (!route.all.every((p) => held.includes(p))) return 403;
-  if (route.any.length && !route.any.some((p) => held.includes(p))) return 403;
+  if (!route.all.length && !route.any.length) return route.access ? 'allowed' : '403'; // undeclared: refused for everyone
+  if (!route.all.every((p) => held.includes(p))) return '403';
+  if (route.any.length && !route.any.some((p) => held.includes(p))) return '403';
   return 'allowed';
 }
 
@@ -114,12 +114,12 @@ function stampGuardVerdicts() {
 function outcome(res: request.Response): Outcome | 'missing' {
   const verdict = res.headers['x-guard'];
   if (verdict === 'allowed') return 'allowed';
-  if (verdict === '401' || verdict === '403') return Number(verdict) as 401 | 403;
+  if (verdict === '401' || verdict === '403') return verdict;
   return 'missing';
 }
 
 function call(route: Route, actor: Actor) {
-  const url = route.path.replace(/:[A-Za-z]+/g, ANY_ID);
+  const url = route.path.replaceAll(/:[A-Za-z]+/g, ANY_ID);
   let req = http[route.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete'](url);
   if (actor.token) req = req.set('authorization', `Bearer ${actor.token}`);
   return ['GET', 'DELETE'].includes(route.method) ? req : req.send({});
@@ -147,7 +147,7 @@ beforeAll(async () => {
   for (const role of ROLES) {
     const email = `e2e-acl-${run}-${role.key.toLowerCase()}@example.com`;
     if (role.key === 'CUSTOMER') {
-      const res = await http
+      const res = await http // NOSONAR: test steps run in order
         .post('/api/auth/register')
         .send({ name: 'ACL customer', mobile: `9${randomInt(100_000_000, 1_000_000_000)}`, email, password: 'secret123', consent: true })
         .expect(201);
@@ -156,8 +156,8 @@ beforeAll(async () => {
     } else {
       // A consultant is a customer who was given the CONSULTANT role on approval.
       const roles = role.key === 'CONSULTANT' ? ['CUSTOMER', 'CONSULTANT'] : [role.key];
-      const { accessToken } = await staffSession(http, prisma, roles, email);
-      ids.push((await prisma.user.findUniqueOrThrow({ where: { email } })).id);
+      const { accessToken } = await staffSession(http, prisma, roles, email); // NOSONAR: test steps run in order
+      ids.push((await prisma.user.findUniqueOrThrow({ where: { email } })).id); // NOSONAR: test steps run in order
       actors.push({ name: role.key.toLowerCase(), token: accessToken, roles, perms: permsOf(roles) });
     }
   }
@@ -193,7 +193,7 @@ describe('route access matrix (M12.4)', () => {
       .filter((l) => l.route)
       .flatMap((l) => Object.keys(l.route!.methods).filter((m) => m !== '_all').map((m) => `${m.toUpperCase()} ${l.route!.path}`));
     const discovered = routes.map((r) => `${r.method} ${r.path}`);
-    expect([...new Set(served)].sort()).toEqual([...new Set(discovered)].sort());
+    expect([...new Set(served)].toSorted((a, b) => a.localeCompare(b))).toEqual([...new Set(discovered)].toSorted((a, b) => a.localeCompare(b)));
   });
 
   it('only names permissions that exist in the seed', () => {
@@ -209,7 +209,7 @@ describe('route access matrix (M12.4)', () => {
     const wrong: string[] = [];
     for (const actor of actors) {
       for (let i = 0; i < routes.length; i += 8) {
-        await Promise.all(
+        await Promise.all( // NOSONAR: test steps run in order
           routes.slice(i, i + 8).map(async (route) => {
             const want = expected(route, actor);
             const res = await call(route, actor);
@@ -244,12 +244,12 @@ describe('route access matrix (M12.4)', () => {
       at('POST', '/api/applications'),
       at('POST', '/api/bookings'),
     ];
-    for (const route of deniedToOps) expect([`${route.method} ${route.path}`, outcome(await call(route, ops))]).toEqual([`${route.method} ${route.path}`, 403]);
+    for (const route of deniedToOps) expect([`${route.method} ${route.path}`, outcome(await call(route, ops))]).toEqual([`${route.method} ${route.path}`, '403']); // NOSONAR: test steps run in order
     for (const route of [at('GET', '/api/admin/applications'), at('POST', '/api/admin/documents/:id/approve'), at('GET', '/api/admin/customers')]) {
-      expect([`${route.method} ${route.path}`, outcome(await call(route, ops))]).toEqual([`${route.method} ${route.path}`, 'allowed']);
+      expect([`${route.method} ${route.path}`, outcome(await call(route, ops))]).toEqual([`${route.method} ${route.path}`, 'allowed']); // NOSONAR: test steps run in order
     }
     const adminRoutes = routes.filter((r) => r.path.startsWith('/api/admin/') && !r.isPublic);
     expect(adminRoutes.length).toBeGreaterThan(50);
-    for (const route of adminRoutes) expect([`${route.method} ${route.path}`, outcome(await call(route, customer))]).toEqual([`${route.method} ${route.path}`, 403]);
+    for (const route of adminRoutes) expect([`${route.method} ${route.path}`, outcome(await call(route, customer))]).toEqual([`${route.method} ${route.path}`, '403']); // NOSONAR: test steps run in order
   });
 });

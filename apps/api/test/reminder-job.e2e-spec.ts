@@ -161,7 +161,7 @@ describe('Reminder Job (e2e)', () => {
     await job.runDue(now);
 
     const rems = await prisma.reminder.findMany({ where: { userId: userA.id } });
-    expect(rems[0].sentOffsets.sort((a,b)=>b-a)).toEqual([30, 15, 7, 1]);
+    expect(rems[0].sentOffsets.toSorted((a, b) => b - a)).toEqual([30, 15, 7, 1]);
 
     // Should dispatch once for the "1" day offset
     expect(dispatchSpy).toHaveBeenCalled();

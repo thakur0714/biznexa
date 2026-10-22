@@ -126,9 +126,6 @@ describe('Reminders (e2e)', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    const reminders1 = await prisma.reminder.findMany({
-      where: { sourceApplicationId: application.id, type: 'SERVICE_RENEWAL' },
-    });
     const rem = await prisma.reminder.findMany({
       where: { sourceApplicationId: application.id },
     });

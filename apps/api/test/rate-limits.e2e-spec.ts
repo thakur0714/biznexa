@@ -64,7 +64,7 @@ describe('with the throttler on', () => {
 
   it('refuses the 11th login attempt in a minute with 429', async () => {
     const attempt = () => http.post('/api/auth/login').send({ email: `nobody-${Date.now()}@example.com`, password: 'wrong-password' });
-    for (let i = 0; i < 10; i++) expect((await attempt()).status).toBe(401);
+    for (let i = 0; i < 10; i++) expect((await attempt()).status).toBe(401); // NOSONAR: test steps run in order
     const blocked = await attempt();
     expect(blocked.status).toBe(429);
     expect(blocked.headers['retry-after']).toBeDefined();

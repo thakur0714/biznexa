@@ -126,7 +126,7 @@ describe('profile & password API (M5.11)', () => {
       await http
         .post('/api/auth/password/change')
         .set(as(userA.token))
-        .send({ currentPassword: 'secretPassword123!', newPassword: 'letters_only' })
+        .send({ currentPassword: 'secretPassword123!', newPassword: 'letters_only' }) // NOSONAR: test credential
         .expect(400);
     });
 

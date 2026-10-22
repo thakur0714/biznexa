@@ -83,8 +83,8 @@ describe('password reset tokens', () => {
     await http.post('/api/auth/login').send({ email: email(1), password: 'NewSecret123' }).expect(200);
 
     // Replaying the same token (e.g. from browser history) must not set the password again.
-    await http.post('/api/auth/password/reset').send({ resetToken, password: 'Attacker123' }).expect(401);
-    await http.post('/api/auth/login').send({ email: email(1), password: 'Attacker123' }).expect(401);
+    await http.post('/api/auth/password/reset').send({ resetToken, password: 'Attacker123' }).expect(401); // NOSONAR: test credential
+    await http.post('/api/auth/login').send({ email: email(1), password: 'Attacker123' }).expect(401); // NOSONAR: test credential
   });
 });
 
@@ -103,7 +103,7 @@ describe('Google sign-in on an existing account', () => {
 
   const googleSays = (n: number) => {
     auth().googleClient = {
-      verifyIdToken: async () => ({ getPayload: () => ({ sub: `google-${run}-${n}`, email: email(n), email_verified: true, name: 'Sec Test' }) }),
+      verifyIdToken: () => Promise.resolve({ getPayload: () => ({ sub: `google-${run}-${n}`, email: email(n), email_verified: true, name: 'Sec Test' }) }),
     };
     return http.post('/api/auth/google').send({ idToken: 'x'.repeat(40) });
   };

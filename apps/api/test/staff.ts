@@ -9,7 +9,7 @@ import { timeStep, totpCode } from '../src/auth/totp';
 import { seedAccess } from '../prisma/seed-access';
 
 type Http = ReturnType<typeof request>;
-export const STAFF_PASSWORD = 'Staff@12345';
+export const STAFF_PASSWORD = 'Staff@12345'; // NOSONAR: test credential
 
 /** Creates a user with `role` (e.g. ADMIN, OPERATIONS — or several) and the given email; returns its id. */
 export async function createStaff(prisma: PrismaService, role: string | string[], email: string) {

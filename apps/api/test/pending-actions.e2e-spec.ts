@@ -132,7 +132,7 @@ describe('Customer pending actions API (M5.8)', () => {
         requirementId: addressRequirementId,
         originalName: 'address-proof.pdf',
         mimeType: 'application/pdf',
-        sizeBytes: 1_024,
+        sizeBytes: 1024,
         sha256: randomUUID().replaceAll('-', ''),
         scanStatus: 'CLEAN',
       },
@@ -145,7 +145,7 @@ describe('Customer pending actions API (M5.8)', () => {
         fileKey: rejectedFileKey,
         fileName: 'address-proof.pdf',
         mimeType: 'application/pdf',
-        sizeBytes: 1_024,
+        sizeBytes: 1024,
         status: 'REJECTED',
         rejectionReason: 'The address is not readable.',
         uploadedAt: new Date(),
@@ -160,7 +160,7 @@ describe('Customer pending actions API (M5.8)', () => {
         requirementId: identityRequirementId,
         originalName: 'identity-proof.pdf',
         mimeType: 'application/pdf',
-        sizeBytes: 1_024,
+        sizeBytes: 1024,
         sha256: randomUUID().replaceAll('-', ''),
         scanStatus: 'INFECTED',
       },
@@ -173,7 +173,7 @@ describe('Customer pending actions API (M5.8)', () => {
         fileKey: infectedFileKey,
         fileName: 'identity-proof.pdf',
         mimeType: 'application/pdf',
-        sizeBytes: 1_024,
+        sizeBytes: 1024,
         status: 'UPLOADED',
         uploadedAt: new Date(),
       },
@@ -223,7 +223,7 @@ describe('Customer pending actions API (M5.8)', () => {
 
     const aliceResponse = await request(app.getHttpServer()).get('/api/pending-actions').set(auth(aliceToken)).expect(200);
     const aliceResult = pendingActionsResponseSchema.parse(aliceResponse.body);
-    expect(aliceResult.items.map((item) => item.kind).sort()).toEqual([
+    expect(aliceResult.items.map((item) => item.kind).toSorted((a, b) => a.localeCompare(b))).toEqual([
       'pay_balance',
       'read_message',
       'reupload_document',

@@ -20,7 +20,7 @@ const roles: RoleDefinition[] = [
 
 async function grants(roleKey: string) {
   const rows = await prisma.rolePermission.findMany({ where: { role: { key: roleKey } }, select: { permission: { select: { key: true } } } });
-  return rows.map((r) => r.permission.key).sort();
+  return rows.map((r) => r.permission.key).toSorted((a, b) => a.localeCompare(b));
 }
 
 beforeAll(async () => {

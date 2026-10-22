@@ -7,7 +7,6 @@ import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { presetDateRange } from '@biznexa/types';
 import { staffSession } from './staff';
-import { istDayStart } from '@biznexa/types';
 
 let app: NestExpressApplication;
 let http: ReturnType<typeof request>;
@@ -489,7 +488,7 @@ describe('Reports API Endpoints (M10)', () => {
       expect(consultantEntry.slug).toBe(`report-consultant-${runId}`);
       expect(consultantEntry.category).toBe('CA');
       expect(consultantEntry.verificationStatus).toBe('APPROVED');
-      expect(consultantEntry.rating).toBe(4.8);
+      expect(consultantEntry.rating).toBeCloseTo(4.8);
       expect(consultantEntry.reviewCount).toBe(1);
       expect(consultantEntry.bookingsCount).toBe(1);
       expect(consultantEntry.bookingRevenue).toBe(50000);
@@ -535,7 +534,7 @@ describe('Reports API Endpoints (M10)', () => {
       let expiresAt = '';
       const deadline = Date.now() + 10_000;
       while (Date.now() < deadline) {
-        const linkRes = await http
+        const linkRes = await http // NOSONAR: test steps run in order
           .post(`/api/admin/reports/export/${exportId}/link`)
           .set(as(adminToken));
 
@@ -545,7 +544,7 @@ describe('Reports API Endpoints (M10)', () => {
           break;
         }
         expect(linkRes.status).toBe(409);
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 200)); // NOSONAR: test steps run in order
       }
 
       expect(linkUrl).toMatch(new RegExp(`^/api/admin/reports/export/${exportId}/download\\?`));
@@ -593,7 +592,7 @@ describe('Reports API Endpoints (M10)', () => {
       let linkUrl = '';
       const deadline = Date.now() + 10_000;
       while (Date.now() < deadline) {
-        const linkRes = await http
+        const linkRes = await http // NOSONAR: test steps run in order
           .post(`/api/admin/reports/export/${exportId}/link`)
           .set(as(adminToken));
 
@@ -601,7 +600,7 @@ describe('Reports API Endpoints (M10)', () => {
           linkUrl = linkRes.body.url;
           break;
         }
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 200)); // NOSONAR: test steps run in order
       }
 
       expect(linkUrl).toBeDefined();

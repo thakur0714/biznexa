@@ -218,7 +218,7 @@ describe('payment webhook (M3.17)', () => {
     const s = await started(packageId, code);
     const w = captured(gateway.pay(s.gatewayOrderId).payment);
 
-    for (let i = 0; i < 3; i++) await send(w).expect(200);
+    for (let i = 0; i < 3; i++) await send(w).expect(200); // NOSONAR: test steps run in order
     const once = await state(s.id, s.orderId);
     expect(once).toMatchObject({ application: 'SUBMITTED', order: 'PAID', amountPaid: s.amount, usedCount: 1, hooks: [{ event: 'payment.captured', outcome: 'applied' }] });
     expect(once.history).toHaveLength(1);

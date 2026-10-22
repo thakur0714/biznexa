@@ -128,7 +128,7 @@ describe('staff two-factor authentication', () => {
     // Only steps still inside the ±1 window: on a slow run the clock may have moved on a step since 2FA was
     // enabled, and an older code is then simply "not right" instead of a replay.
     for (const step of [enabledStep, enabledStep - 1].filter((s) => s >= timeStep() - 1)) {
-      const replay = await http.post('/api/auth/2fa/verify').set('authorization', bearer(first.body.accessToken)).send({ code: totpCode(secret, step) }).expect(400);
+      const replay = await http.post('/api/auth/2fa/verify').set('authorization', bearer(first.body.accessToken)).send({ code: totpCode(secret, step) }).expect(400); // NOSONAR: test steps run in order
       expect(replay.body.message).toBe('This code has already been used. Wait for the next code in your app.');
     }
 
@@ -148,7 +148,7 @@ describe('staff two-factor authentication', () => {
     const { body } = await login(1);
     const auth = bearer(body.accessToken);
     for (let i = 0; i < MAX_TOTP_FAILURES; i++) {
-      await http.post('/api/auth/2fa/verify').set('authorization', auth).send({ code: wrongCode(secret) }).expect(400);
+      await http.post('/api/auth/2fa/verify').set('authorization', auth).send({ code: wrongCode(secret) }).expect(400); // NOSONAR: test steps run in order
     }
     // now even the right code is refused until the lock ends
     const locked = await http.post('/api/auth/2fa/verify').set('authorization', auth).send({ code: totpCode(secret, timeStep() + 1) }).expect(429);

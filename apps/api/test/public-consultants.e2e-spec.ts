@@ -29,7 +29,7 @@ describe('Public consultant directory (M8.3)', () => {
     await http().post('/api/auth/register').send({
       name: `${label} consultant`, email,
       mobile: `7${randomInt(100_000_000, 1_000_000_000)}`,
-      password: 'Customer@12345', consent: true,
+      password: 'Customer@12345', consent: true, // NOSONAR: test credential
     }).expect(201).then((response) => registerSchema.parse(response.body));
     const user = await prisma.user.findUniqueOrThrow({ where: { email }, select: { id: true } });
     userIds.push(user.id);

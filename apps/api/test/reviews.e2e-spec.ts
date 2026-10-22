@@ -29,7 +29,7 @@ let bookingSeq = 0;
 async function register(n: number) {
   const res = await http
     .post('/api/auth/register')
-    .send({ name: `Reviewer ${n}`, mobile: `7${run.replace(/\D/g, '1').padEnd(7, '1').slice(0, 7)}${String(n).padStart(2, '0')}`, email: `${emailPrefix}-${n}@example.com`, password: 'secret123', consent: true })
+    .send({ name: `Reviewer ${n}`, mobile: `7${run.replaceAll(/\D/g, '1').padEnd(7, '1').slice(0, 7)}${String(n).padStart(2, '0')}`, email: `${emailPrefix}-${n}@example.com`, password: 'secret123', consent: true })
     .expect(201);
   return { token: res.body.accessToken as string, id: res.body.user.id as string };
 }
@@ -64,7 +64,7 @@ beforeAll(async () => {
     },
     select: { id: true },
   })).id;
-  for (let n = 1; n <= 2; n++) customers.push(await register(n));
+  for (let n = 1; n <= 2; n++) customers.push(await register(n)); // NOSONAR: test steps run in order
   adminToken = (await staffSession(http, prisma, 'ADMIN', `${emailPrefix}-admin@example.com`)).accessToken;
 });
 

@@ -61,7 +61,7 @@ beforeAll(async () => {
   carol = await register(3);
   support = (await staffSession(http, prisma, 'SUPPORT', `e2e-priv-${run}-support@example.com`)).accessToken;
   admin = (await staffSession(http, prisma, 'ADMIN', `e2e-priv-${run}-admin@example.com`)).accessToken;
-  for (const role of ['support', 'admin']) ids.push((await prisma.user.findUniqueOrThrow({ where: { email: `e2e-priv-${run}-${role}@example.com` } })).id);
+  for (const role of ['support', 'admin']) ids.push((await prisma.user.findUniqueOrThrow({ where: { email: `e2e-priv-${run}-${role}@example.com` } })).id); // NOSONAR: test steps run in order
 });
 
 afterAll(async () => {
@@ -77,7 +77,7 @@ afterAll(async () => {
   await prisma.service.deleteMany({ where: { slug: `e2e-priv-${run}` } });
   await prisma.certificationBody.deleteMany({ where: { name: `e2e-priv-${run}` } });
   await prisma.auditLog.deleteMany({ where: { entityType: 'DataRequest', entityId: { in: (await prisma.dataRequest.findMany({ where: { userId: { in: ids } }, select: { id: true } })).map((d) => d.id) } } });
-  for (const r of await prisma.dataRequest.findMany({ where: { user: users, fileKey: { not: null } }, select: { fileKey: true } })) await storage.remove(r.fileKey!);
+  for (const r of await prisma.dataRequest.findMany({ where: { user: users, fileKey: { not: null } }, select: { fileKey: true } })) await storage.remove(r.fileKey!); // NOSONAR: test steps run in order
   await prisma.dataRequest.updateMany({ where: { user: users }, data: { handledById: null } });
   await prisma.dataRequest.deleteMany({ where: { user: users } });
   await prisma.notification.deleteMany({ where: { user: users } });
@@ -157,7 +157,7 @@ describe('customer requests', () => {
   });
 
   it('staff accounts cannot ask for deletion here', async () => {
-    const res = await http.post('/api/privacy/requests').set(as(support)).send({ type: 'DELETION', confirm: true, password: 'Staff@12345' }).expect(403);
+    const res = await http.post('/api/privacy/requests').set(as(support)).send({ type: 'DELETION', confirm: true, password: 'Staff@12345' }).expect(403); // NOSONAR: test credential
     expect(res.body.message).toMatch(/Staff and consultant accounts/);
   });
 });
@@ -172,12 +172,12 @@ const binary = (res: request.Response, cb: (err: Error | null, body: Buffer) => 
 const userId = async (n: number) => (await prisma.user.findFirstOrThrow({ where: { email: `e2e-priv-${run}-${n}@example.com` } })).id;
 
 /** Notifications are sent by the queue (M6.3): poll until the value is there (truthy / non-zero). */
-async function eventually<T>(read: () => Promise<T>, ms = 5_000): Promise<T> {
+async function eventually<T>(read: () => Promise<T>, ms = 5000): Promise<T> {
   const until = Date.now() + ms;
   let value = await read();
   while (!value && Date.now() < until) {
-    await new Promise((r) => setTimeout(r, 50));
-    value = await read();
+    await new Promise((r) => setTimeout(r, 50)); // NOSONAR: test steps run in order
+    value = await read(); // NOSONAR: test steps run in order
   }
   return value;
 }
@@ -185,10 +185,10 @@ async function eventually<T>(read: () => Promise<T>, ms = 5_000): Promise<T> {
 async function completedExport(token: string, ms = 30_000) {
   const since = Date.now();
   while (Date.now() - since < ms) {
-    const res = await http.get('/api/privacy/requests').set(as(token)).expect(200);
+    const res = await http.get('/api/privacy/requests').set(as(token)).expect(200); // NOSONAR: test steps run in order
     const done = res.body.items.find((r: { type: string; status: string }) => r.type === 'EXPORT' && r.status === 'COMPLETED');
     if (done) return done as { id: string; downloadable: boolean; expiresAt: string };
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise((r) => setTimeout(r, 200)); // NOSONAR: test steps run in order
   }
   throw new Error('Export did not complete');
 }
@@ -219,8 +219,8 @@ describe('data export', () => {
   });
 
   it('holds one JSON file per kind of data, with only this customer in it', () => {
-    expect([...zip.keys()].sort()).toEqual(
-      ['README.txt', 'applications.json', 'bookings.json', 'business-entities.json', 'credit-notes.json', 'documents.json', 'invoices.json', 'messages.json', 'notifications.json', 'orders.json', 'payments.json', 'profile.json', 'tickets.json'].sort(),
+    expect([...zip.keys()].toSorted((a, b) => a.localeCompare(b))).toEqual(
+      ['README.txt', 'applications.json', 'bookings.json', 'business-entities.json', 'credit-notes.json', 'documents.json', 'invoices.json', 'messages.json', 'notifications.json', 'orders.json', 'payments.json', 'profile.json', 'tickets.json'].toSorted((a, b) => a.localeCompare(b)),
     );
     const json = (name: string) => JSON.parse(zip.get(name)!.toString('utf8'));
     expect(json('profile.json')).toMatchObject({ email: `e2e-priv-${run}-1@example.com`, name: 'Privacy 1' });

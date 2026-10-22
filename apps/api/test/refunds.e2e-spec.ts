@@ -137,8 +137,8 @@ afterAll(async () => {
     where: { OR: [{ actor: users }, { entityType: 'Payment', entityId: { in: payments.map((p) => p.id) } }, { entityType: 'Application', entityId: { in: apps.map((a) => a.id) } }] },
   });
   const storage = app.get(StorageService);
-  for (const { pdfKey } of await prisma.creditNote.findMany({ where: { customer: users }, select: { pdfKey: true } })) if (pdfKey) await storage.remove(pdfKey);
-  for (const { pdfKey } of await prisma.invoice.findMany({ where: { order: orders }, select: { pdfKey: true } })) if (pdfKey) await storage.remove(pdfKey);
+  for (const { pdfKey } of await prisma.creditNote.findMany({ where: { customer: users }, select: { pdfKey: true } })) if (pdfKey) await storage.remove(pdfKey); // NOSONAR: test steps run in order
+  for (const { pdfKey } of await prisma.invoice.findMany({ where: { order: orders }, select: { pdfKey: true } })) if (pdfKey) await storage.remove(pdfKey); // NOSONAR: test steps run in order
   await prisma.creditNote.deleteMany({ where: { customer: users } });
   await prisma.refund.deleteMany({ where: { payment: { order: orders } } });
   await prisma.paymentWebhookEvent.deleteMany({ where: { OR: [{ payment: { order: orders } }, { eventId: { in: eventIds } }] } });
@@ -262,7 +262,7 @@ describe('refunds (M4.13)', () => {
   it('two refunds at once never refund more than was paid', async () => {
     const p = await paid();
     const results = await Promise.all([0, 1, 2, 3].map(() => refund(p.paymentId, { amount: TOTAL / 2 + 100, reason: 'Parallel' })));
-    expect(results.map((r) => r.status).sort()).toEqual([201, 409, 409, 409]);
+    expect(results.map((r) => r.status).toSorted((a, b) => a - b)).toEqual([201, 409, 409, 409]);
     const after = await paymentOf(p.paymentId);
     expect(after.refunds).toHaveLength(1);
     expect([...gateway.refunds.values()].filter((g) => g.paymentId === p.gatewayPaymentId)).toHaveLength(1);
@@ -354,7 +354,7 @@ describe('refunds (M4.13)', () => {
 
   it('only staff with payments.refund may refund (customer, operations and support get 403)', async () => {
     const p = await paid();
-    for (const token of [alice, operations, support]) await refund(p.paymentId, { amount: 10000, reason: 'Not allowed' }, randomUUID(), token).expect(403);
+    for (const token of [alice, operations, support]) await refund(p.paymentId, { amount: 10000, reason: 'Not allowed' }, randomUUID(), token).expect(403); // NOSONAR: test steps run in order
     expect((await paymentOf(p.paymentId)).refunds).toHaveLength(0);
   });
 
@@ -384,19 +384,19 @@ describe('refunds (M4.13)', () => {
     const deadline = Date.now() + 60_000;
     let ready = await prisma.creditNote.findUniqueOrThrow({ where: { id: note.id }, select: { pdfKey: true } });
     while (!ready.pdfKey && Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      ready = await prisma.creditNote.findUniqueOrThrow({ where: { id: note.id }, select: { pdfKey: true } });
+      await new Promise((resolve) => setTimeout(resolve, 250)); // NOSONAR: test steps run in order
+      ready = await prisma.creditNote.findUniqueOrThrow({ where: { id: note.id }, select: { pdfKey: true } }); // NOSONAR: test steps run in order
     }
     expect(ready.pdfKey).toBeTruthy();
     for (const token of [alice, support]) {
-      const link = (await http.post(`/api/credit-notes/${note.id}/link`).set(as(token)).expect(200)).body;
-      const pdf = await http.get(link.url).buffer(true).parse((res, cb) => {
+      const link = (await http.post(`/api/credit-notes/${note.id}/link`).set(as(token)).expect(200)).body; // NOSONAR: test steps run in order
+      const pdf = await http.get(link.url).buffer(true).parse((res, cb) => { // NOSONAR: test steps run in order
         const chunks: Buffer[] = [];
         res.on('data', (c: Buffer) => chunks.push(c));
         res.on('end', () => cb(null, Buffer.concat(chunks)));
       }).expect(200);
       expect(pdf.headers['content-type']).toBe('application/pdf');
-      expect(pdf.headers['content-disposition']).toContain(`Credit note ${note.number.replace(/\//g, '-')}.pdf`);
+      expect(pdf.headers['content-disposition']).toContain(`Credit note ${note.number.replaceAll('/', '-')}.pdf`);
       expect((pdf.body as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
     }
   }, 90_000);
