@@ -11,8 +11,8 @@ export function StaffAccountNotice() {
   const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL;
 
   return (
-    <main className="mx-auto max-w-[720px] px-6 py-24 text-center">
-      <h1 className="text-2xl font-bold text-night">Staff account</h1>
+    <section aria-labelledby="staff-account-h" className="mx-auto max-w-[720px] px-6 py-24 text-center">
+      <h1 id="staff-account-h" className="text-2xl font-bold text-night">Staff account</h1>
       <p className="mt-3 text-muted">{STAFF_ACCOUNT_MESSAGE}</p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
         {adminUrl && (
@@ -20,10 +20,10 @@ export function StaffAccountNotice() {
             Open admin portal
           </a>
         )}
-        <Button type="button" variant="outline" onClick={() => void signOut()}>
+        <Button type="button" variant="outline" onClick={() => signOut()}>
           Sign out
         </Button>
       </div>
-    </main>
+    </section>
   );
 }

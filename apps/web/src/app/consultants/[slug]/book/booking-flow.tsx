@@ -71,7 +71,7 @@ export function BookingFlow({ slug, initial }: Readonly<{ slug: string; initial:
 
   // Fresh slots in the browser (the server's copy may be a minute old).
   useEffect(() => {
-    if (!ready || !user?.roles.includes('CUSTOMER')) return;
+    if (isStaff) return;
     let live = true;
     fetchSlots()
       .then((fresh) => live && setData(fresh))
@@ -79,7 +79,7 @@ export function BookingFlow({ slug, initial }: Readonly<{ slug: string; initial:
     return () => {
       live = false;
     };
-  }, [fetchSlots, ready, user]);
+  }, [fetchSlots, isStaff]);
 
   // The hold countdown.
   useEffect(() => {
