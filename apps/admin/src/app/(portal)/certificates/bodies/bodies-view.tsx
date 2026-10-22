@@ -157,66 +157,7 @@ function Bodies() {
     [api, toast],
   );
 
-  const columns = useMemo(() => {
-    const col = createColumnHelper<CertificationBodyRow>();
-    return [
-      col.accessor('name', {
-        header: 'Name',
-        cell: ({ row: { original: b } }) => (
-          <div>
-            <button
-              type="button"
-              onClick={() => openEdit(b)}
-              className="font-semibold text-night underline-offset-2 hover:text-ink hover:underline"
-            >
-              {b.name}
-            </button>
-            {b.website && (
-              <p className="text-xs text-muted">
-                <a href={b.website} target="_blank" rel="noreferrer" className="hover:underline">
-                  {b.website}
-                </a>
-              </p>
-            )}
-          </div>
-        ),
-      }),
-      col.accessor('accreditation', {
-        header: 'Accreditation',
-        cell: ({ getValue }) => getValue() ?? <span className="text-muted">—</span>,
-      }),
-      col.accessor('logoUrl', {
-        header: 'Logo',
-        cell: ({ getValue }) =>
-          getValue() ? (
-            <Badge tone="info">URL set</Badge>
-          ) : (
-            <span className="text-muted">None</span>
-          ),
-      }),
-      col.display({
-        id: 'actions',
-        header: () => <span className="sr-only">Actions</span>,
-        meta: { className: 'text-right' },
-        cell: ({ row: { original: b } }) => (
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => openEdit(b)} aria-label={`Edit ${b.name}`}>
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={busyId === b.id}
-              onClick={() => setDeleting(b)}
-              aria-label={`Delete ${b.name}`}
-            >
-              Delete
-            </Button>
-          </div>
-        ),
-      }),
-    ];
-  }, [busyId]);
+  const columns = useMemo(() => bodyColumns(busyId, openEdit, setDeleting), [busyId]);
 
   const filtered = useMemo(() => {
     if (!bodies) return [];
@@ -356,4 +297,65 @@ function Bodies() {
       />
     </div>
   );
+}
+
+function bodyColumns(busyId: string | null, openEdit: (b: CertificationBodyRow) => void, setDeleting: (b: CertificationBodyRow) => void) {
+  const col = createColumnHelper<CertificationBodyRow>();
+  return [
+    col.accessor('name', {
+      header: 'Name',
+      cell: ({ row: { original: b } }) => (
+        <div>
+          <button
+            type="button"
+            onClick={() => openEdit(b)}
+            className="font-semibold text-night underline-offset-2 hover:text-ink hover:underline"
+          >
+            {b.name}
+          </button>
+          {b.website && (
+            <p className="text-xs text-muted">
+              <a href={b.website} target="_blank" rel="noreferrer" className="hover:underline">
+                {b.website}
+              </a>
+            </p>
+          )}
+        </div>
+      ),
+    }),
+    col.accessor('accreditation', {
+      header: 'Accreditation',
+      cell: ({ getValue }) => getValue() ?? <span className="text-muted">—</span>,
+    }),
+    col.accessor('logoUrl', {
+      header: 'Logo',
+      cell: ({ getValue }) =>
+        getValue() ? (
+          <Badge tone="info">URL set</Badge>
+        ) : (
+          <span className="text-muted">None</span>
+        ),
+    }),
+    col.display({
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      meta: { className: 'text-right' },
+      cell: ({ row: { original: b } }) => (
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={() => openEdit(b)} aria-label={`Edit ${b.name}`}>
+            Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={busyId === b.id}
+            onClick={() => setDeleting(b)}
+            aria-label={`Delete ${b.name}`}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    }),
+  ];
 }

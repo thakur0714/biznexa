@@ -14,6 +14,46 @@ import { canSee, findNavItem } from '@/lib/nav';
 
 type LeadRow = LeadListResponse['items'][number];
 
+const helper = createColumnHelper<LeadRow>();
+const columns = [
+  helper.accessor('name', {
+    header: 'Name',
+    cell: (info) => <span className="font-medium text-night">{info.getValue()}</span>,
+  }),
+  helper.accessor('mobile', {
+    header: 'Mobile',
+    cell: (info) => (
+      <a href={`tel:${info.getValue()}`} className="text-ink hover:underline num">
+        {info.getValue()}
+      </a>
+    ),
+  }),
+  helper.accessor('email', {
+    header: 'Email',
+    cell: (info) => <span className="text-muted">{info.getValue() || '—'}</span>,
+  }),
+  helper.accessor('city', {
+    header: 'City',
+    cell: (info) => <span className="text-muted">{info.getValue() || '—'}</span>,
+  }),
+  helper.accessor('serviceName', {
+    header: 'Service',
+    cell: (info) => <span className="text-muted">{info.getValue() || '—'}</span>,
+  }),
+  helper.accessor('source', {
+    header: 'Source',
+    cell: (info) => <span className="text-muted capitalize">{info.getValue().replace('_', ' ')}</span>,
+  }),
+  helper.accessor('message', {
+    header: 'Message',
+    cell: (info) => <span className="text-muted line-clamp-2 max-w-[200px]" title={info.getValue() ?? ''}>{info.getValue() ?? '—'}</span>,
+  }),
+  helper.accessor('createdAt', {
+    header: 'Date',
+    cell: (info) => <span className="text-muted whitespace-nowrap">{formatDate(info.getValue())}</span>,
+  }),
+];
+
 export function LeadsView() {
   const api = useApi();
   const { user } = useAuth();
@@ -68,49 +108,6 @@ export function LeadsView() {
     void load();
     return () => { cancel = true; };
   }, [api, canView, query, source, from, to, page, reload]);
-
-  const helper = createColumnHelper<LeadRow>();
-  const columns = useMemo(
-    () => [
-      helper.accessor('name', {
-        header: 'Name',
-        cell: (info) => <span className="font-medium text-night">{info.getValue()}</span>,
-      }),
-      helper.accessor('mobile', {
-        header: 'Mobile',
-        cell: (info) => (
-          <a href={`tel:${info.getValue()}`} className="text-ink hover:underline num">
-            {info.getValue()}
-          </a>
-        ),
-      }),
-      helper.accessor('email', {
-        header: 'Email',
-        cell: (info) => <span className="text-muted">{info.getValue() || '—'}</span>,
-      }),
-      helper.accessor('city', {
-        header: 'City',
-        cell: (info) => <span className="text-muted">{info.getValue() || '—'}</span>,
-      }),
-      helper.accessor('serviceName', {
-        header: 'Service',
-        cell: (info) => <span className="text-muted">{info.getValue() || '—'}</span>,
-      }),
-      helper.accessor('source', {
-        header: 'Source',
-        cell: (info) => <span className="text-muted capitalize">{info.getValue().replace('_', ' ')}</span>,
-      }),
-      helper.accessor('message', {
-        header: 'Message',
-        cell: (info) => <span className="text-muted line-clamp-2 max-w-[200px]" title={info.getValue() ?? ''}>{info.getValue() ?? '—'}</span>,
-      }),
-      helper.accessor('createdAt', {
-        header: 'Date',
-        cell: (info) => <span className="text-muted whitespace-nowrap">{formatDate(info.getValue())}</span>,
-      }),
-    ],
-    [helper]
-  );
 
       const updateUrl = () => {
      // Optional: push to URL to keep filters in URL

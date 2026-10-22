@@ -116,121 +116,9 @@ function Catalogue() {
     setTab('services');
   }, []);
 
-  const serviceColumns = useMemo(() => {
-    const col = createColumnHelper<AdminServiceRow>();
-    return [
-      col.accessor('name', {
-        header: 'Service',
-        cell: ({ row: { original: s } }) => (
-          <div>
-            <Link href={`/services/${s.id}`} className="font-semibold text-night underline-offset-2 hover:text-ink hover:underline">
-              {s.name}
-            </Link>
-            {s.isPopular && (
-              <Badge tone="accent" className="ml-2">
-                Popular
-              </Badge>
-            )}
-            <p className="text-xs text-muted">/{s.slug}</p>
-          </div>
-        ),
-      }),
-      col.accessor((s) => s.category.name, {
-        id: 'category',
-        header: 'Category',
-        filterFn: (row, _id, value: string) => !value || row.original.category.id === value,
-        cell: ({ row: { original: s } }) => (
-          <div>
-            {s.category.name}
-            {s.subcategory && <p className="text-xs text-muted">{s.subcategory}</p>}
-          </div>
-        ),
-      }),
-      col.accessor((s) => s.startingPrice ?? undefined, {
-        id: 'price',
-        header: 'From',
-        sortUndefined: 'last',
-        meta: { className: 'text-right' },
-        cell: ({ getValue }) => {
-          const v = getValue();
-          return v === undefined ? <span className="text-danger">No active package</span> : formatINR(v);
-        },
-      }),
-      col.accessor('applications', { header: 'Applications', meta: { className: 'text-right' } }),
-      col.accessor((s) => statusOf(s.isActive), {
-        id: 'status',
-        header: 'Status',
-        filterFn: 'equalsString',
-        cell: ({ row }) => <StatusBadge active={row.original.isActive} />,
-      }),
-      col.display({
-        id: 'actions',
-        header: () => <span className="sr-only">Actions</span>,
-        meta: { className: 'text-right' },
-        cell: ({ row: { original: s } }) => (
-          <div className="flex justify-end gap-2">
-            <LinkButton href={`/services/${s.id}`} variant="ghost" size="sm" aria-label={`Edit ${s.name}`}>
-              Edit
-            </LinkButton>
-            {s.isActive ? (
-              <Button variant="outline" size="sm" disabled={busyId === s.id} onClick={() => setPending({ kind: 'service', row: s })} aria-label={`Deactivate ${s.name}`}>
-                Deactivate
-              </Button>
-            ) : (
-              <Button variant="ink" size="sm" disabled={busyId === s.id} onClick={() => setServiceActive(s, true)} aria-label={`Reactivate ${s.name}`}>
-                {busyId === s.id ? 'Reactivating…' : 'Reactivate'}
-              </Button>
-            )}
-          </div>
-        ),
-      }),
-    ];
-  }, [busyId, setServiceActive]);
+  const serviceColumns = useMemo(() => serviceColumnsFor(busyId, setServiceActive, setPending), [busyId, setServiceActive]);
 
-  const categoryColumns = useMemo(() => {
-    const col = createColumnHelper<AdminCategoryRow>();
-    return [
-      col.accessor('name', {
-        header: 'Category',
-        cell: ({ row: { original: c } }) => (
-          <div>
-            <span className="font-semibold text-night">{c.name}</span>
-            <p className="text-xs text-muted">/{c.slug}</p>
-          </div>
-        ),
-      }),
-      col.accessor('services', {
-        header: 'Services',
-        cell: ({ row: { original: c } }) => (
-          <button type="button" onClick={() => showCategoryServices(c.id)} className="text-left text-ink underline-offset-2 hover:underline">
-            {c.activeServices} of {c.services} active
-          </button>
-        ),
-      }),
-      col.accessor('sortOrder', { header: 'Order', meta: { className: 'text-right' } }),
-      col.accessor((c) => statusOf(c.isActive), {
-        id: 'status',
-        header: 'Status',
-        filterFn: 'equalsString',
-        cell: ({ row }) => <StatusBadge active={row.original.isActive} />,
-      }),
-      col.display({
-        id: 'actions',
-        header: () => <span className="sr-only">Actions</span>,
-        meta: { className: 'text-right' },
-        cell: ({ row: { original: c } }) =>
-          c.isActive ? (
-            <Button variant="outline" size="sm" disabled={busyId === c.id} onClick={() => setPending({ kind: 'category', row: c })} aria-label={`Deactivate ${c.name} category`}>
-              Deactivate
-            </Button>
-          ) : (
-            <Button variant="ink" size="sm" disabled={busyId === c.id} onClick={() => setCategoryActive(c, true)} aria-label={`Reactivate ${c.name} category`}>
-              {busyId === c.id ? 'Reactivating…' : 'Reactivate'}
-            </Button>
-          ),
-      }),
-    ];
-  }, [busyId, setCategoryActive, showCategoryServices]);
+  const categoryColumns = useMemo(() => categoryColumnsFor(busyId, setCategoryActive, showCategoryServices, setPending), [busyId, setCategoryActive, showCategoryServices]);
 
   const serviceFilters: ColumnFiltersState = [
     ...(categoryId ? [{ id: 'category', value: categoryId }] : []),
@@ -402,4 +290,120 @@ function deactivationTitle(pending: Pending | null): string {
 function applicationsNote(n: number) {
   if (n === 0) return '';
   return `Its ${n} existing application${n === 1 ? ' is' : 's are'} not changed.`;
+}
+
+function serviceColumnsFor(busyId: string | null, setServiceActive: (row: AdminServiceRow, isActive: boolean) => Promise<void>, setPending: (p: Pending) => void) {
+  const col = createColumnHelper<AdminServiceRow>();
+  return [
+    col.accessor('name', {
+      header: 'Service',
+      cell: ({ row: { original: s } }) => (
+        <div>
+          <Link href={`/services/${s.id}`} className="font-semibold text-night underline-offset-2 hover:text-ink hover:underline">
+            {s.name}
+          </Link>
+          {s.isPopular && (
+            <Badge tone="accent" className="ml-2">
+              Popular
+            </Badge>
+          )}
+          <p className="text-xs text-muted">/{s.slug}</p>
+        </div>
+      ),
+    }),
+    col.accessor((s) => s.category.name, {
+      id: 'category',
+      header: 'Category',
+      filterFn: (row, _id, value: string) => !value || row.original.category.id === value,
+      cell: ({ row: { original: s } }) => (
+        <div>
+          {s.category.name}
+          {s.subcategory && <p className="text-xs text-muted">{s.subcategory}</p>}
+        </div>
+      ),
+    }),
+    col.accessor((s) => s.startingPrice ?? undefined, {
+      id: 'price',
+      header: 'From',
+      sortUndefined: 'last',
+      meta: { className: 'text-right' },
+      cell: ({ getValue }) => {
+        const v = getValue();
+        return v === undefined ? <span className="text-danger">No active package</span> : formatINR(v);
+      },
+    }),
+    col.accessor('applications', { header: 'Applications', meta: { className: 'text-right' } }),
+    col.accessor((s) => statusOf(s.isActive), {
+      id: 'status',
+      header: 'Status',
+      filterFn: 'equalsString',
+      cell: ({ row }) => <StatusBadge active={row.original.isActive} />,
+    }),
+    col.display({
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      meta: { className: 'text-right' },
+      cell: ({ row: { original: s } }) => (
+        <div className="flex justify-end gap-2">
+          <LinkButton href={`/services/${s.id}`} variant="ghost" size="sm" aria-label={`Edit ${s.name}`}>
+            Edit
+          </LinkButton>
+          {s.isActive ? (
+            <Button variant="outline" size="sm" disabled={busyId === s.id} onClick={() => setPending({ kind: 'service', row: s })} aria-label={`Deactivate ${s.name}`}>
+              Deactivate
+            </Button>
+          ) : (
+            <Button variant="ink" size="sm" disabled={busyId === s.id} onClick={() => setServiceActive(s, true)} aria-label={`Reactivate ${s.name}`}>
+              {busyId === s.id ? 'Reactivating…' : 'Reactivate'}
+            </Button>
+          )}
+        </div>
+      ),
+    }),
+  ];
+}
+
+function categoryColumnsFor(busyId: string | null, setCategoryActive: (row: AdminCategoryRow, isActive: boolean) => Promise<void>, showCategoryServices: (id: string) => void, setPending: (p: Pending) => void) {
+  const col = createColumnHelper<AdminCategoryRow>();
+  return [
+    col.accessor('name', {
+      header: 'Category',
+      cell: ({ row: { original: c } }) => (
+        <div>
+          <span className="font-semibold text-night">{c.name}</span>
+          <p className="text-xs text-muted">/{c.slug}</p>
+        </div>
+      ),
+    }),
+    col.accessor('services', {
+      header: 'Services',
+      cell: ({ row: { original: c } }) => (
+        <button type="button" onClick={() => showCategoryServices(c.id)} className="text-left text-ink underline-offset-2 hover:underline">
+          {c.activeServices} of {c.services} active
+        </button>
+      ),
+    }),
+    col.accessor('sortOrder', { header: 'Order', meta: { className: 'text-right' } }),
+    col.accessor((c) => statusOf(c.isActive), {
+      id: 'status',
+      header: 'Status',
+      filterFn: 'equalsString',
+      cell: ({ row }) => <StatusBadge active={row.original.isActive} />,
+    }),
+    col.display({
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      meta: { className: 'text-right' },
+      cell: ({ row: { original: c } }) =>
+        c.isActive ? (
+          <Button variant="outline" size="sm" disabled={busyId === c.id} onClick={() => setPending({ kind: 'category', row: c })} aria-label={`Deactivate ${c.name} category`}>
+            Deactivate
+          </Button>
+        ) : (
+          <Button variant="ink" size="sm" disabled={busyId === c.id} onClick={() => setCategoryActive(c, true)} aria-label={`Reactivate ${c.name} category`}>
+            {busyId === c.id ? 'Reactivating…' : 'Reactivate'}
+          </Button>
+        ),
+    }),
+  ];
 }

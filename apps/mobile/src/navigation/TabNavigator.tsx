@@ -1,5 +1,6 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator, type BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
+import type { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ServicesBrowseScreen } from '../screens/ServicesBrowseScreen';
@@ -28,26 +29,30 @@ function TabIcon({ routeName, focused, color, size }: Readonly<{ routeName: keyo
   return <Ionicons name={iconName} size={size} color={color} />;
 }
 
+function screenOptions({ route }: Readonly<{ route: RouteProp<RootTabParamList> }>): BottomTabNavigationOptions {
+  return {
+    tabBarIcon: ({ focused, color, size }) => <TabIcon routeName={route.name} focused={focused} color={color} size={size} />,
+    tabBarActiveTintColor: colors.ink,
+    tabBarInactiveTintColor: colors.muted,
+    tabBarStyle: {
+      backgroundColor: colors.white,
+      borderTopColor: colors.rule,
+      height: 60,
+      paddingBottom: 8,
+      paddingTop: 6,
+    },
+    tabBarLabelStyle: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    headerShown: false,
+  };
+}
+
 export function TabNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => <TabIcon routeName={route.name} focused={focused} color={color} size={size} />,
-        tabBarActiveTintColor: colors.ink,
-        tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: {
-          backgroundColor: colors.white,
-          borderTopColor: colors.rule,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-        headerShown: false,
-      })}
+      screenOptions={screenOptions}
     >
       <Tab.Screen
         name="Home"
