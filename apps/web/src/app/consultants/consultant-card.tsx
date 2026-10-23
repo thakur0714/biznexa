@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { formatINR, type ConsultationType, type PublicConsultantCard } from '@biznexa/types';
 import { Icon } from '@/components/icons';
 
-const categoryNames: Record<string, string> = {
+export const categoryNames: Record<string, string> = {
   CA: 'Chartered Accountant', CS: 'Company Secretary', LAWYER: 'Lawyer', TAX_CONSULTANT: 'Tax consultant',
   TRADEMARK_CONSULTANT: 'Trademark consultant', ISO_CONSULTANT: 'ISO consultant',
   BUSINESS_CONSULTANT: 'Business consultant', TECHNOLOGY_CONSULTANT: 'Technology consultant',

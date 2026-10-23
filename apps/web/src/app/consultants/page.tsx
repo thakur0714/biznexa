@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { Container, EmptyState } from '@biznexa/ui';
 import { consultantCategories, consultationTypes, type PublicConsultantDirectory } from '@biznexa/types';
 import { api } from '@/lib/api';
-import { ConsultantCard } from './consultant-card';
+import { ConsultantCard, categoryNames } from './consultant-card';
+import { QuickFilters } from './quick-filters';
 
 export const metadata: Metadata = {
   title: 'Find a Consultant | BizNexa',
@@ -12,11 +13,6 @@ export const metadata: Metadata = {
 };
 
 type Search = Record<string, string | string[] | undefined>;
-const categoryNames: Record<string, string> = {
-  CA: 'Chartered Accountant', CS: 'Company Secretary', LAWYER: 'Lawyer', TAX_CONSULTANT: 'Tax consultant',
-  TRADEMARK_CONSULTANT: 'Trademark consultant', ISO_CONSULTANT: 'ISO consultant',
-  BUSINESS_CONSULTANT: 'Business consultant', TECHNOLOGY_CONSULTANT: 'Technology consultant',
-};
 
 function queryString(query: Search) {
   const params = new URLSearchParams();
@@ -102,6 +98,8 @@ export default async function ConsultantsPage({ searchParams }: Readonly<{ searc
           <span className="self-center text-sm text-muted">{resultSummary}</span>
         </div>
       </form>
+
+      <QuickFilters query={query} />
 
       {error ? <div className="mt-8 rounded-lg border border-red-200 bg-red-50 p-5 text-red-900" role="alert">{error} <a className="ml-1 font-semibold underline" href={retryHref}>Retry</a></div> : null}
       {!error && result?.items.length === 0 ? <div className="mt-8"><EmptyState title="No consultants found" description="Try changing or clearing some filters." /></div> : null}
