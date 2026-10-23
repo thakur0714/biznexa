@@ -2740,6 +2740,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/reports/searches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_getSearches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/reports/export": {
         parameters: {
             query?: never;
@@ -7615,6 +7631,18 @@ export interface components {
                 resolvedAt: string | null;
                 firstResponseHours: number | null;
                 resolutionHours: number | null;
+            }[];
+        };
+        ReportSearches: {
+            range: {
+                from: string;
+                to: string;
+                preset?: string;
+            };
+            searches: {
+                query: string;
+                count: number;
+                lastSearchedAt: string;
             }[];
         };
         ReportExportJob: {
@@ -14644,6 +14672,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportSupport"];
+                };
+            };
+        };
+    };
+    ReportsController_getSearches: {
+        parameters: {
+            query?: {
+                preset?: string;
+                from?: string;
+                to?: string;
+                serviceId?: string;
+                categoryId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportSearches"];
                 };
             };
         };

@@ -14178,6 +14178,73 @@
         ]
       }
     },
+    "/api/admin/reports/searches": {
+      "get": {
+        "operationId": "ReportsController_getSearches",
+        "parameters": [
+          {
+            "name": "preset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportSearches"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · reports"
+        ]
+      }
+    },
     "/api/admin/reports/export": {
       "post": {
         "operationId": "ReportsController_exportReport",
@@ -36678,6 +36745,58 @@
           "summary",
           "byStatus",
           "recentTickets"
+        ],
+        "additionalProperties": false
+      },
+      "ReportSearches": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "preset": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "searches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                },
+                "lastSearchedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "query",
+                "count",
+                "lastSearchedAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "range",
+          "searches"
         ],
         "additionalProperties": false
       },

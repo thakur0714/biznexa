@@ -12,6 +12,7 @@ export function ReportsNav() {
     { label: 'Services', href: '/reports/services' },
     { label: 'Consultants', href: '/reports/consultants' },
     { label: 'Support', href: '/reports/support' },
+    { label: 'Searches', href: '/reports/searches' },
   ];
 
 

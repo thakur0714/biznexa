@@ -20,6 +20,7 @@ import {
   type ReportExportJob,
   type ReportExportRequest,
   type ReportSalesResponse,
+  type ReportSearchesResponse,
   type ReportServicesResponse,
   type ReportSupportResponse,
   fileLinkSchema,
@@ -30,6 +31,7 @@ import {
   reportExportJobSchema,
   reportExportRequestSchema,
   reportSalesResponseSchema,
+  reportSearchesResponseSchema,
   reportServicesResponseSchema,
   reportSupportResponseSchema,
 } from '@biznexa/types';
@@ -83,6 +85,12 @@ export class ReportsController {
   @Get('support')
   getSupport(@ZodQuery(reportDateRangeQuerySchema) query: ReportDateRangeQuery): Promise<ReportSupportResponse> {
     return this.reportsService.getSupportReport(query);
+  }
+
+  @ApiZodResponse('ReportSearches', reportSearchesResponseSchema)
+  @Get('searches')
+  getSearches(@ZodQuery(reportDateRangeQuerySchema) query: ReportDateRangeQuery): Promise<ReportSearchesResponse> {
+    return this.reportsService.getSearchesReport(query);
   }
 
   @ApiZodResponse('ReportExportJob', reportExportJobSchema, 201)

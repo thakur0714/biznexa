@@ -18,6 +18,7 @@ import {
   type ReportExportRequest,
   type ReportExportType,
   type ReportSalesResponse,
+  type ReportSearchesResponse,
   type ReportServicesResponse,
   type ReportSupportResponse,
   getDaysInISTRange,
@@ -976,6 +977,46 @@ export class ReportsService implements OnApplicationBootstrap {
       },
       byStatus,
       recentTickets,
+    };
+  }
+
+  /**
+   * Builds the unanswered searches report: searches that found nothing, grouped
+   * case-insensitively, most searched first (max 100). Each group shows its latest spelling.
+   */
+  async getSearchesReport(query: ReportDateRangeQuery, now = new Date()): Promise<ReportSearchesResponse> {
+    const { from, to, preset } = resolveReportDateRange(query, now);
+
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        query: string;
+        count: number;
+        lastSearchedAt: Date;
+      }>
+    >`
+      SELECT
+        (ARRAY_AGG(sq.query ORDER BY sq."createdAt" DESC))[1] AS "query",
+        COUNT(*)::int AS "count",
+        MAX(sq."createdAt") AS "lastSearchedAt"
+      FROM "SearchQuery" sq
+      WHERE sq."resultCount" = 0
+        AND sq."createdAt" >= ${from} AND sq."createdAt" <= ${to}
+      GROUP BY LOWER(sq.query)
+      ORDER BY "count" DESC, "lastSearchedAt" DESC
+      LIMIT 100
+    `;
+
+    return {
+      range: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+        preset,
+      },
+      searches: rows.map((r) => ({
+        query: r.query,
+        count: Number(r.count),
+        lastSearchedAt: r.lastSearchedAt.toISOString(),
+      })),
     };
   }
 

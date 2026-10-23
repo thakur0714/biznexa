@@ -395,6 +395,23 @@ export const reportSupportResponseSchema = z.object({
 });
 export type ReportSupportResponse = z.infer<typeof reportSupportResponseSchema>;
 
+export const reportUnansweredSearchItemSchema = z.object({
+  query: z.string(),
+  count: z.number(),
+  lastSearchedAt: z.string(),
+});
+export type ReportUnansweredSearchItem = z.infer<typeof reportUnansweredSearchItemSchema>;
+
+export const reportSearchesResponseSchema = z.object({
+  range: z.object({
+    from: z.string(),
+    to: z.string(),
+    preset: z.string().optional(),
+  }),
+  searches: z.array(reportUnansweredSearchItemSchema),
+});
+export type ReportSearchesResponse = z.infer<typeof reportSearchesResponseSchema>;
+
 export const reportExportTypeSchema = z.enum(['sales', 'customers', 'services', 'consultants', 'support']);
 export type ReportExportType = z.infer<typeof reportExportTypeSchema>;
 
