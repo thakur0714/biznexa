@@ -199,6 +199,7 @@ export const publicConsultantCardSchema = z.object({
   name: z.string(),
   category: consultantCategorySchema,
   qualification: z.string(),
+  experienceYears: z.number().int(),
   city: z.string(),
   state: z.string(),
   area: z.string().nullable(),

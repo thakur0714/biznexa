@@ -37311,6 +37311,9 @@
                 "qualification": {
                   "type": "string"
                 },
+                "experienceYears": {
+                  "type": "integer"
+                },
                 "city": {
                   "type": "string"
                 },
@@ -37382,6 +37385,7 @@
                 "name",
                 "category",
                 "qualification",
+                "experienceYears",
                 "city",
                 "state",
                 "area",
@@ -37548,6 +37552,9 @@
           "qualification": {
             "type": "string"
           },
+          "experienceYears": {
+            "type": "integer"
+          },
           "city": {
             "type": "string"
           },
@@ -37608,9 +37615,6 @@
           },
           "isFeatured": {
             "type": "boolean"
-          },
-          "experienceYears": {
-            "type": "integer"
           },
           "ratingSummary": {
             "type": "object",
@@ -37724,6 +37728,7 @@
           "name",
           "category",
           "qualification",
+          "experienceYears",
           "city",
           "state",
           "area",
@@ -37738,7 +37743,6 @@
           "reviewCount",
           "isOnline",
           "isFeatured",
-          "experienceYears",
           "ratingSummary",
           "services",
           "verifiedReviews"

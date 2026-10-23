@@ -7771,6 +7771,7 @@ export interface components {
                 /** @enum {string} */
                 category: "CA" | "CS" | "LAWYER" | "TAX_CONSULTANT" | "TRADEMARK_CONSULTANT" | "ISO_CONSULTANT" | "BUSINESS_CONSULTANT" | "TECHNOLOGY_CONSULTANT";
                 qualification: string;
+                experienceYears: number;
                 city: string;
                 state: string;
                 area: string | null;
@@ -7823,6 +7824,7 @@ export interface components {
             /** @enum {string} */
             category: "CA" | "CS" | "LAWYER" | "TAX_CONSULTANT" | "TRADEMARK_CONSULTANT" | "ISO_CONSULTANT" | "BUSINESS_CONSULTANT" | "TECHNOLOGY_CONSULTANT";
             qualification: string;
+            experienceYears: number;
             city: string;
             state: string;
             area: string | null;
@@ -7838,7 +7840,6 @@ export interface components {
             reviewCount: number;
             isOnline: boolean;
             isFeatured: boolean;
-            experienceYears: number;
             ratingSummary: {
                 average: number;
                 reviewCount: number;

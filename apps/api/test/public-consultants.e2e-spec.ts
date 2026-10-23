@@ -106,7 +106,7 @@ describe('Public consultant directory (M8.3)', () => {
     expect(filtered.body.total).toBe(1);
     expect(filtered.body.items[0]).toMatchObject({
       name: 'approved-one consultant', category: 'CA', city: 'Pune', state: 'Maharashtra',
-      area: 'Kothrud', feePerSession: 150_000, rating: 4.8, availableToday: true,
+      area: 'Kothrud', feePerSession: 150_000, rating: 4.8, experienceYears: 8, availableToday: true,
     });
     expect(filtered.body.items[0]).not.toHaveProperty('userId');
     expect(filtered.body.items[0]).not.toHaveProperty('email');
@@ -120,6 +120,9 @@ describe('Public consultant directory (M8.3)', () => {
 
     const descending = await http().get(`/api/public/consultants?sort=fee_high&availableToday=false&language=${runLanguage}`).expect(200);
     expect(descending.body.items.map((item: { name: string }) => item.name)).toEqual(['approved-two consultant']);
+    for (const item of [...filtered.body.items, ...ascending.body.items, ...secondPage.body.items, ...descending.body.items]) {
+      expect(item).toHaveProperty('experienceYears', expect.any(Number));
+    }
     await http().get('/api/public/consultants?minFee=200000&maxFee=100000').expect(400);
   });
 

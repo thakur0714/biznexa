@@ -431,7 +431,7 @@ export class ConsultantsService {
     const orderBy = PUBLIC_DIRECTORY_ORDER[query.sort];
 
     const select = {
-      id: true, slug: true, category: true, qualification: true, city: true, state: true, area: true,
+      id: true, slug: true, category: true, qualification: true, experienceYears: true, city: true, state: true, area: true,
       expertise: true, languages: true, bio: true, photoUrl: true, feePerSession: true,
       sessionMinutes: true, consultationTypes: true, rating: true, reviewCount: true, isOnline: true, isFeatured: true,
       user: { select: { name: true } },
@@ -515,6 +515,7 @@ export class ConsultantsService {
         name: row.user.name,
         category: row.category,
         qualification: row.qualification,
+        experienceYears: row.experienceYears,
         city: row.city,
         state: row.state,
         area: row.area,
