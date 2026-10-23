@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { ServiceListing, apiQuery, normalizeParams } from '@/components/service-listing';
 import { Icon } from '@/components/icons';
 import { Breadcrumbs, Container } from '@biznexa/ui';
-import { api, type CategorySummary, type ServiceList } from '@/lib/api';
+import { api, apiOrNull, type CategoryDetail, type CategorySummary, type ServiceList } from '@/lib/api';
+import { CategorySeo } from './category-seo';
 
 type Props = { params: Promise<{ category: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
@@ -12,20 +13,24 @@ async function getCategory(slug: string) {
   return { categories, category: categories.find((c) => c.slug === slug) };
 }
 
+function getCategoryDetail(slug: string) {
+  return apiOrNull<CategoryDetail>(`/catalogue/categories/${encodeURIComponent(slug)}`);
+}
+
 export async function generateMetadata({ params }: Readonly<Props>): Promise<Metadata> {
-  const { category } = await getCategory((await params).category);
+  const category = await getCategoryDetail((await params).category);
   if (!category) return {};
   return {
-    title: `${category.name} services`,
-    description: category.description ?? undefined,
+    title: category.seoTitle?.replace(/ \| BizNexa$/, '') ?? `${category.name} services`,
+    description: category.metaDescription ?? category.description ?? undefined,
     alternates: { canonical: `/services/${category.slug}` },
   };
 }
 
 export default async function CategoryPage({ params, searchParams }: Readonly<Props>) {
   const slug = (await params).category;
-  const { categories, category } = await getCategory(slug);
-  if (!category) notFound();
+  const [{ categories, category }, detail] = await Promise.all([getCategory(slug), getCategoryDetail(slug)]);
+  if (!category || !detail) notFound();
   const p = normalizeParams(await searchParams);
   const data = await api<ServiceList>(`/catalogue/services?${apiQuery(p, slug)}`, { revalidate: 60 });
 
@@ -48,6 +53,7 @@ export default async function CategoryPage({ params, searchParams }: Readonly<Pr
       <Container className="py-10">
         <ServiceListing basePath={`/services/${slug}`} params={p} data={data} categories={categories} category={category} />
       </Container>
+      <CategorySeo category={detail} />
     </>
   );
 }

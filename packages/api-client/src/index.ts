@@ -91,3 +91,19 @@ export interface CategorySummary {
   subcategories: { slug: string; name: string }[];
   topServices: { slug: string; name: string }[];
 }
+
+/** GET /catalogue/categories/:slug — one category with its SEO content (sanitised HTML) and FAQs. */
+export interface CategoryDetail {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string | null;
+  description: string | null;
+  icon: string | null;
+  journeyStage: string | null;
+  seoTitle: string | null;
+  metaDescription: string | null;
+  seoContent: string | null;
+  subcategories: { slug: string; name: string }[];
+  faqs: { question: string; answer: string }[];
+}

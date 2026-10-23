@@ -38,6 +38,7 @@ export async function apiOrNull<T>(path: string): Promise<T | null> {
 // ─────────────── Response types ───────────────
 
 export type {
+  CategoryDetail,
   CategorySummary,
   ServiceCard,
   ServiceList,
