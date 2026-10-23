@@ -382,10 +382,21 @@ model Category {
   isActive        Boolean       @default(true)
   seoTitle        String?
   metaDescription String?
+  seoContent      String? // sanitised HTML shown below the category's services
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   subcategories   Subcategory[]
   services        Service[]
+  faqs            CategoryFAQ[]
+}
+
+model CategoryFAQ {
+  id         String   @id @default(uuid())
+  categoryId String
+  question   String
+  answer     String // sanitised HTML
+  sortOrder  Int      @default(0)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 }
 
 model Subcategory {

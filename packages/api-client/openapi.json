@@ -2422,6 +2422,39 @@
                   "metaDescription": {
                     "type": "string",
                     "maxLength": 170
+                  },
+                  "seoContent": {
+                    "type": "string",
+                    "maxLength": 200000,
+                    "nullable": true
+                  },
+                  "faqs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "question": {
+                          "type": "string",
+                          "minLength": 5,
+                          "maxLength": 300
+                        },
+                        "answer": {
+                          "type": "string",
+                          "maxLength": 200000
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "question",
+                        "answer",
+                        "sortOrder"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 30
                   }
                 },
                 "required": [
@@ -2449,6 +2482,39 @@
       }
     },
     "/api/admin/catalogue/categories/{id}": {
+      "get": {
+        "operationId": "AdminCatalogueController_getCategory",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCategoryDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin · catalogue"
+        ]
+      },
       "patch": {
         "operationId": "AdminCatalogueController_updateCategory",
         "parameters": [
@@ -2517,6 +2583,39 @@
                   "metaDescription": {
                     "type": "string",
                     "maxLength": 170
+                  },
+                  "seoContent": {
+                    "type": "string",
+                    "maxLength": 200000,
+                    "nullable": true
+                  },
+                  "faqs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "question": {
+                          "type": "string",
+                          "minLength": 5,
+                          "maxLength": 300
+                        },
+                        "answer": {
+                          "type": "string",
+                          "maxLength": 200000
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "question",
+                        "answer",
+                        "sortOrder"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 30
                   }
                 },
                 "additionalProperties": false
@@ -2526,7 +2625,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCategoryDetail"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -19110,6 +19216,94 @@
           ],
           "additionalProperties": false
         }
+      },
+      "AdminCategoryDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tagline": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
+          "journeyStage": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "seoTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "metaDescription": {
+            "type": "string",
+            "nullable": true
+          },
+          "seoContent": {
+            "type": "string",
+            "nullable": true
+          },
+          "faqs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                },
+                "answer": {
+                  "type": "string"
+                },
+                "sortOrder": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "question",
+                "answer",
+                "sortOrder"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "tagline",
+          "description",
+          "icon",
+          "journeyStage",
+          "sortOrder",
+          "isActive",
+          "seoTitle",
+          "metaDescription",
+          "seoContent",
+          "faqs"
+        ],
+        "additionalProperties": false
       },
       "AdminServiceList": {
         "type": "array",

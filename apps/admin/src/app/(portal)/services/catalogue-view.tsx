@@ -394,16 +394,22 @@ function categoryColumnsFor(busyId: string | null, setCategoryActive: (row: Admi
       id: 'actions',
       header: () => <span className="sr-only">Actions</span>,
       meta: { className: 'text-right' },
-      cell: ({ row: { original: c } }) =>
-        c.isActive ? (
-          <Button variant="outline" size="sm" disabled={busyId === c.id} onClick={() => setPending({ kind: 'category', row: c })} aria-label={`Deactivate ${c.name} category`}>
-            Deactivate
-          </Button>
-        ) : (
-          <Button variant="ink" size="sm" disabled={busyId === c.id} onClick={() => setCategoryActive(c, true)} aria-label={`Reactivate ${c.name} category`}>
-            {busyId === c.id ? 'Reactivating…' : 'Reactivate'}
-          </Button>
-        ),
+      cell: ({ row: { original: c } }) => (
+        <div className="flex justify-end gap-2">
+          <LinkButton href={`/services/categories/${c.id}`} variant="ghost" size="sm" aria-label={`Edit ${c.name} category`}>
+            Edit
+          </LinkButton>
+          {c.isActive ? (
+            <Button variant="outline" size="sm" disabled={busyId === c.id} onClick={() => setPending({ kind: 'category', row: c })} aria-label={`Deactivate ${c.name} category`}>
+              Deactivate
+            </Button>
+          ) : (
+            <Button variant="ink" size="sm" disabled={busyId === c.id} onClick={() => setCategoryActive(c, true)} aria-label={`Reactivate ${c.name} category`}>
+              {busyId === c.id ? 'Reactivating…' : 'Reactivate'}
+            </Button>
+          )}
+        </div>
+      ),
     }),
   ];
 }

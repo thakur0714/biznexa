@@ -11,7 +11,11 @@ export {
   updateServiceInput,
   type CreateServiceInput,
 } from '@biznexa/types';
-import { slugSchema as slug } from '@biznexa/types';
+import { faqInput, slugSchema as slug } from '@biznexa/types';
+import { richTextInput } from '../cms/rich-text';
+
+/** A category FAQ: the service FAQ question rules, with a rich-text answer saved sanitised. */
+const categoryFaqInput = faqInput.extend({ answer: richTextInput, sortOrder: z.number().int().min(0) });
 
 export const listServicesQuery = z.object({
   category: z.string().optional(),
@@ -42,6 +46,8 @@ export const categoryInput = z.object({
   isActive: z.boolean().default(true),
   seoTitle: z.string().max(70).optional(),
   metaDescription: z.string().max(170).optional(),
+  seoContent: richTextInput.nullable().optional(),
+  faqs: z.array(categoryFaqInput).max(30, 'Add at most 30 FAQs').optional(),
 });
 
 export const subcategoryInput = z.object({

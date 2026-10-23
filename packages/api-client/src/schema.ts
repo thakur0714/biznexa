@@ -795,7 +795,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["AdminCatalogueController_getCategory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3954,6 +3954,26 @@ export interface components {
                 isActive: boolean;
             }[];
         }[];
+        AdminCategoryDetail: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            tagline: string | null;
+            description: string | null;
+            icon: string | null;
+            journeyStage: string | null;
+            sortOrder: number;
+            isActive: boolean;
+            seoTitle: string | null;
+            metaDescription: string | null;
+            seoContent: string | null;
+            faqs: {
+                question: string;
+                answer: string;
+                sortOrder: number;
+            }[];
+        };
         AdminServiceList: {
             /** Format: uuid */
             id: string;
@@ -9773,6 +9793,12 @@ export interface operations {
                     isActive?: boolean;
                     seoTitle?: string;
                     metaDescription?: string;
+                    seoContent?: string | null;
+                    faqs?: {
+                        question: string;
+                        answer: string;
+                        sortOrder: number;
+                    }[];
                 };
             };
         };
@@ -9782,6 +9808,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    AdminCatalogueController_getCategory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCategoryDetail"];
+                };
             };
         };
     };
@@ -9810,6 +9857,12 @@ export interface operations {
                     isActive?: boolean;
                     seoTitle?: string;
                     metaDescription?: string;
+                    seoContent?: string | null;
+                    faqs?: {
+                        question: string;
+                        answer: string;
+                        sortOrder: number;
+                    }[];
                 };
             };
         };
@@ -9818,7 +9871,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminCategoryDetail"];
+                };
             };
         };
     };

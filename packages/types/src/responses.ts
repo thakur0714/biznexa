@@ -78,6 +78,24 @@ export const adminCategoryRowSchema = z.object({
 export type AdminCategoryRow = z.infer<typeof adminCategoryRowSchema>;
 export const adminCategoryListSchema = z.array(adminCategoryRowSchema);
 
+/** One category with its long SEO content and FAQs (GET/PATCH /admin/catalogue/categories/:id). HTML is already sanitised. */
+export const adminCategoryDetailSchema = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  name: z.string(),
+  tagline: z.string().nullable(),
+  description: z.string().nullable(),
+  icon: z.string().nullable(),
+  journeyStage: z.string().nullable(),
+  sortOrder: z.number().int(),
+  isActive: z.boolean(),
+  seoTitle: z.string().nullable(),
+  metaDescription: z.string().nullable(),
+  seoContent: z.string().nullable(),
+  faqs: z.array(z.object({ question: z.string(), answer: z.string(), sortOrder: z.number().int() })),
+});
+export type AdminCategoryDetail = z.infer<typeof adminCategoryDetailSchema>;
+
 const httpsUrl = z
   .string()
   .trim()

@@ -23,6 +23,7 @@ import { AuthUser, CurrentUser, PERMS, Public, RequirePermissions } from '../com
 import { ApiZodResponse, ZodBody, ZodQuery } from '../common/openapi';
 import { ZodPipe } from '../common/zod';
 import {
+  adminCategoryDetailSchema,
   adminCategoryListSchema,
   adminServiceDetailSchema,
   adminServiceListSchema,
@@ -98,6 +99,13 @@ export class AdminCatalogueController {
     return this.catalogue.createCategory(body, u.id);
   }
 
+  @ApiZodResponse('AdminCategoryDetail', adminCategoryDetailSchema)
+  @Get('categories/:id')
+  getCategory(@Param('id', uuid) id: string) {
+    return this.catalogue.adminGetCategory(id);
+  }
+
+  @ApiZodResponse('AdminCategoryDetail', adminCategoryDetailSchema)
   @Patch('categories/:id')
   updateCategory(@Param('id', uuid) id: string, @ZodBody(categoryInput.partial()) body: Partial<z.infer<typeof categoryInput>>, @CurrentUser() u: AuthUser) {
     return this.catalogue.updateCategory(id, body, u.id);

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
-import { calculatePrice, type AdminCategoryRow, type AdminServiceDetail, type AdminServiceRow } from '@biznexa/types';
+import { calculatePrice, type AdminCategoryDetail, type AdminCategoryRow, type AdminServiceDetail, type AdminServiceRow } from '@biznexa/types';
 import { z } from 'zod';
 import { inSequence } from '../common/in-sequence';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,6 +27,8 @@ const cardInclude = {
 } satisfies Prisma.ServiceInclude;
 
 type CardRow = Prisma.ServiceGetPayload<{ include: typeof cardInclude }>;
+
+const categoryFaqs = { orderBy: { sortOrder: 'asc' }, select: { question: true, answer: true, sortOrder: true } } satisfies Prisma.Category$faqsArgs;
 
 function toCard(s: CardRow) {
   return {
@@ -105,7 +107,7 @@ export class CatalogueService implements OnModuleInit {
   private async loadCategory(slug: string) {
     const c = await this.prisma.category.findFirst({
       where: { slug, isActive: true },
-      include: { subcategories: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } } },
+      include: { subcategories: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } }, faqs: categoryFaqs },
     });
     if (!c) throw new NotFoundException('Category not found');
     return c;
@@ -249,19 +251,48 @@ export class CatalogueService implements OnModuleInit {
   }
 
   async createCategory(input: z.infer<typeof categoryInput>, actorId: string) {
-    const c = await this.prisma.category.create({ data: input });
+    const { faqs = [], ...fields } = input;
+    const c = await this.prisma.category.create({ data: { ...fields, faqs: { create: faqs } }, include: { faqs: categoryFaqs } });
     await this.audit.log({ actorId, action: 'category.create', entityType: 'Category', entityId: c.id, after: c });
     await this.events.emit('catalogue.changed', { entityType: 'category' });
     return c;
   }
 
-  async updateCategory(id: string, input: Partial<z.infer<typeof categoryInput>>, actorId: string) {
-    const before = await this.prisma.category.findUnique({ where: { id } });
+  /** Saves the fields and, when `faqs` is sent, replaces the category's FAQs in the same transaction. */
+  async updateCategory(id: string, input: Partial<z.infer<typeof categoryInput>>, actorId: string): Promise<AdminCategoryDetail> {
+    const before = await this.prisma.category.findUnique({ where: { id }, include: { faqs: categoryFaqs } });
     if (!before) throw new NotFoundException('Category not found');
-    const c = await this.prisma.category.update({ where: { id }, data: input });
+    const { faqs, ...fields } = input;
+    await this.prisma.$transaction([
+      this.prisma.category.update({ where: { id }, data: fields }),
+      ...(faqs
+        ? [this.prisma.categoryFAQ.deleteMany({ where: { categoryId: id } }), this.prisma.categoryFAQ.createMany({ data: faqs.map((f) => ({ ...f, categoryId: id })) })]
+        : []),
+    ]);
+    const c = await this.adminGetCategory(id);
     await this.audit.log({ actorId, action: 'category.update', entityType: 'Category', entityId: id, before, after: c });
     await this.events.emit('catalogue.changed', { entityType: 'category' });
     return c;
+  }
+
+  async adminGetCategory(id: string): Promise<AdminCategoryDetail> {
+    const c = await this.prisma.category.findUnique({ where: { id }, include: { faqs: categoryFaqs } });
+    if (!c) throw new NotFoundException('Category not found');
+    return {
+      id: c.id,
+      slug: c.slug,
+      name: c.name,
+      tagline: c.tagline,
+      description: c.description,
+      icon: c.icon,
+      journeyStage: c.journeyStage,
+      sortOrder: c.sortOrder,
+      isActive: c.isActive,
+      seoTitle: c.seoTitle,
+      metaDescription: c.metaDescription,
+      seoContent: c.seoContent,
+      faqs: c.faqs,
+    };
   }
 
   async createSubcategory(categoryId: string, input: z.infer<typeof subcategoryInput>, actorId: string) {
