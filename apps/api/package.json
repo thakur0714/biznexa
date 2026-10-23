@@ -12,6 +12,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:seed-demo": "tsx prisma/seed-demo.ts",
     "prisma:reset": "prisma migrate reset --force",
     "create-admin": "tsx prisma/create-admin.ts",
     "reset-2fa": "tsx prisma/reset-2fa.ts",

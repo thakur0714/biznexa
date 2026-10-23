@@ -160,7 +160,9 @@ export class CatalogueService implements OnModuleInit {
       const ids = value.popularServiceIds.filter((id): id is string => typeof id === 'string');
       const selected = await this.prisma.service.findMany({ where: { ...activeService, isActive: true, id: { in: ids } }, include: cardInclude });
       const byId = new Map(selected.map((s) => [s.id, s]));
-      return ids.map((id) => byId.get(id)).filter((s): s is CardRow => Boolean(s)).slice(0, limit).map((item) => toCard(item));
+      const picked = ids.map((id) => byId.get(id)).filter((s): s is CardRow => Boolean(s)).slice(0, limit);
+      // Every picked service switched off since: show the catalogue's popular ones instead of an empty section.
+      if (picked.length) return picked.map((item) => toCard(item));
     }
     const rows = await this.prisma.service.findMany({
       where: { ...activeService, isPopular: true },

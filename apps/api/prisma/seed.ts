@@ -1,5 +1,5 @@
 /**
- * Idempotent seed: roles & permissions, demo staff/customer users (non-production only),
+ * Idempotent seed: roles & permissions, demo staff/customer users and approved consultants (non-production only),
  * the full service catalogue and its application forms, certification bodies, demo certificates and base settings.
  *
  *   pnpm db:seed
@@ -52,6 +52,58 @@ async function seedUsers() {
     await prisma.userRole.upsert({ where: { userId_roleId: { userId: user.id, roleId: role.id } }, update: {}, create: { userId: user.id, roleId: role.id } }); // NOSONAR: seed writes run in order
   }
   console.log(`✓ ${DEMO_USERS.length} demo users`);
+}
+
+type DemoConsultant = {
+  name: string; email: string; mobile: string; category: 'CA' | 'CS' | 'LAWYER' | 'TAX_CONSULTANT' | 'TRADEMARK_CONSULTANT' | 'ISO_CONSULTANT' | 'BUSINESS_CONSULTANT' | 'TECHNOLOGY_CONSULTANT';
+  qualification: string; experienceYears: number; expertise: string[]; languages: string[]; city: string; state: string;
+  fee: number; types: ('AUDIO' | 'VIDEO' | 'CHAT' | 'MEETING')[]; rating: number; featured?: boolean;
+};
+
+const DEMO_CONSULTANTS: DemoConsultant[] = [
+  { name: 'Demo Consultant', email: 'consultant@biznexa.local', mobile: '9000000004', category: 'CA', qualification: 'Chartered Accountant (ICAI)', experienceYears: 8, expertise: ['GST', 'Income Tax', 'Company Registration'], languages: ['English', 'Hindi', 'Punjabi'], city: 'Ludhiana', state: 'Punjab', fee: 499, types: ['AUDIO', 'VIDEO', 'CHAT'], rating: 4.8, featured: true },
+  { name: 'Priya Sharma', email: 'priya.cs@biznexa.local', mobile: '9000000011', category: 'CS', qualification: 'Company Secretary (ICSI)', experienceYears: 6, expertise: ['ROC Compliance', 'LLP', 'Annual Filings'], languages: ['English', 'Hindi'], city: 'Chandigarh', state: 'Chandigarh', fee: 599, types: ['VIDEO', 'CHAT'], rating: 4.6, featured: true },
+  { name: 'Arjun Mehta', email: 'arjun.lawyer@biznexa.local', mobile: '9000000012', category: 'LAWYER', qualification: 'LLB, Advocate', experienceYears: 12, expertise: ['Contracts', 'Legal Notices', 'Startup Law'], languages: ['English', 'Hindi'], city: 'New Delhi', state: 'Delhi', fee: 999, types: ['AUDIO', 'VIDEO', 'MEETING'], rating: 4.7 },
+  { name: 'Neha Gupta', email: 'neha.tm@biznexa.local', mobile: '9000000013', category: 'TRADEMARK_CONSULTANT', qualification: 'Registered Trademark Agent', experienceYears: 5, expertise: ['Trademark Registration', 'Objection Reply', 'Copyright'], languages: ['English', 'Hindi'], city: 'Mumbai', state: 'Maharashtra', fee: 399, types: ['AUDIO', 'CHAT'], rating: 4.5 },
+  { name: 'Rahul Verma', email: 'rahul.tax@biznexa.local', mobile: '9000000014', category: 'TAX_CONSULTANT', qualification: 'M.Com, Tax Practitioner', experienceYears: 10, expertise: ['ITR Filing', 'TDS', 'GST Returns'], languages: ['English', 'Hindi'], city: 'Jaipur', state: 'Rajasthan', fee: 299, types: ['AUDIO', 'VIDEO'], rating: 4.4 },
+  { name: 'Simran Kaur', email: 'simran.iso@biznexa.local', mobile: '9000000015', category: 'ISO_CONSULTANT', qualification: 'ISO 9001 Lead Auditor', experienceYears: 7, expertise: ['ISO 9001', 'ISO 14001', 'ISO 45001'], languages: ['English', 'Hindi', 'Punjabi'], city: 'Amritsar', state: 'Punjab', fee: 799, types: ['VIDEO', 'MEETING'], rating: 4.9, featured: true },
+];
+
+/** Approved demo consultants with Mon–Sat availability, so the listing, booking and consultant portal have data. */
+async function seedConsultants() {
+  if (isProd) return;
+  const role = await prisma.role.findUniqueOrThrow({ where: { key: 'CONSULTANT' } });
+  for (const c of DEMO_CONSULTANTS) {
+    const user = await prisma.user.upsert({ // NOSONAR: seed writes run in order
+      where: { email: c.email },
+      update: {},
+      create: {
+        name: c.name, email: c.email, mobile: c.mobile,
+        passwordHash: await bcrypt.hash('Consultant@12345', 12), // NOSONAR: seed credential
+        emailVerified: true, mobileVerified: true, consentAt: new Date(),
+      },
+    });
+    await prisma.userRole.upsert({ where: { userId_roleId: { userId: user.id, roleId: role.id } }, update: {}, create: { userId: user.id, roleId: role.id } }); // NOSONAR: seed writes run in order
+    if (await prisma.consultant.findUnique({ where: { userId: user.id } })) continue; // NOSONAR: seed writes run in order
+    await prisma.consultant.create({ // NOSONAR: seed writes run in order
+      data: {
+        userId: user.id,
+        slug: c.name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-'),
+        category: c.category, qualification: c.qualification, experienceYears: c.experienceYears,
+        expertise: c.expertise, languages: c.languages, city: c.city, state: c.state,
+        bio: `${c.qualification} with ${c.experienceYears} years of experience in ${c.expertise.join(', ')}. (Demo profile)`,
+        feePerSession: paise(c.fee), consultationTypes: c.types, verificationStatus: 'APPROVED',
+        rating: c.rating, isOnline: true, isFeatured: !!c.featured,
+        availability: {
+          create: [1, 2, 3, 4, 5, 6].flatMap((weekday) => [
+            { weekday, startTime: '10:00', endTime: '13:00' },
+            { weekday, startTime: '15:00', endTime: '18:00' },
+          ]),
+        },
+      },
+    });
+  }
+  console.log(`✓ ${DEMO_CONSULTANTS.length} demo consultants (password Consultant@12345)`);
 }
 
 async function seedCatalogue() {
@@ -188,12 +240,17 @@ async function seedContent() {
     'company.phone': '',
     'invoice.prefix': 'BN',
     'certificates.organizationSearch': true,
-    'home.stats': [
-      { label: 'Services', value: '60+' },
-      { label: 'Categories', value: '7' },
-      { label: 'Process', value: '100% online' },
-      { label: 'Support', value: 'Dedicated expert' },
-    ],
+    // Homepage CMS (M9.6): the counters the homepage shows until an admin edits them; no picked services = the popular ones.
+    'home.cms': {
+      stats: [
+        { label: 'Services', value: '80+' },
+        { label: 'Categories', value: '7' },
+        { label: 'Process', value: '100% online' },
+        { label: 'Support', value: 'Dedicated expert' },
+      ].map((s, sortOrder) => ({ ...s, sortOrder, isActive: true })),
+      popularServiceIds: [],
+      faq: [],
+    },
   };
   for (const [key, value] of Object.entries(settings)) {
     await prisma.setting.upsert({ where: { key }, update: {}, create: { key, value: value as object } }); // NOSONAR: seed writes run in order
@@ -229,6 +286,7 @@ async function seedContent() {
 async function main() {
   await seedAccess(prisma);
   await seedUsers();
+  await seedConsultants();
   await seedCatalogue();
   const forms = await seedForms(prisma);
   console.log(`✓ application forms: ${forms.created} new, ${forms.upgraded} moved to their ready-made form, ${forms.kept} kept`);

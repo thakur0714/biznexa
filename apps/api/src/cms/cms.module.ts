@@ -1,4 +1,4 @@
-import { Controller, Get, Module, NotFoundException, Param, Post, Put } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Module, NotFoundException, Param, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthUser, CurrentUser, PERMS, Public, RequirePermissions } from '../common/auth.decorators';
@@ -68,7 +68,11 @@ export class CmsController {
     const ids = Array.isArray(config.popularServiceIds) ? config.popularServiceIds.filter((id): id is string => typeof id === 'string') : [];
     const services = ids.length ? await this.prisma.service.findMany({ where: { id: { in: ids }, isActive: true, deletedAt: null }, include: { category: true, subcategory: true, packages: { where: { isActive: true }, orderBy: { professionalFee: 'asc' }, take: 1 } } }) : [];
     const popularServices = ids.map((id) => services.find((service) => service.id === id)).filter((s) => s != null);
-    const active = (items: unknown) => Array.isArray(items) ? items.filter((item) => typeof item === 'object' && item !== null && 'isActive' in item && item.isActive === true) : [];
+    const active = (items: unknown) => Array.isArray(items)
+      ? (items as { isActive?: unknown; sortOrder?: unknown }[])
+          .filter((item) => typeof item === 'object' && item !== null && item.isActive === true)
+          .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0))
+      : [];
     return { banners, testimonials, stats: active(config.stats), faq: active(config.faq), popularServices };
   }
 }
@@ -100,6 +104,7 @@ class AdminCmsController {
   @ApiZodResponse('CmsHomepage', homepageSchema)
   @Put('homepage')
   async saveHomepage(@ZodBody(homeInput) body: HomeInput, @CurrentUser() user: AuthUser) {
+    if (new Set(body.popularServiceIds).size !== body.popularServiceIds.length) throw new BadRequestException('Choose each popular service only once');
     const services = await this.prisma.service.findMany({ where: { id: { in: body.popularServiceIds }, isActive: true, deletedAt: null }, select: { id: true } });
     if (services.length !== body.popularServiceIds.length) throw new NotFoundException('Choose active services from the catalogue');
     const before = await this.homepage();
@@ -114,6 +119,8 @@ class AdminCmsController {
     });
     await this.audit.log({ actorId: user.id, action: 'cms.homepage.update', entityType: 'CmsHomepage', entityId: 'home', before, after });
     await this.events.emit('catalogue.changed', { entityType: 'homepage' });
+    // The web route always refreshes `/`; 'home' names no CMS page.
+    await this.revalidateWeb('home');
     return after;
   }
 
